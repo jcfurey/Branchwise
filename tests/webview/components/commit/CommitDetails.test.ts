@@ -194,18 +194,18 @@ describe("scrolling the details into view", () => {
     box = { top: 0, height: 250 };
     heading = 32;
     Object.defineProperty(window, "innerHeight", { value: 1000, configurable: true });
-    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
-      function (this: Element) {
-        if (this.hasAttribute("data-details-row")) {
-          return { top: box.top, bottom: box.top + box.height, height: box.height } as DOMRect;
-        }
-        return {
-          top: 0,
-          bottom: heading,
-          height: this.tagName === "THEAD" ? heading : 0
-        } as DOMRect;
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: Element
+    ) {
+      if (this.hasAttribute("data-details-row")) {
+        return { top: box.top, bottom: box.top + box.height, height: box.height } as DOMRect;
       }
-    );
+      return {
+        top: 0,
+        bottom: heading,
+        height: this.tagName === "THEAD" ? heading : 0
+      } as DOMRect;
+    });
   });
 
   /** Open details whose row starts `top` pixels down the window, then let them load. */

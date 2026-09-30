@@ -16,3 +16,8 @@ updates:
       javascript:
         patterns:
           - "*"
+    ignore:
+      # Follows engines.vscode, the oldest VS Code Branchwise supports: vsce refuses to package
+      # when the types are newer. Raise both together by hand.
+      - dependency-name: "@types/vscode"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]

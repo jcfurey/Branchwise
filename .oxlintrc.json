@@ -100,6 +100,12 @@
       "env": { "mocha": true }
     },
     {
+      // Suspicious since oxlint 1.85. Tests keep a helper next to the cases that use it, and a
+      // `vi.mock` factory, which Vitest hoists, cannot reach a helper outside it.
+      "files": ["tests/**", "tests-ext/**"],
+      "rules": { "unicorn/consistent-function-scoping": "off" }
+    },
+    {
       // The build script prints to the terminal.
       "files": ["esbuild.js"],
       "rules": { "eslint/no-console": "off" }
