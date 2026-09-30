@@ -308,21 +308,21 @@ describe("Refresh, Fetch and Compare", () => {
 
 /** Give the header, and only the header, the height `height` returns at each measurement. */
 function stubHeight(height: () => number) {
-  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-    function (this: HTMLElement) {
-      const tall = this.tagName === "HEADER" ? height() : 0;
-      return {
-        x: 0,
-        y: 0,
-        top: 0,
-        left: 0,
-        right: 0,
-        width: 0,
-        bottom: tall,
-        height: tall
-      } as DOMRect;
-    }
-  );
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+    this: HTMLElement
+  ) {
+    const tall = this.tagName === "HEADER" ? height() : 0;
+    return {
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 0,
+      width: 0,
+      bottom: tall,
+      height: tall
+    } as DOMRect;
+  });
 }
 
 describe("the header height", () => {

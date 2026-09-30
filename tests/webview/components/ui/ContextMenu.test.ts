@@ -486,17 +486,15 @@ describe("pointer", () => {
     // A view 100 px high at y = 100 shows rows 30 px high below 4 px of padding.
     Object.defineProperty(view, "clientHeight", { configurable: true, value: 100 });
     const original = Element.prototype.getBoundingClientRect;
-    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
-      function (this: Element) {
-        if (this === view) {
-          return rect(0, 100, 200, 100);
-        }
-        const index = list.indexOf(this as HTMLElement);
-        return index < 0
-          ? original.call(this)
-          : rect(0, 104 + 30 * index - view.scrollTop, 200, 30);
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: Element
+    ) {
+      if (this === view) {
+        return rect(0, 100, 200, 100);
       }
-    );
+      const index = list.indexOf(this as HTMLElement);
+      return index < 0 ? original.call(this) : rect(0, 104 + 30 * index - view.scrollTop, 200, 30);
+    });
 
     press("ArrowDown");
     expect(view.scrollTop).toBe(0);

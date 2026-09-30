@@ -106,11 +106,11 @@ beforeEach(() => {
   vscodeApi.postMessage.mockClear();
   cellWidths = [150, 500, 100, 90, 80];
   renders = 0;
-  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(
-    function (this: HTMLElement) {
-      return this instanceof HTMLTableCellElement ? (cellWidths[this.cellIndex] ?? 0) : 0;
-    }
-  );
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (
+    this: HTMLElement
+  ) {
+    return this instanceof HTMLTableCellElement ? (cellWidths[this.cellIndex] ?? 0) : 0;
+  });
   host = document.createElement("div");
   document.body.append(host);
 });

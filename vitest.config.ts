@@ -58,7 +58,11 @@ export default defineConfig({
         test: {
           name: "webview",
           include: ["tests/webview/**/*.test.ts"],
-          setupFiles: ["tests/webview/setup.ts"]
+          setupFiles: ["tests/webview/setup.ts"],
+          // Vitest 5 clears every mock before each test by default. The page tests record what the
+          // page posts while it loads, in `beforeAll`, and read that record in their tests, and
+          // `setup.ts` promises a record that only the file itself clears.
+          clearMocks: false
         }
       }
     ]
