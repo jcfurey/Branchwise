@@ -1,0 +1,35 @@
+{
+  "environment": "jsdom 30 under Vitest 4.1, Node 24, Linux x64 container; medians of 5 samples",
+  "refsPerKind": {
+    "3000": "3,000 each of local branches, remote branches, and tags",
+    "10000": "10,000 each"
+  },
+  "before": {
+    "3000": {
+      "filterKeystroke": 724.4,
+      "clearFilter": 4339.7,
+      "openMenu": 285.9,
+      "openDropdown": 88.7
+    },
+    "10000": {
+      "filterKeystroke": 9644.7,
+      "clearFilter": 43960.3,
+      "openMenu": 3033.7,
+      "openDropdown": 500.5
+    }
+  },
+  "after": {
+    "3000": {
+      "filterKeystroke": 101.4,
+      "clearFilter": 92.6,
+      "openMenu": 1,
+      "openDropdown": 10.3
+    },
+    "10000": {
+      "filterKeystroke": 95.1,
+      "clearFilter": 95.4,
+      "openMenu": 0.8,
+      "openDropdown": 6.4
+    }
+  }
+}

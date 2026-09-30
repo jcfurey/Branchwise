@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" fill="none">
+  <!-- Source of icon.png, rendered at 256 × 256 px. -->
+  <rect width="128" height="128" rx="28" fill="#14213d"/>
+  <g transform="translate(17 16) scale(4)">
+    <path d="M7 4.5v15" stroke="#3a86ff" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M7 4.5c0 4 9.5 2.5 9.5 6.5v2c0 4-9.5 2.5-9.5 6.5" stroke="#ff8a3d" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="7" cy="4.5" r="2.75" fill="#3a86ff"/>
+    <circle cx="7" cy="19.5" r="2.75" fill="#3a86ff"/>
+    <circle cx="16.5" cy="12" r="2.75" fill="#ff8a3d"/>
+  </g>
+</svg>

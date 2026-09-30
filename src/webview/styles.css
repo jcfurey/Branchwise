@@ -1,0 +1,145 @@
+/*
+ * The webview's only stylesheet. Tailwind builds a rule for each class written in a file under
+ * this folder. The tokens below name VS Code's theme colours, so a theme switch recolours the
+ * open page, and a few rules cover what utility classes cannot say.
+ */
+@import "tailwindcss" source("./");
+
+@theme {
+  --default-font-family: var(--vscode-font-family);
+  /* For code, kbd, samp and pre. The font-mono utility keeps Tailwind's stack. */
+  --default-mono-font-family: var(--vscode-editor-font-family);
+
+  /* VS Code's interface text size. It sets no line height. */
+  --text-ui: 13px;
+  --radius-md: 5px;
+  --grid-template-columns-labelled: auto 1fr;
+
+  /* A bar on the inside of the left edge, in the colour of the row's branch. */
+  --shadow-head: inset 2px 0 0 var(--color-graph);
+  --shadow-dialog: 0 0 30px 5px var(--vscode-widget-shadow);
+  --shadow-scroll: 0 -6px 6px 6px var(--vscode-scrollbar-shadow);
+
+  --color-fg: var(--vscode-foreground);
+  --color-muted: var(--vscode-descriptionForeground);
+  --color-focus: var(--vscode-focusBorder);
+  --color-editor: var(--vscode-editor-background);
+
+  --color-dropdown: var(--vscode-dropdown-background);
+  --color-dropdown-fg: var(--vscode-dropdown-foreground);
+  --color-dropdown-border: var(--vscode-dropdown-border, rgba(128, 128, 128, 0.5));
+
+  --color-menu: var(--vscode-menu-background, var(--vscode-dropdown-background));
+  --color-menu-fg: var(--vscode-menu-foreground, var(--vscode-dropdown-foreground));
+  --color-menu-active: var(
+    --vscode-menu-selectionBackground,
+    var(--vscode-list-activeSelectionBackground)
+  );
+  --color-menu-active-fg: var(
+    --vscode-menu-selectionForeground,
+    var(--vscode-list-activeSelectionForeground)
+  );
+
+  --color-input: var(--vscode-input-background);
+  --color-input-fg: var(--vscode-input-foreground);
+  --color-input-border: var(--vscode-input-border, rgba(128, 128, 128, 0.5));
+
+  --color-checkbox: var(--vscode-checkbox-background);
+  --color-checkbox-checked: var(--vscode-button-background);
+  --color-checkbox-check: var(--vscode-button-foreground);
+
+  /* Neutral greys that read on light, dark and high-contrast backgrounds alike. */
+  --color-line: rgba(128, 128, 128, 0.5);
+  --color-line-soft: rgba(128, 128, 128, 0.25);
+  --color-btn: rgba(128, 128, 128, 0.1);
+  --color-btn-hover: rgba(128, 128, 128, 0.2);
+
+  --color-action: var(--vscode-button-background);
+  --color-action-fg: var(--vscode-button-foreground);
+  --color-action-hover: var(--vscode-button-hoverBackground);
+
+  --color-git-added: var(--vscode-gitDecoration-addedResourceForeground);
+  --color-git-modified: var(--vscode-gitDecoration-modifiedResourceForeground);
+  --color-git-deleted: var(--vscode-gitDecoration-deletedResourceForeground);
+
+  --color-row-head: var(--vscode-list-inactiveSelectionBackground);
+  --color-row-hover: var(--vscode-list-hoverBackground);
+  --color-row-selected: rgba(128, 128, 128, 0.25);
+  --color-row-selected-hover: rgba(128, 128, 128, 0.35);
+
+  /* The branch colour of a commit row. Each row sets its own; see .branch-focus-row. */
+  --color-graph: var(--vscode-focusBorder);
+}
+
+@layer components {
+  /* The horizontal scroller under the graph column. */
+  .graph-scrollbar::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .graph-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background: var(--vscode-scrollbarSlider-background);
+  }
+
+  .graph-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--vscode-scrollbarSlider-hoverBackground);
+  }
+
+  .graph-scrollbar::-webkit-scrollbar-thumb:active {
+    background: var(--vscode-scrollbarSlider-activeBackground);
+  }
+
+  /*
+   * A commit row. It carries data-branch-relation and data-emphasized, and sets
+   * --branch-colour and --branch-display-colour, the second possibly dimmed for its relation.
+   * A row scrolled into view stops below the sticky main header and the table's header row.
+   */
+  .branch-focus-row {
+    --color-graph: var(--branch-display-colour);
+    scroll-margin-top: calc(var(--main-header-height, 0px) + var(--graph-top, 32px));
+  }
+
+  /* A var() in a fallback declaration would hide it, so the mix is kept behind @supports. */
+  .branch-focus-row[data-branch-relation="merged"] {
+    color: var(--color-fg);
+  }
+
+  @supports (color: color-mix(in srgb, red, blue)) {
+    .branch-focus-row[data-branch-relation="merged"] {
+      color: color-mix(in srgb, var(--color-fg) 80%, var(--color-muted));
+    }
+  }
+
+  .branch-focus-row[data-branch-relation="unrelated"] {
+    color: var(--color-muted);
+  }
+
+  /* Same specificity as the relations, and later, so a row in use always shows in full. */
+  .branch-focus-row:hover,
+  .branch-focus-row:focus-within,
+  .branch-focus-row[data-emphasized="true"] {
+    --color-graph: var(--branch-colour);
+    color: var(--color-fg);
+  }
+
+  /*
+   * Fades in over the first pixel the page scrolls. The shorthand resets the timeline, so the
+   * timeline and its range come after it.
+   */
+  .animate-scroll-shadow {
+    animation: scroll-shadow linear both;
+    animation-timeline: scroll(root block);
+    animation-range: 0 1px;
+  }
+
+  @keyframes scroll-shadow {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+}

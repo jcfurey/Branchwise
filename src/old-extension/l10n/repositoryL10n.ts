@@ -1,0 +1,158 @@
+import * as vscode from "vscode";
+
+export function getRepositoryLocalizedStrings() {
+  return {
+    manageRemotes: vscode.l10n.t("Remotes"),
+    addRemote: vscode.l10n.t("Add Remote"),
+    editRemote: vscode.l10n.t("Edit URLs"),
+    renameRemote: vscode.l10n.t("Rename Remote"),
+    removeRemote: vscode.l10n.t("Remove Remote"),
+    fetchUrls: vscode.l10n.t("Fetch URLs (one per line)"),
+    pushUrls: vscode.l10n.t("Push URLs (blank uses fetch URLs)"),
+    remotePushUrls: vscode.l10n.t("Push URLs"),
+    defaultPushRemote: vscode.l10n.t("Default Push Remote"),
+    defaultSetting: vscode.l10n.t("Use Git default"),
+    none: vscode.l10n.t("None"),
+    save: vscode.l10n.t("Save"),
+    remoteName: vscode.l10n.t("Remote name"),
+    remoteUrl: vscode.l10n.t("URL"),
+    fetchAfterAdding: vscode.l10n.t("Fetch after adding"),
+    removeRemoteConfirm: vscode.l10n.t(
+      "Remove remote {0} and its remote-tracking references? The remote server and local branches will remain."
+    ),
+    deleteRemoteBranch: vscode.l10n.t("Delete Remote Branch"),
+    deleteRemoteTag: vscode.l10n.t("Delete Remote Tag"),
+    deleteRemoteRefConfirm: vscode.l10n.t(
+      "Delete {0} from remote {1}? This changes the remote repository for everyone using it."
+    ),
+    configureUpstream: vscode.l10n.t("Configure Upstream"),
+    upstreamBranch: vscode.l10n.t("Upstream Branch"),
+    trackingStatus: vscode.l10n.t("{0}: {1} ahead, {2} behind"),
+    upstreamGone: vscode.l10n.t("Upstream no longer exists"),
+    noUpstream: vscode.l10n.t("No upstream configured"),
+    worktreeAt: vscode.l10n.t("Checked out at {0}"),
+    forceWithLease: vscode.l10n.t("Force with lease (replace rewritten history)"),
+    forcePushConfirm: vscode.l10n.t(
+      "Replace the history of {0} on {1}? The push will succeed only if the remote still points to the last fetched commit {2}."
+    ),
+    fetchBeforeCheckout: vscode.l10n.t("Fetch the latest remote revision before checkout"),
+    loadingRepository: vscode.l10n.t("Loading repository details"),
+    runningGitAction: vscode.l10n.t("Running Git operation"),
+    unableToRunGitAction: vscode.l10n.t("Unable to complete Git operation"),
+    unableToLoadRepository: vscode.l10n.t("Unable to load repository details"),
+    stashes: vscode.l10n.t("Stashes"),
+    saveStash: vscode.l10n.t("Save Stash"),
+    includeUntracked: vscode.l10n.t("Include untracked files"),
+    inspectStash: vscode.l10n.t("Inspect Stash"),
+    applyStash: vscode.l10n.t("Apply Stash"),
+    popStash: vscode.l10n.t("Pop Stash"),
+    dropStash: vscode.l10n.t("Drop Stash"),
+    dropStashConfirm: vscode.l10n.t("Permanently drop stash {0}?"),
+    reinstateIndex: vscode.l10n.t("Restore staged changes as staged"),
+    noStashes: vscode.l10n.t("No stashes saved."),
+    worktrees: vscode.l10n.t("Worktrees"),
+    addWorktree: vscode.l10n.t("Create Worktree"),
+    openWorktree: vscode.l10n.t("Open in New Window"),
+    removeWorktree: vscode.l10n.t("Remove Worktree"),
+    worktreePath: vscode.l10n.t("Absolute Folder Path"),
+    newBranch: vscode.l10n.t("Create a new branch"),
+    startPoint: vscode.l10n.t("Start Point (for a new branch)"),
+    removeWorktreeConfirm: vscode.l10n.t(
+      "Remove worktree {0}? Git will refuse if it contains uncommitted or untracked files. Its branch will remain."
+    ),
+    lockedWorktree: vscode.l10n.t("Locked"),
+    prunableWorktree: vscode.l10n.t("Missing worktree"),
+    currentWorktree: vscode.l10n.t("Current worktree"),
+    detachedHead: vscode.l10n.t("Detached HEAD"),
+    rebaseOnto: vscode.l10n.t("Move the current branch onto this (rebase)"),
+    rebaseConfirm: vscode.l10n.t(
+      "Rebase {0} onto {1}? This rewrites commits on the current branch and preserves merge structure. Commit or stash your changes first."
+    ),
+    interactiveRebase: vscode.l10n.t("Edit commits after this (interactive rebase)"),
+    rebasePlanTitle: vscode.l10n.t("Interactive Rebase"),
+    rebasePlanDescription: vscode.l10n.t(
+      "Commits run from top to bottom. Squash combines a commit with the previous retained commit. Reword edits its message. Drop removes it from this branch."
+    ),
+    pickCommit: vscode.l10n.t("Pick"),
+    rewordCommit: vscode.l10n.t("Reword"),
+    squashCommit: vscode.l10n.t("Squash"),
+    dropCommit: vscode.l10n.t("Drop"),
+    moveEarlier: vscode.l10n.t("Move Earlier"),
+    moveLater: vscode.l10n.t("Move Later"),
+    movedEntry: vscode.l10n.t("Moved {0} to position {1} of {2}."),
+    startRebase: vscode.l10n.t("Start Rebase"),
+    invalidRebasePlan: vscode.l10n.t(
+      "Keep at least one commit; the first retained commit cannot be Squash. Reword requires a message."
+    ),
+    operationInProgress: vscode.l10n.t("{0} in progress"),
+    conflictedFiles: vscode.l10n.t("Conflicted Files"),
+    continueOperation: vscode.l10n.t("Continue"),
+    abortOperation: vscode.l10n.t("Abort"),
+    skipOperation: vscode.l10n.t("Skip Commit"),
+    recoveryConfirm: vscode.l10n.t(
+      "{0} the current {1}? Abort restores the pre-operation state; Skip discards the current patch."
+    ),
+    openConflict: vscode.l10n.t("Open Conflict"),
+    showMoreRefs: vscode.l10n.t("Show {0} more ({1} hidden)"),
+    dropdownPage: vscode.l10n.t("{0}–{1} of {2}. Type to narrow the list, or use the arrow keys."),
+    stageResolution: vscode.l10n.t("Stage Resolution"),
+    stageResolutionConfirm: vscode.l10n.t("Mark {0} as resolved and stage its current contents?"),
+    mergeOperation: vscode.l10n.t("Merge"),
+    rebaseOperation: vscode.l10n.t("Rebase"),
+    cherryPickOperation: vscode.l10n.t("Cherry-pick"),
+    revertOperation: vscode.l10n.t("Revert"),
+
+    // Branches pane
+    branchesPane: vscode.l10n.t("Branches"),
+    localBranches: vscode.l10n.t("Local Branches"),
+    tags: vscode.l10n.t("Tags"),
+    refFilter: vscode.l10n.t("Filter branches, tags and stashes…"),
+    noMatchingRefs: vscode.l10n.t("Nothing matches this filter."),
+    noTags: vscode.l10n.t("No tags."),
+    createBranchHere: vscode.l10n.t("New Branch"),
+    newBranchFrom: vscode.l10n.t("Create a branch at {0}"),
+    remoteBranchesShown: vscode.l10n.t(
+      "Remote branches are shown in the graph. Click to hide them."
+    ),
+    remoteBranchesHidden: vscode.l10n.t(
+      "Remote branches are hidden from the graph. Click to show them."
+    ),
+    hiddenFromGraph: vscode.l10n.t(
+      "Hidden from the graph. Selecting a remote branch shows them again."
+    ),
+    refActions: vscode.l10n.t("Actions for {0}"),
+    remoteActions: vscode.l10n.t("Actions for remote {0}"),
+    showRemoteInGraph: vscode.l10n.t("Show remote {0} in the graph"),
+    hideRemoteFromGraph: vscode.l10n.t("Hide remote {0} from the graph"),
+    applyShort: vscode.l10n.t("Apply"),
+    popShort: vscode.l10n.t("Pop"),
+    settingsTools: vscode.l10n.t("Settings & Tools"),
+    openSettings: vscode.l10n.t("Open Extension Settings"),
+    gettingStarted: vscode.l10n.t("Getting Started"),
+    learnMore: vscode.l10n.t("Learn more"),
+
+    // Guidance
+    commitMenuHint: vscode.l10n.t(
+      "Right-click a commit, or use its ⋯ button, for actions. On the keyboard, press Shift+F10."
+    ),
+    commitActions: vscode.l10n.t("Actions for commit {0}"),
+    explainReset: vscode.l10n.t(
+      "Soft and mixed keep your files. Hard discards uncommitted changes. The previous position stays in the reflog, so Recover lost commits can bring it back."
+    ),
+    explainDetachedHead: vscode.l10n.t(
+      "You can build and test here. Create a branch from this commit to keep new work, or check out a branch to return."
+    ),
+    explainDeleteBranch: vscode.l10n.t(
+      "The commits stay in the repository for a while. Recover lost commits lists the branch tip if you need it back."
+    ),
+    explainForcePush: vscode.l10n.t(
+      "Anyone who already fetched the old history has to rebase their work onto the new one."
+    ),
+    explainInteractiveRebase: vscode.l10n.t(
+      "Nothing changes until you start the rebase. If it stops on a conflict, the status strip offers Continue and Abort, and Abort restores the branch as it was."
+    ),
+    explainDropStash: vscode.l10n.t(
+      "A dropped stash is hard to recover. Apply it first if you are not sure."
+    )
+  };
+}

@@ -1,0 +1,130 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // The plugins for the code Branchwise has: no React rules (the webview is Preact), no test rules.
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "node"],
+  "jsPlugins": [
+    // Branchwise's own rule for the text the webview shows.
+    "./oxlint/webview-text.cjs",
+    // Only for its import ordering rule, which the native import plugin does not have.
+    { "name": "import-js", "specifier": "eslint-plugin-import" }
+  ],
+  // Code that is wrong, probably wrong or needlessly slow. pedantic, style, restriction and
+  // nursery stay off; the rules below take single rules from them where Branchwise needs them.
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
+  },
+  "options": {
+    // A disable comment that suppresses nothing has outlived its reason.
+    "reportUnusedDisableDirectives": "error"
+  },
+  // .gitignore keeps out build output and downloads; oxlint does not skip node_modules by itself.
+  "ignorePatterns": ["node_modules/**"],
+  // Node runs everything except the webview page; the overrides add the other environments.
+  "env": { "node": true },
+  "rules": {
+    // Every if, for and while body has braces, so a line added to it cannot fall outside.
+    "eslint/curly": "error",
+    // Console output is deliberate: outside two terminal scripts, each call has a disable comment.
+    "eslint/no-console": "error",
+    // Awaits in a loop are deliberate and marked the same way (perf includes it; kept explicit).
+    "eslint/no-await-in-loop": "error",
+    // Unused names must start with `_`, oxlint's default exception (options would drop it).
+    "eslint/no-unused-vars": "error",
+    // Every global comes from a declared environment or global, per folder (see the overrides).
+    "eslint/no-undef": "error",
+    // Node built-ins are imported with the `node:` prefix.
+    "unicorn/prefer-node-protocol": "error",
+    // Other folders are reached through the `@/` and `@tests/` aliases, never through `../`.
+    "import/no-relative-parent-imports": "error",
+    // Groups node:, packages, @/, @tests/ and ./, one blank line apart, sorted ignoring case.
+    "import-js/order": [
+      "error",
+      {
+        "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
+        "pathGroups": [
+          { "pattern": "@/**", "group": "internal" },
+          { "pattern": "@tests/**", "group": "internal", "position": "after" }
+        ],
+        // `@tests/…` looks like a scoped package, so path groups must see external imports too.
+        "pathGroupsExcludedImportTypes": ["builtin"],
+        // Keeps `@tests/…` a group of its own; the plugin means to change this default.
+        "distinctGroup": true,
+        "newlines-between": "always",
+        "alphabetize": { "order": "asc", "caseInsensitive": true }
+      }
+    ],
+    // `${…}` inside quotes is a template literal written with the wrong quotes.
+    "eslint/no-template-curly-in-string": "error",
+    // Loose equality coerces between the strings and numbers that Git output and messages carry.
+    "eslint/eqeqeq": "error",
+    // `any` switches off the strict checks; data from outside the program is typed `unknown`.
+    "typescript/no-explicit-any": "error",
+    // `@ts-ignore` and its kind hide errors from `pnpm run typecheck`.
+    "typescript/ban-ts-comment": "error",
+    // A VS Code webview is sandboxed without modals: alert, confirm and prompt do nothing there.
+    "eslint/no-alert": "error",
+    // VS Code's postMessage takes one argument; the target origin belongs to window.postMessage.
+    "unicorn/require-post-message-target-origin": "off",
+    // Stylesheets are imported for their side effect; esbuild bundles them.
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }]
+  },
+  "overrides": [
+    {
+      // Every word the webview shows comes from window.l10n.
+      "files": ["src/webview/**/*.tsx"],
+      "rules": {
+        "webview/no-hard-coded-text": "error"
+      }
+    },
+    {
+      // The webview is a browser page inside VS Code, where Node's globals do not exist.
+      "files": ["src/webview/**/*.{ts,tsx}"],
+      "env": { "node": false, "browser": true }
+    },
+    {
+      // VS Code lets a page acquire its API once, so only this module may call it.
+      "files": ["src/webview/lib/vscode.ts"],
+      "globals": { "acquireVsCodeApi": "readonly" }
+    },
+    {
+      // Vitest runs the webview tests in Node with a DOM, and setup.ts stands in for the API.
+      "files": ["tests/webview/**/*.{ts,tsx}"],
+      "env": { "browser": true },
+      "globals": { "acquireVsCodeApi": "readonly" }
+    },
+    {
+      // These tests run under Mocha inside VS Code.
+      "files": ["tests-ext/**/*.{ts,cjs}"],
+      "env": { "mocha": true }
+    },
+    {
+      // The build script prints to the terminal.
+      "files": ["esbuild.js"],
+      "rules": { "eslint/no-console": "off" }
+    },
+    {
+      // The translation check reports its findings to the terminal.
+      "files": ["scripts/check-l10n.js"],
+      "rules": { "eslint/no-console": "off" }
+    },
+    {
+      // Response handlers only update state; requests start from the action modules.
+      "files": ["src/webview/lib/handler/**"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^(@/webview/lib/|(\\.\\./)+)vscode$",
+                "message": "Handlers only update state; send requests from an action module."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

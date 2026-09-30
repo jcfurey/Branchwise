@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest something new for Branchwise, or a change to how an existing feature works.
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your idea. Please search the [existing issues](https://github.com/jcfurey/Branchwise/issues) first, and add to a matching request instead of opening a new one. Ask for one feature per issue so that each can be discussed and tracked on its own.
+  - type: textarea
+    id: feature
+    attributes:
+      label: Requested feature
+      description: Describe the feature you are asking for in a sentence or two.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem it solves
+      description: What can you not do today, or what gets in your way? Describe the situation where you would use the feature.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Proposed behavior
+      description: How do you think it should work? Describe where you would find it, what you would do, and what Branchwise would show or change in your repository.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and workarounds
+      description: Optional. Describe other approaches you have considered, or how you work around the problem now.
+    validations:
+      required: false

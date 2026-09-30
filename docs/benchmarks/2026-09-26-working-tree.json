@@ -1,0 +1,12 @@
+{
+  "environment": "jsdom 30 under Vitest 4.1, Node 24, Linux x64 container; medians of 5 samples",
+  "files": "20,000 untracked files in one group",
+  "before": {
+    "firstRender": 1281.9,
+    "refresh": 1386
+  },
+  "after": {
+    "firstRender": 26.6,
+    "refresh": 6.4
+  }
+}

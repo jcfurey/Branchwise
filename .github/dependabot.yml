@@ -1,0 +1,18 @@
+# Weekly version updates for the workflows' actions and for the JavaScript dependencies.
+version: 2
+updates:
+  # Also moves the commit pin of pnpm/setup together with its version comment.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # package.json and pnpm-lock.yaml, in one pull request per run so that one CI run covers them.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      javascript:
+        patterns:
+          - "*"

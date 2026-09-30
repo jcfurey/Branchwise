@@ -1,0 +1,3 @@
+# Store and check out every text file with LF endings on every platform, as the format check
+# requires; Git's own detection leaves binary files such as the icon untouched.
+* text=auto eol=lf

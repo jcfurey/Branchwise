@@ -1,0 +1,17 @@
+// F5 opens an Extension Development Host with this working copy loaded as the extension.
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+      // The development build writes the bundles and their source maps here; the maps point at
+      // src/ on disk, so breakpoints in src/ bind.
+      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      // The default build task (Build in tasks.json).
+      "preLaunchTask": "${defaultBuildTask}"
+    }
+  ]
+}

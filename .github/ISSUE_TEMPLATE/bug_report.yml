@@ -1,0 +1,96 @@
+name: Bug report
+description: Tell us about something in Branchwise that is broken or does not work as documented.
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please search the [existing issues](https://github.com/jcfurey/Branchwise/issues) first, in case it is already known.
+
+        Logs and screenshots can show branch names, file paths and commit messages. Remove anything you do not want to share before you submit.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What went wrong
+      description: Describe the problem in a sentence or two.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the steps that make the problem happen, one per line, starting from opening the graph. Mention anything unusual about your repository, such as submodules, worktrees or a very long history.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What did you expect Branchwise to do?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: What happened instead? Paste the full text of any error message. In **Git Activity**, under the settings cog, **Copy Error Details** copies it for you.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or log
+      description: Optional. Attach screenshots, or paste the lines around the failure from Branchwise's log. To find the log, open the Output panel with **View → Output** and choose **Branchwise** from its list.
+    validations:
+      required: false
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code version
+      description: You can find it in **Help → About** (**Code → About Visual Studio Code** on macOS).
+      placeholder: "1.125.0"
+    validations:
+      required: true
+  - type: input
+    id: branchwise-version
+    attributes:
+      label: Branchwise version
+      description: You can find it on Branchwise's page in the Extensions view.
+      placeholder: "0.9.7"
+    validations:
+      required: true
+  - type: input
+    id: git-version
+    attributes:
+      label: Git version
+      description: Run `git --version` where Branchwise runs Git. If VS Code is connected to a remote machine or container, run it there.
+      placeholder: git version 2.51.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: Give the name and version of the system VS Code runs on, and of the remote machine or container if you use one.
+      placeholder: Windows 11, macOS 15, Ubuntu 24.04
+    validations:
+      required: true
+  - type: dropdown
+    id: remote
+    attributes:
+      label: Remote connection
+      description: Was VS Code connected to a remote machine or container when the problem happened?
+      options:
+        - No, VS Code opened a local folder
+        - Remote - SSH
+        - WSL
+        - Dev Containers
+        - GitHub Codespaces
+        - Another remote connection (describe it in the steps)
+    validations:
+      required: true

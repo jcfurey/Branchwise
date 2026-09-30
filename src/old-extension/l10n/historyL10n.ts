@@ -1,0 +1,122 @@
+import * as vscode from "vscode";
+
+export function getHistoryLocalizedStrings() {
+  return {
+    workspaceOverview: vscode.l10n.t("Workspace"),
+    repositoryTools: vscode.l10n.t("Repository Tools"),
+    historySearch: vscode.l10n.t("Search history"),
+    searchPlaceholder: vscode.l10n.t("Commit message or SHA…"),
+    searchHistoryHint: vscode.l10n.t(
+      "Searches repository history, including commits beyond the loaded graph."
+    ),
+    historyFilters: vscode.l10n.t("Filters"),
+    historyAuthor: vscode.l10n.t("Author name or email"),
+    historyPath: vscode.l10n.t("File or folder path"),
+    historySince: vscode.l10n.t("From date"),
+    historyUntil: vscode.l10n.t("Through date"),
+    searchSubmit: vscode.l10n.t("Search"),
+    clearFilters: vscode.l10n.t("Clear Filters"),
+    saveFilter: vscode.l10n.t("Save Filter"),
+    savedFilters: vscode.l10n.t("Saved Filters"),
+    filterName: vscode.l10n.t("Filter Name"),
+    deleteSavedFilter: vscode.l10n.t("Delete Saved Filter"),
+    noHistoryMatches: vscode.l10n.t("No commits match these filters."),
+    filteredHistory: vscode.l10n.t("Filtered history"),
+    filteredHistoryHint: vscode.l10n.t("Commits between matches may be hidden."),
+    historyAt: vscode.l10n.t("History at {0}"),
+    showInGraph: vscode.l10n.t("Show in Graph"),
+    fileHistory: vscode.l10n.t("File History"),
+    followRenames: vscode.l10n.t("Follow file renames"),
+    previousPage: vscode.l10n.t("Previous"),
+    nextPage: vscode.l10n.t("Next"),
+    compareRevisions: vscode.l10n.t("Compare Revisions"),
+    compareWith: vscode.l10n.t("Compare with…"),
+    compareSelected: vscode.l10n.t("Compare Selected"),
+    comparisonLeft: vscode.l10n.t("Left revision"),
+    comparisonRight: vscode.l10n.t("Right revision"),
+    compareFromBase: vscode.l10n.t("Show changes introduced since the common ancestor"),
+    compareSubmit: vscode.l10n.t("Compare"),
+    comparedFiles: vscode.l10n.t("Changed Files"),
+    onlyOnLeft: vscode.l10n.t("Commits only on the left"),
+    onlyOnRight: vscode.l10n.t("Commits only on the right"),
+    identicalFiles: vscode.l10n.t("No file differences between these revisions."),
+    openHistoricalFile: vscode.l10n.t("Open File at This Revision"),
+    openFileChanges: vscode.l10n.t("Open File Changes"),
+    restoreHistoricalFile: vscode.l10n.t("Restore File Contents"),
+    restoreDestination: vscode.l10n.t("Restore to path"),
+    restorePreview: vscode.l10n.t("Preview Restore"),
+    restoreFileConfirm: vscode.l10n.t(
+      "Restore {0} from {1}? Its working file will be replaced; staged contents stay as they are."
+    ),
+    restoreDirty: vscode.l10n.t(
+      "This file has local changes. Restoring will overwrite its current working contents."
+    ),
+    restoreSource: vscode.l10n.t("Historical source"),
+    reflog: vscode.l10n.t("Recover lost commits (reflog)"),
+    reflogHint: vscode.l10n.t(
+      "Local branch and HEAD movements. Create a recovery branch to keep an older commit."
+    ),
+    recoverBranch: vscode.l10n.t("Create Recovery Branch"),
+    recoveryBranchName: vscode.l10n.t("Branch Name"),
+    noReflog: vscode.l10n.t("No reflog entries available."),
+    selectCommitsHint: vscode.l10n.t(
+      "Ctrl/Cmd-click to select commits; Shift-click to select a range."
+    ),
+    selectedCount: vscode.l10n.t("{0} commits selected"),
+    clearSelection: vscode.l10n.t("Clear Selection"),
+    batchCherryPick: vscode.l10n.t("Cherry-pick Selected"),
+    batchRevert: vscode.l10n.t("Revert Selected"),
+    batchOrderHint: vscode.l10n.t(
+      "Commits run from top to bottom. Review the order before starting."
+    ),
+    batchMainline: vscode.l10n.t("Mainline parent for merge commits"),
+    createFixup: vscode.l10n.t("Create Fixup Commit"),
+    createFixupMenu: vscode.l10n.t("Fold staged changes into this commit (fixup)"),
+    fixupPreview: vscode.l10n.t("Commit these staged changes as a fixup for {0}?"),
+    fixupCommit: vscode.l10n.t("Fixup"),
+    arrangeAutosquash: vscode.l10n.t("Arrange Fixup / Squash Commits"),
+    firstCannotCombine: vscode.l10n.t(
+      "Keep at least one commit; the first cannot be Squash or Fixup. Reword requires a message."
+    ),
+    initializeSubmodule: vscode.l10n.t("Initialize Submodule"),
+    syncSubmodule: vscode.l10n.t("Sync Submodule URLs"),
+    updateSubmodule: vscode.l10n.t("Update to Recorded Revision"),
+    submoduleActionConfirm: vscode.l10n.t(
+      "{0} for {1} and its nested submodules? Update checks out revision {2} recorded in the parent index."
+    ),
+    submoduleSyncConfirm: vscode.l10n.t(
+      "Sync URLs for {0} and its nested submodules from .gitmodules?"
+    ),
+    submoduleUninitialized: vscode.l10n.t("Not initialized"),
+    parentRevision: vscode.l10n.t("Parent commit records {0}"),
+    indexRevision: vscode.l10n.t("Parent index records {0}"),
+    submoduleMoved: vscode.l10n.t("Different from parent revision"),
+    submoduleStaged: vscode.l10n.t("Parent has a staged revision change"),
+    dirtyFiles: vscode.l10n.t("{0} changed files"),
+    overviewFilter: vscode.l10n.t("Filter repositories…"),
+    changedReposOnly: vscode.l10n.t("Only repositories with changes"),
+    operationActivity: vscode.l10n.t("Git Activity"),
+    activityEmpty: vscode.l10n.t("Git operations from this view appear here."),
+    activityRunning: vscode.l10n.t("Running"),
+    activitySucceeded: vscode.l10n.t("Completed"),
+    activityFailed: vscode.l10n.t("Failed"),
+    elapsedSeconds: vscode.l10n.t("{0} elapsed"),
+    copyError: vscode.l10n.t("Copy Error Details"),
+    errorDetails: vscode.l10n.t("error details"),
+    clearActivity: vscode.l10n.t("Clear Completed Activity"),
+    unseenFailures: vscode.l10n.t("Failed Git operations: {0}"),
+    hideOperation: vscode.l10n.t("Hide"),
+    cancelOperation: vscode.l10n.t("Stop Git"),
+    operationKeepsRunning: vscode.l10n.t("Git continues running when this dialog is hidden."),
+    graphKeyboardHint: vscode.l10n.t(
+      "Arrow keys move between commits. Enter opens details. Shift+F10 opens actions."
+    ),
+    returnToGraph: vscode.l10n.t("Return to Graph"),
+    unknownDate: vscode.l10n.t("Unknown date"),
+    restorePlanChanged: vscode.l10n.t(
+      "The file changed since this preview. Review it again before restoring."
+    ),
+    viewFailed: vscode.l10n.t("This view could not be shown: {0}"),
+    retryView: vscode.l10n.t("Try Again")
+  };
+}

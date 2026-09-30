@@ -1,0 +1,30 @@
+# Settings that change Git's output. CI runs the backend suite with them to show that parsing
+# does not depend on the user's configuration.
+[include]
+	path = gitconfig
+[color]
+	ui = always
+	branch = always
+	diff = always
+	status = always
+	showBranch = always
+	grep = always
+[log]
+	showSignature = true
+	decorate = full
+	abbrevCommit = true
+	date = relative
+[format]
+	pretty = oneline
+[core]
+	quotePath = true
+[status]
+	short = true
+	branch = true
+	showUntrackedFiles = no
+[branch]
+	sort = -committerdate
+[tag]
+	sort = -creatordate
+[column]
+	ui = always
