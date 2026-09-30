@@ -1,0 +1,2712 @@
+/* eslint-disable no-await-in-loop -- UI interactions and polling depend on the previous step. */
+const assert = require("node:assert/strict");
+const cp = require("node:child_process");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+
+const vscode = require("vscode");
+
+const createDiagnostics = require("./diagnostics.cjs");
+
+const port = Number(process.env.NGG_CDP_PORT);
+const artifacts = process.env.NGG_ARTIFACTS || path.join(os.tmpdir(), "ngg-ui-artifacts");
+fs.mkdirSync(artifacts, { recursive: true });
+const repoKey = (value) =>
+  value.replaceAll("\\", "/").replace(/^[A-Z]:/, (drive) => drive.toLowerCase());
+const connections = [];
+const dirs = [];
+let graph;
+let repo;
+const diagnostics = createDiagnostics({
+  artifacts,
+  connections,
+  graph: () => graph,
+  runtime: {
+    time: new Date().toISOString(),
+    vscode: vscode.version,
+    minimum: process.env.NGG_MINIMUM_VSCODE_VERSION,
+    requested: process.env.NGG_EXPECTED_VSCODE_VERSION,
+    installation: process.env.NGG_VSCODE_PATH || "downloaded",
+    extension: process.env.NGG_EXTENSION_ID,
+    platform: process.platform,
+    arch: process.arch,
+    node: process.versions.node,
+    logs: process.env.NGG_VSCODE_LOGS
+  }
+});
+const visible = (hash) => `!!document.querySelector('tr[data-commit-hash="${hash}"]')`;
+function git(args, cwd = repo) {
+  return cp.execFileSync("git", args, { cwd, stdio: "pipe" }).toString().trim();
+}
+function directory() {
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-ui-")));
+  dirs.push(dir);
+  return dir;
+}
+function init(dir) {
+  git(["init", "-b", "main"], dir);
+  git(["config", "user.name", "UI Test"], dir);
+  git(["config", "user.email", "ui@test"], dir);
+  git(["config", "commit.gpgsign", "false"], dir);
+  git(["config", "rerere.enabled", "false"], dir);
+}
+function commit(file, value, cwd = repo) {
+  fs.writeFileSync(path.join(cwd, file), value);
+  git(["add", "--", file], cwd);
+  git(["commit", "-m", value], cwd);
+}
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function keypress(key, modifiers = 0) {
+  const letter = /^[a-z]$/i.test(key);
+  const codes = {
+    Tab: 9,
+    Enter: 13,
+    " ": 32,
+    ArrowLeft: 37,
+    ArrowUp: 38,
+    ArrowRight: 39,
+    ArrowDown: 40,
+    Home: 36,
+    End: 35
+  };
+  for (const type of ["keyDown", "keyUp"]) {
+    await connections[0].call("Input.dispatchKeyEvent", {
+      type,
+      key,
+      code: key === " " ? "Space" : letter ? `Key${key.toUpperCase()}` : key,
+      windowsVirtualKeyCode: codes[key] ?? (letter ? key.toUpperCase().charCodeAt(0) : undefined),
+      modifiers,
+      ...(type === "keyDown" && (key === "Enter" || letter)
+        ? { text: key === "Enter" ? "\r" : key }
+        : {})
+    });
+  }
+}
+
+async function keyboardSelect(selector, label, value) {
+  await graph.evaluate(`document.querySelector(${JSON.stringify(selector)}).focus()`);
+  // Re-enter by keyboard to reset native type-ahead and verify the select is a tab stop.
+  await keypress("Tab");
+  await keypress("Tab", 8);
+  await visibleKeyboardFocus(selector);
+  // Home/End do not change a closed native select on macOS; type-ahead works on every OS.
+  for (const character of label.toLowerCase()) {
+    await keypress(character);
+  }
+  await until(
+    () =>
+      graph.evaluate(
+        `document.querySelector(${JSON.stringify(selector)}).value === ${JSON.stringify(value)}`
+      ),
+    `keyboard selects ${value}`
+  );
+}
+
+// Resolve CSS colours in Chromium, including color-mix, alpha, and ancestor opacity.
+// Text/focus thresholds follow https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
+// and https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html (not a full accessibility audit).
+async function contrast(selector, property = "color") {
+  return graph.evaluate(`(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    if (!element) throw new Error('Missing contrast target');
+    const context = document.createElement('canvas').getContext('2d');
+    const pixel = () => [...context.getImageData(0, 0, 1, 1).data].slice(0, 3);
+    const ancestors = []; let opacity = 1;
+    for (let node = element; node; node = node.parentElement) { ancestors.unshift(node); opacity *= Number(getComputedStyle(node).opacity); }
+    context.fillStyle = getComputedStyle(document.body).getPropertyValue('--vscode-editor-background');
+    context.fillRect(0, 0, 1, 1);
+    const backgrounds = ${JSON.stringify(property)} === 'outlineColor' && parseFloat(getComputedStyle(element).outlineOffset) >= 0 ? ancestors.slice(0, -1) : ancestors;
+    for (const node of backgrounds) { context.fillStyle = getComputedStyle(node).backgroundColor; context.fillRect(0, 0, 1, 1); }
+    const background = pixel();
+    context.globalAlpha = opacity;
+    context.fillStyle = getComputedStyle(element)[${JSON.stringify(property)}];
+    context.fillRect(0, 0, 1, 1);
+    const foreground = pixel();
+    const luminance = rgb => rgb.map(channel => { const c = channel / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; })
+      .reduce((total, channel, index) => total + channel * [0.2126, 0.7152, 0.0722][index], 0);
+    const light = luminance(foreground), dark = luminance(background);
+    return { ratio: (Math.max(light, dark) + 0.05) / (Math.min(light, dark) + 0.05), foreground, background, opacity,
+      outlineOffset: getComputedStyle(element).outlineOffset };
+  })()`);
+}
+
+async function visibleKeyboardFocus(selector) {
+  await until(async () => {
+    const state = await graph.evaluate(`(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    const style = getComputedStyle(element), rect = element.getBoundingClientRect();
+    return { focused: element === document.activeElement, visible: element.matches(':focus-visible'),
+      outline: style.outlineStyle, width: parseFloat(style.outlineWidth),
+      top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right,
+      height: innerHeight, viewportWidth: innerWidth, scale: devicePixelRatio,
+      active: document.activeElement?.outerHTML.slice(0, 300) };
+    })()`);
+    assert.ok(
+      state.focused &&
+        state.visible &&
+        state.outline !== "none" &&
+        state.width * state.scale >= 0.99 &&
+        state.top >= -1 &&
+        state.bottom <= state.height + 1 &&
+        state.left >= -1 &&
+        state.right <= state.viewportWidth + 1,
+      JSON.stringify(state)
+    );
+    return true;
+  }, `visible keyboard focus: ${selector}`);
+  const measured = await contrast(selector, "outlineColor");
+  assert.ok(measured.ratio >= 3, `focus contrast for ${selector}: ${JSON.stringify(measured)}`);
+}
+
+async function until(fn, label, timeout = 15000) {
+  const deadline = Date.now() + timeout;
+  let last;
+  while (Date.now() < deadline) {
+    try {
+      const value = await fn();
+      if (value) {
+        return value;
+      }
+    } catch (error) {
+      last = error;
+    }
+    await delay(100);
+  }
+  const error = new Error("Timed out: " + label + (last ? "\n" + last : ""));
+  // Capture before a scenario's finally block restores its repository, theme, or viewport.
+  await diagnostics.capture(error, "poll timeout");
+  throw error;
+}
+async function connect(url, type) {
+  const ws = new WebSocket(url);
+  await new Promise((resolve, reject) => {
+    ws.addEventListener("open", resolve, { once: true });
+    ws.addEventListener("error", reject, { once: true });
+  });
+  const pending = new Map();
+  const contexts = new Set();
+  let sequence = 0;
+  ws.addEventListener("message", (event) => {
+    const message = JSON.parse(event.data);
+    diagnostics.record({ type, url }, message);
+    if (message.method === "Runtime.executionContextCreated") {
+      contexts.add(message.params.context.id);
+    }
+    if (message.method === "Runtime.executionContextDestroyed") {
+      contexts.delete(message.params.executionContextId);
+    }
+    if (message.method === "Runtime.executionContextsCleared") {
+      contexts.clear();
+    }
+    if (message.id && pending.has(message.id)) {
+      const { resolve, reject, timer } = pending.get(message.id);
+      pending.delete(message.id);
+      clearTimeout(timer);
+      if (message.error) {
+        reject(new Error(message.error.message));
+      } else {
+        resolve(message.result);
+      }
+    }
+  });
+  ws.addEventListener("close", () => {
+    contexts.clear();
+    for (const { reject, timer } of pending.values()) {
+      clearTimeout(timer);
+      reject(new Error("CDP connection closed"));
+    }
+    pending.clear();
+  });
+  const connection = {
+    ws,
+    type,
+    url,
+    contexts,
+    call(method, params = {}) {
+      if (ws.readyState !== WebSocket.OPEN) {
+        return Promise.reject(new Error("CDP connection is not open"));
+      }
+      return new Promise((resolve, reject) => {
+        const id = ++sequence;
+        const timer = setTimeout(() => {
+          pending.delete(id);
+          reject(new Error("CDP timeout: " + method));
+        }, 5000);
+        pending.set(id, { resolve, reject, timer });
+        ws.send(JSON.stringify({ id, method, params }));
+      });
+    },
+    async evaluate(expression, contextId) {
+      const response = await this.call("Runtime.evaluate", {
+        expression,
+        contextId,
+        returnByValue: true,
+        awaitPromise: true
+      });
+      if (response.exceptionDetails) {
+        throw new Error(JSON.stringify(response.exceptionDetails));
+      }
+      return response.result.value;
+    }
+  };
+  connections.push(connection);
+  await connection.call("Runtime.enable");
+  await connection.call("Log.enable").catch(() => {});
+  if (type === "page") {
+    await connection.call("Emulation.setDeviceMetricsOverride", {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+  }
+  return connection;
+}
+async function findGraph() {
+  return until(
+    async () => {
+      const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+      for (const target of targets.filter(
+        (t) => t.webSocketDebuggerUrl && ["page", "iframe"].includes(t.type)
+      )) {
+        if (
+          !connections.some(
+            (connection) =>
+              connection.url === target.webSocketDebuggerUrl &&
+              connection.ws.readyState === WebSocket.OPEN
+          )
+        ) {
+          await connect(target.webSocketDebuggerUrl, target.type);
+        }
+      }
+      for (const connection of connections) {
+        if (connection.ws.readyState !== WebSocket.OPEN) {
+          continue;
+        }
+        for (const context of connection.contexts) {
+          try {
+            if (
+              await connection.evaluate(
+                '!!document.querySelector("header") && !!document.querySelector("[data-branchwise]")',
+                context
+              )
+            ) {
+              return {
+                evaluate: (expression) => connection.evaluate(expression, context),
+                connection
+              };
+            }
+          } catch {}
+        }
+      }
+    },
+    "graph context",
+    25000
+  );
+}
+async function button(text, scope = '(document.querySelector("[role=dialog]") || document)') {
+  if (["Remotes", "Stashes", "Worktrees"].includes(text)) {
+    await button("Settings & Tools", 'document.querySelector("header")');
+    await menu(text);
+    return;
+  }
+
+  await until(
+    () =>
+      graph.evaluate(
+        `(() => { const root = ${scope}; const button = [...root.querySelectorAll('button')].find(b => (b.textContent.trim() === ${JSON.stringify(text)} || b.getAttribute('aria-label') === ${JSON.stringify(text)}) && !b.disabled); if (!button) return false; button.click(); return true; })()`
+      ),
+    "button " + text
+  );
+}
+async function menu(text) {
+  await until(
+    () =>
+      graph.evaluate(
+        `(() => { const item = [...document.querySelectorAll('[role="menuitem"]')].find(e => e.textContent.trim() === ${JSON.stringify(text)}); if (!item) return false; item.click(); return true; })()`
+      ),
+    "menu " + text
+  );
+}
+async function fill(values) {
+  await graph.evaluate(
+    `(() => { const inputs = [...document.querySelectorAll('[role="dialog"] input[type="text"]')]; ${JSON.stringify(values)}.forEach((value, i) => { inputs[i].value = value; inputs[i].dispatchEvent(new Event('input', {bubbles: true})); }); })()`
+  );
+}
+async function select(value) {
+  await until(
+    () => graph.evaluate('!!document.querySelector("[role=dialog] select")'),
+    "select field"
+  );
+  await graph.evaluate(
+    `(() => { const input = document.querySelector('[role="dialog"] select'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event('change', {bubbles: true})); })()`
+  );
+}
+async function finished() {
+  await until(
+    async () => {
+      const text = await graph.evaluate('document.querySelector("[role=dialog]")?.innerText || ""');
+      if (text.startsWith("Unable")) {
+        throw new Error(text);
+      }
+      return text === "";
+    },
+    "Git action completion",
+    20000
+  );
+}
+async function contextRef(name) {
+  await until(
+    () =>
+      graph.evaluate(
+        `(() => { const element = [...document.querySelectorAll('span[title]')].find(e => e.title.split(String.fromCharCode(10))[0] === ${JSON.stringify(name)} && e.querySelector('svg')); if (!element) return false; element.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, clientX: 150, clientY: 220})); return true; })()`
+      ),
+    "ref " + name
+  );
+}
+async function openRepo(dir) {
+  await vscode.commands.executeCommand("branchwise.view", { rootUri: vscode.Uri.file(dir) });
+  graph = await findGraph();
+  // The extension selects the repository once Git names its top level.
+  await until(
+    () =>
+      graph.evaluate(
+        `[...document.querySelectorAll('header button[aria-haspopup="listbox"]')].some(b => b.title === ${JSON.stringify(repoKey(dir))})`
+      ),
+    "selected repository " + dir
+  );
+  await button("Refresh");
+  await until(
+    () => graph.evaluate('document.querySelectorAll("tbody tr").length > 0'),
+    "loaded commits"
+  );
+}
+async function headerChoice(label, option) {
+  await until(
+    () =>
+      graph.evaluate(`(() => {
+      const trigger = [...document.querySelectorAll('header button[aria-haspopup="listbox"]')]
+        .find(button => document.getElementById(button.getAttribute('aria-labelledby').split(' ')[0])?.textContent === ${JSON.stringify(label + ":")});
+      if (!trigger || trigger.disabled) return false;
+      trigger.click(); return true;
+    })()`),
+    "header choice " + label
+  );
+  await until(
+    () =>
+      graph.evaluate(`(() => {
+      const option = [...document.querySelectorAll('[role="option"]')].find(item => item.textContent.trim() === ${JSON.stringify(option)});
+      if (!option) return false;
+      option.click(); return true;
+    })()`),
+    "option " + option
+  );
+}
+suite("Branchwise workflow UI", function () {
+  this.timeout(120000);
+  suiteSetup(async () => {
+    try {
+      const minimum = process.env.NGG_MINIMUM_VSCODE_VERSION;
+      assert.ok(
+        vscode.version.localeCompare(minimum, "en", { numeric: true }) >= 0,
+        `VS Code ${vscode.version} is older than the declared minimum ${minimum}`
+      );
+      const expected = process.env.NGG_EXPECTED_VSCODE_VERSION;
+      if (/^\d+\.\d+\.\d+$/.test(expected)) {
+        assert.equal(vscode.version, expected, "The requested VS Code version must actually run");
+      }
+      repo = directory();
+      init(repo);
+      commit("f", "ui-base");
+      commit("a", "ui-first");
+      commit("b", "ui-second");
+      git(["tag", "v-ui"]);
+      const extension = vscode.extensions.getExtension(process.env.NGG_EXTENSION_ID);
+      assert.ok(extension);
+      await extension.activate();
+      await vscode.commands.executeCommand("workbench.action.closeSidebar");
+      await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar");
+      await openRepo(repo);
+    } catch (error) {
+      await diagnostics.capture(error, "suite setup");
+      throw error;
+    }
+  });
+  setup(function () {
+    diagnostics.start(this.currentTest.fullTitle());
+  });
+  teardown(async function () {
+    if (this.currentTest?.state === "failed") {
+      await diagnostics.capture(this.currentTest.err, "test failure");
+    }
+  });
+  suiteTeardown(async () => {
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+    for (const connection of connections) {
+      connection.ws.close();
+    }
+    for (const dir of dirs) {
+      await fs.promises.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    }
+  });
+
+  test("checks VS Code compatibility and graph controls", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "compatibility-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    const remote = git(["commit-tree", tree, "-p", base, "-m", "compatibility-remote"], dir);
+    git(["remote", "add", "origin", dir], dir);
+    git(["update-ref", "refs/remotes/origin/topic", remote], dir);
+    commit("main", "compatibility-main", dir);
+    await openRepo(dir);
+    await until(() => graph.evaluate(visible(remote)), "compatibility remote history");
+    await contextRef("main");
+    await menu("Focus this branch");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('tr[data-commit-hash="${remote}"]')?.dataset.branchRelation === 'unrelated'`
+        ),
+      "compatibility branch focus"
+    );
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    if (!(await graph.evaluate("!!" + nav))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    await button("Show remote origin in the graph", nav);
+    await until(
+      () => graph.evaluate(`!${visible(remote)} && ${visible(base)}`),
+      "compatibility remote visibility"
+    );
+    await button("Show remote origin in the graph", nav);
+    await until(() => graph.evaluate(visible(remote)), "compatibility remote restored");
+
+    if (process.env.NGG_DIAGNOSTIC_FAULT === "1") {
+      const channel = vscode.window.createOutputChannel("NGG diagnostic probe", { log: true });
+      channel.error("NGG extension diagnostic marker");
+      await graph.evaluate(`(() => {
+        const marker = document.createElement('p');
+        marker.textContent = 'NGG visible diagnostic marker';
+        document.body.prepend(marker);
+        console.error('NGG console diagnostic marker');
+        setTimeout(() => { throw new Error('NGG uncaught diagnostic marker'); }, 0);
+      })()`);
+      try {
+        await until(() => false, "NGG intentional diagnostic failure", 300);
+      } finally {
+        // Verify capture happened before cleanup, even when teardown sees a recovered view.
+        await graph.evaluate("document.body.firstElementChild.remove()");
+        channel.dispose();
+      }
+    }
+    await openRepo(repo);
+    fs.writeFileSync(
+      path.join(artifacts, "compatibility-smoke.json"),
+      JSON.stringify({ vscode: vscode.version, passed: true }) + "\n"
+    );
+  });
+
+  if (process.env.NGG_BENCH_UI === "1") {
+    test("benchmarks large graph interactions", async function () {
+      this.timeout(300000);
+      await require("./benchmark.cjs")({
+        directory,
+        openRepo,
+        graph: () => graph,
+        button,
+        headerChoice,
+        until,
+        artifacts
+      });
+    });
+  }
+
+  test("focuses direct or merged branch history without hiding rows or changing checkout", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "focus-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "-b", "topic"], dir);
+    commit("topic", "focus-merged", dir);
+    const topic = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    commit("main", "focus-main", dir);
+    git(["merge", "--no-ff", "topic", "-m", "focus-merge"], dir);
+    const tip = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "-b", "side", base], dir);
+    commit("side", "focus-unrelated", dir);
+    const side = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    await openRepo(dir);
+    await until(
+      () => graph.evaluate(`!!document.querySelector('tr[data-commit-hash="${side}"]')`),
+      "all focus fixture rows"
+    );
+    const geometry = () =>
+      graph.evaluate(`({
+      rows: [...document.querySelectorAll('tr[data-commit-hash]')].map(row => row.dataset.commitHash),
+      vertices: [...document.querySelectorAll('svg[aria-hidden] circle[data-branch-relation]')].map(dot => [dot.getAttribute('cx'), dot.getAttribute('cy')])
+    })`);
+    const before = await geometry();
+    const graphColours = () =>
+      graph.evaluate(`({
+      dots: [...document.querySelectorAll('circle[data-branch-relation]')].map(dot => ({
+        relation: dot.dataset.branchRelation,
+        fill: getComputedStyle(dot).fill,
+        stroke: getComputedStyle(dot).stroke
+      })),
+      paths: [...document.querySelectorAll('path[data-branch-relation]')].map(line => ({
+        relation: line.dataset.branchRelation,
+        stroke: getComputedStyle(line).stroke
+      })),
+      text: getComputedStyle(document.querySelector('tr[data-commit-hash="${side}"]')).color
+    })`);
+    const fullColour = await graphColours();
+    await contextRef("main");
+    await menu("Focus this branch");
+    await until(
+      () =>
+        graph.evaluate(`
+      document.querySelector('tr[data-commit-hash="${topic}"]')?.dataset.branchRelation === 'merged' &&
+      document.querySelector('tr[data-commit-hash="${side}"]')?.dataset.branchRelation === 'unrelated' &&
+      document.querySelector('tr[data-commit-hash="${tip}"]')?.dataset.branchRelation === 'direct'
+    `),
+      "three focus levels"
+    );
+    assert.deepEqual(await geometry(), before);
+    assert.equal(
+      await graph.evaluate(
+        `document.querySelectorAll('[data-focus-branch="main"][data-focus-paused="false"]').length`
+      ),
+      2
+    );
+    assert.ok(
+      await graph.evaluate(
+        `!!document.querySelector('path[data-branch-relation="merged"][stroke^="color-mix"]')`
+      )
+    );
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${side}"]').focus()`);
+    assert.equal(
+      await graph.evaluate(`(() => {
+      const row = document.querySelector('tr[data-commit-hash="${side}"]');
+      return getComputedStyle(row).color === getComputedStyle(document.querySelector('tr[data-commit-hash="${tip}"]')).color;
+    })()`),
+      true
+    );
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${tip}"]').focus()`);
+    const subtle = await graphColours();
+    await graph.evaluate(`(() => {
+      const select = document.querySelector('select[aria-label="Dimming"]');
+      select.value = 'strong';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    await until(
+      async () =>
+        (await graphColours()).paths.some(
+          (line, index) =>
+            line.relation === "unrelated" && line.stroke !== subtle.paths[index].stroke
+        ),
+      "strong graph dimming"
+    );
+    const strong = await graphColours();
+    assert.equal(strong.text, subtle.text, "strong dimming preserves text readability");
+    for (let i = 0; i < strong.dots.length; i++) {
+      if (strong.dots[i].relation === "direct") {
+        assert.deepEqual(strong.dots[i], subtle.dots[i]);
+      } else {
+        assert.notEqual(strong.dots[i].fill, subtle.dots[i].fill);
+      }
+    }
+    await button("Pause focus");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelectorAll('[data-focus-branch="main"][data-focus-paused="true"]').length === 2`
+        ),
+      "paused target markers"
+    );
+    const paused = await graphColours();
+    assert.deepEqual(paused.dots, fullColour.dots);
+    assert.deepEqual(paused.paths, fullColour.paths);
+    assert.deepEqual(await geometry(), before);
+    await button("Resume focus");
+    await until(
+      async () => (await graphColours()).paths.some((line) => line.relation === "unrelated"),
+      "resumed graph focus"
+    );
+    assert.deepEqual(await graphColours(), strong);
+    const screenshot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "branch-focus.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+    await headerChoice("View", "Focus all ancestors");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('tr[data-commit-hash="${topic}"]')?.dataset.branchRelation === 'direct'`
+        ),
+      "merged history stays bright"
+    );
+    assert.deepEqual(await geometry(), before);
+    await contextRef("side");
+    await menu("Focus this branch");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('tr[data-commit-hash="${side}"]')?.dataset.branchRelation === 'direct'`
+        ),
+      "focus another branch"
+    );
+    assert.deepEqual(await geometry(), before);
+    assert.equal(
+      await graph.evaluate(`document.querySelectorAll('[data-focus-branch="side"]').length`),
+      2
+    );
+    assert.equal(
+      await graph.evaluate(`document.querySelectorAll('[data-focus-branch="main"]').length`),
+      0
+    );
+    assert.equal(git(["branch", "--show-current"], dir), "main");
+    assert.equal(git(["rev-parse", "HEAD"], dir), tip);
+    await button("Clear focus");
+    await until(
+      () =>
+        graph.evaluate(
+          `![...document.querySelectorAll('tr[data-commit-hash]')].some(row => row.dataset.branchRelation !== 'normal')`
+        ),
+      "clear focus"
+    );
+    assert.deepEqual(await geometry(), before);
+    assert.equal(
+      await graph.evaluate(`document.querySelectorAll('[data-focus-branch]').length`),
+      0
+    );
+    await headerChoice("Branch", "side");
+    await headerChoice("View", "Filter to branch");
+    await until(
+      () => graph.evaluate(`document.querySelectorAll('tr[data-commit-hash]').length === 2`),
+      "filter branch history"
+    );
+    await openRepo(repo);
+  });
+
+  test("opens uncommitted files from the graph with separate staged and working diffs", async () => {
+    const dir = directory();
+    init(dir);
+    commit("file # spaces.txt", "committed\n", dir);
+    const file = "file # spaces.txt";
+    fs.writeFileSync(path.join(dir, file), "staged\n");
+    git(["add", "--", file], dir);
+    fs.writeFileSync(path.join(dir, file), "working\n");
+    fs.mkdirSync(path.join(dir, "new"));
+    fs.writeFileSync(path.join(dir, "new/a.txt"), "untracked\n");
+    fs.writeFileSync(path.join(dir, "new/b.txt"), "another\n");
+    await openRepo(dir);
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('tr[data-commit-hash="*"]')?.textContent.includes('Uncommitted changes in 3 files')`
+        ),
+      "changed file count"
+    );
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="*"]').click()`);
+    const loaded = () =>
+      graph.evaluate(
+        `document.querySelectorAll('[data-working-tree-details] section').length === 3 && !document.querySelector('[aria-busy="true"]')`
+      );
+    await until(loaded, "grouped changes");
+    const screenshot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "uncommitted-changes.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+
+    async function openFile(group, name, before, after, working) {
+      await graph.evaluate(`(() => {
+        const section = document.querySelector('section[aria-label=${JSON.stringify(group)}]');
+        [...section.querySelectorAll('button')].find(button => button.title === ${JSON.stringify(name)}).click();
+      })()`);
+      const input = await until(() => {
+        const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        return tab?.input instanceof vscode.TabInputTextDiff ? tab.input : null;
+      }, "native file diff");
+      const left = await vscode.workspace.openTextDocument(input.original);
+      const right = await vscode.workspace.openTextDocument(input.modified);
+      assert.equal(left.getText(), before);
+      assert.equal(right.getText(), after);
+      assert.equal(input.modified.scheme, working ? "file" : "branchwise");
+      await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      await openRepo(dir);
+      await until(loaded, "refreshed changes");
+    }
+
+    await openFile("Staged Changes", file, "committed\n", "staged\n", false);
+    await openFile("Unstaged Changes", file, "staged\n", "working\n", true);
+    await openFile("Untracked Files", "new/a.txt", "", "untracked\n", true);
+    // Reopening must resolve the new index blob even while old documents are cached.
+    git(["add", "--", file], dir);
+    fs.writeFileSync(path.join(dir, file), "working again\n");
+    await button("Refresh");
+    await until(loaded, "changed staged content");
+    await openFile("Staged Changes", file, "committed\n", "working\n", false);
+    await button("Close", 'document.querySelector("[data-details-row]")');
+    assert.equal(await graph.evaluate(`document.activeElement?.dataset.commitHash`), "*");
+    await graph.evaluate(
+      `document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}))`
+    );
+    await until(loaded, "keyboard-opened changes");
+    assert.equal(git(["show", ":" + file], dir), "working");
+    assert.equal(fs.readFileSync(path.join(dir, file), "utf8"), "working again\n");
+    await openRepo(repo);
+  });
+
+  test("configures remotes and upstreams, pushes/deletes tags, pops stashes, and manages worktrees", async () => {
+    const bare = directory();
+    git(["clone", "--bare", repo, bare]);
+    await button("Remotes");
+    await button("Add Remote");
+    await fill(["upstream", bare]);
+    await button("Add Remote");
+    await finished();
+    assert.equal(git(["remote", "get-url", "upstream"]), bare);
+    await button("Configure Upstream");
+    await select("refs/remotes/upstream/main");
+    await button("Save");
+    await finished();
+    assert.equal(git(["config", "branch.main.remote"]), "upstream");
+    await contextRef("v-ui");
+    await menu("Push Tag to Remote…");
+    await button("Push Tag to Remote");
+    await finished();
+    assert.equal(git(["tag", "--list"], bare), "v-ui");
+    await contextRef("v-ui");
+    await menu("Delete Remote Tag…");
+    await button("Delete Remote Tag");
+    await button("Delete Remote Tag");
+    await finished();
+    assert.equal(git(["tag", "--list"], bare), "");
+    assert.equal(git(["tag", "--list"]), "v-ui");
+    fs.writeFileSync(path.join(repo, "f"), "ui-stash");
+    await button("Stashes");
+    await button("Save Stash");
+    await fill(["UI saved work"]);
+    await button("Save Stash");
+    await finished();
+    assert.match(git(["stash", "list"]), /UI saved work/);
+    await button("Stashes");
+    await button("Pop Stash");
+    await button("Pop Stash");
+    await finished();
+    assert.equal(git(["stash", "list"]), "");
+    assert.equal(fs.readFileSync(path.join(repo, "f"), "utf8"), "ui-stash");
+    git(["restore", "f"]);
+    const worktree = path.join(directory(), "worktree");
+    await button("Worktrees");
+    await button("Create Worktree");
+    await fill([worktree, "ui-worktree", "HEAD"]);
+    await button("Create Worktree");
+    await finished();
+    assert.equal(git(["branch", "--show-current"], worktree), "ui-worktree");
+    await button("Worktrees");
+    await button("Remove Worktree");
+    await button("Remove Worktree");
+    await finished();
+    assert.equal(fs.existsSync(worktree), false);
+  });
+
+  test("never confirms a destructive dialog while Enter is held", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "held-base", dir);
+    commit("top", "held-top", dir);
+    git(["tag", "held-tag"], dir);
+    git(["branch", "held-branch", "HEAD^"], dir);
+    git(["remote", "add", "origin", dir], dir);
+    git(["update-ref", "refs/remotes/origin/held-remote", "HEAD^"], dir);
+    const head = git(["rev-parse", "HEAD"], dir);
+    const refs = () => git(["for-each-ref", "--format=%(refname) %(objectname)"], dir);
+    const before = refs();
+    const dialogText = () => graph.evaluate('document.querySelector("[role=dialog]")?.innerText');
+    const focused = () => graph.evaluate("document.activeElement?.textContent.trim()");
+    const enter = (autoRepeat) =>
+      connections[0].call("Input.dispatchKeyEvent", {
+        type: "keyDown",
+        key: "Enter",
+        code: "Enter",
+        windowsVirtualKeyCode: 13,
+        text: "\r",
+        autoRepeat
+      });
+    /** Choose a menu item with the keyboard and keep Enter down, as the OS repeats it. */
+    async function holdEnter(item) {
+      const steps = await until(
+        () =>
+          graph.evaluate(
+            `(() => { const index = [...document.querySelectorAll('[role="menuitem"]')].findIndex(e => e.textContent.trim() === ${JSON.stringify(item)}); return index >= 0 && index + 1; })()`
+          ),
+        "menu item " + item
+      );
+      for (let step = 0; step < steps; step++) {
+        await keypress("ArrowDown");
+      }
+      await enter(false);
+      for (let repeat = 0; repeat < 15; repeat++) {
+        await delay(40);
+        await enter(true);
+      }
+      await connections[0].call("Input.dispatchKeyEvent", {
+        type: "keyUp",
+        key: "Enter",
+        code: "Enter",
+        windowsVirtualKeyCode: 13
+      });
+      await until(dialogText, "dialog after holding Enter on " + item);
+      // Give any activation that slipped through time to reach Git.
+      await delay(500);
+      assert.equal(refs(), before, item);
+      assert.equal(git(["rev-parse", "HEAD"], dir), head, item);
+    }
+
+    await openRepo(dir);
+    for (const [open, item] of [
+      [() => contextRef("held-tag"), "Delete Local Tag…"],
+      [() => contextRef("held-branch"), "Delete Local Branch…"],
+      [() => contextCommit("held-base"), "Reset Current Branch to This Commit…"]
+    ]) {
+      await open();
+      await holdEnter(item);
+      assert.equal(await focused(), "Cancel", item);
+      await keypress("Enter");
+      await until(async () => !(await dialogText()), "cancel " + item);
+    }
+
+    // The remote picker comes first; a held Enter must not pass through it either.
+    await contextRef("origin/held-remote");
+    await holdEnter("Delete Remote Branch…");
+    await until(
+      () => graph.evaluate('!!document.querySelector("[role=dialog] select")'),
+      "remote picker stays open"
+    );
+    await keypress("Enter");
+    await until(
+      async () => (await dialogText())?.includes("origin"),
+      "remote deletion confirmation"
+    );
+    await until(async () => (await focused()) === "Cancel", "remote deletion focuses Cancel");
+    assert.equal(refs(), before);
+    await keypress("Enter");
+    await until(async () => !(await dialogText()), "cancel remote deletion");
+
+    // A fresh Enter on the confirm button still confirms.
+    await contextRef("held-tag");
+    await menu("Delete Local Tag…");
+    await until(async () => (await focused()) === "Cancel", "tag deletion focuses Cancel");
+    await keypress("Tab", 8);
+    assert.equal(await focused(), "Delete Local Tag");
+    await keypress("Enter");
+    await finished();
+    assert.equal(git(["tag", "--list"], dir), "");
+    await openRepo(repo);
+  });
+
+  test("recovers from a merge conflict through the status controls", async () => {
+    git(["checkout", "-b", "ui-conflict"]);
+    commit("f", "other side");
+    git(["checkout", "main"]);
+    commit("f", "main side");
+    await button("Refresh");
+    await contextRef("ui-conflict");
+    await menu("Merge into Current Branch…");
+    await button("Merge");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]")?.innerText.includes("Unable to merge the branch")'
+        ),
+      "merge rejection"
+    );
+    await button("Dismiss");
+    await until(
+      () => graph.evaluate('document.body.innerText.includes("Merge in progress")'),
+      "operation status"
+    );
+    fs.writeFileSync(path.join(repo, "f"), "resolved by UI");
+    await button("Stage Resolution");
+    await button("Stage Resolution");
+    await finished();
+    await button("Continue");
+    await button("Continue");
+    await finished();
+    assert.equal(git(["show", "-s", "--format=%P", "HEAD"]).split(" ").length, 2);
+    assert.equal(fs.existsSync(path.join(repo, ".git", "MERGE_HEAD")), false);
+  });
+
+  test("switches repositories through SCM and runs an interactive rebase from a commit menu", async () => {
+    const second = directory();
+    init(second);
+    commit("f", "ui-rebase-base", second);
+    const base = git(["rev-parse", "HEAD"], second);
+    commit("a", "first rebase item", second);
+    commit("b", "second rebase item", second);
+    commit("c", "third rebase item", second);
+    await openRepo(second);
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => { const row = [...document.querySelectorAll('tbody tr')].find(r => r.textContent.includes('ui-rebase-base')); if (!row) return false; row.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, clientX: 160, clientY: 220})); return true; })()`
+        ),
+      "rebase base row"
+    );
+    await menu("Edit commits after this (interactive rebase)…");
+    await until(
+      () => graph.evaluate('document.querySelectorAll("[role=dialog] select").length === 3'),
+      "interactive plan"
+    );
+    await graph.evaluate(
+      `(() => { const selects = [...document.querySelectorAll('[role=dialog] select')]; ['reword', 'squash', 'drop'].forEach((value, i) => { selects[i].value = value; selects[i].dispatchEvent(new Event('change', {bubbles: true})); }); })()`
+    );
+    await until(
+      () => graph.evaluate('!!document.querySelector("[role=dialog] textarea")'),
+      "reword input"
+    );
+    await graph.evaluate(
+      `(() => { const input = document.querySelector('[role=dialog] textarea'); input.value = 'UI rewritten commit'; input.dispatchEvent(new Event('input', {bubbles: true})); })()`
+    );
+    await button("Start Rebase");
+    await finished();
+    assert.equal(git(["rev-list", "--count", base + "..HEAD"], second), "1");
+    assert.match(git(["log", "-1", "--format=%B"], second), /UI rewritten commit/);
+    assert.equal(fs.existsSync(path.join(second, "c")), false);
+    const page = connections[0];
+    try {
+      const screenshot = await page.call("Page.captureScreenshot");
+      fs.writeFileSync(
+        path.join(artifacts, "workflow.png"),
+        Buffer.from(screenshot.data, "base64")
+      );
+    } catch {}
+  });
+  test("searches past the loaded graph and keeps saved filters per repository", async () => {
+    const history = directory();
+    init(history);
+    commit("old.txt", "original content", history);
+    git(["commit", "--allow-empty", "-m", "historical needle"], history);
+    git(["mv", "old.txt", "current.txt"], history);
+    git(["commit", "-m", "rename historical file"], history);
+    for (let i = 0; i < 305; i++) {
+      git(["commit", "--allow-empty", "-m", "recent commit " + i], history);
+    }
+    await openRepo(history);
+    assert.equal(
+      await graph.evaluate(
+        'document.querySelector("tbody").innerText.includes("historical needle")'
+      ),
+      false
+    );
+    if (!(await graph.evaluate('!!document.querySelector("[data-history-search]")'))) {
+      await button("Search history", 'document.querySelector("header")');
+    }
+    await graph.evaluate(
+      `(() => { const input = document.querySelector('[data-history-search]'); input.value = 'historical needle'; input.dispatchEvent(new Event('input', {bubbles:true})); })()`
+    );
+    await button("Search", 'document.querySelector("form[role=search]")');
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelectorAll("tr[data-commit-hash]").length === 1 && document.querySelector("tbody").innerText.includes("historical needle")'
+        ),
+      "full history search"
+    );
+    await button("Filters");
+    await button("Save Filter");
+    await fill(["Historical needle"]);
+    await button("Save");
+    await finished();
+    await openRepo(repo);
+    assert.equal(await graph.evaluate('document.querySelector("[data-history-search]").value'), "");
+    await openRepo(history);
+    assert.equal(
+      await graph.evaluate('document.querySelector("[data-history-search]").value'),
+      "historical needle"
+    );
+    assert.equal(
+      await graph.evaluate(
+        '[...document.querySelectorAll("select")].some(select => select.textContent.includes("Historical needle"))'
+      ),
+      true
+    );
+    await button("Return to Graph");
+    await vscode.commands.executeCommand(
+      "branchwise.fileHistory",
+      vscode.Uri.file(path.join(history, "current.txt"))
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("main").innerText.includes("current.txt") && document.querySelector("tbody").innerText.includes("original content")'
+        ),
+      "Explorer file history follows rename"
+    );
+    await contextCommit("original content");
+    await menu("Restore File Contents");
+    assert.equal(
+      await graph.evaluate('document.querySelector("[role=dialog] input").value'),
+      "current.txt"
+    );
+    await button("Preview Restore");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("Historical source: old.txt")'
+        ),
+      "historical path restore preview"
+    );
+    await button("Preview Restore");
+    await until(
+      () => vscode.window.activeTextEditor?.document.uri.scheme === "branchwise",
+      "native restore diff"
+    );
+    await vscode.commands.executeCommand("branchwise.view", {
+      rootUri: vscode.Uri.file(history)
+    });
+    await button("Restore File Contents");
+    await finished();
+    assert.equal(fs.readFileSync(path.join(history, "current.txt"), "utf8"), "original content");
+    assert.equal(git(["diff", "--cached"], history), "");
+    await button("Return to Graph");
+  });
+
+  test("compares branch contributions, opens native diffs and recovers a reflog commit", async () => {
+    const history = directory();
+    init(history);
+    commit("base", "common base", history);
+    const base = git(["rev-parse", "HEAD"], history);
+    git(["checkout", "-b", "ui-left"], history);
+    commit("left.txt", "left change", history);
+    git(["checkout", "-b", "ui-right", base], history);
+    commit("right.txt", "right change", history);
+    await openRepo(history);
+    await button("Compare", 'document.querySelector("header")');
+    await until(
+      () => graph.evaluate('document.querySelectorAll("[role=dialog] input").length >= 3'),
+      "comparison fields"
+    );
+    await fill(["ui-left", "ui-right"]);
+    await button("Compare");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("left.txt") && document.querySelector("[role=dialog]").innerText.includes("right.txt")'
+        ),
+      "endpoint files"
+    );
+    await graph.evaluate(
+      `(() => { const input = document.querySelector('[role=dialog] input[type=checkbox]'); input.click(); })()`
+    );
+    await button("Compare");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("Changed Files (1)")'
+        ),
+      "merge-base changes"
+    );
+    await graph.evaluate(
+      `(() => { const button = [...document.querySelectorAll('[role=dialog] li button')].find(b => b.textContent.includes('right.txt')); button.click(); })()`
+    );
+    await until(
+      () => vscode.window.activeTextEditor?.document.uri.scheme === "branchwise",
+      "native comparison diff"
+    );
+    await vscode.commands.executeCommand("branchwise.view", {
+      rootUri: vscode.Uri.file(history)
+    });
+    assert.equal(
+      await graph.evaluate(
+        'document.querySelector("[role=dialog]").innerText.includes("Compare Revisions")'
+      ),
+      true
+    );
+    await button("Close");
+    commit("lost", "lost contents", history);
+    const lost = git(["rev-parse", "HEAD"], history);
+    git(["reset", "--hard", "HEAD^"], history);
+    await button("Refresh");
+    await until(
+      () => graph.evaluate('!document.querySelector("tbody").innerText.includes("lost contents")'),
+      "graph without the reset commit"
+    );
+    await button("Settings & Tools");
+    await menu("Recover lost commits (reflog)");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('[role=dialog]').innerText.includes(${JSON.stringify(lost.slice(0, 12))})`
+        ),
+      "reflog commit"
+    );
+    await graph.evaluate(
+      `(() => { const item = [...document.querySelectorAll('[role=dialog] li')].find(li => li.textContent.includes(${JSON.stringify(lost.slice(0, 12))})); [...item.querySelectorAll('button')].find(b => b.textContent === 'Create Recovery Branch').click(); })()`
+    );
+    await fill(["ui-recovered"]);
+    await button("Create Recovery Branch");
+    await finished();
+    assert.equal(git(["rev-parse", "ui-recovered"], history), lost);
+    assert.notEqual(git(["rev-parse", "HEAD"], history), lost);
+  });
+
+  test("runs ordered selected cherry-picks and reverts, then creates and autosquashes a fixup", async () => {
+    const history = directory();
+    init(history);
+    commit("f", "batch base", history);
+    const base = git(["rev-parse", "HEAD"], history);
+    git(["checkout", "-b", "topic"], history);
+    commit("one", "batch first", history);
+    commit("two", "batch second", history);
+    git(["checkout", "main"], history);
+    await openRepo(history);
+    await selectCommits(["batch second", "batch first"]);
+    await button("Cherry-pick Selected");
+    await until(
+      () => graph.evaluate('document.querySelectorAll("[role=dialog] ol li").length === 2'),
+      "batch plan"
+    );
+    const order = await graph.evaluate(
+      '[...document.querySelectorAll("[role=dialog] ol li")].map(li => li.textContent)'
+    );
+    assert.match(order[0], /batch first/);
+    assert.match(order[1], /batch second/);
+    await button("Cherry-pick Selected");
+    await finished();
+    assert.equal(
+      git(["log", "-2", "--reverse", "--format=%s"], history),
+      "batch first\nbatch second".replace("\\n", "\n")
+    );
+    await button("Clear Selection");
+    await selectCommits(["batch second", "batch first"]);
+    await button("Revert Selected");
+    await button("Revert Selected");
+    await finished();
+    assert.equal(git(["diff", base, "HEAD"], history), "");
+    await button("Clear Selection");
+    const fix = directory();
+    init(fix);
+    commit("f", "fixup base", fix);
+    const fixBase = git(["rev-parse", "HEAD"], fix);
+    commit("a", "fixup target", fix);
+    commit("b", "unrelated commit", fix);
+    fs.writeFileSync(path.join(fix, "a"), "corrected");
+    git(["add", "a"], fix);
+    await openRepo(fix);
+    await contextCommit("fixup target");
+    await menu("Fold staged changes into this commit (fixup)…");
+    await button("Create Fixup Commit");
+    await finished();
+    assert.equal(git(["log", "-1", "--format=%s"], fix), "fixup! fixup target");
+    await contextCommit("fixup base");
+    await menu("Edit commits after this (interactive rebase)…");
+    await button("Arrange Fixup / Squash Commits");
+    assert.equal(
+      await graph.evaluate(
+        '[...document.querySelectorAll("[role=dialog] select")].map(s=>s.value).join(",")'
+      ),
+      "pick,fixup,pick"
+    );
+    await button("Start Rebase");
+    await finished();
+    assert.equal(git(["rev-list", "--count", fixBase + "..HEAD"], fix), "2");
+    assert.equal(fs.readFileSync(path.join(fix, "a"), "utf8"), "corrected");
+    const rebasedHead = git(["rev-parse", "HEAD"], fix);
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('tr[data-commit-hash]')?.dataset.commitHash === ${JSON.stringify(rebasedHead)}`
+        ),
+      "refreshed rebase history"
+    );
+    await graph.evaluate(
+      `(() => { const row=document.querySelector('tr[data-commit-hash]'); row.focus(); row.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true})); })()`
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          'document.activeElement === document.querySelectorAll("tr[data-commit-hash]")[1]'
+        ),
+      "keyboard focus on the next commit"
+    );
+    await button("Settings & Tools");
+    await menu("Git Activity");
+    assert.equal(
+      await graph.evaluate(
+        'document.querySelector("[role=dialog]").innerText.includes("Create Fixup Commit")'
+      ),
+      true
+    );
+    await button("Close");
+  });
+
+  test("shows nested repository status, updates a submodule and switches its graph from the sidebar", async () => {
+    const child = directory();
+    init(child);
+    commit("f", "submodule base", child);
+    commit("a", "submodule latest", child);
+    const parent = directory();
+    init(parent);
+    commit("f", "parent repository", parent);
+    git(["-c", "protocol.file.allow=always", "submodule", "add", child, "module"], parent);
+    git(["commit", "-am", "record module"], parent);
+    const module = path.join(parent, "module");
+    const pin = git(["rev-parse", "HEAD"], module);
+    git(["checkout", "HEAD^"], module);
+    await openRepo(parent);
+    if (!(await graph.evaluate('!!document.querySelector("aside")'))) {
+      await button("Workspace");
+    }
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("aside").innerText.includes("Different from parent revision")'
+        ),
+      "submodule mismatch"
+    );
+    await graph.evaluate(
+      `document.querySelector('button[aria-label="module Repository Tools"]').click()`
+    );
+    await menu("Update to Recorded Revision");
+    await button("Update to Recorded Revision");
+    await finished();
+    assert.equal(git(["rev-parse", "HEAD"], module), pin);
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => { const b=document.querySelector('aside button[title=${JSON.stringify(repoKey(module))}]'); if(!b)return false;b.click();return true; })()`
+        ),
+      "submodule sidebar switch"
+    );
+    await until(
+      () =>
+        graph.evaluate('document.querySelector("tbody").innerText.includes("submodule latest")'),
+      "submodule graph"
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          `!!document.querySelector('aside button[title=${JSON.stringify(repoKey(parent))}]')`
+        ),
+      "parent remains in workspace after switching"
+    );
+    const page = connections[0];
+    const screenshot = await page.call("Page.captureScreenshot");
+    fs.writeFileSync(path.join(artifacts, "workspace.png"), Buffer.from(screenshot.data, "base64"));
+  });
+
+  test("reviews submodule commits and stages only the parent pointer", async () => {
+    const child = directory();
+    init(child);
+    commit("f", "pointer base", child);
+    const parent = directory();
+    init(parent);
+    commit("f", "pointer parent", parent);
+    git(["-c", "protocol.file.allow=always", "submodule", "add", child, "module"], parent);
+    git(["commit", "-am", "record pointer"], parent);
+    const module = path.join(parent, "module");
+    git(["config", "user.name", "UI Test"], module);
+    git(["config", "user.email", "ui@test"], module);
+    commit("a", "pointer update", module);
+    fs.writeFileSync(path.join(parent, "other"), "staged unrelated");
+    git(["add", "other"], parent);
+    await openRepo(module);
+    await openRepo(parent);
+    if (!(await graph.evaluate('!!document.querySelector("aside")'))) {
+      await button("Workspace");
+    }
+    await button("Different from parent revision", 'document.querySelector("aside")');
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("pointer update")'
+        ),
+      "child commit preview"
+    );
+    await button("Stage Submodule Pointer");
+    await finished();
+    assert.equal(
+      git(["diff", "--cached", "--name-only"], parent),
+      "module\nother".replace("\\n", "\n")
+    );
+    await button("Parent has a staged revision change", 'document.querySelector("aside")');
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("pointer update")'
+        ),
+      "staged pointer comparison"
+    );
+    await button("Unstage Submodule Pointer");
+    await finished();
+    assert.equal(git(["diff", "--cached", "--name-only"], parent), "other");
+  });
+
+  test("previews pushes and fast-forward pulls and removes only selected merged branches", async () => {
+    const local = directory();
+    init(local);
+    commit("f", "sync base", local);
+    const bare = directory();
+    git(["clone", "--bare", local, bare]);
+    git(["remote", "add", "origin", bare], local);
+    git(["fetch", "origin"], local);
+    git(["branch", "--set-upstream-to=origin/main"], local);
+    const original = git(["rev-parse", "HEAD"], bare);
+    commit("out", "outgoing preview", local);
+    await openRepo(local);
+    await contextRef("main");
+    await menu("Push Branch…");
+    await button("Preview Push");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("outgoing preview")'
+        ),
+      "outgoing commits"
+    );
+    assert.equal(git(["rev-parse", "HEAD"], bare), original);
+    await button("Push Branch");
+    await finished();
+    assert.equal(git(["rev-parse", "HEAD"], bare), git(["rev-parse", "HEAD"], local));
+    const peer = directory();
+    git(["clone", bare, peer]);
+    git(["config", "user.name", "UI Test"], peer);
+    git(["config", "user.email", "ui@test"], peer);
+    commit("in", "incoming preview", peer);
+    git(["push", "origin", "main"], peer);
+    await contextRef("main");
+    await menu("Pull Branch…");
+    await button("Fetch & Preview Pull");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]")?.innerText.includes("incoming preview")'
+        ),
+      "incoming commits"
+    );
+    assert.equal(fs.existsSync(path.join(local, "in")), false);
+    await button("Apply Reviewed Fast-forward");
+    await finished();
+    assert.equal(fs.readFileSync(path.join(local, "in"), "utf8"), "incoming preview");
+    git(["branch", "merged-cleanup"], local);
+    git(["checkout", "-b", "unmerged-keep"], local);
+    commit("keep", "unmerged work", local);
+    git(["checkout", "main"], local);
+    await button("Refresh");
+    await until(
+      () => graph.evaluate('document.querySelector("tbody").innerText.includes("merged-cleanup")'),
+      "graph with the new branch"
+    );
+    await button("Settings & Tools");
+    await menu("Clean Up Merged Branches");
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => {const label=[...document.querySelectorAll('[role=dialog] label')].find(e=>e.textContent.includes('merged-cleanup'));if(!label)return false;label.querySelector('input').click();return true;})()`
+        ),
+      "merged branch candidate"
+    );
+    assert.equal(
+      await graph.evaluate(
+        'document.querySelector("[role=dialog]").innerText.includes("unmerged-keep")'
+      ),
+      false
+    );
+    await button("Delete Selected Branches");
+    await button("Delete Selected Branches");
+    await finished();
+    assert.equal(git(["branch", "--list", "merged-cleanup"], local), "");
+    assert.match(git(["branch", "--list", "unmerged-keep"], local), /unmerged-keep/);
+  });
+
+  test("fetches selected workspace repositories and keeps independent failure results", async () => {
+    const local = directory();
+    init(local);
+    commit("f", "workspace sync base", local);
+    const bare = directory();
+    git(["clone", "--bare", local, bare]);
+    git(["remote", "add", "origin", bare], local);
+    git(["fetch", "origin"], local);
+    git(["branch", "--set-upstream-to=origin/main"], local);
+    const peer = directory();
+    git(["clone", bare, peer]);
+    git(["config", "user.name", "UI Test"], peer);
+    git(["config", "user.email", "ui@test"], peer);
+    commit("new", "workspace incoming", peer);
+    git(["push", "origin", "main"], peer);
+    const broken = directory();
+    init(broken);
+    commit("f", "workspace failure", broken);
+    git(["remote", "add", "origin", path.join(broken, "missing-remote")], broken);
+    await openRepo(broken);
+    await openRepo(local);
+    await button("Settings & Tools");
+    await menu("Workspace Fetch & Update");
+    for (const dir of [local, broken]) {
+      await until(
+        () =>
+          graph.evaluate(
+            `(() => {const label=[...document.querySelectorAll('[role=dialog] label')].find(e=>e.textContent.trim()===${JSON.stringify(repoKey(dir))});if(!label)return false;label.querySelector('input').click();return true;})()`
+          ),
+        "workspace selection"
+      );
+    }
+    await button("Fetch Selected Repositories");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("Failed") && document.querySelector("[role=dialog]").innerText.includes("Review Update")'
+        ),
+      "independent fetch results"
+    );
+    await button("Close");
+    await button("Settings & Tools");
+    await menu("Workspace Fetch & Update");
+    assert.equal(
+      await graph.evaluate('document.querySelector("[role=dialog]").innerText.includes("Failed")'),
+      true
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => {const b=[...document.querySelectorAll('[role=dialog] button')].find(e=>e.textContent.startsWith('Review Update'));if(!b)return false;b.click();return true;})()`
+        ),
+      "review workspace update"
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("workspace incoming")'
+        ),
+      "workspace incoming preview"
+    );
+    await button("Apply Reviewed Fast-forward");
+    await until(() => fs.existsSync(path.join(local, "new")), "workspace fast-forward");
+    await button("Close");
+  });
+
+  test("guides bisect to a regression, restores the branch, and restores keyboard focus", async () => {
+    const history = directory();
+    init(history);
+    commit("f", "bisect good", history);
+    const hashes = [git(["rev-parse", "HEAD"], history)];
+    for (let i = 1; i <= 8; i++) {
+      git(["commit", "--allow-empty", "-m", "bisect revision " + i], history);
+      hashes.push(git(["rev-parse", "HEAD"], history));
+    }
+    await openRepo(history);
+    await contextCommit("bisect good");
+    await menu("Use as Good Bisect Commit");
+    await button("Start Bisect");
+    await finished();
+    for (let step = 0; step < 5; step++) {
+      await button("Find a Regression (Bisect)");
+      await until(
+        () =>
+          graph.evaluate(
+            'document.querySelector("[role=dialog]").innerText.includes("Original checkout")'
+          ),
+        "bisect candidate"
+      );
+      if (
+        await graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("First bad commit")'
+        )
+      ) {
+        break;
+      }
+      const head = git(["rev-parse", "HEAD"], history);
+      await button(hashes.indexOf(head) >= 4 ? "Mark Bad" : "Mark Good");
+      await finished();
+    }
+    assert.equal(
+      await graph.evaluate(
+        `document.querySelector('[role=dialog]').innerText.includes(${JSON.stringify(hashes[4])})`
+      ),
+      true
+    );
+    await button("Reset Bisect");
+    await button("Reset Bisect");
+    await finished();
+    assert.equal(git(["branch", "--show-current"], history), "main");
+    assert.equal(git(["rev-parse", "HEAD"], history), hashes[8]);
+    await graph.evaluate(
+      `(() => {const b=[...document.querySelectorAll('header button')].find(e=>e.textContent.trim()==='Compare');b.focus();b.click();})()`
+    );
+    await button("Close");
+    await until(
+      () => graph.evaluate('document.activeElement.textContent.trim()==="Compare"'),
+      "focus returns to toolbar"
+    );
+    const page = connections[0];
+    await page.call("Emulation.setDeviceMetricsOverride", {
+      width: 520,
+      height: 850,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+    await button("Compare", 'document.querySelector("header")');
+    assert.equal(
+      await graph.evaluate(
+        '(() => {const r=document.querySelector("[role=dialog]").getBoundingClientRect();return r.left>=0 && r.right<=innerWidth;})()'
+      ),
+      true
+    );
+    const screenshot = await page.call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "narrow-window.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+    await button("Close");
+    await contextCommit("bisect revision 8");
+    await graph.evaluate(
+      `document.querySelector('[role=menu]').dispatchEvent(new KeyboardEvent('keydown',{key:'End',bubbles:true}))`
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => {const menu=document.querySelector('[role=menu]');if(!menu)return false;const active=document.getElementById(menu.getAttribute('aria-activedescendant'));return active && active.getBoundingClientRect().bottom<=menu.getBoundingClientRect().bottom;})()`
+        ),
+      "long menu keyboard scrolling"
+    );
+    await graph.evaluate(
+      `document.querySelector('[role=menu]').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))`
+    );
+    await page.call("Emulation.setDeviceMetricsOverride", {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+  });
+  test("shows a graph error and retries after a Git configuration failure is repaired", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "retry-graph-base", dir);
+    // The repository watcher refreshes the graph when .git/config changes. Break an included
+    // file outside the repository instead, so only Refresh and Retry reload the graph.
+    const included = path.join(directory(), "included.gitconfig");
+    fs.writeFileSync(included, "[core]\n");
+    git(["config", "include.path", included], dir);
+    await openRepo(dir);
+    try {
+      fs.writeFileSync(included, "[invalid config\n");
+      await button("Refresh");
+      await until(
+        () =>
+          graph.evaluate(
+            'document.querySelector("[data-graph-error] [role=alert]") !== null && /Unable to load the graph/.test(document.querySelector("[data-graph-error]").innerText)'
+          ),
+        "recoverable graph error"
+      );
+      assert.doesNotMatch(
+        await graph.evaluate('document.querySelector("main").innerText'),
+        /has no commits yet/
+      );
+    } finally {
+      fs.writeFileSync(included, "[core]\n");
+    }
+    await button("Retry", 'document.querySelector("[data-graph-error]")');
+    await until(
+      () =>
+        graph.evaluate(
+          '!document.querySelector("[data-graph-error]") && [...document.querySelectorAll("tbody tr")].some(row => row.innerText.includes("retry-graph-base"))'
+        ),
+      "graph recovery after retry"
+    );
+  });
+
+  test("keeps a renamed remote hidden across panel reopening and clears its removed preference", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "rename-remote-base", dir);
+    git(["remote", "add", "team/upstream", dir], dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    const tip = git(["commit-tree", tree, "-p", base, "-m", "rename-remote-only"], dir);
+    git(["update-ref", "refs/remotes/team/upstream/topic", tip], dir);
+    await openRepo(dir);
+    if (!(await graph.evaluate('!!document.querySelector("nav[aria-label=Branches]")'))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    const eye = (name) =>
+      `${nav}.querySelector('button[aria-label="Show remote ${name} in the graph"]')`;
+    await until(() => graph.evaluate(visible(tip)), "remote history before hiding");
+    await button("Show remote team/upstream in the graph");
+    await until(
+      () => graph.evaluate(`${eye("team/upstream")}?.getAttribute('aria-pressed') === 'false'`),
+      "hidden remote"
+    );
+    await button("Actions for remote team/upstream");
+    await menu("Rename Remote…");
+    await fill(["team/mirror"]);
+    await button("Rename Remote");
+    await finished();
+    await until(
+      () =>
+        graph.evaluate(
+          `${eye("team/mirror")}?.getAttribute('aria-pressed') === 'false' && !${visible(tip)}`
+        ),
+      "hidden renamed remote"
+    );
+    await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+    await openRepo(dir);
+    await until(
+      () =>
+        graph.evaluate(
+          `${eye("team/mirror")}?.getAttribute('aria-pressed') === 'false' && !${visible(tip)}`
+        ),
+      "restored hidden remote in fresh panel"
+    );
+    await button("Actions for remote team/mirror");
+    await menu("Remove Remote…");
+    await button("Remove Remote");
+    await finished();
+    assert.equal(git(["remote"], dir), "");
+    git(["remote", "add", "team/mirror", dir], dir);
+    git(["update-ref", "refs/remotes/team/mirror/topic", tip], dir);
+    await button("Refresh");
+    await until(
+      () =>
+        graph.evaluate(
+          `${eye("team/mirror")}?.getAttribute('aria-pressed') === 'true' && ${visible(tip)}`
+        ),
+      "re-added remote is visible"
+    );
+  });
+
+  test("restores repository view preferences after switching, closing and reloading the graph", async () => {
+    const first = directory();
+    const second = directory();
+    for (const dir of [first, second]) {
+      init(dir);
+      commit("base", "preferences-base", dir);
+      git(["branch", "topic"], dir);
+      git(["remote", "add", "origin", dir], dir);
+      const base = git(["rev-parse", "HEAD"], dir);
+      const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+      for (let index = 0; index < 16; index++) {
+        const tip = git(["commit-tree", tree, "-p", base, "-m", `preferences-lane-${index}`], dir);
+        git(["update-ref", `refs/heads/lane-${index}`, tip], dir);
+      }
+      const remote = git(["commit-tree", tree, "-p", base, "-m", "preferences-remote-only"], dir);
+      git(["update-ref", "refs/remotes/origin/topic", remote], dir);
+    }
+    const refsBefore = git(["show-ref"], first);
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    const eye = `${nav}?.querySelector('button[aria-label="Show remote origin in the graph"]')`;
+    const remoteRow = `[...document.querySelectorAll('tbody tr')].some(row => row.textContent.includes('preferences-remote-only'))`;
+    const pan = async () => {
+      await graph.evaluate(`(() => {
+        const scroll = document.querySelector('[data-graph-scroll]');
+        scroll.scrollLeft = 10000; scroll.dispatchEvent(new Event('scroll'));
+      })()`);
+      await until(
+        () => graph.evaluate("document.querySelector('[data-graph-scroll]')?.scrollLeft > 0"),
+        "manual panning"
+      );
+    };
+    const checkFirst = (remotesShown = false) =>
+      until(
+        () =>
+          graph.evaluate(`
+      !!document.querySelector('header button[title="ancestors"]') &&
+      !!document.querySelector('[data-focus-branch="topic"][data-focus-paused="true"]') &&
+      document.querySelector('select[aria-label="Dimming"]')?.value === 'strong' &&
+      ${eye}?.getAttribute('aria-pressed') === 'false' && !${remoteRow} &&
+      ${nav}?.querySelector('button[aria-label="Show Remote Branches in Graph"]')?.getAttribute('aria-pressed') === '${remotesShown}'
+    `),
+        "first repository preferences"
+      );
+    const checkStart = () =>
+      until(
+        () =>
+          graph.evaluate(`
+      document.querySelector('[data-graph-scroll]')?.scrollLeft === 0 &&
+      document.querySelector('[data-graph-viewport]')?.scrollLeft === 0
+    `),
+        "temporary pan reset"
+      );
+    try {
+      await openRepo(first);
+      if (!(await graph.evaluate("!!" + nav))) {
+        await button("Branches", 'document.querySelector("header")');
+      }
+      await contextRef("topic");
+      await menu("Focus this branch");
+      await headerChoice("View", "Focus all ancestors");
+      await graph.evaluate(`(() => {
+        const dimming = document.querySelector('select[aria-label="Dimming"]');
+        dimming.value = 'strong'; dimming.dispatchEvent(new Event('change', { bubbles: true }));
+      })()`);
+      await button("Pause focus");
+      await button("Show remote origin in the graph");
+      await button("Show Remote Branches in Graph", nav);
+      await checkFirst();
+      await pan();
+      const position = await graph.evaluate(
+        "document.querySelector('[data-graph-scroll]').scrollLeft"
+      );
+      await button("Refresh");
+      await checkFirst();
+      assert.equal(
+        await graph.evaluate("document.querySelector('[data-graph-scroll]').scrollLeft"),
+        position
+      );
+
+      await openRepo(second);
+      await until(
+        () =>
+          graph.evaluate(`
+        !!document.querySelector('header button[title="filter"]') &&
+        ${eye}?.getAttribute('aria-pressed') === 'true' && ${remoteRow}
+      `),
+        "independent repository defaults"
+      );
+      await checkStart();
+      await contextRef("main");
+      await menu("Focus this branch");
+      await openRepo(first);
+      await checkFirst();
+      await checkStart();
+      await pan();
+      await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      await openRepo(first);
+      await checkFirst();
+      await checkStart();
+      // Turning all remotes on must retain the individual hidden choice.
+      await button("Show Remote Branches in Graph", nav);
+      await checkFirst(true);
+      await button("Show remote origin in the graph");
+      await until(() => graph.evaluate(remoteRow), "remote restored after panel recreation");
+      await button("Show remote origin in the graph");
+      await button("Show Remote Branches in Graph", nav);
+      await pan();
+      await graph.evaluate("window.__preferenceReloadMarker = true");
+      await vscode.commands.executeCommand("workbench.action.webview.reloadWebviewAction");
+      await until(async () => {
+        graph = await findGraph();
+        return !(await graph.evaluate("!!window.__preferenceReloadMarker"));
+      }, "fresh webview after reload");
+      await openRepo(first);
+      await checkFirst();
+      await checkStart();
+      await openRepo(second);
+      await until(
+        () =>
+          graph.evaluate(`
+        !!document.querySelector('header button[title="focus"]') &&
+        !!document.querySelector('[data-focus-branch="main"][data-focus-paused="false"]') &&
+        document.querySelector('select[aria-label="Dimming"]')?.value === 'subtle' && ${remoteRow}
+      `),
+        "second repository restored after reload"
+      );
+      await openRepo(first);
+      await checkFirst();
+      assert.equal(git(["show-ref"], first), refsBefore);
+      assert.equal(git(["branch", "--show-current"], first), "main");
+
+      git(["branch", "-m", "topic", "renamed-topic"], first);
+      await button("Refresh");
+      await until(
+        () =>
+          graph.evaluate(
+            `!!document.querySelector('[data-focus-branch="main"][data-focus-paused="true"]')`
+          ),
+        "renamed focus target falls back to current branch"
+      );
+      await headerChoice("Branch", "renamed-topic");
+      git(["branch", "-D", "renamed-topic"], first);
+      await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      await openRepo(first);
+      await until(
+        () => graph.evaluate(`!!document.querySelector('[data-focus-branch="main"]')`),
+        "deleted saved target falls back on reopening"
+      );
+      await button("Clear focus");
+      await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      await openRepo(first);
+      await until(
+        () =>
+          graph.evaluate(
+            `!!document.querySelector('header button[title="*"]') && !document.querySelector('[data-focus-branch]')`
+          ),
+        "explicitly cleared focus stays cleared"
+      );
+    } finally {
+      await openRepo(repo);
+    }
+  });
+
+  test("hides individual remotes and restores their visibility without changing Git refs", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "remote-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    const origin = git(["commit-tree", tree, "-p", base, "-m", "remote-origin-only"], dir);
+    const upstream = git(["commit-tree", tree, "-p", base, "-m", "remote-upstream-only"], dir);
+    git(["remote", "add", "origin", dir], dir);
+    git(["remote", "add", "upstream", dir], dir);
+    git(["update-ref", "refs/remotes/origin/topic", origin], dir);
+    git(["update-ref", "refs/remotes/upstream/topic", upstream], dir);
+    git(["update-ref", "refs/remotes/origin/shared", base], dir);
+    const refsBefore = git(["show-ref"], dir);
+    await openRepo(dir);
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    if (!(await graph.evaluate("!!" + nav))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    const eye = (remote) =>
+      `${nav}.querySelector('button[aria-label="Show remote ${remote} in the graph"]')`;
+    await until(
+      () => graph.evaluate(`${visible(origin)} && ${visible(upstream)} && !!${eye("origin")}`),
+      "both remote histories"
+    );
+    await graph.evaluate(`${eye("origin")}.click()`);
+    await until(
+      () => graph.evaluate(`!${visible(origin)} && ${visible(upstream)} && ${visible(base)}`),
+      "one remote hidden"
+    );
+    assert.equal(await graph.evaluate(`${eye("origin")}.getAttribute('aria-pressed')`), "false");
+    assert.ok(await graph.evaluate(`${nav}.innerText.includes('origin')`));
+    assert.equal(
+      await graph.evaluate(`!!document.querySelector('tbody span[title^="origin/"]')`),
+      false
+    );
+    if (!(await graph.evaluate('!!document.querySelector("[data-history-search]")'))) {
+      await button("Search history", 'document.querySelector("header")');
+    }
+    await graph.evaluate(`(() => {
+      const input = document.querySelector('[data-history-search]');
+      input.value = 'remote-'; input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await button("Search", 'document.querySelector("form[role=search]")');
+    await until(
+      () =>
+        graph.evaluate(
+          `!${visible(origin)} && ${visible(upstream)} && !!document.querySelector('main').innerText.includes('Filtered history')`
+        ),
+      "search respects hidden remote"
+    );
+    await button("Return to Graph");
+    await headerChoice("Branch", "All branches");
+    await graph.evaluate(`document.querySelector('header button[title="*"]').click()`);
+    assert.equal(
+      await graph.evaluate(
+        `[...document.querySelectorAll('[role=option]')].some(option => option.title.startsWith('remotes/origin/'))`
+      ),
+      false
+    );
+    await graph.evaluate(`document.querySelector('header button[title="*"]').click()`);
+    await openRepo(repo);
+    await openRepo(dir);
+    await until(
+      () =>
+        graph.evaluate(
+          `!${visible(origin)} && ${visible(upstream)} && ${eye("origin")}?.getAttribute('aria-pressed') === 'false'`
+        ),
+      "saved remote visibility"
+    );
+    await graph.evaluate(`${nav}.querySelector('button[title="origin/topic"]').click()`);
+    await until(
+      () =>
+        graph.evaluate(
+          `${visible(origin)} && ${eye("origin")}.getAttribute('aria-pressed') === 'true'`
+        ),
+      "selecting hidden branch reveals it"
+    );
+    await graph.evaluate(`${eye("origin")}.click()`);
+    await until(
+      () =>
+        graph.evaluate(
+          `!${visible(origin)} && ${visible(upstream)} && !!document.querySelector('header button[title="*"]')`
+        ),
+      "hiding selected remote clears selection"
+    );
+    await button("Show Remote Branches in Graph", nav);
+    await until(
+      () => graph.evaluate(`!${visible(origin)} && !${visible(upstream)} && ${visible(base)}`),
+      "all remotes hidden"
+    );
+    await button("Show Remote Branches in Graph", nav);
+    await until(
+      () => graph.evaluate(`!${visible(origin)} && ${visible(upstream)}`),
+      "individual choice retained after global toggle"
+    );
+    await graph.evaluate(`${eye("origin")}.click()`);
+    await until(
+      () => graph.evaluate(`${visible(origin)} && ${visible(upstream)}`),
+      "remote restored"
+    );
+    assert.equal(git(["show-ref"], dir), refsBefore);
+    assert.equal(git(["branch", "--show-current"], dir), "main");
+    const screenshot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "remote-visibility.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+    await openRepo(repo);
+  });
+
+  for (const style of ["rounded", "angular"]) {
+    test(`clips wide graphs after scrolling, resizing, zoom and details (${style})`, async () => {
+      const config = vscode.workspace.getConfiguration("branchwise");
+      const originalStyle = config.inspect("graphStyle").globalValue;
+      const windowConfig = vscode.workspace.getConfiguration("window");
+      const originalZoom = windowConfig.inspect("zoomLevel").globalValue;
+      const originalPixelRatio = await graph.evaluate("devicePixelRatio");
+      try {
+        await config.update("graphStyle", style, vscode.ConfigurationTarget.Global);
+        await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+        const dir = directory();
+        init(dir);
+        commit("base", "wide-base", dir);
+        const base = git(["rev-parse", "HEAD"], dir);
+        const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+        for (let index = 0; index < 14; index++) {
+          const hash = git(["commit-tree", tree, "-p", base, "-m", "wide-lane-" + index], dir);
+          git(["branch", "lane-" + index, hash], dir);
+        }
+        await openRepo(dir);
+        const measure = () =>
+          graph.evaluate(`(() => {
+      const viewport = document.querySelector('[data-graph-viewport]');
+      const scroll = document.querySelector('[data-graph-scroll]');
+      const table = document.querySelector('table');
+      const description = table.querySelector('thead th:nth-child(2)').getBoundingClientRect();
+      return { clipRight: viewport.getBoundingClientRect().right, descriptionLeft: description.left,
+        width: viewport.clientWidth, scrollWidth: scroll.scrollWidth, scrollLeft: scroll.scrollLeft,
+        viewportScroll: viewport.scrollLeft, overflow: getComputedStyle(viewport).overflowX,
+        dots: [...viewport.querySelectorAll('circle')].map(dot => dot.getBoundingClientRect().x),
+        rows: [...table.querySelectorAll('tr[data-commit-hash]')].map(row => row.dataset.commitHash) };
+    })()`);
+        await until(async () => {
+          const state = await measure();
+          return state.rows.length === 15 && state.scrollWidth > state.width;
+        }, "wide graph overflow");
+        let before = await measure();
+        assert.ok(
+          before.clipRight <= before.descriptionLeft + 1,
+          "graph cannot paint over description"
+        );
+        assert.equal(before.overflow, "hidden");
+        await graph.evaluate(`(() => {
+      const scroll = document.querySelector('[data-graph-scroll]');
+      scroll.scrollLeft = 10000; scroll.dispatchEvent(new Event('scroll'));
+    })()`);
+        let after = await measure();
+        assert.ok(after.scrollLeft > 0);
+        assert.equal(after.viewportScroll, after.scrollLeft);
+        assert.equal(after.descriptionLeft, before.descriptionLeft);
+        assert.deepEqual(after.rows, before.rows);
+        assert.ok(after.dots[0] < before.dots[0]);
+        before = after;
+        await graph.evaluate(`document.querySelector('[data-graph-scroll]').focus()`);
+        await connections[0].call("Input.dispatchKeyEvent", {
+          type: "keyDown",
+          key: "ArrowLeft",
+          code: "ArrowLeft",
+          windowsVirtualKeyCode: 37
+        });
+        await connections[0].call("Input.dispatchKeyEvent", {
+          type: "keyUp",
+          key: "ArrowLeft",
+          code: "ArrowLeft",
+          windowsVirtualKeyCode: 37
+        });
+        // Native scrolling and its scroll event can arrive in separate frames.
+        const keyboard = await until(async () => {
+          const state = await measure();
+          return (
+            state.scrollLeft < before.scrollLeft &&
+            state.viewportScroll === state.scrollLeft &&
+            state
+          );
+        }, "keyboard graph scrolling");
+        assert.equal(keyboard.viewportScroll, keyboard.scrollLeft);
+        await graph.evaluate(
+          `document.querySelector('tbody td').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, shiftKey: true, deltaY: 20 }))`
+        );
+        assert.ok((await measure()).scrollLeft > keyboard.scrollLeft, "Shift+wheel scrolls graph");
+        await connections[0].call("Emulation.setDeviceMetricsOverride", {
+          width: 650,
+          height: 850,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        await until(async () => {
+          const state = await measure();
+          return (
+            (await graph.evaluate("innerWidth < 700")) &&
+            state.clipRight <= state.descriptionLeft + 1
+          );
+        }, "narrow window graph clipping");
+        await connections[0].call("Emulation.setDeviceMetricsOverride", {
+          width: 1440,
+          height: 1000,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        await until(() => graph.evaluate("innerWidth > 1000"), "restored window size");
+        await graph.evaluate(`(() => {
+      const cell = document.querySelector('thead th');
+      const grip = cell.querySelector('[role=separator]');
+      const rect = cell.getBoundingClientRect();
+      grip.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: rect.right }));
+      window.dispatchEvent(new MouseEvent('mousemove', { clientX: rect.left + 40 }));
+      window.dispatchEvent(new MouseEvent('mouseup'));
+    })()`);
+        await until(async () => (await measure()).width < before.width, "narrower graph column");
+        before = await measure();
+        assert.ok(before.clipRight <= before.descriptionLeft + 1);
+        await graph.evaluate(
+          `document.querySelector('tbody td').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: -50 }))`
+        );
+        after = await measure();
+        assert.ok(after.scrollLeft < before.scrollLeft);
+        assert.equal(after.viewportScroll, after.scrollLeft);
+        assert.equal(after.descriptionLeft, before.descriptionLeft);
+        await graph.evaluate(
+          `document.querySelector('tr[data-commit-hash] td:nth-child(2)').click()`
+        );
+        await until(
+          () =>
+            graph.evaluate(
+              `(() => {
+            const selected = document.querySelector('tr[aria-selected="true"]');
+            return selected && document.querySelector('td[colspan="4"]')?.textContent.includes(selected.dataset.commitHash);
+          })()`
+            ),
+          "commit selection and expansion after scrolling"
+        );
+        assert.ok(
+          await graph.evaluate(`(() => {
+      const rows = [...document.querySelectorAll('tr[data-commit-hash]')];
+      return [...document.querySelectorAll('[data-graph-viewport] circle')].every((dot, index) => {
+        const vertex = dot.getBoundingClientRect(); const row = rows[index].getBoundingClientRect();
+        return Math.abs(vertex.top + vertex.height / 2 - (row.top + row.height / 2)) < 2;
+      });
+    })()`),
+          "graph stays aligned with rows and expanded details"
+        );
+        assert.equal(
+          await graph.evaluate(
+            `[...document.querySelectorAll('[data-graph-viewport] path')].some(path => path.getAttribute('d').includes('C'))`
+          ),
+          style === "rounded",
+          "configured graph style"
+        );
+        const pixelRatio = await graph.evaluate("devicePixelRatio");
+        await vscode.commands.executeCommand("workbench.action.zoomIn");
+        await until(
+          () => graph.evaluate(`devicePixelRatio > ${pixelRatio}`),
+          "workbench zoom applied"
+        );
+        const zoomed = await measure();
+        assert.ok(zoomed.clipRight <= zoomed.descriptionLeft + 1, "zoom preserves graph clipping");
+        assert.ok(
+          await graph.evaluate(`(() => {
+      const rows = [...document.querySelectorAll('tr[data-commit-hash]')];
+      return [...document.querySelectorAll('[data-graph-viewport] circle')].every((dot, index) => {
+        const vertex = dot.getBoundingClientRect(); const row = rows[index].getBoundingClientRect();
+        return Math.abs(vertex.top + vertex.height / 2 - (row.top + row.height / 2)) < 2;
+      });
+    })()`),
+          "zoom keeps graph dots aligned with expanded rows"
+        );
+        await graph.evaluate(
+          `(() => { const scroll = document.querySelector('[data-graph-scroll]'); scroll.scrollLeft = 10000; scroll.dispatchEvent(new Event('scroll')); })()`
+        );
+        assert.equal(
+          (await measure()).descriptionLeft,
+          zoomed.descriptionLeft,
+          "panning after zoom keeps text fixed"
+        );
+        const screenshot = await connections[0].call("Page.captureScreenshot");
+        fs.writeFileSync(
+          path.join(artifacts, `wide-graph-scroll-${style}.png`),
+          Buffer.from(screenshot.data, "base64")
+        );
+        await headerChoice("Branch", "main");
+        await until(
+          async () => (await measure()).rows.length === 1 && (await measure()).viewportScroll === 0,
+          "scroll clamps after graph shrinks"
+        );
+      } finally {
+        await config.update("graphStyle", originalStyle, vscode.ConfigurationTarget.Global);
+        await windowConfig.update("zoomLevel", originalZoom, vscode.ConfigurationTarget.Global);
+        await vscode.commands.executeCommand("workbench.action.zoomReset");
+        await connections[0].call("Emulation.setDeviceMetricsOverride", {
+          width: 1440,
+          height: 1000,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+        await openRepo(repo);
+        await until(
+          () => graph.evaluate(`Math.abs(devicePixelRatio - ${originalPixelRatio}) < 0.01`),
+          "restored workbench zoom"
+        );
+      }
+    });
+  }
+
+  for (const [theme, kind] of [
+    ["Light Modern", "vscode-light"],
+    ["Dark Modern", "vscode-dark"],
+    ["Default High Contrast", "vscode-high-contrast"],
+    ["Default High Contrast Light", "vscode-high-contrast-light"]
+  ]) {
+    test(`keeps focus and remote controls readable and keyboard accessible (${theme})`, async () => {
+      const workbench = vscode.workspace.getConfiguration("workbench");
+      const originalTheme = workbench.inspect("colorTheme").globalValue;
+      try {
+        const dir = directory();
+        init(dir);
+        commit("base", "theme-base", dir);
+        const base = git(["rev-parse", "HEAD"], dir);
+        const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+        const main = git(["commit-tree", tree, "-p", base, "-m", "theme-main"], dir);
+        const topic = git(["commit-tree", tree, "-p", base, "-m", "theme-merged"], dir);
+        const merge = git(["commit-tree", tree, "-p", main, "-p", topic, "-m", "theme-merge"], dir);
+        git(["update-ref", "refs/heads/main", merge], dir);
+        for (let lane = 0; lane < 14; lane++) {
+          const hash = git(["commit-tree", tree, "-p", base, "-m", `theme-side-${lane}`], dir);
+          git(["branch", `side-${lane}`, hash], dir);
+        }
+        const remote = git(["commit-tree", tree, "-p", base, "-m", "theme-remote"], dir);
+        git(["remote", "add", "origin", "."], dir);
+        git(["update-ref", "refs/remotes/origin/topic", remote], dir);
+        const refs = git(["show-ref"], dir);
+        await openRepo(dir);
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        const nav = 'nav[aria-label="Branches"]';
+        if (!(await graph.evaluate(`!!document.querySelector('${nav}')`))) {
+          await button("Branches", 'document.querySelector("header")');
+        }
+        await headerChoice("View", "Focus direct history");
+        await headerChoice("Branch", "main");
+        await until(
+          () =>
+            graph.evaluate(
+              `!!document.querySelector('tr[data-branch-relation="merged"]') && !!document.querySelector('tr[data-branch-relation="unrelated"]')`
+            ),
+          "focus relations ready"
+        );
+        const eye = `${nav} button[aria-label='Show remote origin in the graph']`;
+        await until(
+          () => graph.evaluate(`!!document.querySelector(${JSON.stringify(eye)})`),
+          "named remote visibility control"
+        );
+        await graph.evaluate(`document.querySelector(${JSON.stringify(eye)}).focus()`);
+        await keypress("Tab", 8);
+        await keypress("Tab");
+        await visibleKeyboardFocus(eye);
+        const visibleIcon = await graph.evaluate(
+          `document.querySelector(${JSON.stringify(eye)}).innerHTML`
+        );
+        await keypress(" ");
+        await until(
+          () =>
+            graph.evaluate(
+              `document.querySelector(${JSON.stringify(eye)}).getAttribute('aria-pressed') === 'false' && !${visible(remote)}`
+            ),
+          "keyboard hides remote"
+        );
+        assert.notEqual(
+          await graph.evaluate(`document.querySelector(${JSON.stringify(eye)}).innerHTML`),
+          visibleIcon,
+          "hidden status changes icon shape as well as the accessible pressed state"
+        );
+        const remoteLabel = `${nav} button[title='origin/topic']`;
+        const hiddenText = await contrast(remoteLabel);
+        assert.ok(
+          hiddenText.ratio >= 4.5,
+          `hidden remote text in ${theme}: ${JSON.stringify(hiddenText)}`
+        );
+        await graph.evaluate(`document.querySelector(${JSON.stringify(remoteLabel)}).focus()`);
+        await keypress("Tab");
+        await keypress("Tab", 8);
+        await visibleKeyboardFocus(remoteLabel);
+        await graph.evaluate(`document.querySelector(${JSON.stringify(eye)}).focus()`);
+        await keypress("Enter");
+        await until(
+          () =>
+            graph.evaluate(
+              `${visible(remote)} && document.querySelector(${JSON.stringify(eye)}).getAttribute('aria-pressed') === 'true'`
+            ),
+          "keyboard reveals remote"
+        );
+        const dimming = 'select[aria-label="Dimming"]';
+        await keyboardSelect(dimming, "Subtle", "subtle");
+        await visibleKeyboardFocus(dimming);
+        const colours = () =>
+          until(
+            () =>
+              graph.evaluate(`(() => {
+          const row = document.querySelector('tr[data-branch-relation="unrelated"]');
+          const lines = [...document.querySelectorAll('path[data-branch-relation="unrelated"]')];
+          // Revealing a remote reloads commits before the asynchronous focus query completes.
+          if (!row || !lines.length) return null;
+          return { lines: lines.map(path => getComputedStyle(path).stroke), text: getComputedStyle(row).color };
+        })()`),
+            "branch focus colours"
+          );
+        const subtle = await colours();
+        for (const relation of ["direct", "merged", "unrelated"]) {
+          const text = await contrast(`tr[data-branch-relation='${relation}'] td:nth-child(2)`);
+          assert.ok(text.ratio >= 4.5, `${relation} text in ${theme}: ${JSON.stringify(text)}`);
+        }
+        await keyboardSelect(dimming, "Strong", "strong");
+        const strong = await colours();
+        assert.equal(strong.text, subtle.text, "strong dimming keeps readable text");
+        assert.notDeepEqual(strong.lines, subtle.lines, "dimming levels are distinguishable");
+        for (const label of ["Pause focus", "Resume focus"]) {
+          await graph.evaluate(
+            `[...document.querySelectorAll('button')].find(button => button.textContent.trim() === ${JSON.stringify(label)}).focus()`
+          );
+          await keypress("Enter");
+          await until(
+            () =>
+              graph.evaluate(
+                `document.querySelector('[data-focus-branch="main"]').textContent === ${JSON.stringify(label === "Pause focus" ? "Paused" : "Focus")}`
+              ),
+            `keyboard ${label}`
+          );
+          await visibleKeyboardFocus("button:focus");
+        }
+        await connections[0].call("Emulation.setDeviceMetricsOverride", {
+          width: 650,
+          height: 850,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        await until(() => graph.evaluate("innerWidth < 700"), "narrow theme viewport");
+        const grip = 'thead th:nth-child(2) [role="separator"]';
+        await graph.evaluate(`document.querySelector('${grip}').focus()`);
+        await keypress("ArrowLeft");
+        await visibleKeyboardFocus(grip);
+        assert.ok(
+          await graph.evaluate(
+            `document.querySelector('${grip}').getAttribute('aria-label')?.includes('Graph')`
+          ),
+          "graph resize handle has an accessible name"
+        );
+        const scroll = "[data-graph-scroll]";
+        await graph.evaluate(
+          `(() => { const element = document.querySelector('${scroll}'); element.scrollLeft = 0; element.focus(); })()`
+        );
+        await keypress("ArrowRight");
+        await until(
+          () => graph.evaluate(`document.querySelector('${scroll}').scrollLeft > 0`),
+          "keyboard pans narrow graph"
+        );
+        await visibleKeyboardFocus(scroll);
+        const hashes = await graph.evaluate(`(() => {
+          const dots = [...document.querySelectorAll('[data-graph-viewport] circle')];
+          const index = dots.reduce((best, dot, i) => +dot.getAttribute('cx') > +dots[best].getAttribute('cx') ? i : best, 0);
+          const rows = [...document.querySelectorAll('tr[data-commit-hash]')];
+          rows[index].focus(); return rows[index].dataset.commitHash;
+        })()`);
+        await keypress(" ");
+        await until(
+          () =>
+            graph.evaluate(
+              `document.querySelector('tr[data-commit-hash="${hashes}"]').getAttribute('aria-selected') === 'true'`
+            ),
+          "keyboard selects a commit"
+        );
+        await graph.evaluate(
+          `(() => { const element = document.querySelector('${scroll}'); element.scrollLeft = 0; element.dispatchEvent(new Event('scroll')); })()`
+        );
+        const reveal = 'button[aria-label="Reveal selected lane"]';
+        await graph.evaluate(`document.querySelector('${reveal}').focus()`);
+        await keypress("Enter");
+        await visibleKeyboardFocus(reveal);
+        assert.ok(
+          await graph.evaluate(`document.querySelector('${scroll}').scrollLeft > 0`),
+          "keyboard reveals selected lane"
+        );
+        const screenshot = await connections[0].call("Page.captureScreenshot");
+        fs.writeFileSync(
+          path.join(artifacts, `theme-${kind}.png`),
+          Buffer.from(screenshot.data, "base64")
+        );
+        assert.equal(git(["show-ref"], dir), refs);
+        assert.equal(git(["branch", "--show-current"], dir), "main");
+      } finally {
+        await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+        await connections[0].call("Emulation.setDeviceMetricsOverride", {
+          width: 1440,
+          height: 1000,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        await openRepo(repo);
+      }
+    });
+  }
+
+  test("reveals selected lanes and keeps graph scrolling accessible deep in history", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "deep-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    for (let lane = 0; lane < 14; lane++) {
+      let parent = base;
+      for (let depth = 0; depth < 8; depth++) {
+        parent = git(["commit-tree", tree, "-p", parent, "-m", `deep-${lane}-${depth}`], dir);
+      }
+      git(["branch", `deep-${lane}`, parent], dir);
+    }
+    const refsBefore = git(["show-ref"], dir);
+    await openRepo(dir);
+    await headerChoice("View", "Focus direct history");
+    await headerChoice("Branch", "main");
+    await until(
+      () => graph.evaluate("document.querySelectorAll('tr[data-commit-hash]').length === 113"),
+      "deep graph history"
+    );
+    await graph.evaluate(`(() => {
+      const cell = document.querySelector('thead th');
+      const rect = cell.getBoundingClientRect();
+      cell.querySelector('[role=separator]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: rect.right }));
+      window.dispatchEvent(new MouseEvent('mousemove', { clientX: rect.left + 80 }));
+      window.dispatchEvent(new MouseEvent('mouseup'));
+    })()`);
+    const target = await graph.evaluate(`(() => {
+      const dots = [...document.querySelectorAll('[data-graph-viewport] circle')];
+      const index = dots.reduce((best, dot, i) => +dot.getAttribute('cx') >= +dots[best].getAttribute('cx') ? i : best, 0);
+      const rows = [...document.querySelectorAll('tr[data-commit-hash]')];
+      rows[index - 1].focus();
+      rows[index - 1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      return { index, hash: rows[index].dataset.commitHash, x: +dots[index].getAttribute('cx') };
+    })()`);
+    const measure = () =>
+      graph.evaluate(`(() => {
+      const scroll = document.querySelector('[data-graph-scroll]');
+      const viewport = document.querySelector('[data-graph-viewport]');
+      const row = document.querySelector('tr[data-commit-hash="${target.hash}"]');
+      const head = document.querySelector('thead').getBoundingClientRect();
+      const dot = viewport.querySelectorAll('circle')[${target.index}].getBoundingClientRect();
+      const clip = viewport.getBoundingClientRect();
+      return { left: scroll.scrollLeft, width: scroll.clientWidth, viewportLeft: viewport.scrollLeft,
+        descriptionLeft: row.cells[1].getBoundingClientRect().left,
+        headTop: head.top, headBottom: head.bottom, mainBottom: document.querySelector('header').getBoundingClientRect().bottom,
+        rowTop: row.getBoundingClientRect().top, rowBottom: row.getBoundingClientRect().bottom,
+        dotVisible: dot.left >= clip.left && dot.right <= clip.right,
+        aligned: Math.abs(dot.top + dot.height / 2 - (row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2)) < 2,
+        scrollTop: scroll.getBoundingClientRect().top, y: scrollY, height: innerHeight,
+        focused: document.activeElement?.getAttribute('data-commit-hash') };
+    })()`);
+    await until(async () => {
+      const state = await measure();
+      return state.y > 500 && state.dotVisible && state.focused === target.hash;
+    }, "keyboard selection reveals a deep clipped lane");
+    const before = await measure();
+    assert.ok(Math.abs(before.left - (target.x + 8 - before.width)) <= 1, "minimal lane movement");
+    assert.ok(
+      Math.abs(before.headTop - before.mainBottom) <= 1,
+      "table header follows sticky controls"
+    );
+    assert.ok(
+      before.rowTop >= before.headBottom && before.rowBottom <= before.height,
+      "focused row stays visible"
+    );
+    assert.ok(
+      before.scrollTop >= before.mainBottom && before.scrollTop < before.height,
+      "scrollbar stays visible"
+    );
+    assert.ok(before.aligned, "sticky header does not move graph relative to rows");
+    await graph.evaluate(`(() => {
+      const row = document.querySelector('tr[data-commit-hash="${target.hash}"]');
+      window.scrollBy(0, row.getBoundingClientRect().top - document.querySelector('thead').getBoundingClientRect().bottom);
+      row.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    })()`);
+    assert.ok(
+      await graph.evaluate(
+        `document.activeElement.getBoundingClientRect().top >= document.querySelector('thead').getBoundingClientRect().bottom - 1`
+      ),
+      "keyboard navigation cannot hide a row behind the sticky header"
+    );
+    await graph.evaluate(
+      `document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))`
+    );
+    await graph.evaluate(`(() => {
+      const scroll = document.querySelector('[data-graph-scroll]');
+      scroll.scrollLeft = 0; scroll.dispatchEvent(new Event('scroll'));
+    })()`);
+    // A new ref makes the refresh observable, without moving the selected row or its lane.
+    git(["tag", "refresh-marker", base], dir);
+    await button("Refresh", 'document.querySelector("header")');
+    await until(
+      () => graph.evaluate("!!document.querySelector('tbody [title=\"refresh-marker\"]')"),
+      "refreshed graph data"
+    );
+    assert.equal((await measure()).left, 0, "refresh preserves manual panning");
+    await button("Reveal selected lane", 'document.querySelector("thead")');
+    let after = await measure();
+    assert.ok(after.dotVisible);
+    assert.equal(after.left, before.left);
+    assert.equal(after.viewportLeft, after.left);
+    assert.equal(after.descriptionLeft, before.descriptionLeft);
+    assert.ok(
+      await graph.evaluate(`(() => {
+      const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 120 });
+      document.querySelector('tr[data-commit-hash="${target.hash}"] td').dispatchEvent(event);
+      return !event.defaultPrevented;
+    })()`),
+      "ordinary vertical scrolling is not intercepted"
+    );
+    await graph.evaluate(`(() => {
+      const scroll = document.querySelector('[data-graph-scroll]');
+      scroll.focus({ preventScroll: true });
+    })()`);
+    await connections[0].call("Input.dispatchKeyEvent", {
+      type: "keyDown",
+      key: "ArrowLeft",
+      code: "ArrowLeft",
+      windowsVirtualKeyCode: 37
+    });
+    await connections[0].call("Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key: "ArrowLeft",
+      code: "ArrowLeft",
+      windowsVirtualKeyCode: 37
+    });
+    await until(
+      async () => (await measure()).left < before.left,
+      "sticky scrollbar keyboard access"
+    );
+    await connections[0].call("Emulation.setDeviceMetricsOverride", {
+      width: 650,
+      height: 850,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+    await until(async () => {
+      const state = await measure();
+      return (
+        (await graph.evaluate("innerWidth < 700")) &&
+        Math.abs(state.headTop - state.mainBottom) <= 1
+      );
+    }, "sticky header follows wrapped controls at narrow width");
+    await button("Reveal selected lane", 'document.querySelector("thead")');
+    after = await measure();
+    assert.ok(after.dotVisible && after.aligned);
+    assert.ok(after.scrollTop >= after.mainBottom && after.scrollTop < after.height);
+    assert.ok(
+      await graph.evaluate(
+        "!!document.querySelector('header button[title=\"main\"]') && !!document.querySelector('header button[title=\"focus\"]')"
+      ),
+      "branch and focus mode unchanged"
+    );
+    git(["tag", "-d", "refresh-marker"], dir);
+    assert.equal(git(["show-ref"], dir), refsBefore);
+    assert.equal(git(["branch", "--show-current"], dir), "main");
+    const screenshot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "deep-graph-scroll.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+    await connections[0].call("Emulation.setDeviceMetricsOverride", {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+    await openRepo(repo);
+  });
+
+  test("lists branches, remotes, tags and stashes beside the graph and switches the graph from them", async () => {
+    const pane = directory();
+    init(pane);
+    commit("f", "pane-base", pane);
+    git(["branch", "pane-feature"], pane);
+    git(["tag", "-a", "pane-tag", "-m", "pane tag"], pane);
+    git(["update-ref", "refs/remotes/mirror/main", "HEAD"], pane);
+    fs.writeFileSync(path.join(pane, "f"), "stashed");
+    git(["stash", "push", "-m", "pane stash"], pane);
+    await openRepo(pane);
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    if (!(await graph.evaluate("!!" + nav))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => { const nav = ${nav}; return !!nav && ["pane-feature", "mirror", "pane-tag", "pane stash"].every((text) => nav.innerText.includes(text)); })()`
+        ),
+      "branches pane contents"
+    );
+    await button("pane-feature", nav);
+    await until(
+      () => graph.evaluate(`!!document.querySelector('header button[title="pane-feature"]')`),
+      "graph filtered to pane-feature"
+    );
+    await button("All branches", nav);
+    await until(
+      () => graph.evaluate(`!!document.querySelector('header button[title="*"]')`),
+      "graph shows all branches"
+    );
+    const eye = `${nav}.querySelector('button[aria-pressed]')`;
+    await graph.evaluate(`${eye}.click()`);
+    await until(
+      () =>
+        graph.evaluate(
+          `${eye}.getAttribute('aria-pressed') === 'false' && ${nav}.innerText.includes('Hidden from the graph')`
+        ),
+      "remote branches hidden"
+    );
+    await button("main", `${nav}.querySelector('[aria-labelledby]:nth-of-type(2)')`);
+    await until(
+      () =>
+        graph.evaluate(
+          `${eye}.getAttribute('aria-pressed') === 'true' && !!document.querySelector('header button[title="remotes/mirror/main"]')`
+        ),
+      "remote branch selected and shown again"
+    );
+    await button("All branches", nav);
+    await graph.evaluate(`${nav}.querySelector('input').focus()`);
+    const page = connections[0];
+    const screenshot = await page.call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "branches-pane.png"),
+      Buffer.from(screenshot.data, "base64")
+    );
+  });
+
+  test("keeps dropdowns and the sidebar inside narrow windows", async () => {
+    const narrow = directory();
+    init(narrow);
+    commit("f", "narrow-base", narrow);
+    git(
+      ["branch", "narrow/" + "a-long-branch-name-that-is-wider-than-its-trigger-".repeat(2)],
+      narrow
+    );
+    await openRepo(narrow);
+    const page = connections[0];
+    const size = (width, height = 800) =>
+      page.call("Emulation.setDeviceMetricsOverride", {
+        width,
+        height,
+        deviceScaleFactor: 1,
+        mobile: false
+      });
+    try {
+      // At 400 px, the Branch dropdown's list used to reach past the window's left edge. At 700 px
+      // the long branch name widened the list past the right edge after it had been placed.
+      const windows = [
+        [400, "innerWidth <= 400"],
+        [700, "innerWidth > 400 && innerWidth <= 700"]
+      ];
+      for (const [width, ready] of windows) {
+        await size(width);
+        await until(() => graph.evaluate(ready), `${width} px window`);
+        const triggers = await graph.evaluate(
+          `document.querySelectorAll('header button[aria-haspopup="listbox"]').length`
+        );
+        assert.ok(triggers >= 3, "header dropdowns");
+        for (let index = 0; index < triggers; index++) {
+          await graph.evaluate(
+            `document.querySelectorAll('header button[aria-haspopup="listbox"]')[${index}].click()`
+          );
+          const panel = await until(
+            () =>
+              graph.evaluate(`(() => {
+                const input = document.querySelector('header [role="combobox"]');
+                if (!input) return null;
+                const rect = input.parentElement.getBoundingClientRect();
+                return { left: rect.left, right: rect.right, width: innerWidth };
+              })()`),
+            `open dropdown ${index} at ${width} px`
+          );
+          assert.ok(
+            panel.left >= 0 && panel.right <= panel.width,
+            `dropdown ${index} inside the ${width} px window: ${JSON.stringify(panel)}`
+          );
+          await graph.evaluate(
+            `document.querySelector('header [role="combobox"]').dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`
+          );
+          await until(
+            () => graph.evaluate(`!document.querySelector('header [role="combobox"]')`),
+            `closed dropdown ${index} at ${width} px`
+          );
+        }
+      }
+
+      // Between 800 and 1000 px the header wraps, and the sticky sidebar must start below it.
+      await size(880);
+      if (!(await graph.evaluate(`!!document.querySelector('nav[aria-label="Branches"]')`))) {
+        await button("Branches", 'document.querySelector("header")');
+      }
+      // The header's height reaches the sidebar through a ResizeObserver, so wait for it to settle.
+      let layout;
+      await until(async () => {
+        layout = await graph.evaluate(`(() => {
+          const nav = document.querySelector('nav[aria-label="Branches"]');
+          if (!nav || innerWidth < 768 || innerWidth > 1000) return null;
+          const style = getComputedStyle(nav.parentElement);
+          return {
+            width: innerWidth,
+            viewport: innerHeight,
+            header: document.querySelector("header").getBoundingClientRect().height,
+            position: style.position,
+            top: parseFloat(style.top),
+            height: parseFloat(style.height)
+          };
+        })()`);
+        return (
+          layout &&
+          Math.abs(layout.top - layout.header) <= 1 &&
+          Math.abs(layout.height - (layout.viewport - layout.header)) <= 1
+        );
+      }, "sidebar below the header at 800-1000 px").catch((error) => {
+        throw new Error(`${error.message} ${JSON.stringify(layout)}`);
+      });
+      // The fixed offset this replaces assumed a 48 px header.
+      assert.ok(layout.header > 60, "wrapped header: " + JSON.stringify(layout));
+      assert.equal(layout.position, "sticky", JSON.stringify(layout));
+    } finally {
+      await size(1440, 1000);
+    }
+  });
+});
+
+async function contextCommit(subject) {
+  await until(
+    () =>
+      graph.evaluate(
+        `(() => { const row=[...document.querySelectorAll('tr[data-commit-hash]')].find(r=>r.textContent.includes(${JSON.stringify(subject)})); if(!row)return false;row.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,clientX:180,clientY:240}));return true; })()`
+      ),
+    "commit menu " + subject
+  );
+}
+async function selectCommits(subjects) {
+  for (const subject of subjects) {
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => { const row=[...document.querySelectorAll('tr[data-commit-hash]')].find(r=>r.textContent.includes(${JSON.stringify(subject)}));if(!row)return false;row.dispatchEvent(new MouseEvent('click',{bubbles:true,ctrlKey:true}));return true; })()`
+        ),
+      "select " + subject
+    );
+  }
+}

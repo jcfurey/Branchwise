@@ -1,0 +1,18 @@
+{
+  // The tests that run inside VS Code, which loads them with require. They are compiled to
+  // CommonJS in out/, together with the src modules they import, keeping the repository's layout;
+  // tsc-alias then rewrites @/ in the output with the paths below.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "node20",
+    "noEmit": false,
+    "verbatimModuleSyntax": false,
+    "rootDir": "..",
+    "outDir": "./out",
+    "types": ["node", "mocha"],
+    "paths": {
+      "@/*": ["../src/*"]
+    }
+  },
+  "include": ["./**/*.ts"]
+}

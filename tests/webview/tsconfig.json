@@ -1,0 +1,6 @@
+{
+  // The webview tests, checked with the webview's settings. The page's globals are declared in a
+  // script that no module imports, so it is listed by path.
+  "extends": "../../src/webview/tsconfig.json",
+  "include": ["./**/*.ts", "../../src/webview/global.d.ts"]
+}

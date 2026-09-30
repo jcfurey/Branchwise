@@ -1,0 +1,15 @@
+# Global Git configuration for unit and VS Code tests, so the developer's own settings, such as
+# commit signing or a default branch name, cannot change results.
+[user]
+	name = Test
+	email = test@example.invalid
+[init]
+	defaultBranch = main
+[commit]
+	gpgSign = false
+[tag]
+	gpgSign = false
+# Git starts maintenance after commits, detached in recent versions. Its lock files race with
+# tests that read the Git directory, and on Windows it holds files that a test is deleting.
+[maintenance]
+	auto = false

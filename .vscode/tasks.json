@@ -1,0 +1,79 @@
+// Build and test tasks (Terminal → Run Task). The $esbuild matchers come from the recommended
+// connor4312.esbuild-problem-matchers extension; $tsc and $tsc-watch are built into VS Code.
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // Starts both watchers side by side. It runs no command itself, so it needs no terminal.
+      "label": "Watch",
+      "dependsOn": ["Watch bundles", "Watch types"],
+      "dependsOrder": "parallel",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      // Rebuilds out/ on change. esbuild.js prints one start and one finished line for each round
+      // of rebuilds, so the task is busy until every bundle of that round is written.
+      "label": "Watch bundles",
+      "type": "shell",
+      "command": "pnpm run watch:esbuild",
+      "isBackground": true,
+      "problemMatcher": "$esbuild-watch",
+      "group": "build",
+      "presentation": {
+        "group": "watchers",
+        "reveal": "never"
+      }
+    },
+    {
+      // Type-checks the extension host code (the root project) on change.
+      "label": "Watch types",
+      "type": "shell",
+      "command": "pnpm run watch:tsc",
+      "isBackground": true,
+      "problemMatcher": "$tsc-watch",
+      "group": "build",
+      "presentation": {
+        "group": "watchers",
+        "reveal": "never"
+      }
+    },
+    {
+      // Cleans out/ and builds both bundles with source maps; F5 runs it before launching. It is
+      // not a background task, so it ends when the build process exits, after every bundle.
+      "label": "Build",
+      "type": "shell",
+      "command": "pnpm run compile",
+      "problemMatcher": "$esbuild",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "silent"
+      }
+    },
+    {
+      // Runs the three Vitest projects. Their output is read, not matched.
+      "label": "Test",
+      "type": "shell",
+      "command": "pnpm test",
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      // Type-checks all five TypeScript projects.
+      "label": "Type check",
+      "type": "shell",
+      "command": "pnpm run typecheck",
+      "problemMatcher": "$tsc",
+      "group": "test",
+      "presentation": {
+        "reveal": "never"
+      }
+    }
+  ]
+}

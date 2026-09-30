@@ -1,0 +1,6 @@
+{
+  // The backend and extension tests, checked with the extension side's settings. The webview
+  // tests need the DOM and have their own project.
+  "extends": "../tsconfig.json",
+  "include": ["./backend/**/*.ts", "./extension/**/*.ts"]
+}

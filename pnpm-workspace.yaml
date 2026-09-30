@@ -1,0 +1,20 @@
+# pnpm runs no dependency's install script unless it is listed here, and a frozen install fails
+# while a package that has one is listed neither way.
+allowBuilds:
+  # Puts the signing executable in place for vsce, which packages and publishes the extension.
+  "@vscode/vsce-sign": true
+  # Checks, and repairs if needed, the esbuild binary for the platform.
+  esbuild: true
+  # A native module vsce uses only to keep publisher tokens in the system keychain, which nothing
+  # here does; denied so that installing needs no native build tools.
+  keytar: false
+
+# Security fixes for packages that development tools depend on, pinned while those tools still
+# allow a vulnerable version. An override can go once every package that requests the dependency
+# requires a patched version itself. pnpm copies these into pnpm-lock.yaml, and a frozen install
+# fails unless both agree, so change them together with the lockfile.
+overrides:
+  js-yaml@>=4.0.0 <4.3.2: ^4.3.2
+  qs@<6.16.0: ^6.16.0
+  serialize-javascript@<7.0.5: ^7.1.1
+  vite@>=8.0.0 <8.0.16: ^8.0.16

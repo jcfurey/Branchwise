@@ -1,0 +1,156 @@
+# Changelog
+
+## [Unreleased]
+
+Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6 builds. Releases
+0.6.0 and earlier are from [asispts/neo-git-graph](https://github.com/asispts/neo-git-graph);
+see [its changelog](https://github.com/asispts/neo-git-graph/blob/v0.6.0/CHANGELOG.md) for them.
+Branchwise's history up to 0.9.7, including how it replaced the code it inherited, is in
+[jcfurey/neo-git-graph](https://github.com/jcfurey/neo-git-graph).
+
+## [0.9.7] - 2026-09-26
+
+### Added
+
+- A lint rule that reports hard-coded text in the webview.
+- Tests that submit each classic action dialog and check the request, the action dispatch table, and the repository lock, with CI keeping `menus.tsx` function coverage at 80% or more.
+- Rewritten tests for the Git queries and actions, repository discovery, the extension host, the menus and the webview utilities, so that each test can fail when the behaviour it names breaks. New checks include tags created on commits other than HEAD, branches that are never force-updated, and the walkthrough and guide the extension opens.
+
+### Changed
+
+- Rename the extension to Branchwise, `jcfurey.branchwise`: its commands and settings move from the `neo-git-graph.` prefix to `branchwise.`, settings saved under the old names are copied the first time Branchwise starts in each workspace, and the manifest no longer names the upstream author or sponsor.
+- Replace the icons inherited from Git Graph with Branchwise's own: the Marketplace icon, the graph tab icons, and the Source Control button.
+- Redraw the icons and illustrations inside the graph view, with the branch and tag glyphs in the same square as the others.
+- Add a Getting Started step on branch focus and remote visibility, describe per-remote eye buttons and the clickable Uncommitted Changes row in the walkthroughs, and ship only the user guide, whose links now all resolve.
+- Name the fork's maintainer in CODEOWNERS and override development dependencies with high-severity advisories (js-yaml, vite, serialize-javascript) and a moderate one (qs).
+- Publish from a protected `release` environment after checking both registry tokens, pin third-party actions to commit SHAs, update the artifact actions, and allow a manual dry run of the release workflow.
+- Remove the unused avatar code, its storage, and the Clear Avatar Cache command; activation deletes the old avatar cache once, and the deprecated `fetchAvatars` setting has no effect.
+- Reword the graph's buttons, menus, dialogs, error titles, tooltips and settings descriptions, with new Simplified and Traditional Chinese translations. Confirmations name their action instead of asking whether you are sure, and their buttons repeat the action instead of saying Yes. Error titles use sentence case, the pickers say **Repository**, the commit columns are **Message** and **ID**, **Load More Commits** is **Load Older Commits**, the reset options say exactly what each mode keeps, and the uncommitted changes row counts files in the singular for one file. The translation check also covers the settings translations, and it reports empty or malformed entries instead of passing or crashing.
+- Rewrite the build, test, lint, editor and CI configuration and the extension manifest. The watch build reports one start and one finish per round, including after an error without a location, shows esbuild's warnings, and a production build ships no source maps. The lint configuration keeps the project's conventions in one file, the translation check also compares the manifest's `%key%` references with `package.nls.json`, the manifest no longer lists the upstream authors, and the Nix development shell is gone.
+- Release Branchwise under the Apache License 2.0 now that it has replaced everything it inherited; earlier versions remain available under the MIT License. The changelog links to asispts/neo-git-graph's for releases 0.6.0 and earlier instead of repeating them, the README's header, headings, and remaining feature and setting descriptions are rewritten, and bug reports and feature requests use issue forms that also ask for the Git version and any remote connection.
+
+### Fixed
+
+- Keep a repository's saved settings when its folder is only unreachable for now, such as on an offline drive; only a folder that no longer exists loses them. A failure while handling a message from the graph or saving settings is logged instead of going unhandled, a repository path with a trailing slash no longer escapes the lock that keeps two Git actions from running at once, and a file-watcher hiccup no longer fails the graph.
+- A file version or diff that fails to load is tried again the next time it is opened, instead of staying empty until it is closed; opening the same one twice at once runs Git once, a version Git cannot find is empty instead of showing the latest commit when a file in the working tree matches its name, and the focus badge's tooltip shows a branch name containing `$` as written.
+- Configure Upstream selects the current upstream by name and sends nothing when it is unchanged, so an upstream named like the "None" choice is no longer removed. Save in Remotes sends nothing when the default push remote is unchanged, and no longer sends one that names a missing remote; renaming a remote to its own name sends nothing; Add Remote trims the name and URL; and a rebase confirmation starts on Cancel.
+- Show branch names, revisions and error messages that contain `$` as written in the focus and history banners and the start-up errors, show "History at" in full for anything but a full commit ID, offer Retry after a failed history search, keep the current search when File History is given an empty path, and disable the View picker while a repository has no branches. The search button reports whether the search row is open, and Settings & Tools whether its menu is open.
+- With auto-centring off, opening a commit's details keeps its row below the sticky headers, and Escape on that row closes them. E-mail links keep the `@`, an empty e-mail shows no `<>`, row labels follow Strong dimming like the graph, the row whose menu is open is drawn in full colour, double-clicking the checked-out branch runs no checkout, and worktree paths containing `$` show as written. Rows re-render only when their own menu opens, and the graph's lines are rebuilt only when they can change.
+- A failed copy says why, instead of "Unable to Copy Copy Error Details to Clipboard". A finished action reloads the graph only while the repository shown when it started is still shown, commit details no longer stay loading after a commit-ID mismatch, the newest repository scan alone decides the list and its error, and a message named like a built-in property is reported as unknown instead of throwing.
+- Checkbox labels wrap long repository paths and branch names instead of overflowing, focus returns to Initialize Repository once it finishes and its error shows the reason as written, and the graph's scrollbar thumb shows VS Code's pressed colour.
+- Catch branch, tag and remote names that Git refuses before asking it: names with control characters, names starting with a dot, names with a part ending in `.lock`, and `HEAD`.
+- Checkout Branch only switches to an existing local branch, and checking out, resetting to, cherry-picking or reverting a commit only accepts a commit ID, so none of them can restore a file and discard its uncommitted changes, create a branch, or read the value as a Git option. A reset only takes soft, mixed or hard, a merge that was already in progress reports Git's own error instead of "stopped on conflicts", and a tag cannot be named `HEAD`.
+- Refresh the graph at least every two seconds while files keep changing, as during a build, instead of waiting until they stop; count changes to project lock files such as `yarn.lock` and to a shallow clone's depth, and watch a bare repository once.
+- Open the graph when `branchwise.graphColours` holds something other than a list, using the default colours; cap whole-number settings at 1,000,000; keep a file history that was asked for while the graph was still opening; and list a repository reached through a symbolic link once in the repository search.
+- Draw and lay out long histories much faster: a graph of 50,000 commits takes milliseconds instead of seconds, and one with thousands of branches no longer slows down out of proportion. The line from Uncommitted Changes to the checked-out commit stays grey all the way down.
+- Open a file's diff once on a double-click in the commit details, show renamed paths in full in their tooltip even when they contain `$`, render folders nested thousands deep, toggle folders in a large commit quickly, and mark binary files as unavailable to assistive technology.
+- Close an open context menu when the repository changes, and do nothing when showing or hiding a remote that is already in that state, when loading more commits with no branch selected, or when opening commit details with no repository.
+- Offer only what applies on a remote's default-branch label, such as `origin/HEAD`: no Checkout, Delete Remote Branch or Focus entry, and double-clicking it does nothing. Renaming a branch to its own name sends nothing.
+- Keep context menus inside the window near any edge, close them with Tab, and make ArrowUp from nothing go to the last item. Space never scrolls the page behind an open menu, a menu opened again starts without a highlight, and no divider appears at a menu's edge or twice in a row.
+- A dropdown disabled while open, such as the branch list during a refresh, stays closed when it is enabled again. Its panel is placed again whenever its options change, arrow keys on its button no longer close it, closing it with its button keeps focus there, pointing at an option no longer scrolls the list, and its filter is named after the dropdown.
+- Start a running operation's dialog on Hide and an error on Dismiss, so a quick Enter no longer stops Git or copies the error. A dialog skips a disabled first button when it opens, leaves an Escape that a control inside it used alone, shows no empty reason, keeps Tab within all of its controls, and stops its spinner when reduced motion is preferred.
+- Load the graph when a commit has an unusual author line or a date Git leaves empty, showing that date as unknown, and open repositories without a work tree without the uncommitted-changes row.
+- Show a merge's changes against its first parent in the commit details, even when there are none, instead of another parent's changes; list files whose type changed, such as a file that became a symbolic link; and read names and messages as UTF-8 whatever `i18n.logOutputEncoding` says.
+- Sort the files and folders of the commit details in the display language, with numbers in numeric order, and ignore empty path segments.
+- Resize table columns more predictably: a click on a column divider no longer fixes every width, only the primary button drags, a drag ends when the button is released outside the view, a drag never moves a divider the opposite way, and a repository change during a drag saves nothing to either repository.
+- A request from the graph to the extension fails at once, instead of after 30 seconds, when its response is malformed or cannot be delivered.
+- Relative commit dates move up a unit instead of reading "60 minutes ago" or "24 hours ago", round the same way for dates in the past and the future, and read "0 seconds ago" for a commit a moment ahead of the clock. The date column's tooltip keeps its date and time in the same time zone after the system's zone changes.
+- Show the remaining webview text in VS Code's display language: the loading and startup messages, repository-load failures, timeouts, reflog dates, and elapsed times, and mark the page with that language.
+- Keep keyboard focus on an entry moved in the interactive rebase and batch editors and announce its new position, keep the sync preview and its focus through background refreshes, and name Branches pane buttons with their full ref.
+- Keep dropdown lists inside the window at any width, opening upwards when there is more room above, and keep the Branches and Workspace sidebar below the header when the header wraps.
+- Keep the uncommitted-changes list, its focus, and its scroll position on screen while it refreshes, follow a staged file to its new group, and show large groups 200 files at a time.
+- Apply changed settings to an open graph instead of on its next start, and read fractional or negative commit counts and search depths as whole numbers within range.
+- Open menus activated with Enter, Space, or the context-menu key next to their button instead of in the window's top-left corner.
+- Refresh the restore dialog when the file changed after its preview, instead of failing on every click with "Preview the restore again".
+- Label an untracked nested repository in the uncommitted-changes list and explain it, with Open Its Graph, instead of failing when it is clicked.
+- Rename or remove a remote with many branches in a moment instead of seconds, and prepare interactive rebases and batch cherry-picks or reverts with one Git process instead of one or two per commit.
+- Keep the Branches pane and branch dropdown responsive with thousands of refs: menus no longer re-render every row, and long lists show 200 at a time with **Show more** or keyboard paging.
+- Keep contents that a file restore replaces as a Git object and offer **Undo Restore**, and refuse to restore a file with unsaved editor changes, which saving later would silently undo.
+- Keep failures of hidden or superseded Git operations visible in the header until Git Activity is opened, and keep a dialog opened by a double-click from closing on the second click.
+- Open conflicted files in repositories that VS Code's Git extension does not track, open one-sided conflicts as files, and explain conflicts where both sides deleted the file.
+- Open file diffs and restore previews while another view or Git action is running, instead of reporting that another operation is running.
+- Show commits whose dates are out of range, such as `@99999999999999`, with an unknown date instead of an empty graph, and keep a failing graph or dialog from blanking the whole view.
+- Name the Reset mode and merge parent choices for screen readers.
+- Offer **Stop Git** while a push, pull, fetch, or other network action runs, so an unresponsive server no longer leaves the repository locked, and never let Git wait for a password typed in a terminal.
+- Load the graph on Windows when a hidden remote has hundreds of branches, which exceeded the command-line limit.
+- Refresh the graph after commits and other changes in linked worktrees and submodules, whose Git data lives outside their folder, and when a merge, cherry-pick, revert, rebase, or bisect starts or stops.
+- List a repository once under its real path when a workspace folder is a subfolder of it or a symlink to it, and match Source Control and File History selections to that entry.
+- Show the same repositories in the picker and the Workspace pane, follow added or removed workspace folders, respect the search depth for newly created repositories, and stop listing every repository ever viewed.
+- Load the whole graph when a commit subject or author name contains a carriage return, and show an error instead of a silently truncated graph if Git's log output is incomplete.
+- Reject invalid branch, tag, and remote names such as `a..b`, `x@{1}`, or `has space` before running Git; the previous check never saw Git's refusal.
+- Activate and register every command even when the last viewed repository was deleted, a workspace folder is missing, or no folder is open, and skip folders of virtual workspaces instead of failing; virtual and untrusted workspaces are declared unsupported.
+- Recognize repositories by Git's output and exit status instead of English or German "not a repository" text, so scanning behaves the same in every language.
+- Accept a `git.path` that contains spaces or parentheses, such as `C:\Program Files\Git\bin\git.exe`, or lists several paths, and prefer the Git that VS Code's own Git extension found.
+- Stop background reads from rewriting or locking the index while you commit, and keep refreshing the graph after reads; only actions that change a repository pause its file watcher.
+- Detect merge conflicts from Git's exit status instead of its English output, so a conflicted merge in another language is no longer reported as successful, and explain how to continue or abort it.
+- Ignore `log.showSignature`, forced color, and hidden untracked files in the user's Git configuration when reading Git output, so signed commits no longer end the graph or break details, history, and plans, and removing a worktree no longer discards untracked files that `status.showUntrackedFiles=no` hid.
+- List branches without parsing `git branch`, so a rebase, bisect, or detached HEAD no longer adds phantom branches such as `(no`, and colored or translated Git output no longer breaks checkout or remote renames.
+- Show exact names and line counts in commit details for files with non-ASCII characters, tabs, quotes, newlines, or backslashes, so their diffs, history, and restore work, and diff a file named like `0:foo` against its own staged version.
+- Explain instead of deleting when a remote branch's remote is no longer configured; previously the name was cut by another remote's length. Checking out such a branch suggests its own path and creates an untracked local branch.
+- Ignore a held Enter or Space key in dialogs and menus, and open destructive confirmations with focus on Cancel, so holding Enter on a menu item can no longer delete a branch, tag, or stash.
+- Warn before restoring over local edits that `git status` hides, such as skip-worktree and assume-unchanged files, or a file whose on-disk name differs only in letter case or Unicode form.
+- Refuse to restore a file into a submodule or nested repository, where the superproject cannot see or warn about local edits.
+- Pass existing branch and tag names to Git so that names such as `-d` or `--output=x`, which fetches can create, are never read as options, and filter or merge a branch rather than a tag with the same name.
+- Open `neo-git-graph:` documents only for full object IDs in repositories the extension has opened, so links and other extensions cannot pass options such as `--output` to `git show`.
+- Disable the restore preview and restore buttons while a Git operation in that repository is still running, such as the preview's own diff still opening.
+
+## [0.9.6] - 2026-09-23
+
+### Added
+
+- Click the Uncommitted Changes row to browse staged, unstaged, untracked, and conflicted files and open their native diff or merge editor.
+
+- Failure-time UI screenshots, DOM snapshots, browser errors, and extension logs, with an automated failure/recovery check and a minimum-version VS Code smoke test in CI.
+- Repeatable backend focus and VS Code interaction benchmarks for large histories, with timing reports and hover CPU profiles in Linux CI.
+- Graph topology and rendering regression coverage for complex merges, partial history, both graph styles, zoom, resizing, and expanded details.
+- Keyboard and contrast checks for graph focus and remote visibility in built-in light, dark, and high-contrast themes.
+- Per-remote graph visibility controls with saved choices, consistent history searches, and automatic reveal when selecting a hidden remote branch.
+- Horizontal scrolling within the Graph column for wide histories, using a scrollbar, trackpad or Shift+mouse wheel.
+- Sticky column headings keep graph scrolling accessible deep in history; selecting a commit reveals its lane, with a **Reveal selected lane** button to return after panning.
+
+- Selectable branch focus with full-colour direct history, muted merged history and gray unrelated commits, plus an option to keep all ancestors bright.
+- Focus branches from their context menus, identify the target with a Focus badge, choose subtle or strong graph dimming, and pause/resume focus without losing the target.
+- Submodule commit comparisons and parent pointer staging/unstaging.
+- Workspace fetch with individual results and reviewed fast-forward updates.
+- Push/pull commit previews, selected merged-branch cleanup, and guided Git bisect.
+- Portable workflow UI checks, three-platform CI, and a large-history benchmark.
+- Branches pane beside the graph listing local branches, remotes, tags and stashes with inline actions and a toggle that hides remote branches.
+- Settings cog in the header that gathers the repository tools and opens the extension's settings.
+- Getting Started walkthrough, a Learn more entry that opens the shipped guide, a first-use hint above the graph, and a menu button on every commit row.
+
+### Changed
+
+- Save focus mode, target, dimming, pause state, and Show Remote Branches per repository across graph reopening and VS Code restarts; document temporary search and scrolling state.
+- Make fork VSIX packaging repeatable with `pnpm run package:vsix`, and verify upgrades and activation in an isolated VS Code profile.
+- Gate tag publishing on matching fork identity/version and the full validation workflow; publish the same VSIX that passed package checks.
+- Refresh fork installation instructions, shipped features, and remaining work in the README.
+- Cancel superseded repository queries, restore focus after dialogs, and adapt controls to narrow windows.
+- Localize the backend's error messages through `@vscode/l10n`, with Simplified and Traditional Chinese translations.
+- Reuse the workspace repository scan between refreshes until a repository appears or vanishes.
+- Remove the unused pre-RPC activation path and its duplicate configuration module.
+- Share one field style between dialogs and pages, and replace the header's text glyphs with icons.
+- Open the search row on demand from the header or with `/`, give advanced menu items plain-language names, and explain how to undo in the reset, checkout, delete, drop, rebase and force-push dialogs.
+
+### Fixed
+
+- Make uncommitted changes keyboard accessible, restore focus when closing details, count individual untracked files, and remove placeholder commit metadata from the changes row.
+- Resolve staged diff contents to immutable blobs so reopening a file after staging shows the current changes.
+
+- Avoid scanning all loaded commits for every row's keyboard tab stop; keep graph hover updates from rerendering text rows and reuse unchanged graph line paths.
+- Keep explicitly cleared focus cleared after reopening, and save a current-branch fallback when the old target disappears.
+- Merge individual preference updates so focus, column widths, and remote visibility cannot overwrite one another.
+- Keep hidden remote labels readable using the theme's muted text color instead of fading the entire row.
+- Give keyboard column-resize handles localized names and visible focus outlines.
+- Place native select focus outlines outside the dropdown background for clearer contrast in dark themes.
+- Restore saved remote visibility when reopening the graph, preserve it on remote rename, and remove obsolete preferences after remote deletion.
+- Show graph-loading errors with a Retry button instead of empty history or an indefinite loading indicator.
+- Keep detached-HEAD commits and their uncommitted changes visible in the all-branches graph.
+- Ignore superseded graph, branch, and commit-details replies, including stale errors, and cancel obsolete graph reads.
+- Include the webview-bridge regression tests in the extension test suite, with watcher recovery coverage.
+- Clip graph lines to the actual column width so wide graphs cannot overlap commit text.
+
+- Include staged-only submodule pointer changes in the workspace filter.
+- Report a diff that VS Code cannot open instead of leaving the request pending.
+- Keep dialog fields and checkboxes visible on themes whose input and dialog backgrounds match.
+
+[Unreleased]: https://github.com/jcfurey/Branchwise/commits/main

@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    // Contributes the $esbuild and $esbuild-watch problem matchers that tasks.json uses.
+    "connor4312.esbuild-problem-matchers",
+    // Runs and debugs the VS Code test suites of .vscode-test.mjs from the Testing view.
+    "ms-vscode.extension-test-runner"
+  ]
+}

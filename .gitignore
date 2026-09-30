@@ -1,0 +1,19 @@
+# Generated files. oxfmt, oxlint and VS Code's search skip these paths too.
+
+# Dependencies installed by pnpm
+/node_modules/
+
+# Bundles from esbuild.js (out/) and compiled VS Code tests (tests-ext/out/)
+**/out/
+
+# VS Code builds downloaded by the test and benchmark tooling
+/.vscode-test/
+
+# Screenshots, logs, benchmark reports and CPU profiles from the test tooling
+/test-results/
+
+# Packaged extensions
+*.vsix
+
+# Backups left by git mergetool
+*.orig

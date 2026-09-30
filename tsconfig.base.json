@@ -1,0 +1,27 @@
+{
+  // Shared by every TypeScript project. Only settings that differ from TypeScript 7's defaults are
+  // listed: strict checking, ES modules, bundler resolution and a current target come from those.
+  "compilerOptions": {
+    // The extension side sees the language library but no DOM; the webview project adds the DOM.
+    "lib": ["es2024"],
+    "noEmit": true,
+
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // esbuild and Vite compile one file at a time, so type-only imports must say so, and every
+    // file is a module of its own.
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+
+    "skipLibCheck": true,
+
+    "paths": {
+      "@/*": ["./src/*"],
+      "@tests/*": ["./tests/*"]
+    }
+  }
+}

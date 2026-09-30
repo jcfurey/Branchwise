@@ -1,0 +1,119 @@
+# Publishes the extension to the VS Marketplace and Open VSX when a v<version> tag is pushed.
+#
+# A manual run (Actions → publish → Run workflow) is a dry run: it checks the manifest's version
+# as if it were tagged, runs CI, checks the tested package and both registry tokens, and skips
+# the two publish steps.
+name: publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One release at a time; a publish in progress is never cancelled. CI's own group ends in the
+# ref, so the CI run called below never waits for this group.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  identity:
+    name: Release identity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # check-release.cjs uses only Node's built-in modules, so nothing is installed.
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          runtime: node@24
+          install: false
+
+      - name: Choose the tag
+        id: tag
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="v$(node -p "require('./package.json').version")"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check the identity, version, changelog and guides
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: node scripts/check-release.cjs "$TAG"
+
+  # Runs the whole CI workflow from the same commit; it uploads the tested branchwise-vsix.
+  validate:
+    needs: identity
+    uses: ./.github/workflows/ci.yaml
+
+  deploy:
+    name: Publish
+    needs: [identity, validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The environment's required reviewer approves every run, dry runs included.
+    environment: release
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          runtime: node@24
+          cache: true
+          install: false
+
+      # Publish with the locked vsce and ovsx.
+      - name: Install the locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download the tested package
+        uses: actions/download-artifact@v8
+        with:
+          name: branchwise-vsix
+          path: ${{ runner.temp }}/vsix
+
+      - name: Check the packaged identity against the tag
+        env:
+          TAG: ${{ needs.identity.outputs.tag }}
+        run: |
+          manifest="$RUNNER_TEMP/packaged-package.json"
+          unzip -p "$RUNNER_TEMP/vsix/branchwise.vsix" extension/package.json > "$manifest"
+          node scripts/check-release.cjs "$TAG" "$manifest"
+
+      # Both tokens are checked before either registry is written to, so that an expired token
+      # cannot leave a release on one registry only.
+      - name: Verify the VS Marketplace token
+        env:
+          VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+        run: |
+          publisher="$(node -p "require('./package.json').publisher")"
+          pnpm exec vsce verify-pat "$publisher"
+
+      - name: Verify the Open VSX token
+        env:
+          OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
+        run: |
+          publisher="$(node -p "require('./package.json').publisher")"
+          pnpm exec ovsx verify-pat "$publisher"
+
+      - name: Publish to the VS Marketplace
+        if: github.event_name == 'push'
+        env:
+          VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+        run: pnpm exec vsce publish --packagePath "$RUNNER_TEMP/vsix/branchwise.vsix" --skip-duplicate
+
+      - name: Publish to Open VSX
+        if: github.event_name == 'push'
+        env:
+          OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
+        run: pnpm exec ovsx publish "$RUNNER_TEMP/vsix/branchwise.vsix" --skip-duplicate

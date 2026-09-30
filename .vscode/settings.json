@@ -1,0 +1,5 @@
+{
+  // The project builds with esbuild and the package scripts. VS Code's detected tsc tasks would
+  // build tests-ext without the path-alias rewrite that compile-tests adds, so do not offer them.
+  "js/ts.tsc.autoDetect": "off"
+}
