@@ -126,6 +126,49 @@ describe("cancelling an action", () => {
 });
 
 describe("the repository lock", () => {
+  it.each(["success", "failure"])(
+    "keeps an action's lock across reopening and releases it after %s",
+    async (outcome) => {
+      const gate = Promise.withResolvers<void>();
+      vi.mocked(pushBranch).mockReturnValueOnce(gate.promise);
+      const page = legacyPage();
+      const pushing = page.send(push(one, "p"));
+      const signal = latestSignal();
+      page.lifetime.dispose();
+      const reopened = legacyPage();
+
+      try {
+        // A new page can reuse an id without cancelling the old page's request.
+        await reopened.send({ command: "cancelAction", repo: one, requestId: "p" });
+        expect(signal.aborted).toBe(false);
+        await reopened.send(dropTag(one + "/", "blocked"));
+        expect(reopened.postsOf("deleteTag")).toEqual([
+          { command: "deleteTag", status: BUSY, requestId: "blocked", repo: one + "/" }
+        ]);
+        expect(deleteTag).not.toHaveBeenCalled();
+        await reopened.send(dropTag(two, "other"));
+        expect(deleteTag).toHaveBeenCalledOnce();
+      } finally {
+        if (outcome === "success") {
+          gate.resolve();
+        } else {
+          gate.reject(new Error("Push failed"));
+        }
+        await pushing;
+      }
+
+      await reopened.send(dropTag(one, "after"));
+      expect(reopened.postsOf("deleteTag").at(-1)).toEqual({
+        command: "deleteTag",
+        status: null,
+        requestId: "after",
+        repo: one
+      });
+      expect(deleteTag).toHaveBeenCalledTimes(2);
+      reopened.lifetime.dispose();
+    }
+  );
+
   it("answers an action in a missing folder with simple-git's refusal and releases it", async () => {
     const missing = join(root, "missing");
     const page = legacyPage();

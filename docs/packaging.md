@@ -61,16 +61,32 @@ three-platform VS Code UI tests, Linux failure-diagnostic/minimum-version smoke 
 Linux package upgrade/activation test. See [VS Code UI tests](testing.md) for local commands and
 artifacts.
 
-The publish job runs only after validation succeeds, in the `release` environment, whose required
-reviewer approves each run and which holds the `VS_MARKETPLACE_TOKEN` and `OPEN_VSX_TOKEN`
-secrets for the `jcfurey` publisher. It downloads the tested VSIX artifact, checks its embedded
-identity/version against the tag, and checks both tokens with `vsce verify-pat` and
-`ovsx verify-pat` before publishing anything, so an expired token cannot leave a release on one
-registry only. It then passes that file to both registries without rebuilding. Setting up
-publisher accounts and credentials is separate from local packaging.
+The publish job runs only after validation succeeds, in the `release` environment. Configure it
+under **Settings → Environments → release** with a required reviewer and deployment policies for
+the `main` branch and `v*` tags. The reviewer approves dry runs as well as releases. For a repository
+with one maintainer, leave **Prevent self-review** disabled so the maintainer can approve their run.
+
+Create or verify access to the `jcfurey` publisher using the
+[Marketplace publishing instructions](https://code.visualstudio.com/api/working-with-extensions/publishing-extension).
+Add its publishing token as the environment secret `VS_MARKETPLACE_TOKEN`; the workflow reports
+a clear error if it is missing. To add it without putting a token in a shell command or file, run:
+
+```sh
+gh secret set VS_MARKETPLACE_TOKEN --env release
+```
+
+Open VSX is optional. To publish there as well, configure the `jcfurey` namespace and add the
+environment secret `OPEN_VSX_TOKEN`. Without that secret, the workflow publishes only to the VS
+Marketplace. When present, its token must also pass verification before either registry is written.
+
+The job downloads the tested VSIX artifact, checks its embedded identity/version against the tag,
+and verifies the selected registry tokens before publishing that same file without rebuilding.
+Publishing to two registries is not atomic; a later service failure can still leave only one
+published. After resolving the failure, rerun the workflow: both publish commands skip an existing
+version.
 
 Run the workflow manually (**Actions → publish → Run workflow**) for a dry run: it validates and
-tests the manifest's version as if it were tagged, packages it, and verifies both tokens, but
+tests the manifest's version as if it were tagged, packages it, and verifies the selected tokens, but
 never publishes; only a pushed tag does. Third-party actions are pinned to commit SHAs, CI keeps
 UI diagnostics for 14 days and benchmarks and the VSIX for 30, and `actionlint` passes on both
 workflows.

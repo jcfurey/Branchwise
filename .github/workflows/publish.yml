@@ -1,7 +1,7 @@
-# Publishes the extension to the VS Marketplace and Open VSX when a v<version> tag is pushed.
+# Publishes to the VS Marketplace when a v<version> tag is pushed, and to Open VSX when configured.
 #
 # A manual run (Actions → publish → Run workflow) is a dry run: it checks the manifest's version
-# as if it were tagged, runs CI, checks the tested package and both registry tokens, and skips
+# as if it were tagged, runs CI, checks the tested package and selected registry tokens, and skips
 # the two publish steps.
 name: publish
 
@@ -66,6 +66,23 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Check publishing credentials
+        id: registries
+        env:
+          VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+          OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "::error::Add VS_MARKETPLACE_TOKEN to the release environment for publisher jcfurey."
+            exit 1
+          fi
+          if [ -n "$OVSX_PAT" ]; then
+            echo "open_vsx=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "open_vsx=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::OPEN_VSX_TOKEN is not configured; publishing to VS Marketplace only."
+          fi
+
       - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
           runtime: node@24
@@ -90,8 +107,7 @@ jobs:
           unzip -p "$RUNNER_TEMP/vsix/branchwise.vsix" extension/package.json > "$manifest"
           node scripts/check-release.cjs "$TAG" "$manifest"
 
-      # Both tokens are checked before either registry is written to, so that an expired token
-      # cannot leave a release on one registry only.
+      # Check every selected registry's token before publishing the tested package.
       - name: Verify the VS Marketplace token
         env:
           VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
@@ -100,6 +116,7 @@ jobs:
           pnpm exec vsce verify-pat "$publisher"
 
       - name: Verify the Open VSX token
+        if: steps.registries.outputs.open_vsx == 'true'
         env:
           OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
         run: |
@@ -113,7 +130,7 @@ jobs:
         run: pnpm exec vsce publish --packagePath "$RUNNER_TEMP/vsix/branchwise.vsix" --skip-duplicate
 
       - name: Publish to Open VSX
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.registries.outputs.open_vsx == 'true'
         env:
           OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
         run: pnpm exec ovsx publish "$RUNNER_TEMP/vsix/branchwise.vsix" --skip-duplicate

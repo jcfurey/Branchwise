@@ -3,7 +3,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  muteGitRepoWatcher,
+  muteGitRepoWatcher as muteWatcher,
   selectWatchedRepo,
   unmuteGitRepoWatcher,
   watchGitRepo
@@ -80,6 +80,11 @@ function touch(relative = "file", kind: Kind = "changed", base = REPO) {
 const refreshes = () => host.sent.filter(({ name }) => name === "repo.updated");
 
 let lifetime: ReturnType<typeof watchGitRepo>;
+const mutes: string[] = [];
+function muteGitRepoWatcher(repo: string) {
+  mutes.push(repo);
+  muteWatcher(repo);
+}
 beforeEach(() => {
   vi.useFakeTimers();
   host.start = Date.now();
@@ -90,7 +95,13 @@ beforeEach(() => {
   selectWatchedRepo(REPO, "git");
 });
 afterEach(() => {
+  // Test actions must finish too: closing their page no longer ends their mutes.
+  for (const repo of mutes.splice(0)) {
+    unmuteGitRepoWatcher(repo);
+  }
   lifetime.dispose();
+  // Some cases already disposed their lifetime before the simulated action ended.
+  watchGitRepo().dispose();
   vi.useRealTimers();
 });
 
@@ -318,11 +329,16 @@ describe("mutes", () => {
     expect(refreshes()).toEqual([]);
   });
 
-  it("forgets every mute when a lifetime ends", () => {
+  it("keeps an action muted across reopening until it actually ends", () => {
     muteGitRepoWatcher(REPO);
     lifetime.dispose();
     lifetime = watchGitRepo();
     selectWatchedRepo(REPO, "git");
+    touch();
+    settle();
+    expect(refreshes()).toEqual([]);
+    unmuteGitRepoWatcher(REPO);
+    vi.advanceTimersByTime(1500);
     touch();
     settle();
     expect(refreshes()).toHaveLength(1);
