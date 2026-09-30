@@ -81,7 +81,7 @@ beforeEach(async () => {
   vi.useFakeTimers();
 });
 afterEach(() => {
-  // Ending the lifetime also forgets every mute and quiet period.
+  // Every test finishes its actions; ending the lifetime clears their quiet periods.
   lifetime.dispose();
   vi.useRealTimers();
 });

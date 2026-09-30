@@ -124,6 +124,10 @@ type LockScope = "none" | "repository" | "wholeTree";
 /** A repository an exclusive action is changing. */
 type Hold = { repo: string; wholeTree: boolean };
 
+// Actions outlive their graph panel. Every attachment must see their locks until the action
+// settles, including a panel opened while an old panel's push or rebase is still running.
+const held = new Set<Hold>();
+
 /** A running request that the page can stop with its id. */
 type Cancellable = { repo: string; controller: AbortController };
 
@@ -152,6 +156,19 @@ function cancel(running: Map<string | undefined, Cancellable>, repo: string, req
 /** Whether two spellings of a repository path, such as `/repo` and `/repo/`, name one folder. */
 function sameRepository(a: string, b: string) {
   return isRepoWithinPath(a, b) && isRepoWithinPath(b, a);
+}
+
+/**
+ * Whether an exclusive action holds `repo`: the same repository, or one that holds its whole
+ * tree above `repo`. A whole-tree action also waits for every busy repository below its own.
+ */
+function isBlocked(repo: string, wholeTree: boolean) {
+  return [...held].some(
+    (hold) =>
+      sameRepository(hold.repo, repo) ||
+      (hold.wholeTree && isRepoWithinPath(repo, hold.repo)) ||
+      (wholeTree && isRepoWithinPath(hold.repo, repo))
+  );
 }
 
 function scopeOf(action: RepositoryAction): LockScope {
@@ -328,7 +345,6 @@ export function registerMessageHandlers(
 
   /** The repository the page shows, as far as the graph reads know. */
   let shownRepo: string | undefined;
-  const held = new Set<Hold>();
   /** Keyed by request id; a page may send an action with the property present but undefined. */
   const cancellableActions = new Map<string | undefined, Cancellable>();
   const repositoryReads = new Map<string | undefined, Cancellable>();
@@ -350,19 +366,6 @@ export function registerMessageHandlers(
 
   function clientFor(repo: string, signal: AbortSignal) {
     return gitClientFactory(repo, config.gitPath(), signal).getInstance();
-  }
-
-  /**
-   * Whether an exclusive action holds `repo`: the same repository, or one that holds its whole
-   * tree above `repo`. A whole-tree action also waits for every busy repository below its own.
-   */
-  function isBlocked(repo: string, wholeTree: boolean) {
-    return [...held].some(
-      (hold) =>
-        sameRepository(hold.repo, repo) ||
-        (hold.wholeTree && isRepoWithinPath(repo, hold.repo)) ||
-        (wholeTree && isRepoWithinPath(hold.repo, repo))
-    );
   }
 
   function answerAction(request: ActionRequest, status: string | null) {

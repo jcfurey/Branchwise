@@ -16,6 +16,7 @@ import { viewWorkingTreeFile } from "@/backend/actions/workingTree";
 import { loadOperation, loadStashes, loadWorktrees } from "@/backend/queries/repository";
 import { loadWorkingTree } from "@/backend/queries/workingTree";
 import type { RepositoryAction, RestoreBackup, StashDetails } from "@/backend/types";
+import { literalPath } from "@/backend/utils/history";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { runGit } from "@/backend/utils/runGit";
 import { requireBranchName, resolveCommit } from "@/backend/utils/validation";
@@ -158,7 +159,7 @@ export async function runRepositoryAction(
         throw new Error(l10n.t("This file is no longer conflicted. Refresh the graph."));
       }
       if (action.operation === "stage") {
-        await git.raw(["add", "--", action.path]);
+        await git.raw(["add", "--", literalPath(action.path)]);
         return;
       }
       const root = (await git.revparse(["--show-toplevel"])).trim();

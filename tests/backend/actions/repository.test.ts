@@ -331,6 +331,24 @@ describe("operation recovery", () => {
   });
 });
 
+it("stages only the selected conflict when its name contains pathspec patterns", async () => {
+  commit("[ab].txt", "base");
+  commit("a.txt", "unrelated original");
+  read(["checkout", "-b", "other"]);
+  commit("[ab].txt", "other");
+  read(["checkout", "main"]);
+  commit("[ab].txt", "main");
+  expect(() => read(["merge", "other"])).toThrow();
+  fs.writeFileSync(path.join(repo, "[ab].txt"), "resolved");
+  fs.writeFileSync(path.join(repo, "a.txt"), "unrelated unstaged");
+
+  await run({ kind: "conflict", path: "[ab].txt", operation: "stage" });
+
+  expect(read(["diff", "--cached", "--name-only"])).toBe("[ab].txt");
+  expect(read(["diff", "--name-only"])).toBe("a.txt");
+  expect(read(["show", ":a.txt"])).toBe("unrelated original");
+});
+
 describe("interactive rebase", () => {
   it("reorders, rewords, squashes and drops commits without interpreting message text as code", async () => {
     const base = read(["rev-parse", "HEAD"]);

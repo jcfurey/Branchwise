@@ -31,6 +31,11 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ### Fixed
 
+- Keep Git operation locks and watcher mutes when the graph is closed and reopened while an action is still running.
+- Stage only the selected conflicted file when its name contains Git pathspec patterns such as `[ab].txt`.
+- Read every Git log in UTF-8 regardless of the user's output encoding, preserving names and messages in the graph, history, and interactive rebase.
+- Update vulnerable development dependencies and allow Marketplace publishing without Open VSX credentials.
+
 - Keep a repository's saved settings when its folder is only unreachable for now, such as on an offline drive; only a folder that no longer exists loses them. A failure while handling a message from the graph or saving settings is logged instead of going unhandled, a repository path with a trailing slash no longer escapes the lock that keeps two Git actions from running at once, and a file-watcher hiccup no longer fails the graph.
 - A file version or diff that fails to load is tried again the next time it is opened, instead of staying empty until it is closed; opening the same one twice at once runs Git once, a version Git cannot find is empty instead of showing the latest commit when a file in the working tree matches its name, and the focus badge's tooltip shows a branch name containing `$` as written.
 - Configure Upstream selects the current upstream by name and sends nothing when it is unchanged, so an upstream named like the "None" choice is no longer removed. Save in Remotes sends nothing when the default push remote is unchanged, and no longer sends one that names a missing remote; renaming a remote to its own name sends nothing; Add Remote trims the name and URL; and a rebase confirmation starts on Cancel.

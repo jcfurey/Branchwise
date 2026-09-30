@@ -3,10 +3,11 @@ import type { SimpleGit } from "simple-git";
 
 /**
  * Settings pinned for every backend Git process, whatever the user configured, because the
- * parsers expect them: no signature checks in logs, no colour codes, and every untracked file.
+ * parsers expect them: UTF-8 logs, no signature checks, no colour codes, and every untracked file.
  */
 export const PARSED_OUTPUT_CONFIG: string[] = [
   "log.showSignature=false",
+  "i18n.logOutputEncoding=UTF-8",
   "status.showUntrackedFiles=all",
   "color.ui=never",
   "color.branch=never",

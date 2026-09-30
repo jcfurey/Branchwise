@@ -212,8 +212,8 @@ let receiver: { watch: RepoWatch | undefined } | undefined;
 
 /**
  * Start a lifetime in which `selectWatchedRepo` picks the repository to watch. The newest lifetime
- * receives selections. Disposing any lifetime stops selections until the next one starts, forgets
- * every mute, and removes the watchers this lifetime created.
+ * receives selections. Disposing any lifetime stops selections until the next one starts and
+ * removes its watchers. Running actions keep their mutes when the graph is closed and reopened.
  */
 export function watchGitRepo(): vscode.Disposable {
   const lifetime: { watch: RepoWatch | undefined } = { watch: undefined };
@@ -226,7 +226,6 @@ export function watchGitRepo(): vscode.Disposable {
       }
       disposed = true;
       receiver = undefined;
-      runningActions.clear();
       quietUntil.clear();
       lifetime.watch?.dispose();
       lifetime.watch = undefined;

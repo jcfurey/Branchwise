@@ -48,6 +48,7 @@ describe("the settings every process starts with", () => {
   it("are exactly these, in this order", () => {
     expect(PARSED_OUTPUT_CONFIG).toEqual([
       "log.showSignature=false",
+      "i18n.logOutputEncoding=UTF-8",
       "status.showUntrackedFiles=all",
       "color.ui=never",
       "color.branch=never",
@@ -58,11 +59,12 @@ describe("the settings every process starts with", () => {
     ]);
     // Tests strip this prefix from recorded processes, so a change must be deliberate.
     expect(PARSED_OUTPUT_ARGS.join(" ")).toBe(
-      "--no-optional-locks -c log.showSignature=false -c status.showUntrackedFiles=all " +
+      "--no-optional-locks -c log.showSignature=false -c i18n.logOutputEncoding=UTF-8 " +
+        "-c status.showUntrackedFiles=all " +
         "-c color.ui=never -c color.branch=never -c color.diff=never -c color.status=never " +
         "-c color.showBranch=never -c color.grep=never"
     );
-    expect(PARSED_OUTPUT_ARGS).toHaveLength(17);
+    expect(PARSED_OUTPUT_ARGS).toHaveLength(19);
   });
 
   it.skipIf(onWindows)("precede each command", async () => {
