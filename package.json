@@ -43,7 +43,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --project webview --coverage",
     "compile-tests": "tsc -p tests-ext/tsconfig.json && tsc-alias -p tests-ext/tsconfig.json",
-    "test:ext": "pnpm run compile && pnpm run compile-tests && vscode-test",
+    "test:ext": "pnpm run clean && node esbuild.js --production && pnpm run compile-tests && vscode-test",
     "test:ui-harness": "node --test tests-ext/ui/diagnostics.unit.cjs && node esbuild.js --production && pnpm run compile-tests && node scripts/test-ui-harness.cjs",
     "test:lint-rules": "node --test oxlint/webview-text.test.cjs",
     "test:release": "node --test scripts/check-l10n.test.cjs scripts/check-release.test.cjs scripts/markdown-links.test.cjs",
