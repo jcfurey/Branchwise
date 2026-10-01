@@ -8,6 +8,8 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+## [0.9.8] - 2026-10-01
+
 ### Changed
 
 - Replace the icon with a B drawn as a Git graph: a trunk with three commits, and a branch merged back into it for each bowl. The graph's tab icon and the Source Control button use the same B.
