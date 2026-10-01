@@ -16,8 +16,8 @@ function checkRelease(manifest, tag) {
 }
 
 /**
- * The version is written by hand into the changelog and the install instructions, so check that
- * each names the manifest's version: a dated changelog heading, and the VSIX file name.
+ * The version is written by hand into the changelog and the packaging guide, so check that each
+ * names the manifest's version: a dated changelog heading, and the VSIX file name.
  */
 function checkDocuments(version, documents) {
   const escaped = version.replaceAll(".", "\\.");
@@ -46,7 +46,7 @@ if (require.main === module) {
       const read = (file) => readFileSync(path.join(root, file), "utf8");
       checkDocuments(manifest.version, {
         changelog: read("CHANGELOG.md"),
-        guides: { "README.md": read("README.md"), "docs/packaging.md": read("docs/packaging.md") }
+        guides: { "docs/packaging.md": read("docs/packaging.md") }
       });
     }
     process.stdout.write(identity + "\n");

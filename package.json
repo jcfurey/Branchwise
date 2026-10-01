@@ -8,12 +8,18 @@
     "Visualization"
   ],
   "keywords": [
+    "bisect",
     "branch",
+    "cherry-pick",
     "commit",
     "git",
     "graph",
     "history",
-    "log"
+    "log",
+    "rebase",
+    "stash",
+    "submodule",
+    "worktree"
   ],
   "homepage": "https://github.com/jcfurey/Branchwise",
   "bugs": {
@@ -332,6 +338,10 @@
     "onStartupFinished"
   ],
   "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#1f3160",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.125.0"
   },

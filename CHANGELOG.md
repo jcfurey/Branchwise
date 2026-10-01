@@ -1,12 +1,18 @@
 # Changelog
 
-## [Unreleased]
-
 Branchwise was named (neo) Git Graph, `jcfurey.neo-git-graph`, through its 0.9.6 builds. Releases
 0.6.0 and earlier are from [asispts/neo-git-graph](https://github.com/asispts/neo-git-graph);
 see [its changelog](https://github.com/asispts/neo-git-graph/blob/v0.6.0/CHANGELOG.md) for them.
 Branchwise's history up to 0.9.7, including how it replaced the code it inherited, is in
 [jcfurey/neo-git-graph](https://github.com/jcfurey/neo-git-graph).
+
+## [Unreleased]
+
+### Changed
+
+- Replace the icon with a B drawn as a Git graph: a trunk with three commits, and a branch merged back into it for each bowl. The graph's tab icon and the Source Control button use the same B.
+- Rewrite the README around installing from Open VSX, with the features grouped by task, and move building from source to a new contributing guide.
+- Publish releases to Open VSX through trusted publishing, so no Open VSX token needs to be stored, and to the VS Marketplace only when its token is configured. The packaging guide now walks through a release and the one-time setup.
 
 ## [0.9.7] - 2026-09-26
 
@@ -35,7 +41,6 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - Stage only the selected conflicted file when its name contains Git pathspec patterns such as `[ab].txt`.
 - Read every Git log in UTF-8 regardless of the user's output encoding, preserving names and messages in the graph, history, and interactive rebase.
 - Update vulnerable development dependencies and allow Marketplace publishing without Open VSX credentials.
-
 - Keep a repository's saved settings when its folder is only unreachable for now, such as on an offline drive; only a folder that no longer exists loses them. A failure while handling a message from the graph or saving settings is logged instead of going unhandled, a repository path with a trailing slash no longer escapes the lock that keeps two Git actions from running at once, and a file-watcher hiccup no longer fails the graph.
 - A file version or diff that fails to load is tried again the next time it is opened, instead of staying empty until it is closed; opening the same one twice at once runs Git once, a version Git cannot find is empty instead of showing the latest commit when a file in the working tree matches its name, and the focus badge's tooltip shows a branch name containing `$` as written.
 - Configure Upstream selects the current upstream by name and sends nothing when it is unchanged, so an upstream named like the "None" choice is no longer removed. Save in Remotes sends nothing when the default push remote is unchanged, and no longer sends one that names a missing remote; renaming a remote to its own name sends nothing; Add Remote trims the name and URL; and a rebase confirmation starts on Cancel.
@@ -104,7 +109,6 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 ### Added
 
 - Click the Uncommitted Changes row to browse staged, unstaged, untracked, and conflicted files and open their native diff or merge editor.
-
 - Failure-time UI screenshots, DOM snapshots, browser errors, and extension logs, with an automated failure/recovery check and a minimum-version VS Code smoke test in CI.
 - Repeatable backend focus and VS Code interaction benchmarks for large histories, with timing reports and hover CPU profiles in Linux CI.
 - Graph topology and rendering regression coverage for complex merges, partial history, both graph styles, zoom, resizing, and expanded details.
@@ -112,7 +116,6 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - Per-remote graph visibility controls with saved choices, consistent history searches, and automatic reveal when selecting a hidden remote branch.
 - Horizontal scrolling within the Graph column for wide histories, using a scrollbar, trackpad or Shift+mouse wheel.
 - Sticky column headings keep graph scrolling accessible deep in history; selecting a commit reveals its lane, with a **Reveal selected lane** button to return after panning.
-
 - Selectable branch focus with full-colour direct history, muted merged history and gray unrelated commits, plus an option to keep all ancestors bright.
 - Focus branches from their context menus, identify the target with a Focus badge, choose subtle or strong graph dimming, and pause/resume focus without losing the target.
 - Submodule commit comparisons and parent pointer staging/unstaging.
@@ -140,7 +143,6 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 - Make uncommitted changes keyboard accessible, restore focus when closing details, count individual untracked files, and remove placeholder commit metadata from the changes row.
 - Resolve staged diff contents to immutable blobs so reopening a file after staging shows the current changes.
-
 - Avoid scanning all loaded commits for every row's keyboard tab stop; keep graph hover updates from rerendering text rows and reuse unchanged graph line paths.
 - Keep explicitly cleared focus cleared after reopening, and save a current-branch fallback when the old target disappears.
 - Merge individual preference updates so focus, column widths, and remote visibility cannot overwrite one another.
@@ -153,7 +155,6 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - Ignore superseded graph, branch, and commit-details replies, including stale errors, and cancel obsolete graph reads.
 - Include the webview-bridge regression tests in the extension test suite, with watcher recovery coverage.
 - Clip graph lines to the actual column width so wide graphs cannot overlap commit text.
-
 - Include staged-only submodule pointer changes in the workspace filter.
 - Report a diff that VS Code cannot open instead of leaving the request pending.
 - Keep dialog fields and checkboxes visible on themes whose input and dialog backgrounds match.
