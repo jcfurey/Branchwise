@@ -1,11 +1,14 @@
 # Packaging and releases
 
 The checked-in manifest is the source of truth: `jcfurey.branchwise@0.9.7`.
-Keep `publisher` and `name` stable so local VSIX installations upgrade the existing installation.
-When changing metadata, keep the README's [Origins and license](../README.md#origins-and-license)
-section, which credits the projects Branchwise began from; the manifest does not name them.
+Keep `publisher` and `name` stable so that installed copies upgrade in place. When changing
+metadata, keep the README's [Origins and license](../README.md#origins-and-license) section, which
+credits the projects Branchwise began from; the manifest does not name them.
 
-## Build and install
+Branchwise is published to [Open VSX](https://open-vsx.org/extension/jcfurey/branchwise). The
+release workflow can also publish to the VS Marketplace once a token for it is configured.
+
+## Build and install a package
 
 Use Node.js 24 and the pnpm version pinned in `package.json`, which Corepack provides:
 
@@ -16,80 +19,105 @@ pnpm run package:vsix
 code --install-extension ./branchwise-0.9.7.vsix --force
 ```
 
-`package:vsix` validates the extension identity, then invokes VSCE. Its prepublish hook cleans the output,
-runs type and lint checks, and builds the production extension and webview. VSCE uses the manifest
-version in the default filename. For a fixed output name, use:
+`package:vsix` checks the extension identity, then runs vsce. Its prepublish hook cleans the
+output, runs the type and lint checks, and builds the production extension and webview. vsce puts
+the manifest version in the default file name; for a fixed name, use
+`pnpm run package:vsix --out branchwise.vsix`.
 
-```sh
-pnpm run package:vsix --out branchwise.vsix
-```
-
-The extension is bundled, so the VSIX contains runtime assets, translations, documentation, and
-walkthroughs without development dependencies or TypeScript source. Reload an active VS Code window
-after installation. Building and testing do not install into your normal VS Code profile.
+The extension is bundled, so the VSIX holds the runtime assets, translations, the user guide and
+the walkthroughs, without development dependencies or TypeScript source. `.vscodeignore` lists
+exactly what is packaged. Reload an active VS Code window after installing.
 
 ## Verify a package
 
 ```sh
 pnpm run test:release
-pnpm run test:package
-# Or, for a custom filename:
 pnpm run test:package branchwise.vsix
 ```
 
-The package test uses temporary extension, user-data, and repository directories. It installs a
+The package test uses temporary extension, user-data and repository directories. It installs a
 minimal older build of the same extension, installs the new VSIX, and checks that only the new
-version remains listed. It then activates the installed package, checks shipped assets, opens the graph, and opens
-the guide and walkthrough. Temporary directories are removed afterward.
+version remains. It then activates the package, checks the shipped assets, opens the graph, and
+opens the guide and walkthrough. It downloads stable VS Code unless `NGG_VSCODE_PATH` points to a
+VS Code executable. On Linux without a display, run it under `xvfb-run -a`, or set
+`NGG_HEADLESS=1`. It never publishes anything.
 
-It downloads stable VS Code unless `NGG_VSCODE_PATH` points to an existing VS Code executable.
-On Linux without a display, run `xvfb-run -a pnpm run test:package`, or set `NGG_HEADLESS=1` to use
-Electron's headless platform. The test never publishes an extension.
+## Release a version
 
-## Release validation
+1. Choose the version and set it in `package.json`. Move the changelog's **Unreleased** entries
+   under a dated `## [x.y.z] - YYYY-MM-DD` heading, and update the version in the identity line
+   and VSIX file name at the top of this file.
+2. Check that they agree: `pnpm run check:release vx.y.z`.
+3. Merge to `main` and wait for CI to pass.
+4. Tag the merged commit and push the tag:
 
-Update the manifest version and documentation together, then validate locally with:
+   ```sh
+   git tag vx.y.z
+   git push origin vx.y.z
+   ```
 
-```sh
-pnpm run check:release v0.9.7
-```
+5. Approve the run in **Actions → publish** when it waits for the `release` environment.
 
-Pushing a matching `v<version>` tag triggers publishing. The workflow first rejects an unexpected
-publisher/name or mismatched tag. It then calls the CI workflow from that same commit, including
-format, lint, type and localization checks, release-check tests, backend/extension/webview tests,
-three-platform VS Code UI tests, Linux failure-diagnostic/minimum-version smoke checks, and the
-Linux package upgrade/activation test. See [VS Code UI tests](testing.md) for local commands and
-artifacts.
+The [publish workflow](../.github/workflows/publish.yml) first rejects an unexpected publisher or
+name, or a tag that does not match the manifest version, the changelog and this file. It then
+runs the whole [CI workflow](../.github/workflows/ci.yaml) from the tagged commit: formatting,
+lint, type and translation checks, the unit and component tests, the VS Code UI tests on Linux,
+macOS and Windows, the minimum-version check, and the package test. The publish job runs only
+after CI passes. It downloads the VSIX that CI tested, checks its identity against the tag, checks
+any registry tokens, and publishes that same file without rebuilding it.
 
-The publish job runs only after validation succeeds, in the `release` environment. Configure it
-under **Settings → Environments → release** with a required reviewer and deployment policies for
-the `main` branch and `v*` tags. The reviewer approves dry runs as well as releases. For a repository
-with one maintainer, leave **Prevent self-review** disabled so the maintainer can approve their run.
+Publishing to two registries is not atomic, so a failure can leave a version on one of them. Fix
+the cause and run the workflow again for the same tag: both publish commands skip a version that
+is already there.
 
-Create or verify access to the `jcfurey` publisher using the
-[Marketplace publishing instructions](https://code.visualstudio.com/api/working-with-extensions/publishing-extension).
-Add its publishing token as the environment secret `VS_MARKETPLACE_TOKEN`; the workflow reports
-a clear error if it is missing. To add it without putting a token in a shell command or file, run:
+To rehearse a release, run **Actions → publish → Run workflow**. A manual run checks and tests the
+manifest's version as if it were tagged, packages it and checks any tokens, but never publishes.
+
+## One-time setup
+
+### The `release` environment
+
+Create it under **Settings → Environments → New environment**, named `release`:
+
+- Add yourself as a required reviewer. Every run waits for approval, dry runs included. With a
+  single maintainer, leave **Prevent self-review** off so that you can approve your own runs.
+- Under **Deployment branches and tags**, allow the `main` branch and tags matching `v*`.
+
+### Open VSX
+
+The workflow publishes to Open VSX through
+[trusted publishing](https://github.com/eclipse-openvsx/openvsx/tree/main/cli#trusted-publishing):
+the job exchanges its GitHub OIDC token for a publishing token that lasts a few minutes, so no
+long-lived token is stored in GitHub. Sign in to Open VSX as an owner of the `jcfurey` namespace,
+open [Trusted publishers](https://open-vsx.org/user-settings/trusted-publishers), and register a
+GitHub Actions publisher for `jcfurey.branchwise` with the repository `jcfurey/Branchwise`, the
+workflow file `publish.yml`, and the environment `release`. Pinning the environment means only a
+run you approved can publish.
+
+Instead, you can create an [access token](https://open-vsx.org/user-settings/tokens) and store it
+as the `release` environment secret `OPEN_VSX_TOKEN`. When that secret is set, the workflow checks
+it before publishing and uses it in place of trusted publishing.
+
+### VS Marketplace (optional)
+
+Without a token, the workflow skips the VS Marketplace and says so in the run's notices. To
+publish there too, create the `jcfurey` publisher as the
+[publishing guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)
+describes, and store its token as the `release` environment secret `VS_MARKETPLACE_TOKEN`:
 
 ```sh
 gh secret set VS_MARKETPLACE_TOKEN --env release
 ```
 
-Open VSX is optional. To publish there as well, configure the `jcfurey` namespace and add the
-environment secret `OPEN_VSX_TOKEN`. Without that secret, the workflow publishes only to the VS
-Marketplace. When present, its token must also pass verification before either registry is written.
+The workflow then checks the token before publishing anything and publishes the same VSIX to both
+registries.
 
-The job downloads the tested VSIX artifact, checks its embedded identity/version against the tag,
-and verifies the selected registry tokens before publishing that same file without rebuilding.
-Publishing to two registries is not atomic; a later service failure can still leave only one
-published. After resolving the failure, rerun the workflow: both publish commands skip an existing
-version.
+### Repository settings
 
-Run the workflow manually (**Actions → publish → Run workflow**) for a dry run: it validates and
-tests the manifest's version as if it were tagged, packages it, and verifies the selected tokens, but
-never publishes; only a pushed tag does. Third-party actions are pinned to commit SHAs, CI keeps
-UI diagnostics for 14 days and benchmarks and the VSIX for 30, and `actionlint` passes on both
-workflows.
+- Add a ruleset on `main` that requires the checks `lint (24)`, `test (ubuntu-latest)`,
+  `test (macos-latest)` and `test (windows-latest)`.
+- Enable Issues, which the manifest, the README and the issue forms link to.
+- Enable Dependabot alerts and security updates, so that `.github/dependabot.yml` takes effect.
 
-This uses GitHub's [reusable workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows)
-and [workflow artifacts](https://docs.github.com/en/actions/tutorials/store-and-share-data).
+Third-party actions are pinned to commit SHAs, and `actionlint` passes on both workflows. CI keeps
+UI diagnostics for 14 days, and benchmarks and the VSIX for 30.
