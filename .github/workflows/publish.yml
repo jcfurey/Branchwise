@@ -1,8 +1,8 @@
-# Publishes to the VS Marketplace when a v<version> tag is pushed, and to Open VSX when configured.
+# Publishes to Open VSX when a v<version> tag is pushed, and to the VS Marketplace when configured.
 #
 # A manual run (Actions → publish → Run workflow) is a dry run: it checks the manifest's version
-# as if it were tagged, runs CI, checks the tested package and selected registry tokens, and skips
-# the two publish steps.
+# as if it were tagged, runs CI, checks the tested package and any registry tokens, and skips the
+# publish steps.
 name: publish
 
 on:
@@ -63,24 +63,33 @@ jobs:
     timeout-minutes: 20
     # The environment's required reviewer approves every run, dry runs included.
     environment: release
+    permissions:
+      contents: read
+      # Open VSX trusted publishing trades the job's OIDC token for a short-lived publishing token.
+      id-token: write
     steps:
       - uses: actions/checkout@v7
 
-      - name: Check publishing credentials
+      # Open VSX always: with OPEN_VSX_TOKEN when it is set, otherwise through trusted publishing.
+      # The VS Marketplace only when VS_MARKETPLACE_TOKEN is set.
+      - name: Choose the registries
         id: registries
         env:
           VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
           OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
         run: |
-          if [ -z "$VSCE_PAT" ]; then
-            echo "::error::Add VS_MARKETPLACE_TOKEN to the release environment for publisher jcfurey."
-            exit 1
-          fi
           if [ -n "$OVSX_PAT" ]; then
-            echo "open_vsx=true" >> "$GITHUB_OUTPUT"
+            echo "open_vsx_token=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Open VSX: publishing with OPEN_VSX_TOKEN."
           else
-            echo "open_vsx=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::OPEN_VSX_TOKEN is not configured; publishing to VS Marketplace only."
+            echo "open_vsx_token=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Open VSX: publishing through trusted publishing."
+          fi
+          if [ -n "$VSCE_PAT" ]; then
+            echo "marketplace=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "marketplace=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::VS_MARKETPLACE_TOKEN is not configured; skipping the VS Marketplace."
           fi
 
       - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
@@ -107,30 +116,34 @@ jobs:
           unzip -p "$RUNNER_TEMP/vsix/branchwise.vsix" extension/package.json > "$manifest"
           node scripts/check-release.cjs "$TAG" "$manifest"
 
-      # Check every selected registry's token before publishing the tested package.
-      - name: Verify the VS Marketplace token
-        env:
-          VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
-        run: |
-          publisher="$(node -p "require('./package.json').publisher")"
-          pnpm exec vsce verify-pat "$publisher"
-
+      # Check every configured token before publishing the tested package. Trusted publishing has
+      # nothing to check in advance: the registry decides when the publish step asks for a token.
       - name: Verify the Open VSX token
-        if: steps.registries.outputs.open_vsx == 'true'
+        if: steps.registries.outputs.open_vsx_token == 'true'
         env:
           OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
         run: |
           publisher="$(node -p "require('./package.json').publisher")"
           pnpm exec ovsx verify-pat "$publisher"
 
-      - name: Publish to the VS Marketplace
+      - name: Verify the VS Marketplace token
+        if: steps.registries.outputs.marketplace == 'true'
+        env:
+          VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+        run: |
+          publisher="$(node -p "require('./package.json').publisher")"
+          pnpm exec vsce verify-pat "$publisher"
+
+      # A token in OVSX_PAT takes precedence; without one, --trusted-publishing fails clearly
+      # instead of asking for a token.
+      - name: Publish to Open VSX
         if: github.event_name == 'push'
+        env:
+          OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
+        run: pnpm exec ovsx publish "$RUNNER_TEMP/vsix/branchwise.vsix" --skip-duplicate --trusted-publishing
+
+      - name: Publish to the VS Marketplace
+        if: github.event_name == 'push' && steps.registries.outputs.marketplace == 'true'
         env:
           VSCE_PAT: ${{ secrets.VS_MARKETPLACE_TOKEN }}
         run: pnpm exec vsce publish --packagePath "$RUNNER_TEMP/vsix/branchwise.vsix" --skip-duplicate
-
-      - name: Publish to Open VSX
-        if: github.event_name == 'push' && steps.registries.outputs.open_vsx == 'true'
-        env:
-          OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
-        run: pnpm exec ovsx publish "$RUNNER_TEMP/vsix/branchwise.vsix" --skip-duplicate
