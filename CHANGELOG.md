@@ -14,6 +14,9 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - **Graph** and **Reflog** tabs in the header. The reflog becomes a full view of every move of HEAD and the local branches, filtered by ref, operation or text, with each operation coloured, commits that no branch reaches marked and listed on their own, and **Show in Graph**, **Create Recovery Branch**, **Check Out** and **Reset** on each entry. **Recover lost commits (reflog)** opens the tab.
 - A **Statistics** tab: commits, contributors and active days for every branch or one local branch over the last 30 days, 90 days, year or all time, a grid of commits per day over the last year, and each contributor's commits, share and first and last commit, merged through `.mailmap`. **Count lines changed** adds lines added and deleted outside merges. Clicking a contributor searches the graph for their commits.
 - Find repositories cloned inside other repositories, not only submodules, up to `nestedRepoSearchDepth` folders deep (3 by default; 0 turns it off). The Workspace pane becomes a tree that lists submodules and nested repositories under the repository holding them, by their path inside it, and each repository with others under it can be collapsed.
+- Mark commits that no remote has yet with a dot, and commits on a tracked remote branch that are not pulled yet with a ring.
+- Show commit messages with inline and fenced code, bold, italics and links, and link issue and merge request references such as `#12`, `GH-12`, `owner/repo#12` and `!12` to the repository's GitHub or GitLab remote.
+- **Copy Short ID** and **Copy Full ID** buttons in the commit details, and **Copy Short Commit ID** in the commit menu.
 - A **Jump to HEAD** button next to search, highlighted while the checked-out commit is out of sight. Down Arrow in the search box moves into the results.
 
 ### Fixed

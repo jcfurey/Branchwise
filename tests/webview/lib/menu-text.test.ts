@@ -81,7 +81,7 @@ describe("English titles", () => {
         "Merge into Current Branch… | Reset Current Branch to This Commit… | --- | " +
         "Edit commits after this (interactive rebase)… | " +
         "Fold staged changes into this commit (fixup)… | Compare with… | " +
-        "Use as Good Bisect Commit | Use as Bad Bisect Commit | Copy Commit ID"
+        "Use as Good Bisect Commit | Use as Bad Bisect Commit | Copy Commit ID | Copy Short Commit ID"
     );
   });
 

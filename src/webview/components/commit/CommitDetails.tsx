@@ -1,12 +1,16 @@
 import type { ComponentChildren } from "preact";
-import { useEffect, useMemo, useRef } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import type { GitCommitDetails } from "@/backend/types";
+import { abbrevCommit } from "@/backend/utils/string";
 import { FileTree } from "@/webview/components/commit/FileTree";
 import { Icon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
 import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT, TABLE_HEADER_HEIGHT } from "@/webview/constants";
 import { closeCommitDetails } from "@/webview/lib/actions";
+import { copyToClipboard } from "@/webview/lib/actions/clipboard";
+import { CommitMessage, repositoryTracker } from "@/webview/lib/commit-message";
+import { repositoryState } from "@/webview/lib/repository-actions";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 import { getFullDate } from "@/webview/utils/date";
 import { buildFileTree } from "@/webview/utils/fileTree";
@@ -155,6 +159,39 @@ function Author({ name, email }: { name: string; email: string }) {
   );
 }
 
+/** How long a copy button says it copied, in milliseconds. */
+const COPIED_FOR = 1500;
+
+/** A small button that copies `text`, then says so for a moment. */
+function CopyButton({ label, text }: { label: string; text: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) {
+      return;
+    }
+    const timer = setTimeout(() => setCopied(false), COPIED_FOR);
+    return () => clearTimeout(timer);
+  }, [copied]);
+  return (
+    <button
+      type="button"
+      class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
+      title={text}
+      onClick={() => {
+        void copyToClipboard(window.l10n.typeCommitHash, text).then(setCopied);
+      }}
+    >
+      {/* The label keeps its width while it reads "Copied". */}
+      <span class="grid">
+        <span class={`col-start-1 row-start-1 ${copied ? "invisible" : ""}`}>{label}</span>
+        <span class={`col-start-1 row-start-1 ${copied ? "" : "invisible"}`} aria-live="polite">
+          {copied ? window.l10n.copiedToClipboard : ""}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 /** A commit's facts and message beside the tree of the files it changed. */
 export function CommitDetails({ details }: { details: GitCommitDetails | null }) {
   // A new reply for the same commit builds the tree again; the tree keeps its folders by hash.
@@ -176,14 +213,21 @@ export function CommitDetails({ details }: { details: GitCommitDetails | null })
     <DetailsRow>
       <div class="flex h-full">
         <div class="w-9/20 shrink-0 overflow-auto border-x border-line p-2.5 select-text">
-          <Fact template={l10n.detailCommit}>{details.hash}</Fact>
+          {/* The buttons stay in view when a narrow panel cuts the ID short. */}
+          <div class="flex items-center">
+            <div class="min-w-0">
+              <Fact template={l10n.detailCommit}>{details.hash}</Fact>
+            </div>
+            <CopyButton label={l10n.copyCommitHashShort} text={abbrevCommit(details.hash)} />
+            <CopyButton label={l10n.copyCommitHashFull} text={details.hash} />
+          </div>
           <Fact template={l10n.detailParents}>{details.parents.join(", ")}</Fact>
           <Fact template={l10n.detailAuthor}>
             <Author name={details.author} email={details.email} />
           </Fact>
           <Fact template={l10n.detailDate}>{getFullDate(details.date)}</Fact>
           <Fact template={l10n.detailCommitter}>{details.committer}</Fact>
-          <p class="mt-4 break-words whitespace-pre-wrap">{details.body}</p>
+          <CommitMessage body={details.body} tracker={repositoryTracker(repositoryState.value)} />
         </div>
         <div class="mr-8 min-w-0 flex-1 overflow-x-hidden overflow-y-scroll border-r border-line py-1">
           <FileTree nodes={nodes} commitHash={details.hash} />

@@ -5,7 +5,7 @@ import { useCallback, useMemo, useRef } from "preact/hooks";
 import type { HistoryEntry } from "@/backend/types";
 import { CommitDetails } from "@/webview/components/commit/CommitDetails";
 import { CommitGraph } from "@/webview/components/commit/CommitGraph";
-import { CommitRow } from "@/webview/components/commit/CommitRow";
+import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
 import { type ColumnResize, useColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useGraphScroll } from "@/webview/components/commit/useGraphScroll";
 import { WorkingTreeDetails } from "@/webview/components/commit/WorkingTreeDetails";
@@ -34,6 +34,8 @@ type CommitTableProps = {
   headBranch: string | null;
   /** The focused branch's history, split into its first-parent line and what was merged in. */
   focus?: { direct: Array<string>; merged: Array<string> } | null;
+  /** Commits only on this computer and commits only on a remote, or `null` when not known. */
+  pushStatus?: { unpushed: Array<string>; unpulled: Array<string> } | null;
   keepMergedBright?: boolean;
   dimming?: FocusDimming;
 };
@@ -113,9 +115,16 @@ export function CommitTable({
   head,
   headBranch,
   focus = null,
+  pushStatus = null,
   keepMergedBright = false,
   dimming = "subtle"
 }: CommitTableProps) {
+  const pushOf = useMemo(() => {
+    const status = new Map<string, PushState>();
+    pushStatus?.unpushed.forEach((hash) => status.set(hash, "unpushed"));
+    pushStatus?.unpulled.forEach((hash) => status.set(hash, "unpulled"));
+    return status;
+  }, [pushStatus]);
   const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);
   const relations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
   const { rowOf, messages } = useMemo(() => indexRows(commits), [commits]);
@@ -286,6 +295,7 @@ export function CommitTable({
                 relation={relations[index] ?? "normal"}
                 keepMergedBright={keepMergedBright}
                 dimming={dimming}
+                push={pushOf.get(commit.hash)}
                 expanded={index === expandedRow}
                 onSelect={toggles.get(commit.hash)}
                 onRevealLane={onRevealLane}

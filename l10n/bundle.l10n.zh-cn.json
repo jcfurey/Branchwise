@@ -542,5 +542,11 @@
   "Show the repositories inside {0}": "显示 {0} 内的仓库",
   "Hide the repositories inside {0}": "隐藏 {0} 内的仓库",
   "submodule": "子模块",
-  "nested": "嵌套"
+  "nested": "嵌套",
+  "Copy Short Commit ID": "复制短提交 ID",
+  "Copy Short ID": "复制短 ID",
+  "Copy Full ID": "复制完整 ID",
+  "Copied": "已复制",
+  "Not pushed: no remote branch has this commit yet": "未推送：尚无远程分支包含此提交",
+  "Not pulled: only the tracked remote branch has this commit": "未拉取：仅跟踪的远程分支包含此提交"
 }

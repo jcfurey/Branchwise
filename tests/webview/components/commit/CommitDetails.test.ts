@@ -15,7 +15,9 @@ import {
 
 import type { GitCommitDetails } from "@/backend/types";
 import { CommitDetails, DetailsRow } from "@/webview/components/commit/CommitDetails";
-import { commitDetails, expandedCommit } from "@/webview/lib/stores";
+import { repositoryState } from "@/webview/lib/repository-actions";
+import { rpcClient } from "@/webview/lib/rpc/rpc-client";
+import { commitDetails, dialog, expandedCommit } from "@/webview/lib/stores";
 import { buildFileTree } from "@/webview/utils/fileTree";
 
 import {
@@ -358,5 +360,60 @@ describe("commit facts", () => {
 
     drawUnderOwner(h(CommitDetails, { details: sample({ fileChanges: oneChange() }) }));
     expect(build).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("copying the commit ID", () => {
+  const copyButtons = () =>
+    [...detailsRow().querySelectorAll<HTMLButtonElement>("button")].filter((button) =>
+      button.textContent?.startsWith("copy")
+    );
+
+  it("copies the short or the full ID, and says so only once copied", async () => {
+    const request = vi.spyOn(rpcClient, "request").mockResolvedValueOnce(true);
+    drawUnderOwner(h(CommitDetails, { details: sample() }));
+    const [short, full] = copyButtons();
+    expect(short!.textContent).toBe("copyCommitHashShort");
+    expect(full!.textContent).toBe("copyCommitHashFull");
+    expect(full!.title).toBe("c".repeat(40));
+
+    await act(async () => short!.click());
+    expect(request).toHaveBeenLastCalledWith("clipboard.copy", "c".repeat(8));
+    await vi.waitFor(() =>
+      expect(short!.querySelector("[aria-live]")!.textContent).toBe("copiedToClipboard")
+    );
+
+    request.mockResolvedValueOnce(false);
+    await act(async () => full!.click());
+    expect(request).toHaveBeenLastCalledWith("clipboard.copy", "c".repeat(40));
+    // A refused copy shows its error instead.
+    await vi.waitFor(() => expect(dialog.value).not.toBeNull());
+    expect(full!.querySelector("[aria-live]")!.textContent).toBe("");
+    dialog.value = null;
+  });
+});
+
+describe("the message", () => {
+  afterEach(() => {
+    repositoryState.value = null;
+  });
+
+  it("links issue references to the repository's GitHub remote", () => {
+    repositoryState.value = {
+      remotes: [{ name: "origin", fetchUrls: ["git@github.com:o/r.git"], pushUrls: [] }],
+      pushDefault: null,
+      branches: [],
+      remoteBranches: [],
+      tags: [],
+      worktrees: [],
+      head: "main",
+      operation: null,
+      conflicts: []
+    };
+    drawUnderOwner(h(CommitDetails, { details: sample({ body: "Fix `x` (#7)" }) }));
+    const link = detailsRow().querySelector("a[href*='issues']")!;
+    expect(link.textContent).toBe("#7");
+    expect(link.getAttribute("href")).toBe("https://github.com/o/r/issues/7");
+    expect(detailsRow().querySelector("code")!.textContent).toBe("x");
   });
 });

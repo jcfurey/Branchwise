@@ -8,6 +8,7 @@ import type { SimpleGit } from "simple-git";
 import { loadBisect } from "@/backend/queries/bisect";
 import { loadBranchFocus } from "@/backend/queries/branchFocus";
 import { historyQuery } from "@/backend/queries/history";
+import { loadPushStatus } from "@/backend/queries/pushStatus";
 import {
   loadSyncPlan,
   loadUpstreamPlan,
@@ -245,6 +246,8 @@ export async function repositoryQuery(
       return { kind: "workingTree", files: await loadWorkingTree(git) };
     case "branchFocus":
       return { kind: "branchFocus", ...(await loadBranchFocus(git, query.branch, query.hashes)) };
+    case "pushStatus":
+      return { kind: "pushStatus", ...(await loadPushStatus(git)) };
     case "bisect":
       return {
         kind: "bisect",
