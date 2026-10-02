@@ -37,12 +37,13 @@ beforeEach(() => {
   scan.stored.clear();
 });
 
-test("asks for repositories with the configured Git and whole search depth", async () => {
+test("asks for repositories with the configured Git and whole search depths", async () => {
   scan.stored.set("branchwise.maxDepthOfRepoSearch", 2.5);
+  scan.stored.set("branchwise.nestedRepoSearchDepth", 1.5);
   scan.stored.set("git.path", customGit);
   scan.listRepos.mockResolvedValue([]);
   await scanRepos();
-  expect(scan.listRepos).toHaveBeenCalledExactlyOnceWith(customGit, 2);
+  expect(scan.listRepos).toHaveBeenCalledExactlyOnceWith(customGit, 2, 1);
   expect(scan.info).toHaveBeenCalledExactlyOnceWith(
     `Repository scan completed: 0 found; Git binary: ${customGit}`
   );
@@ -51,7 +52,7 @@ test("asks for repositories with the configured Git and whole search depth", asy
 test("logs one line naming the count and the Git binary", async () => {
   scan.listRepos.mockResolvedValue(["/a/one", "/b/two"]);
   await scanRepos();
-  expect(scan.listRepos).toHaveBeenCalledExactlyOnceWith("git", 0);
+  expect(scan.listRepos).toHaveBeenCalledExactlyOnceWith("git", 0, 3);
   expect(scan.info).toHaveBeenCalledExactlyOnceWith(
     "Repository scan completed: 2 found; Git binary: git"
   );

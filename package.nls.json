@@ -19,6 +19,7 @@
   "config.initialLoadCommits": "The number of commits loaded when the graph first shows a repository or a branch.",
   "config.loadMoreCommits": "The number of further commits loaded each time the Load Older Commits button is pressed. The button appears below the last commit only while the repository has more commits.",
   "config.maxDepthOfRepoSearch": "How many levels of subfolders below each workspace folder are searched for Git repositories. With 0, only the workspace folders themselves are checked (a folder inside a repository finds that repository). Initialized submodules of the repositories found are always listed.",
+  "config.nestedRepoSearchDepth": "How many levels of subfolders inside each repository found are searched for repositories cloned there, which the Workspace pane lists under it. Hidden folders and node_modules are skipped. With 0, repositories inside other repositories are only found as submodules.",
   "config.showCurrentBranchByDefault": "Show the current branch by default when Branchwise is opened. Default: false (show all branches)",
   "config.showUncommittedChanges": "Show a row at the top of the graph for uncommitted changes. Turning this off skips the scan of the working tree, which makes loading faster in large repositories.",
   "config.tabIconColourTheme": "Specifies the colour theme of the icon displayed on the Branchwise tab.",

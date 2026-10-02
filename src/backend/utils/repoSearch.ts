@@ -1,5 +1,5 @@
 import type { Dirent } from "node:fs";
-import { readdir, stat } from "node:fs/promises";
+import { lstat, readdir, stat } from "node:fs/promises";
 
 import { getSubmodulePaths, workTreeRoot } from "@/backend/utils/git";
 import { evalPromises } from "@/backend/utils/promise";
@@ -8,7 +8,13 @@ import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 /** Sibling folders searched at once below each directory. */
 const SIBLINGS_IN_FLIGHT = 2;
 
-type Search = { gitPath: string; known: string[] };
+/**
+ * Folders inside a work tree that the search for nested repositories never enters: dependency
+ * stores, and hidden folders such as `.git`, `.venv` or `.cache`.
+ */
+const NOT_NESTED = new Set(["node_modules", "bower_components"]);
+
+type Search = { gitPath: string; known: string[]; nestedDepth: number };
 
 /**
  * The repositories at or below `directory`, looking `maxDepth` levels down. A directory inside a
@@ -17,15 +23,22 @@ type Search = { gitPath: string; known: string[] };
  * skipping `.git`. Directories at or inside a known repository are skipped without running Git,
  * and results equal to a known repository are dropped. Each path is listed once, where it is
  * first found. Git and file-system failures only mean fewer results.
+ *
+ * With `nestedDepth` above 0, each work tree found is also searched `nestedDepth` levels down for
+ * standalone repositories cloned inside it, which are listed after it with their own submodules
+ * and nested repositories. Only folders holding a `.git` folder count, so worktrees and
+ * submodules, which hold a `.git` file, are not found this way. That search runs no Git process
+ * for the folders it passes, does not follow symlinks, and skips hidden folders and `NOT_NESTED`.
  */
 export async function searchDirectoryForRepos(
   directory: string,
   maxDepth: number,
   gitPath: string,
-  knownRepoPaths: string[]
+  knownRepoPaths: string[],
+  nestedDepth = 0
 ): Promise<string[]> {
   const known = knownRepoPaths.map(normalizeRepoPath);
-  const found = await searchFrom(directory, maxDepth, { gitPath, known });
+  const found = await searchFrom(directory, maxDepth, { gitPath, known, nestedDepth });
   // A symlink, or a loop of them, can reach the same repository more than once.
   return [...new Set(found)];
 }
@@ -37,9 +50,7 @@ async function searchFrom(directory: string, depth: number, search: Search): Pro
   }
   const root = await workTreeRoot(folder, search.gitPath);
   if (root !== null) {
-    const top = normalizeRepoPath(root);
-    const submodules = (await getSubmodulePaths(top, search.gitPath)).map(normalizeRepoPath);
-    return [top, ...submodules].filter((repo) => !search.known.includes(repo));
+    return workTree(normalizeRepoPath(root), search);
   }
   if (depth <= 0) {
     return [];
@@ -49,6 +60,57 @@ async function searchFrom(directory: string, depth: number, search: Search): Pro
     searchFrom(child, depth - 1, search)
   );
   return results.flat();
+}
+
+/** The work tree `top`, its submodules and the repositories nested in it, except known ones. */
+async function workTree(top: string, search: Search): Promise<string[]> {
+  const [submodules, nested] = await Promise.all([
+    getSubmodulePaths(top, search.gitPath),
+    searchNested(top, search.nestedDepth, search)
+  ]);
+  return [top, ...submodules.map(normalizeRepoPath), ...nested].filter(
+    (repo) => !search.known.includes(repo)
+  );
+}
+
+/** The repositories cloned inside the work tree folder `folder`, `depth` levels down. */
+async function searchNested(folder: string, depth: number, search: Search): Promise<string[]> {
+  if (depth <= 0) {
+    return [];
+  }
+  let entries: Dirent[];
+  try {
+    entries = await readdir(folder, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const children = entries
+    .filter(
+      (entry) => entry.isDirectory() && !entry.name.startsWith(".") && !NOT_NESTED.has(entry.name)
+    )
+    .map((entry) => `${folder}/${entry.name}`);
+  const results = await evalPromises(children, SIBLINGS_IN_FLIGHT, async (child) =>
+    (await isOwnWorkTree(child, search.gitPath))
+      ? workTree(normalizeRepoPath(child), search)
+      : searchNested(child, depth - 1, search)
+  );
+  return results.flat();
+}
+
+/**
+ * Whether `folder` holds a `.git` folder that Git takes for its own repository. A stray or broken
+ * `.git` folder leads Git to an enclosing work tree instead, and the search carries on below it.
+ */
+async function isOwnWorkTree(folder: string, gitPath: string): Promise<boolean> {
+  const holdsGitFolder = await lstat(`${folder}/.git`).then(
+    (entry) => entry.isDirectory(),
+    () => false
+  );
+  if (!holdsGitFolder) {
+    return false;
+  }
+  const root = await workTreeRoot(folder, gitPath);
+  return root !== null && normalizeRepoPath(root) === normalizeRepoPath(folder);
 }
 
 /** The directories inside `folder` in listing order, symlinks resolved, or none if unreadable. */

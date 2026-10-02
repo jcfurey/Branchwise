@@ -4,7 +4,7 @@ import type { SimpleGit } from "simple-git";
 
 import { gitClientFactory } from "@/backend/gitClient";
 import type { WorkspaceEntry } from "@/backend/types";
-import { normalizeRepoPath } from "@/backend/utils/repoPath";
+import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 
 export async function submoduleLinks(git: SimpleGit) {
   const [index, tree] = await Promise.all([
@@ -26,7 +26,11 @@ export async function submoduleLinks(git: SimpleGit) {
   });
 }
 
-/** Bound concurrency keeps a workspace with many submodules responsive. */
+/**
+ * The repositories `repos`, their submodules and their submodules' submodules, each with its
+ * parent: the superproject of a submodule, otherwise the innermost listed repository holding it.
+ * Bound concurrency keeps a workspace with many submodules responsive.
+ */
 export async function loadWorkspace(
   repos: string[],
   binary: string,
@@ -108,11 +112,33 @@ export async function loadWorkspace(
       }
     }
   }
-  return [...entries.values()]
-    .map((entry) =>
-      Object.assign(entry, parents.get(entry.path), {
-        error: !entry.initialized && parents.has(entry.path) ? null : entry.error
-      })
-    )
-    .toSorted((a, b) => a.path.localeCompare(b.path));
+  const list = [...entries.values()].map((entry) =>
+    Object.assign(entry, parents.get(entry.path), {
+      error: !entry.initialized && parents.has(entry.path) ? null : entry.error
+    })
+  );
+  // A repository cloned inside another one, rather than added as its submodule, goes under the
+  // nearest repository whose folder holds it.
+  const paths = list.map((entry) => entry.path);
+  for (const entry of list) {
+    if (entry.parent === null) {
+      entry.parent = enclosingRepo(entry.path, paths);
+    }
+  }
+  return list.toSorted((a, b) => a.path.localeCompare(b.path));
+}
+
+/** The innermost of `repos` whose folder holds `repo`, or null. */
+function enclosingRepo(repo: string, repos: string[]): string | null {
+  let best: string | null = null;
+  for (const candidate of repos) {
+    if (
+      candidate !== repo &&
+      isRepoWithinPath(repo, candidate) &&
+      (best === null || candidate.length > best.length)
+    ) {
+      best = candidate;
+    }
+  }
+  return best;
 }

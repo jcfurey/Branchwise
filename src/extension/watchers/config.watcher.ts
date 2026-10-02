@@ -5,7 +5,11 @@ import { rpcNotify } from "@/extension/rpc/rpc-notify";
 import { logger } from "@/extension/util/logger";
 
 /** Settings that decide which repositories the workspace scan finds. */
-const REPO_SEARCH_SETTINGS = ["git.path", "branchwise.maxDepthOfRepoSearch"];
+const REPO_SEARCH_SETTINGS = [
+  "git.path",
+  "branchwise.maxDepthOfRepoSearch",
+  "branchwise.nestedRepoSearchDepth"
+];
 
 /**
  * Tell the graph when settings change: a new repository search asks it to scan again, and any

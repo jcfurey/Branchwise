@@ -498,7 +498,11 @@ export function registerMessageHandlers(
   /** The picker's repositories, with the one the page asks from first when the scan missed it. */
   async function workspaceRepos(current: string) {
     await repoManager.pruneMissing();
-    const listed = await listRepos(config.gitPath(), config.maxDepthOfRepoSearch());
+    const listed = await listRepos(
+      config.gitPath(),
+      config.maxDepthOfRepoSearch(),
+      config.nestedRepoSearchDepth()
+    );
     return listed.includes(current) ? listed : [current, ...listed];
   }
 

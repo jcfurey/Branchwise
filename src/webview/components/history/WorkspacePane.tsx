@@ -1,10 +1,11 @@
+import type { VNode } from "preact";
 import { useState } from "preact/hooks";
 
 import type { RepositoryAction, WorkspaceEntry } from "@/backend/types";
 import { openSubmodule, openWorkspaceSync } from "@/webview/components/history/WorkflowTools";
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
-import { KebabIcon } from "@/webview/components/ui/Icons";
+import { ChevronDownIcon, KebabIcon } from "@/webview/components/ui/Icons";
 import { INPUT_CLASS } from "@/webview/components/ui/Input";
 import { openContextMenu, selectRepo } from "@/webview/lib/actions";
 import { confirmRepositoryAction, repositoryRevision } from "@/webview/lib/repository-actions";
@@ -59,19 +60,59 @@ function submoduleAction(entry: WorkspaceEntry, operation: "initialize" | "sync"
   );
 }
 
-function RepoRow({ entry, depth }: { entry: WorkspaceEntry; depth: number }) {
+/** A submodule by its path in the superproject, a nested repository by its path in its parent. */
+function rowLabel(entry: WorkspaceEntry, parent: WorkspaceEntry | undefined) {
+  if (entry.submodulePath) {
+    return entry.submodulePath;
+  }
+  if (parent && entry.path.startsWith(parent.path + "/")) {
+    return entry.path.slice(parent.path.length + 1);
+  }
+  return entry.path.split("/").at(-1) || entry.path;
+}
+
+function RepoRow({
+  entry,
+  parent,
+  depth,
+  expanded,
+  onToggle
+}: {
+  entry: WorkspaceEntry;
+  parent: WorkspaceEntry | undefined;
+  depth: number;
+  /** Undefined for a repository without rows below it. */
+  expanded: boolean | undefined;
+  onToggle: () => void;
+}) {
   const mismatch = entry.recorded !== null && entry.head !== entry.recorded;
   const staged = entry.recorded !== entry.committed;
-  const label = entry.submodulePath ?? entry.path.split("/").at(-1) ?? entry.path;
+  const label = rowLabel(entry, parent);
   return (
     <div
       class={
         "border-b border-line-soft px-2 py-2 " +
         (entry.path === selectedRepo.value ? "bg-row-head" : "hover:bg-row-hover")
       }
-      style={{ paddingLeft: 8 + Math.min(depth, 8) * 12 }}
+      style={{ paddingLeft: 4 + Math.min(depth, 8) * 16 }}
     >
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1">
+        {expanded === undefined ? (
+          <span class="size-5 shrink-0" />
+        ) : (
+          <button
+            type="button"
+            class="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded hover:bg-btn-hover focus:outline-1 focus:outline-focus"
+            aria-expanded={expanded}
+            aria-label={(expanded
+              ? window.l10n.collapseRepository
+              : window.l10n.expandRepository
+            ).replace("{0}", label)}
+            onClick={onToggle}
+          >
+            <ChevronDownIcon class={`size-3.5 ${expanded ? "" : "-rotate-90"}`} />
+          </button>
+        )}
         <button
           class="min-w-0 flex-1 cursor-pointer truncate text-left font-medium disabled:cursor-default"
           disabled={!entry.initialized}
@@ -80,6 +121,11 @@ function RepoRow({ entry, depth }: { entry: WorkspaceEntry; depth: number }) {
         >
           {label}
         </button>
+        {parent && (
+          <span class="shrink-0 text-xs text-muted">
+            {entry.submodulePath ? window.l10n.submoduleTag : window.l10n.nestedRepoTag}
+          </span>
+        )}
         {entry.submodulePath && (
           <button
             class="flex cursor-pointer items-center rounded px-1.5 py-1 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
@@ -108,13 +154,13 @@ function RepoRow({ entry, depth }: { entry: WorkspaceEntry; depth: number }) {
           </button>
         )}
       </div>
-      <p class="mt-1 truncate text-xs text-muted">
+      <p class="mt-1 truncate pl-6 text-xs text-muted">
         {entry.initialized
           ? entry.branch || `${window.l10n.detachedHead} ${entry.head?.slice(0, 8) ?? ""}`
           : window.l10n.submoduleUninitialized}
       </p>
       {entry.initialized && (
-        <div class="mt-1 flex flex-wrap gap-x-2 text-xs">
+        <div class="mt-1 flex flex-wrap gap-x-2 pl-6 text-xs">
           <span class={entry.dirty ? "text-git-modified" : "text-muted"}>
             {window.l10n.dirtyFiles.replace("{0}", String(entry.dirty))}
           </span>
@@ -132,7 +178,7 @@ function RepoRow({ entry, depth }: { entry: WorkspaceEntry; depth: number }) {
       )}
       {mismatch && (
         <button
-          class="mt-1 cursor-pointer text-left text-xs text-git-modified hover:underline"
+          class="mt-1 ml-6 cursor-pointer text-left text-xs text-git-modified hover:underline"
           disabled={!entry.initialized}
           onClick={() => openSubmodule(entry)}
           title={window.l10n.indexRevision.replace("{0}", entry.recorded ?? "")}
@@ -142,7 +188,7 @@ function RepoRow({ entry, depth }: { entry: WorkspaceEntry; depth: number }) {
       )}
       {staged && entry.submodulePath && (
         <button
-          class="mt-1 cursor-pointer text-left text-xs text-git-added hover:underline"
+          class="mt-1 ml-6 cursor-pointer text-left text-xs text-git-added hover:underline"
           disabled={!entry.initialized}
           onClick={() => openSubmodule(entry, true)}
           title={window.l10n.parentRevision.replace("{0}", entry.committed ?? "∅")}
@@ -150,7 +196,7 @@ function RepoRow({ entry, depth }: { entry: WorkspaceEntry; depth: number }) {
           {window.l10n.submoduleStaged}
         </button>
       )}
-      {entry.error && <p class="mt-1 break-words text-xs text-git-deleted">{entry.error}</p>}
+      {entry.error && <p class="mt-1 break-words pl-6 text-xs text-git-deleted">{entry.error}</p>}
     </div>
   );
 }
@@ -158,6 +204,7 @@ function RepoRow({ entry, depth }: { entry: WorkspaceEntry; depth: number }) {
 export function WorkspacePane() {
   const [filter, setFilter] = useState("");
   const [onlyChanged, setOnlyChanged] = useState(false);
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const query = useRepositoryQuery<"workspace">({ kind: "workspace" });
   const entries = query.data?.entries ?? [];
   const byPath = new Map(entries.map((entry) => [entry.path, entry]));
@@ -174,15 +221,42 @@ export function WorkspacePane() {
       }
     }
   }
-  function depth(entry: WorkspaceEntry) {
-    let n = 0;
-    let cursor = entry;
-    while (cursor.parent && byPath.has(cursor.parent) && n < 20) {
-      n++;
-      cursor = byPath.get(cursor.parent)!;
-    }
-    return n;
+  // Each listed repository goes under its listed parent; the others start the tree.
+  const children = new Map<string | null, WorkspaceEntry[]>();
+  for (const entry of entries.filter((item) => visible.has(item.path))) {
+    const parent = entry.parent !== null && byPath.has(entry.parent) ? entry.parent : null;
+    children.set(parent, [...(children.get(parent) ?? []), entry]);
   }
+  // While filtering, every match shows, whatever was collapsed.
+  const filtering = onlyChanged || filter !== "";
+  const toggle = (repo: string) => {
+    const next = new Set(collapsed);
+    if (!next.delete(repo)) {
+      next.add(repo);
+    }
+    setCollapsed(next);
+  };
+  const rows: VNode[] = [];
+  const addRows = (parent: string | null, depth: number) => {
+    for (const entry of children.get(parent) ?? []) {
+      const below = children.get(entry.path) ?? [];
+      const expanded = below.length === 0 ? undefined : filtering || !collapsed.has(entry.path);
+      rows.push(
+        <RepoRow
+          key={entry.path}
+          entry={entry}
+          parent={parent === null ? undefined : byPath.get(parent)}
+          depth={depth}
+          expanded={expanded}
+          onToggle={() => toggle(entry.path)}
+        />
+      );
+      if (expanded) {
+        addRows(entry.path, depth + 1);
+      }
+    }
+  };
+  addRows(null, 0);
   return (
     <aside
       aria-label={window.l10n.workspaceOverview}
@@ -216,11 +290,7 @@ export function WorkspacePane() {
         <Button onClick={openWorkspaceSync}>{window.l10n.workspaceSync}</Button>
       </div>
       <QueryStatus {...query} />
-      {entries
-        .filter((entry) => visible.has(entry.path))
-        .map((entry) => (
-          <RepoRow key={entry.path} entry={entry} depth={depth(entry)} />
-        ))}
+      {rows}
     </aside>
   );
 }

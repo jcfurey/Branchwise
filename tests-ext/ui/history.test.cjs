@@ -1472,6 +1472,38 @@ suite("Branchwise workflow UI", function () {
     fs.writeFileSync(path.join(artifacts, "workspace.png"), Buffer.from(screenshot.data, "base64"));
   });
 
+  test("lists a repository cloned inside another under it in a collapsible Workspace tree", async () => {
+    const parent = directory();
+    init(parent);
+    commit("f", "outer repository", parent);
+    const inner = path.join(parent, "tools", "inner");
+    fs.mkdirSync(inner, { recursive: true });
+    init(inner);
+    commit("f", "inner repository", inner);
+    await openRepo(parent);
+    if (!(await graph.evaluate('!!document.querySelector("aside")'))) {
+      await button("Workspace");
+    }
+    const innerRow = `document.querySelector('aside button[title=${JSON.stringify(repoKey(inner))}]')`;
+    await until(
+      () => graph.evaluate(`${innerRow}?.textContent === "tools/inner"`),
+      "nested repository listed by its path in the parent"
+    );
+    const toggle = `document.querySelector('aside button[aria-label="Hide the repositories inside ${path.basename(parent)}"]')`;
+    await graph.evaluate(`${toggle}.click()`);
+    await until(() => graph.evaluate(`!${innerRow}`), "nested repository hidden");
+    await graph.evaluate(
+      `document.querySelector('aside button[aria-label="Show the repositories inside ${path.basename(parent)}"]').click()`
+    );
+    await until(() => graph.evaluate(`!!${innerRow}`), "nested repository shown again");
+    await graph.evaluate(`${innerRow}.click()`);
+    await until(
+      () =>
+        graph.evaluate('document.querySelector("tbody").innerText.includes("inner repository")'),
+      "nested repository graph"
+    );
+  });
+
   test("reviews submodule commits and stages only the parent pointer", async () => {
     const child = directory();
     init(child);

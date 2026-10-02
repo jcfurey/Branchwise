@@ -11,7 +11,11 @@ import type { ScanRepoResult } from "@/types";
  */
 export async function scanRepos(): Promise<ScanRepoResult> {
   const gitPath = extConfig.gitPath();
-  const paths = await listRepos(gitPath, extConfig.maxDepthOfRepoSearch());
+  const paths = await listRepos(
+    gitPath,
+    extConfig.maxDepthOfRepoSearch(),
+    extConfig.nestedRepoSearchDepth()
+  );
   logger.info(`Repository scan completed: ${paths.length} found; Git binary: ${gitPath}`);
   return { repos: paths.map((path) => ({ name: basename(path), path })) };
 }

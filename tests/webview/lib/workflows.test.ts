@@ -2,7 +2,7 @@
 
 import { h, render } from "preact";
 import { act } from "preact/test-utils";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RepositoryQueryData, SyncPlan, WorkspaceEntry } from "@/backend/types";
 import { openSubmodule, SyncReview } from "@/webview/components/history/WorkflowTools";
@@ -226,4 +226,62 @@ it("returns keyboard focus to the original control across menu and dialog transi
   closeDialog();
   await Promise.resolve();
   expect(document.activeElement).toBe(anchor);
+});
+
+describe("the Workspace tree", () => {
+  const repo = (path: string, parent: string | null, patch: Partial<WorkspaceEntry> = {}) => ({
+    ...moduleEntry,
+    path,
+    parent,
+    submodulePath: null,
+    recorded: null,
+    committed: null,
+    ...patch
+  });
+  const entries = [
+    repo("/repo", null),
+    repo("/repo/module", "/repo", { submodulePath: "module" }),
+    repo("/repo/tools/cli", "/repo", { dirty: 2 }),
+    repo("/repo/tools/cli/vendor", "/repo/tools/cli"),
+    repo("/other", null)
+  ];
+  const labels = () =>
+    [...container.querySelectorAll<HTMLButtonElement>("button[title]")].map((row) => [
+      row.textContent,
+      row.closest<HTMLElement>("[style]")!.style.paddingLeft
+    ]);
+
+  it("lists nested repositories under their parent by their path in it, and collapses them", () => {
+    act(() => render(h(WorkspacePane, {}), container));
+    respond({ kind: "workspace", entries });
+    expect(labels()).toStrictEqual([
+      ["repo", "4px"],
+      ["module", "20px"],
+      ["tools/cli", "20px"],
+      ["vendor", "36px"],
+      ["other", "4px"]
+    ]);
+    expect(container.textContent).toContain("submoduleTag");
+    expect(container.textContent).toContain("nestedRepoTag");
+    const toggles = container.querySelectorAll<HTMLButtonElement>("button[aria-expanded]");
+    // Only rows with repositories below them can collapse.
+    expect([...toggles].map((toggle) => toggle.getAttribute("aria-label"))).toStrictEqual([
+      "collapseRepository",
+      "collapseRepository"
+    ]);
+    act(() => toggles[0]!.click());
+    expect(labels().map(([label]) => label)).toStrictEqual(["repo", "other"]);
+    expect(toggles[0]!.getAttribute("aria-expanded")).toBe("false");
+    expect(toggles[0]!.getAttribute("aria-label")).toBe("expandRepository");
+    // While filtering, a match inside a collapsed repository still shows, under its parents.
+    act(() => {
+      container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click();
+    });
+    expect(labels().map(([label]) => label)).toStrictEqual(["repo", "tools/cli"]);
+    act(() => {
+      container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click();
+    });
+    act(() => container.querySelector<HTMLButtonElement>("button[aria-expanded]")!.click());
+    expect(labels()).toHaveLength(5);
+  });
 });

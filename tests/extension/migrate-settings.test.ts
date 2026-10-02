@@ -118,12 +118,15 @@ it("reports a failed copy instead of failing activation", async () => {
   );
 });
 
-it("copies every declared setting except the one without an effect", () => {
+it("copies every declared setting except the one without an effect and the new ones", () => {
   const manifest = JSON.parse(
     readFileSync(path.join(__dirname, "..", "..", "package.json"), "utf8")
   ) as { contributes: { configuration: { properties: Record<string, unknown> } } };
   const declared = Object.keys(manifest.contributes.configuration.properties).map((key) =>
     key.replace(/^branchwise\./, "")
   );
-  expect(MIGRATED_SETTINGS).toEqual(declared.filter((key) => key !== "fetchAvatars"));
+  // The old extension never had `nestedRepoSearchDepth`.
+  expect(MIGRATED_SETTINGS).toEqual(
+    declared.filter((key) => key !== "fetchAvatars" && key !== "nestedRepoSearchDepth")
+  );
 });
