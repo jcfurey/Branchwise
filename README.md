@@ -38,8 +38,9 @@ graph's settings cog, next to **Learn more**, which opens the [user guide](docs/
   with rounded or angular lanes in colours you choose.
 - **Commit details:** the full message, the changed files as a tree, and a diff for each file.
   Select the uncommitted changes row to browse staged, unstaged, untracked and conflicted files.
-- **Search all of history** by message, commit ID, author, date or path, follow a file through
-  renames, and save filters for each repository.
+- **Search all of history** by message, commit ID, author, committer, branch or tag name, date
+  or path, typed straight into the search box as `author:`, `tag:` and so on. Follow a file
+  through renames, save filters for each repository, and jump back to HEAD in one click.
 - **Large and wide graphs:** tens of thousands of commits lay out in milliseconds. Resize and
   scroll the graph column; selecting a commit brings its lane into view.
 

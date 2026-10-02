@@ -14,7 +14,7 @@ import { openStashes } from "@/webview/components/repository/StashManager";
 import { openWorktrees } from "@/webview/components/repository/WorktreeManager";
 import { Button } from "@/webview/components/ui/Button";
 import { Dropdown } from "@/webview/components/ui/Dropdown";
-import { GearIcon, RefreshIcon, SearchIcon } from "@/webview/components/ui/Icons";
+import { GearIcon, LocateIcon, RefreshIcon, SearchIcon } from "@/webview/components/ui/Icons";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import {
   openContextMenu,
@@ -26,6 +26,7 @@ import {
   setShowRemoteBranch
 } from "@/webview/lib/actions";
 import { focusSearch } from "@/webview/lib/focus";
+import { jumpToHead, useHeadOutOfSight } from "@/webview/lib/jump-to-head";
 import {
   historyActive,
   refsVisible,
@@ -41,6 +42,7 @@ import { rpcClient } from "@/webview/lib/rpc/rpc-client";
 import {
   branchDisplay,
   branchList,
+  commitHead,
   contextMenu,
   selectedBranch,
   selectedRepo,
@@ -162,6 +164,7 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
   // A filter keeps the search row open even when its own toggle is off.
   const searchOpen = searchVisible.value || historyActive.value;
   const toolsOpen = contextMenu.value?.source === TOOLS_MENU;
+  const headOutOfSight = useHeadOutOfSight();
 
   return (
     <header
@@ -229,6 +232,16 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
           }}
         >
           <SearchIcon class="size-4" />
+        </Button>
+        <Button
+          aria-label={l10n.jumpToHead}
+          title={headOutOfSight ? l10n.jumpToHeadOutOfSight : l10n.jumpToHead}
+          // Stands out while the checked-out commit is off the screen.
+          variant={headOutOfSight ? "primary" : "default"}
+          disabled={noRepo || commitHead.value === null}
+          onClick={jumpToHead}
+        >
+          <LocateIcon class="size-4" />
         </Button>
         <Button onClick={refresh}>
           <RefreshIcon class="size-3.5" />

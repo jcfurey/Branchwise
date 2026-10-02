@@ -48,3 +48,51 @@ it("takes a filter that changes after mount, such as a repository switch", () =>
     "from state"
   );
 });
+
+it("moves typed fields into the filter and shows them under Filters", async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  act(() => render(h(SearchBar, {}), container));
+  const input = container.querySelector<HTMLInputElement>("[data-history-search]")!;
+  act(() => {
+    input.value = 'crash tag:v1 author:"Ann Lee"';
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  act(() => {
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  expect(navigation.historyFilter.value).toMatchObject({
+    text: "crash",
+    tag: "v1",
+    author: "Ann Lee"
+  });
+  expect(input.value).toBe("crash");
+  const fields = new Map(
+    [...container.querySelectorAll("label")].map((label) => [
+      label.textContent,
+      label.querySelector("input")?.value
+    ])
+  );
+  expect(fields.get("historyTag")).toBe("v1");
+  expect(fields.get("historyAuthor")).toBe("Ann Lee");
+});
+
+it("fills the new fields of a saved filter that predates them", () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  act(() => render(h(SearchBar, {}), container));
+  const old = { ...navigation.emptyFilter(), text: "old" } as Record<string, unknown>;
+  for (const key of ["committer", "branch", "tag", "regex"]) {
+    delete old[key];
+  }
+  act(() => navigation.setHistoryFilter(old as never));
+  expect(navigation.historyFilter.value).toMatchObject({
+    text: "old",
+    committer: "",
+    branch: "",
+    tag: "",
+    regex: false
+  });
+});

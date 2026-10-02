@@ -21,7 +21,11 @@ export const emptyFilter = (): HistoryFilter => ({
   until: "",
   path: "",
   revision: "",
-  follow: false
+  follow: false,
+  committer: "",
+  branch: "",
+  tag: "",
+  regex: false
 });
 type SavedFilter = { name: string; filter: HistoryFilter };
 type SavedRepo = {
@@ -145,7 +149,8 @@ export function savedFocusBranch(repo: string) {
 }
 
 export function setHistoryFilter(filter: HistoryFilter) {
-  historyFilter.value = filter;
+  // A filter saved before a field existed lacks it.
+  historyFilter.value = { ...emptyFilter(), ...filter };
   historyOffset.value = 0;
   selectedCommits.value = [];
   focusedCommit.value = null;

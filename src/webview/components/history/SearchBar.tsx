@@ -15,6 +15,7 @@ import {
   savedFilters,
   setHistoryFilter
 } from "@/webview/lib/navigation";
+import { applySearchPrefixes, hasFieldFilters } from "@/webview/lib/search-query";
 
 import { TextField } from "./QueryControls";
 
@@ -35,8 +36,17 @@ export function SearchBar() {
   function update(patch: Partial<HistoryFilter>) {
     setDraft({ ...draft, ...patch });
   }
+  /** Search with the draft, moving any `name:value` in its text into the field it names. */
+  function apply() {
+    const filter = applySearchPrefixes(draft);
+    if (filter !== draft) {
+      setDraft(filter);
+      setExpanded(true);
+    }
+    setHistoryFilter(filter);
+  }
   function save() {
-    setHistoryFilter(draft);
+    apply();
     openFormDialog({
       message: window.l10n.saveFilter,
       inputs: [{ kind: "text", label: window.l10n.filterName, value: savedName }],
@@ -54,7 +64,7 @@ export function SearchBar() {
       class="border-b border-line-soft px-3 py-2 text-ui"
       onSubmit={(event) => {
         event.preventDefault();
-        setHistoryFilter(draft);
+        apply();
       }}
     >
       <div class="flex flex-wrap items-center gap-2">
@@ -66,13 +76,21 @@ export function SearchBar() {
           title={window.l10n.searchHistoryHint}
           value={draft.text}
           onInput={(event) => update({ text: event.currentTarget.value })}
+          onKeyDown={(event) => {
+            // Down moves into the results the search already shows.
+            if (event.key === "ArrowDown" && historyActive.value) {
+              const row = document.querySelector<HTMLElement>("main tr[data-commit-hash]");
+              if (row !== null) {
+                event.preventDefault();
+                row.focus();
+              }
+            }
+          }}
         />
         <Button type="submit">{window.l10n.searchSubmit}</Button>
         <Button aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
           {window.l10n.historyFilters}
-          {[draft.author, draft.path, draft.since, draft.until].filter(Boolean).length > 0
-            ? " •"
-            : ""}
+          {hasFieldFilters(draft) ? " •" : ""}
         </Button>
         {historyActive.value && (
           <Button
@@ -92,6 +110,21 @@ export function SearchBar() {
               label={window.l10n.historyAuthor}
               value={draft.author}
               change={(author) => update({ author })}
+            />
+            <TextField
+              label={window.l10n.historyCommitter}
+              value={draft.committer ?? ""}
+              change={(committer) => update({ committer })}
+            />
+            <TextField
+              label={window.l10n.historyBranch}
+              value={draft.branch ?? ""}
+              change={(branch) => update({ branch })}
+            />
+            <TextField
+              label={window.l10n.historyTag}
+              value={draft.tag ?? ""}
+              change={(tag) => update({ tag })}
             />
             <TextField
               label={window.l10n.historyPath}
@@ -116,6 +149,11 @@ export function SearchBar() {
               label={window.l10n.followRenames}
               checked={draft.follow}
               onInput={(event) => update({ follow: event.currentTarget.checked })}
+            />
+            <Checkbox
+              label={window.l10n.historyRegex}
+              checked={draft.regex === true}
+              onInput={(event) => update({ regex: event.currentTarget.checked })}
             />
             <Button onClick={save}>{window.l10n.saveFilter}</Button>
             <div class="w-48">

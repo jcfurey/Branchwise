@@ -7,6 +7,7 @@ import { CommitTable } from "@/webview/components/commit/CommitTable";
 import { openBatch, openCompare } from "@/webview/components/history/HistoryTools";
 import { PageControls, QueryStatus } from "@/webview/components/history/QueryControls";
 import { Button } from "@/webview/components/ui/Button";
+import { BranchIcon, TagIcon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
 import { Select } from "@/webview/components/ui/Select";
 import {
@@ -18,11 +19,13 @@ import {
 } from "@/webview/lib/actions";
 import { commitMenuHintDismissed, dismissCommitMenuHint } from "@/webview/lib/hints";
 import {
+  emptyFilter,
   historyActive,
   historyFilter,
   historyOffset,
   restoreScroll,
-  selectedCommits
+  selectedCommits,
+  setHistoryFilter
 } from "@/webview/lib/navigation";
 import {
   branchDisplay,
@@ -146,6 +149,35 @@ function FocusBanner({
   );
 }
 
+/**
+ * The branches and tags whose names hold the search text. Each opens the history at the commit
+ * it points to.
+ */
+function MatchingRefs({ refs }: { refs: ReadonlyArray<string> }) {
+  return (
+    <div class={`${BANNER} gap-1.5 py-1.5`}>
+      <span class="mr-1 text-muted">{window.l10n.matchingRefs}</span>
+      {refs.map((ref) => {
+        const tag = ref.startsWith("refs/tags/");
+        const name = ref.replace(/^refs\/(?:heads|tags|remotes)\//, "");
+        const Glyph = tag ? TagIcon : BranchIcon;
+        return (
+          <button
+            key={ref}
+            type="button"
+            title={ref}
+            class="inline-flex max-w-64 cursor-pointer items-center gap-1 rounded-sm border border-line-soft px-1.5 py-0.5 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
+            onClick={() => setHistoryFilter({ ...emptyFilter(), revision: ref })}
+          >
+            <Glyph class="size-3 shrink-0" />
+            <span class="truncate">{name}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function SelectionBar({ selected }: { selected: Array<HistoryEntry> }) {
   const l10n = window.l10n;
   const tooMany = selected.length > BATCH_LIMIT;
@@ -209,6 +241,7 @@ export function GraphView() {
       : null
   );
   const rows = inHistory ? history.data?.page.entries : commitList.value;
+  const matchingRefs = inHistory ? history.data?.page.refs : undefined;
 
   const target = branchFocusTarget.value;
   const focus = useRepositoryQuery<"branchFocus">(
@@ -270,6 +303,9 @@ export function GraphView() {
           <span class="min-w-0 truncate">{historyScope(filter)}</span>
           <span>{l10n.filteredHistoryHint}</span>
         </div>
+      )}
+      {matchingRefs !== undefined && matchingRefs.length > 0 && (
+        <MatchingRefs refs={matchingRefs} />
       )}
       {selected.length > 1 && <SelectionBar selected={selected} />}
       {inHistory && rows.length === 0 && <p class="p-6 text-muted">{l10n.noHistoryMatches}</p>}
