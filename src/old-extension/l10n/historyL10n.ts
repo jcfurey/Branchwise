@@ -5,12 +5,19 @@ export function getHistoryLocalizedStrings() {
     workspaceOverview: vscode.l10n.t("Workspace"),
     repositoryTools: vscode.l10n.t("Repository Tools"),
     historySearch: vscode.l10n.t("Search history"),
-    searchPlaceholder: vscode.l10n.t("Commit message or SHA…"),
+    searchPlaceholder: vscode.l10n.t("Message, commit ID, or author:, tag:, branch:…"),
     searchHistoryHint: vscode.l10n.t(
-      "Searches repository history, including commits beyond the loaded graph."
+      'Searches repository history, including commits beyond the loaded graph. Narrow it with author:, committer:, branch:, tag:, path:, since: or until:, such as tag:v1.2 or author:"Ann Lee".'
     ),
     historyFilters: vscode.l10n.t("Filters"),
     historyAuthor: vscode.l10n.t("Author name or email"),
+    historyCommitter: vscode.l10n.t("Committer name or email"),
+    historyBranch: vscode.l10n.t("Branch name contains"),
+    historyTag: vscode.l10n.t("Tag name contains"),
+    historyRegex: vscode.l10n.t("Regular expressions"),
+    matchingRefs: vscode.l10n.t("Branches and tags:"),
+    jumpToHead: vscode.l10n.t("Jump to HEAD"),
+    jumpToHeadOutOfSight: vscode.l10n.t("Jump to HEAD, which is out of sight"),
     historyPath: vscode.l10n.t("File or folder path"),
     historySince: vscode.l10n.t("From date"),
     historyUntil: vscode.l10n.t("Through date"),

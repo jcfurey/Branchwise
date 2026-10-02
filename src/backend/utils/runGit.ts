@@ -109,6 +109,20 @@ export async function writeBlob(git: SimpleGit, content: Buffer) {
   return (await done).stdout.toString().trim();
 }
 
+/**
+ * Run a read-only Git command that takes its revisions on standard input (`--stdin`). Any number
+ * of them fits there, where the command line is limited to 32,767 characters on Windows.
+ */
+export async function readGitWithInput(git: SimpleGit, args: string[], input: string) {
+  const binary = gitProcessOf(git)?.gitPath ?? "git";
+  // A bare repository has no work tree to run in, so it runs in the Git directory itself.
+  const cwd = await topLevel(git).catch(async () =>
+    (await git.raw(["rev-parse", "--absolute-git-dir"])).replace(/\n$/, "")
+  );
+  const { done } = start(binary, args, cwd, process.env, { input: Buffer.from(input) });
+  return (await done).stdout.toString();
+}
+
 /** A blob's exact bytes, which a string result would corrupt for binary files. */
 export async function readBlob(git: SimpleGit, blob: string): Promise<Buffer> {
   const binary = gitProcessOf(git)?.gitPath ?? "git";

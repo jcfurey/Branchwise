@@ -68,6 +68,7 @@ describe("the toolbar", () => {
       { ...trigger, text: "showAll", title: "*" },
       { ...trigger, text: "filterToBranch", title: "filter" },
       { ...plain, text: "", label: "historySearch", title: "historySearch", expanded: "false" },
+      { ...plain, text: "", label: "jumpToHead", title: "jumpToHead" },
       { ...plain, text: "refresh" },
       { ...plain, text: "fetch" },
       { ...plain, text: "compareSubmit" },
@@ -167,6 +168,7 @@ describe("disabled controls", () => {
     expect(disabledNames()).toEqual([
       "",
       "filterToBranch",
+      "jumpToHead",
       "fetch",
       "compareSubmit",
       "settingsTools"
@@ -190,6 +192,29 @@ describe("disabled controls", () => {
   it("enables everything for a repository with branches", () => {
     mount();
     expect(disabledNames()).toEqual([]);
+  });
+
+  it("keeps Jump to HEAD back without a checked-out commit", () => {
+    stores.commitHead.value = null;
+    mount();
+    expect(disabledNames()).toEqual(["jumpToHead"]);
+  });
+});
+
+describe("Jump to HEAD", () => {
+  it("stands out when the loaded graph does not show HEAD's row, and not while it loads", () => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    });
+    mount();
+    const jump = headerButton("jumpToHead");
+    expect(jump.title).toBe("jumpToHead");
+    act(() => {
+      stores.commitList.value = [commit("other")];
+    });
+    expect(jump.title).toBe("jumpToHeadOutOfSight");
+    expect(jump.className).toContain("bg-action");
   });
 });
 

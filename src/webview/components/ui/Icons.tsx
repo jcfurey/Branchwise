@@ -167,3 +167,14 @@ export function SearchIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** A ring with a dot in its middle and a tick on each side: find where you are. */
+export function LocateIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <circle cx="8" cy="8" r="4.5" />
+      <circle cx="8" cy="8" r="1.25" fill="currentColor" />
+      <path d="M8 1v2M8 13v2M1 8h2M13 8h2" />
+    </Icon>
+  );
+}

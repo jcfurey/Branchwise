@@ -220,3 +220,38 @@ describe("history pages", () => {
     expect(view().querySelector("[role=note]")).toBeNull();
   });
 });
+
+describe("branches and tags matching the search", () => {
+  it("lists them above the results, each opening the history at it", () => {
+    search({ text: "rel", author: "ann" });
+    showGraphView();
+    reply(lastQuery("history"), {
+      data: {
+        kind: "history",
+        page: {
+          entries: chain("found"),
+          more: false,
+          refs: ["refs/tags/release-1", "refs/remotes/origin/release"]
+        }
+      }
+    });
+    const chips = [...view().querySelectorAll<HTMLButtonElement>("button[title^='refs/']")];
+    expect(chips.map((chip) => [chip.textContent, chip.title])).toStrictEqual([
+      ["release-1", "refs/tags/release-1"],
+      ["origin/release", "refs/remotes/origin/release"]
+    ]);
+    act(() => chips[0]!.click());
+    expect(historyFilter.value).toStrictEqual({
+      ...emptyFilter(),
+      revision: "refs/tags/release-1"
+    });
+  });
+
+  it("shows nothing when no names match", () => {
+    search({ text: "rel" });
+    showGraphView();
+    replyWithPage(chain("found"));
+    expect(view().querySelector("button[title^='refs/']")).toBeNull();
+    expect(view().textContent).not.toContain("matchingRefs");
+  });
+});

@@ -24,6 +24,7 @@ import {
   repoFile
 } from "@/backend/utils/history";
 import { remoteVisibility, type RemoteVisibility } from "@/backend/utils/remoteVisibility";
+import { readGitWithInput } from "@/backend/utils/runGit";
 import { resolveCommit } from "@/backend/utils/validation";
 
 const logArgs = (offset: number) => [
@@ -34,6 +35,65 @@ const logArgs = (offset: number) => [
   "--max-count=" + (HISTORY_PAGE_SIZE + 1),
   "--skip=" + pageOffset(offset)
 ];
+
+/** How many matching branch and tag names a search lists above its results. */
+const REF_SUGGESTIONS = 20;
+
+/** A branch, remote branch or tag, by full name, with the commit it points to. */
+type RefTip = { ref: string; name: string; tag: boolean; commit: string };
+
+/**
+ * Every visible branch, remote branch and tag that points to a commit, directly or through
+ * annotated tags. Remote branches follow the graph's remote visibility.
+ */
+async function refTips(git: SimpleGit, visibility: RemoteVisibility): Promise<RefTip[]> {
+  const [output, { excluded }] = await Promise.all([
+    git.raw([
+      "for-each-ref",
+      "--format=%(refname)%00%(objecttype)%00%(objectname)%00%(*objecttype)%00%(*objectname)",
+      "refs/heads/",
+      "refs/tags/",
+      "refs/remotes/"
+    ]),
+    remoteVisibility(git, visibility)
+  ]);
+  const tips: RefTip[] = [];
+  for (const line of output.split("\n")) {
+    const [ref, type, object, peeledType, peeled] = line.split("\0");
+    if (!ref) {
+      continue;
+    }
+    const commit = type === "commit" ? object : peeledType === "commit" ? peeled : undefined;
+    if (commit === undefined) {
+      continue;
+    }
+    const kind = /^refs\/(heads|tags|remotes)\//.exec(ref)?.[1];
+    const name = ref.slice(`refs/${kind}/`.length);
+    if (
+      kind === "remotes" &&
+      (visibility.showRemoteBranches === false || excluded.has(name) || name.endsWith("/HEAD"))
+    ) {
+      continue;
+    }
+    tips.push({ ref, name, tag: kind === "tags", commit: commit! });
+  }
+  return tips;
+}
+
+/** Whether a branch or tag name matches a search field: literal text, or a regular expression. */
+function nameMatcher(pattern: string, regex: boolean): (name: string) => boolean {
+  if (!regex) {
+    const needle = pattern.toLowerCase();
+    return (name) => name.toLowerCase().includes(needle);
+  }
+  let expression: RegExp;
+  try {
+    expression = new RegExp(pattern, "i");
+  } catch {
+    throw new Error(l10n.t("'{0}' is not a valid regular expression.", pattern));
+  }
+  return (name) => expression.test(name);
+}
 
 export async function loadHistory(
   git: SimpleGit,
@@ -61,12 +121,17 @@ export async function loadHistory(
   if (filter.since && filter.until && filter.since > filter.until) {
     throw new Error(l10n.t("The start date must come before the end date."));
   }
-  args.push("--fixed-strings", "--regexp-ignore-case");
+  const regex = filter.regex === true;
+  args.push(regex ? "--extended-regexp" : "--fixed-strings", "--regexp-ignore-case");
   if (filter.author) {
     args.push("--author=" + filter.author);
   }
-  const hashSearch = /^[a-f0-9]{7,64}$/i.test(filter.text.trim())
-    ? await resolveCommit(git, filter.text.trim()).catch(() => null)
+  if (filter.committer) {
+    args.push("--committer=" + filter.committer);
+  }
+  const text = filter.text.trim();
+  const hashSearch = /^[a-f0-9]{7,64}$/i.test(text)
+    ? await resolveCommit(git, text).catch(() => null)
     : null;
   if (filter.text && !hashSearch) {
     args.push("--grep=" + filter.text);
@@ -74,8 +139,38 @@ export async function loadHistory(
   if (filter.path && filter.follow) {
     args.push("--follow", "--name-status", "--diff-merges=first-parent");
   }
+
+  // Branch and tag names: the commits they point to, and names to offer beside the results.
+  const byName = !hashSearch && Boolean(filter.branch || filter.tag);
+  const suggest = !hashSearch && text !== "" && offset === 0;
+  const tips = byName || suggest ? await refTips(git, visibility) : [];
+  let refs: string[] | undefined;
+  if (suggest) {
+    const matches = nameMatcher(text, regex);
+    refs = tips
+      .filter((tip) => matches(tip.name))
+      .slice(0, REF_SUGGESTIONS)
+      .map((tip) => tip.ref);
+  }
+  let commits: string[] | undefined;
+  if (byName) {
+    const branch = filter.branch ? nameMatcher(filter.branch, regex) : null;
+    const tag = filter.tag ? nameMatcher(filter.tag, regex) : null;
+    commits = [
+      ...new Set(
+        tips.filter((tip) => (tip.tag ? tag : branch)?.(tip.name) === true).map((tip) => tip.commit)
+      )
+    ];
+    if (commits.length === 0) {
+      return { entries: [], more: false, ...(refs ? { refs } : {}) };
+    }
+  }
+
   if (hashSearch) {
     args.push("--max-count=1", hashSearch);
+  } else if (commits) {
+    // Only the commits the names point to, newest first; any number of them fits on stdin.
+    args.push("--no-walk=sorted", "--stdin");
   } else if (filter.revision) {
     args.push(await resolveCommit(git, filter.revision));
   } else {
@@ -89,7 +184,10 @@ export async function loadHistory(
   if (filter.path) {
     args.push(literalPath(filter.path));
   }
-  return historyPage(parseHistory(await git.raw(args)));
+  const output = commits
+    ? await readGitWithInput(git, args, commits.join("\n") + "\n")
+    : await git.raw(args);
+  return { ...historyPage(parseHistory(output)), ...(refs ? { refs } : {}) };
 }
 
 export async function compareCommits(

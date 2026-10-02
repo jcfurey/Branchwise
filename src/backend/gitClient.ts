@@ -69,6 +69,10 @@ export function createGit(repoPath: string, gitPath: string, abort?: AbortSignal
       binary: [gitPath, "--no-optional-locks"],
       config: [...PARSED_OUTPUT_CONFIG],
       maxConcurrentProcesses: 6,
+      // Finished means Git's output has closed. simple-git's default also counts a process as
+      // finished 50 ms after it exits, which on a busy machine cut a large output short, such
+      // as a log or ref list still in the pipe, without any error.
+      completion: { onClose: true, onExit: false },
       unsafe: { allowUnsafeCustomBinary: true },
       ...(abort ? { abort } : {})
     })

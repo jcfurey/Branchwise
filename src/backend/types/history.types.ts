@@ -8,13 +8,26 @@ export type HistoryFilter = {
   path: string;
   revision: string;
   follow: boolean;
+  /** Committer name or e-mail. Optional: filters saved before it existed lack it. */
+  committer?: string;
+  /** Only the commits that branches whose names contain this point to. */
+  branch?: string;
+  /** Only the commits that tags whose names contain this point to. */
+  tag?: string;
+  /** Read the text fields as regular expressions instead of literal text. */
+  regex?: boolean;
 };
 export type HistoryEntry = GitCommitNode & {
   filePath?: string;
   previousPath?: string;
   change?: string;
 };
-export type HistoryPage = { entries: HistoryEntry[]; more: boolean };
+export type HistoryPage = {
+  entries: HistoryEntry[];
+  more: boolean;
+  /** Branches and tags whose names contain the search text, on the first page of a search. */
+  refs?: string[];
+};
 export type ComparedFile = { before: string; after: string; status: string };
 export type Comparison = {
   left: string;

@@ -54,6 +54,7 @@ export function resetHeader() {
   stores.showRemoteBranch.value = true;
   stores.repoStates.value = {};
   stores.commitList.value = undefined;
+  stores.commitHead.value = "head";
   stores.contextMenu.value = null;
   stores.dialog.value = null;
   refsVisible.value = true;

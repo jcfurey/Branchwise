@@ -1080,6 +1080,96 @@ suite("Branchwise workflow UI", function () {
     await button("Return to Graph");
   });
 
+  test("finds commits by tag, branch and typed fields, and jumps back to HEAD", async () => {
+    const named = directory();
+    init(named);
+    commit("release.txt", "tagged release", named);
+    git(["tag", "v1.2.3"], named);
+    git(["commit", "--allow-empty", "-m", "hotfix work"], named);
+    git(["branch", "hotfix"], named);
+    for (let i = 0; i < 120; i++) {
+      git(["commit", "--allow-empty", "-m", "later commit " + i], named);
+    }
+    const head = git(["rev-parse", "HEAD"], named);
+    await openRepo(named);
+    if (!(await graph.evaluate('!!document.querySelector("[data-history-search]")'))) {
+      await button("Search history", 'document.querySelector("header")');
+    }
+    const search = async (text) => {
+      await graph.evaluate(
+        `(() => { const input = document.querySelector('[data-history-search]'); input.value = ${JSON.stringify(text)}; input.dispatchEvent(new Event('input', {bubbles:true})); })()`
+      );
+      await button("Search", 'document.querySelector("form[role=search]")');
+    };
+    const rows = () =>
+      graph.evaluate(
+        '[...document.querySelectorAll("tr[data-commit-hash]")].map(row => row.innerText)'
+      );
+    const screenshot = async (name) => {
+      const shot = await connections[0].call("Page.captureScreenshot");
+      fs.writeFileSync(path.join(artifacts, name), Buffer.from(shot.data, "base64"));
+    };
+
+    // A typed field moves into Filters and limits the results to the tag's commit.
+    await search("tag:v1.2");
+    await until(async () => JSON.stringify(await rows()).includes("tagged release"), "tag search");
+    assert.equal((await rows()).length, 1);
+    assert.equal(await graph.evaluate('document.querySelector("[data-history-search]").value'), "");
+    assert.equal(
+      await graph.evaluate(
+        '[...document.querySelectorAll("form[role=search] label")].find(label => label.innerText.includes("Tag name contains")).querySelector("input").value'
+      ),
+      "v1.2"
+    );
+    await screenshot("search-tag.png");
+
+    // Plain text searches messages and offers the branches and tags whose names hold it.
+    await button("Clear Filters", 'document.querySelector("form[role=search]")');
+    // The row takes the cleared filter a frame later; type after the graph is back.
+    await until(() => graph.evaluate(visible(head)), "graph after clearing");
+    await delay(200);
+    await search("hotfix");
+    await until(
+      () => graph.evaluate("!!document.querySelector(\"main button[title='refs/heads/hotfix']\")"),
+      "matching branch chip"
+    );
+    const found = await rows();
+    assert.equal(found.length, 1);
+    assert.ok(found[0].includes("hotfix work"));
+    await screenshot("search-matching-refs.png");
+    await graph.evaluate(
+      "document.querySelector(\"main button[title='refs/heads/hotfix']\").click()"
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("main").innerText.includes("History at refs/heads/hotfix")'
+        ),
+      "history at the branch"
+    );
+    await button("Return to Graph");
+
+    // Jump to HEAD stands out once the checked-out commit scrolls away, and brings it back.
+    await until(() => graph.evaluate(visible(head)), "graph rows");
+    await graph.evaluate("window.scrollTo(0, document.body.scrollHeight)");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("header button[aria-label=\'Jump to HEAD\']").title === "Jump to HEAD, which is out of sight"'
+        ),
+      "Jump to HEAD highlighted"
+    );
+    await screenshot("jump-to-head-highlighted.png");
+    await button("Jump to HEAD", 'document.querySelector("header")');
+    await until(
+      () =>
+        graph.evaluate(
+          `document.activeElement?.dataset.commitHash === ${JSON.stringify(head)} && document.querySelector("header button[aria-label='Jump to HEAD']").title === "Jump to HEAD"`
+        ),
+      "HEAD in view and focused"
+    );
+  });
+
   test("compares branch contributions, opens native diffs and recovers a reflog commit", async () => {
     const history = directory();
     init(history);
@@ -1834,6 +1924,15 @@ suite("Branchwise workflow UI", function () {
         "deleted saved target falls back on reopening"
       );
       await button("Clear focus");
+      // Clearing posts the preference to the extension, and closing at once can drop the
+      // message on a slow machine. The page's messages arrive in order, so once a refresh
+      // posted after it has been answered, the preference is saved.
+      git(["branch", "after-clear-focus"], first);
+      await button("Refresh");
+      await until(
+        () => graph.evaluate(`${nav}?.textContent.includes("after-clear-focus") === true`),
+        "refresh answered after clearing focus"
+      );
       await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
       await openRepo(first);
       await until(
