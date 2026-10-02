@@ -228,7 +228,7 @@ describe("queries that read logs, in a repository whose logs show signatures", (
   });
 
   it("give the reflog whole object IDs", async () => {
-    const { entries } = await loadReflog(client(), 0);
+    const { entries } = await loadReflog(client(), { offset: 0 });
     const hashes = new Set(entries.map((entry) => entry.hash));
     expect([...hashes].toSorted()).toStrictEqual([signed.I, signed.F, signed.G].toSorted());
   });

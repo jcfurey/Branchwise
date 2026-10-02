@@ -6,7 +6,8 @@ import {
   focusHistory,
   focusedCommit,
   historyActive,
-  setHistoryFilter
+  setHistoryFilter,
+  showTab
 } from "@/webview/lib/navigation";
 import { commitHead, commitList } from "@/webview/lib/stores";
 
@@ -24,6 +25,7 @@ export function jumpToHead() {
   if (head === null) {
     return;
   }
+  showTab("graph");
   if (historyActive.peek()) {
     setHistoryFilter(emptyFilter());
   }

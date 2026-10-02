@@ -242,30 +242,127 @@ export async function loadComparison(
   return { left: a, right: b, base, files, leftOnly, rightOnly };
 }
 
-export async function loadReflog(git: SimpleGit, offset: number) {
+/** The most reflog entries a view reads, so that filtering stays quick however long it is. */
+export const REFLOG_LIMIT = 10_000;
+
+/**
+ * The operation a reflog message records, and its variant: `commit (amend): fix` is `commit` and
+ * `amend`, `pull --rebase (finish): …` is `pull` and `finish`, `merge topic: Fast-forward` is
+ * `merge`. A message in no such form, such as `update by push`, is `other`.
+ */
+export function reflogAction(message: string): { action: string; detail: string } {
+  const match = /^([a-z][a-z-]*)(?: [^:(]*)?(?: \(([^)]*)\))?:/.exec(message);
+  return { action: match?.[1] ?? "other", detail: match?.[2] ?? "" };
+}
+
+/** HEAD and the local branches: the refs whose reflog can be shown on its own. */
+async function reflogRefs(git: SimpleGit) {
+  const branches = await git.raw(["for-each-ref", "--format=%(refname)", "refs/heads/"]);
+  return ["HEAD", ...branches.split("\n").filter(Boolean)];
+}
+
+/**
+ * The commits among `hashes` that no branch, tag, remote branch or HEAD reaches: work that only
+ * the reflog still remembers.
+ */
+async function unreachableCommits(git: SimpleGit, hashes: string[]) {
+  if (hashes.length === 0) {
+    return new Set<string>();
+  }
+  const head = (await git.raw(["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "")).trim();
+  const output = await readGitWithInput(
+    git,
+    ["rev-list", "--stdin", "--not", "--branches", "--tags", "--remotes", ...(head ? [head] : [])],
+    [...new Set(hashes)].join("\n") + "\n"
+  ).catch(() => "");
+  return new Set(output.split("\n").filter(Boolean));
+}
+
+/**
+ * One page of a reflog: every ref's by default, or HEAD's or one branch's, newest first, narrowed
+ * to one operation, to entries whose message, commit subject or ID holds `text`, and with
+ * `lostOnly` to commits that only the reflog still reaches. Each entry says whether it is one.
+ */
+export async function loadReflog(
+  git: SimpleGit,
+  query: { offset: number; ref?: string; action?: string; text?: string; lostOnly?: boolean }
+): Promise<{ entries: ReflogEntry[]; more: boolean; refs: string[]; actions: string[] }> {
+  const offset = pageOffset(query.offset);
+  const refs = await reflogRefs(git);
+  const ref = query.ref ?? "";
+  if (ref !== "" && !refs.includes(ref)) {
+    throw new Error(l10n.t("{0} has no reflog. Choose HEAD or a local branch.", ref));
+  }
   const fields = (
-    await git.raw([
-      "log",
-      "-g",
-      "--all",
-      "-z",
-      "--date=unix",
-      "--format=%H%x00%gD%x00%gs",
-      "--max-count=" + (HISTORY_PAGE_SIZE + 1),
-      "--skip=" + pageOffset(offset)
-    ])
+    await git
+      .raw([
+        "log",
+        "-g",
+        "-z",
+        "--date=unix",
+        "--format=%H%x00%gD%x00%gs%x00%s",
+        "--max-count=" + REFLOG_LIMIT,
+        ...(ref === "" ? ["--all"] : ["--end-of-options", ref])
+      ])
+      // A repository without commits has no reflog to walk.
+      .catch((error: unknown) => {
+        if (/does not have any commits|unknown revision|bad default revision/.test(String(error))) {
+          return "";
+        }
+        throw error;
+      })
   ).split("\0");
-  const entries: ReflogEntry[] = [];
-  for (let index = 0; index + 2 < fields.length; index += 3) {
+  const all: ReflogEntry[] = [];
+  for (let index = 0; index + 3 < fields.length; index += 4) {
     const selector = fields[index + 1]!;
-    entries.push({
+    const message = fields[index + 2]!;
+    all.push({
       hash: fields[index]!,
       selector,
-      message: fields[index + 2]!,
-      date: Number(selector.match(/@\{(\d+)\}$/)?.[1] ?? 0)
+      message,
+      subject: fields[index + 3]!,
+      date: Number(selector.match(/@\{(\d+)\}$/)?.[1] ?? 0),
+      ref: selector.replace(/@\{[^}]*\}$/, ""),
+      ...reflogAction(message),
+      lost: false
     });
   }
-  return { entries: entries.slice(0, HISTORY_PAGE_SIZE), more: entries.length > HISTORY_PAGE_SIZE };
+  const actions = [...new Set(all.map((entry) => entry.action))].toSorted();
+  const needle = (query.text ?? "").trim().toLowerCase();
+  let matching = all.filter(
+    (entry) =>
+      (!query.action || entry.action === query.action) &&
+      (needle === "" ||
+        entry.message.toLowerCase().includes(needle) ||
+        entry.subject.toLowerCase().includes(needle) ||
+        entry.hash.startsWith(needle))
+  );
+  // Only commits nothing else reaches: one walk over every match, then page those.
+  const lostEverywhere = query.lostOnly
+    ? await unreachableCommits(
+        git,
+        matching.map((entry) => entry.hash)
+      )
+    : null;
+  if (lostEverywhere !== null) {
+    matching = matching.filter((entry) => lostEverywhere.has(entry.hash));
+  }
+  const entries = matching.slice(offset, offset + HISTORY_PAGE_SIZE);
+  const lost =
+    lostEverywhere ??
+    (await unreachableCommits(
+      git,
+      entries.map((entry) => entry.hash)
+    ));
+  for (const entry of entries) {
+    entry.lost = lost.has(entry.hash);
+  }
+  return {
+    entries,
+    more: matching.length > offset + HISTORY_PAGE_SIZE,
+    refs,
+    actions
+  };
 }
 
 export async function sourceFile(git: SimpleGit, source: string, file: string) {
@@ -366,7 +463,7 @@ export async function historyQuery(
         page: await compareCommits(git, query.left, query.right, query.side, query.offset)
       };
     case "reflog":
-      return { kind: "reflog", ...(await loadReflog(git, query.offset)) };
+      return { kind: "reflog", ...(await loadReflog(git, query)) };
     case "restorePlan":
       return {
         kind: "restorePlan",

@@ -122,7 +122,9 @@ describe("history inspection", () => {
     read(["reset", "--hard", "HEAD^"]);
     const head = read(["rev-parse", "HEAD"]);
     expect(
-      (await loadReflog(git(), 0)).entries.some((entry) => entry.hash === lost && entry.date > 0)
+      (await loadReflog(git(), { offset: 0 })).entries.some(
+        (entry) => entry.hash === lost && entry.date > 0 && entry.lost
+      )
     ).toBe(true);
     await run({ kind: "recoverBranch", hash: lost, name: "recovered" });
     expect(read(["rev-parse", "recovered"])).toBe(lost);

@@ -124,7 +124,11 @@ Right-click a file in Explorer, an editor title, or a commit's changed-file list
 
 ## Reflog and multiple commits
 
-Open **Settings & Tools → Recover lost commits (reflog)** to inspect local branch and HEAD movements. **Show in Graph** opens the chosen commit's context, including commits no longer on a branch. **Create Recovery Branch** keeps that commit under a new branch without checking it out. Reflog availability follows Git's local retention and pruning.
+The **Reflog** tab at the left of the header, also opened by **Settings & Tools → Recover lost commits (reflog)**, lists every move of HEAD and the local branches, newest first: when it happened, which ref moved, the operation (commit, checkout, reset, rebase, merge and so on, coloured by what it does to history), what Git recorded, and the commit the ref moved to. Choose one ref or one operation, or filter by text in the message, the commit subject or the commit ID.
+
+A commit marked **Not on any branch** is one that no branch, tag, remote branch or HEAD still reaches, such as the commit before an amend or a reset, or the work on a deleted branch. **Only commits no branch reaches** lists just those. Each row's **Show in Graph** opens the commit's history in the graph, and its **⋯** menu offers **Create Recovery Branch…**, which keeps the commit under a new branch without checking it out, **Check Out…** and **Reset…**, each with the same confirmation as in the graph. Git deletes unreachable commits once their reflog entries expire, after 30 days by default.
+
+The tab you were on is remembered when the panel reopens. Searching, **Jump to HEAD** and **Show in Graph** return to the **Graph** tab.
 
 Ctrl/Cmd-click selects individual commits; Shift-click selects a range. Select up to 100 commits for **Cherry-pick Selected** or **Revert Selected**. Review and adjust the execution order before confirming. Cherry-picks default to oldest first; reverts default to newest first. Merge commits require a common mainline parent choice. The native Git sequencer retains remaining commits if a conflict interrupts the batch; use the status strip's Continue, Abort, or Skip controls.
 

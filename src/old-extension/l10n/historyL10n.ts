@@ -61,8 +61,26 @@ export function getHistoryLocalizedStrings() {
     restoreSource: vscode.l10n.t("Historical source"),
     reflog: vscode.l10n.t("Recover lost commits (reflog)"),
     reflogHint: vscode.l10n.t(
-      "Local branch and HEAD movements. Create a recovery branch to keep an older commit."
+      "Every move of HEAD and your local branches. A commit marked “Not on any branch” is reachable only from here; create a recovery branch to keep it."
     ),
+    viewTabs: vscode.l10n.t("Views"),
+    tabGraph: vscode.l10n.t("Graph"),
+    tabReflog: vscode.l10n.t("Reflog"),
+    reflogRef: vscode.l10n.t("Ref"),
+    reflogAllRefs: vscode.l10n.t("All refs"),
+    reflogOperation: vscode.l10n.t("Operation"),
+    reflogAllActions: vscode.l10n.t("All operations"),
+    reflogFilter: vscode.l10n.t("Filter by message or commit ID"),
+    reflogLostOnly: vscode.l10n.t("Only commits no branch reaches"),
+    reflogLost: vscode.l10n.t("Not on any branch"),
+    reflogLostHint: vscode.l10n.t(
+      "No branch, tag, remote branch or HEAD reaches this commit. Git deletes it once its reflog entries expire."
+    ),
+    reflogWhen: vscode.l10n.t("When"),
+    reflogDescription: vscode.l10n.t("Description"),
+    reflogCommit: vscode.l10n.t("Commit"),
+    reflogActionsColumn: vscode.l10n.t("Actions"),
+    reflogEntryActions: vscode.l10n.t("Actions for {0}"),
     recoverBranch: vscode.l10n.t("Create Recovery Branch"),
     recoveryBranchName: vscode.l10n.t("Branch Name"),
     noReflog: vscode.l10n.t("No reflog entries available."),

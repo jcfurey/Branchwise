@@ -1232,21 +1232,49 @@ suite("Branchwise workflow UI", function () {
     );
     await button("Settings & Tools");
     await menu("Recover lost commits (reflog)");
+    // The reflog opens as a tab; only commits no branch reaches are the ones worth recovering.
     await until(
       () =>
         graph.evaluate(
-          `document.querySelector('[role=dialog]').innerText.includes(${JSON.stringify(lost.slice(0, 12))})`
+          `document.querySelector('[data-view-tab="reflog"]')?.getAttribute('aria-selected') === 'true' && !!document.querySelector('[data-reflog-view] tbody')?.innerText.includes(${JSON.stringify(lost.slice(0, 8))})`
         ),
-      "reflog commit"
+      "reflog tab with the reset commit"
     );
     await graph.evaluate(
-      `(() => { const item = [...document.querySelectorAll('[role=dialog] li')].find(li => li.textContent.includes(${JSON.stringify(lost.slice(0, 12))})); [...item.querySelectorAll('button')].find(b => b.textContent === 'Create Recovery Branch').click(); })()`
+      `[...document.querySelectorAll('[data-reflog-view] label')].find(label => label.textContent.includes('Only commits no branch reaches')).querySelector('input').click()`
     );
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => { const rows = [...document.querySelectorAll('[data-reflog-view] tbody tr')]; return rows.length > 0 && rows.every(row => row.innerText.includes('Not on any branch')) && rows.some(row => row.innerText.includes(${JSON.stringify(lost.slice(0, 8))})); })()`
+        ),
+      "lost commits only"
+    );
+    const reflogShot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "reflog-tab.png"),
+      Buffer.from(reflogShot.data, "base64")
+    );
+    await graph.evaluate(
+      `(() => { const row = [...document.querySelectorAll('[data-reflog-view] tbody tr')].find(row => row.innerText.includes(${JSON.stringify(lost.slice(0, 8))})); row.querySelector('button[aria-haspopup=menu]').click(); })()`
+    );
+    await menu("Create Recovery Branch…");
     await fill(["ui-recovered"]);
     await button("Create Recovery Branch");
     await finished();
     assert.equal(git(["rev-parse", "ui-recovered"], history), lost);
     assert.notEqual(git(["rev-parse", "HEAD"], history), lost);
+    // Recovered, the commit is on a branch again, so the lost-only list lets it go.
+    await until(
+      () =>
+        graph.evaluate(
+          `!document.querySelector('[data-reflog-view] tbody')?.innerText.includes(${JSON.stringify(lost.slice(0, 8))})`
+        ),
+      "recovered commit no longer lost"
+    );
+    // The tab is remembered; later scenarios expect the graph.
+    await graph.evaluate(`document.querySelector('[data-view-tab="graph"]').click()`);
+    await until(() => graph.evaluate('!document.querySelector("[data-reflog-view]")'), "graph tab");
   });
 
   test("runs ordered selected cherry-picks and reverts, then creates and autosquashes a fixup", async () => {

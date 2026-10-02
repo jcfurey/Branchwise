@@ -11,6 +11,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 ### Added
 
 - Search by committer, and by branch or tag name, which lists the commits those branches or tags point to. Type fields straight into the search box, such as `tag:v1.2` or `author:"Ann Lee"`, or tick **Regular expressions** to match patterns. Branches and tags whose names contain the search text are listed above the results.
+- **Graph** and **Reflog** tabs in the header. The reflog becomes a full view of every move of HEAD and the local branches, filtered by ref, operation or text, with each operation coloured, commits that no branch reaches marked and listed on their own, and **Show in Graph**, **Create Recovery Branch**, **Check Out** and **Reset** on each entry. **Recover lost commits (reflog)** opens the tab.
 - A **Jump to HEAD** button next to search, highlighted while the checked-out commit is out of sight. Down Arrow in the search box moves into the results.
 
 ## [0.9.8] - 2026-10-01
