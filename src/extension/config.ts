@@ -120,6 +120,7 @@ export const extConfig = {
   initialLoadCommits: () => wholeNumberSetting("initialLoadCommits", 1, 300),
   loadMoreCommits: () => wholeNumberSetting("loadMoreCommits", 1, 100),
   maxDepthOfRepoSearch: () => wholeNumberSetting("maxDepthOfRepoSearch", 0, 0),
+  nestedRepoSearchDepth: () => wholeNumberSetting("nestedRepoSearchDepth", 0, 3),
   showCurrentBranchByDefault: () => setting<boolean>("showCurrentBranchByDefault", false),
   showUncommittedChanges: () => setting<boolean>("showUncommittedChanges", true),
   tabIconColourTheme: () => setting<TabIconColourTheme>("tabIconColourTheme", "colour")

@@ -32,7 +32,11 @@ it("lists the picker's repositories, not every repository with saved state", asy
         handlers.set(command, handler)
     } as unknown as Parameters<typeof registerMessageHandlers>[0],
     {
-      config: { gitPath: () => "git", maxDepthOfRepoSearch: () => 2 },
+      config: {
+        gitPath: () => "git",
+        maxDepthOfRepoSearch: () => 2,
+        nestedRepoSearchDepth: () => 1
+      },
       repoManager: {
         // Viewed once through File History in an earlier session.
         getRepos: () => ({ "/elsewhere/old": { columnWidths: null } }),
@@ -50,7 +54,7 @@ it("lists the picker's repositories, not every repository with saved state", asy
 
   await query("/ws/b");
   await query("/ws/opened");
-  expect(mocks.listRepos).toHaveBeenCalledWith("git", 2);
+  expect(mocks.listRepos).toHaveBeenCalledWith("git", 2, 1);
   expect(mocks.pruneMissing).toHaveBeenCalledTimes(2);
   expect(mocks.repositoryQuery.mock.calls.map((call) => call[2]?.repos)).toEqual([
     ["/ws/a", "/ws/b"],

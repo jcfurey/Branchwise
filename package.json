@@ -242,6 +242,12 @@
           "default": 0,
           "minimum": 0
         },
+        "branchwise.nestedRepoSearchDepth": {
+          "description": "%config.nestedRepoSearchDepth%",
+          "type": "integer",
+          "default": 3,
+          "minimum": 0
+        },
         "branchwise.showCurrentBranchByDefault": {
           "description": "%config.showCurrentBranchByDefault%",
           "type": "boolean",

@@ -112,6 +112,7 @@ All settings start with `branchwise.`.
 | `initialLoadCommits`          | `300`           | Commits first loaded for a repository or branch              |
 | `loadMoreCommits`             | `100`           | Commits added by **Load Older Commits**                      |
 | `maxDepthOfRepoSearch`        | `0`             | Folder depth searched for repositories                       |
+| `nestedRepoSearchDepth`       | `3`             | Folder depth searched inside each repository for nested ones |
 | `showCurrentBranchByDefault`  | `false`         | Open showing only the checked-out branch                     |
 | `showUncommittedChanges`      | `true`          | Show the uncommitted changes row                             |
 | `tabIconColourTheme`          | `"colour"`      | Graph tab icon in `"colour"` or `"grey"`                     |

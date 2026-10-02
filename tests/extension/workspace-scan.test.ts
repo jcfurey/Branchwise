@@ -12,6 +12,8 @@ import {
   scanWorkspaceRepos
 } from "@/extension/workspace-scan";
 
+import { git } from "@tests/backend/helpers";
+
 const mocks = vi.hoisted(() => ({
   findGitRepos: vi.fn(),
   folders: [{ uri: { scheme: "file", fsPath: "/ws" } }]
@@ -31,19 +33,24 @@ beforeEach(() => {
   mocks.folders = [{ uri: { scheme: "file", fsPath: "/ws" } }];
 });
 
-it("walks the workspace once until the folders, Git path or depth change", async () => {
+it("walks the workspace once until the folders, Git path or depths change", async () => {
   mocks.findGitRepos.mockResolvedValue(["/ws/a"]);
   await expect(scanWorkspaceRepos("git", 1)).resolves.toEqual(["/ws/a"]);
   await scanWorkspaceRepos("git", 1);
   expect(mocks.findGitRepos).toHaveBeenCalledTimes(1);
-  expect(mocks.findGitRepos).toHaveBeenCalledWith(["/ws"], "git", 1);
+  expect(mocks.findGitRepos).toHaveBeenCalledWith(["/ws"], "git", 1, 0);
 
   await scanWorkspaceRepos("git", 2);
   await scanWorkspaceRepos("/usr/bin/git", 2);
   mocks.folders = [{ uri: { scheme: "file", fsPath: "/other" } }];
   await scanWorkspaceRepos("/usr/bin/git", 2);
   expect(mocks.findGitRepos).toHaveBeenCalledTimes(4);
-  expect(mocks.findGitRepos).toHaveBeenLastCalledWith(["/other"], "/usr/bin/git", 2);
+  expect(mocks.findGitRepos).toHaveBeenLastCalledWith(["/other"], "/usr/bin/git", 2, 0);
+
+  await scanWorkspaceRepos("/usr/bin/git", 2, 3);
+  await scanWorkspaceRepos("/usr/bin/git", 2, 3);
+  expect(mocks.findGitRepos).toHaveBeenCalledTimes(5);
+  expect(mocks.findGitRepos).toHaveBeenLastCalledWith(["/other"], "/usr/bin/git", 2, 3);
 });
 
 it("walks again after a repository appears or vanishes", async () => {
@@ -86,5 +93,19 @@ describe("repositories offered by the picker and the Workspace pane", () => {
     expect(await listRepos("git", 1)).toEqual([scanned]);
     fs.mkdirSync(path.join(opened, ".git"));
     expect(await listRepos("git", 1)).toEqual([scanned]);
+  });
+
+  it("adds the repositories cloned inside them, up to the nested depth", async () => {
+    mocks.findGitRepos.mockResolvedValue([]);
+    const opened = normalizeRepoPath(path.join(root, "opened"));
+    const nested = normalizeRepoPath(path.join(root, "opened", "libs", "nested"));
+    for (const repo of [opened, nested]) {
+      fs.mkdirSync(repo, { recursive: true });
+      git(["init", "-q"], repo);
+    }
+    addSessionRepo(opened);
+    expect(await listRepos("git", 0, 2)).toEqual([opened, nested]);
+    expect(await listRepos("git", 0, 1)).toEqual([opened]);
+    expect(await listRepos("git", 0)).toEqual([opened]);
   });
 });

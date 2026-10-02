@@ -26,6 +26,7 @@ it("falls back to the defaults declared in package.json", () => {
     initialLoadCommits: extConfig.initialLoadCommits(),
     loadMoreCommits: extConfig.loadMoreCommits(),
     maxDepthOfRepoSearch: extConfig.maxDepthOfRepoSearch(),
+    nestedRepoSearchDepth: extConfig.nestedRepoSearchDepth(),
     showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
     showUncommittedChanges: extConfig.showUncommittedChanges(),
     tabIconColourTheme: extConfig.tabIconColourTheme()
@@ -99,6 +100,10 @@ it("declares the numeric settings as integers with minimums", () => {
   });
   expect(declared["branchwise.loadMoreCommits"]).toMatchObject({ type: "integer", minimum: 1 });
   expect(declared["branchwise.maxDepthOfRepoSearch"]).toMatchObject({
+    type: "integer",
+    minimum: 0
+  });
+  expect(declared["branchwise.nestedRepoSearchDepth"]).toMatchObject({
     type: "integer",
     minimum: 0
   });

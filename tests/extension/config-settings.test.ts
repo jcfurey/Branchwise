@@ -155,7 +155,7 @@ describe("settings passed through", () => {
     expect(sections).toEqual(["branchwise", "branchwise"]);
   });
 
-  test("offers exactly the twelve getters", () => {
+  test("offers exactly the thirteen getters", () => {
     expect(Object.keys(extConfig).toSorted()).toEqual([
       "autoCenterCommitDetailsView",
       "dateFormat",
@@ -166,6 +166,7 @@ describe("settings passed through", () => {
       "initialLoadCommits",
       "loadMoreCommits",
       "maxDepthOfRepoSearch",
+      "nestedRepoSearchDepth",
       "showCurrentBranchByDefault",
       "showUncommittedChanges",
       "tabIconColourTheme"

@@ -538,5 +538,9 @@
   "Commit or stash your changes before applying commits.": "套用提交前請先提交或暫存變更。",
   "Choose a valid mainline parent for the selected merge commits.": "請為所選合併提交選擇有效的主線父提交。",
   "Choose a valid commit.": "請選擇有效的提交。",
-  "Choose a soft, mixed or hard reset.": "請選擇軟重設、混合重設或硬重設。"
+  "Choose a soft, mixed or hard reset.": "請選擇軟重設、混合重設或硬重設。",
+  "Show the repositories inside {0}": "顯示 {0} 內的儲存庫",
+  "Hide the repositories inside {0}": "隱藏 {0} 內的儲存庫",
+  "submodule": "子模組",
+  "nested": "巢狀"
 }

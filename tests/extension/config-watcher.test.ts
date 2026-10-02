@@ -55,6 +55,9 @@ it("scans for repositories again only when the search changes", () => {
   expect(mocks.notify).toHaveBeenCalledWith("repo.rescan", null);
   expect(mocks.notify).toHaveBeenCalledWith("config.changed", expect.any(Object));
   mocks.notify.mockClear();
+  change("branchwise.nestedRepoSearchDepth");
+  expect(mocks.notify).toHaveBeenCalledWith("repo.rescan", null);
+  mocks.notify.mockClear();
   change("git.path");
   expect(mocks.notify).toHaveBeenCalledExactlyOnceWith("repo.rescan", null);
   mocks.notify.mockClear();
