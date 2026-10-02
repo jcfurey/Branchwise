@@ -2002,6 +2002,15 @@ suite("Branchwise workflow UI", function () {
         "deleted saved target falls back on reopening"
       );
       await button("Clear focus");
+      // Clearing posts the preference to the extension, and closing at once can drop the
+      // message on a slow machine. The page's messages arrive in order, so once a refresh
+      // posted after it has been answered, the preference is saved.
+      git(["branch", "after-clear-focus"], first);
+      await button("Refresh");
+      await until(
+        () => graph.evaluate(`${nav}?.textContent.includes("after-clear-focus") === true`),
+        "refresh answered after clearing focus"
+      );
       await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
       await openRepo(first);
       await until(
