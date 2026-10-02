@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -178,50 +179,47 @@ describe("searching history by committer, branch and tag names", () => {
 });
 
 describe("a tag search over many tags", () => {
+  /** Enough tagged commits that their IDs, 41 characters a line, exceed Windows' 32,767. */
+  const COUNT = 1000;
   let repo = "";
 
   beforeAll(() => {
     repo = makeRepo();
-    // 600 tags with long names on 600 commits: their IDs alone exceed Windows' 32,767-character
-    // command line, so they have to reach Git on standard input.
-    const commits: string[] = [];
-    let parent = gitOutput(["rev-parse", "HEAD"], repo);
-    const tree = gitOutput(["rev-parse", "HEAD^{tree}"], repo);
-    for (let index = 0; index < 600; index++) {
-      parent = gitOutput(["commit-tree", tree, "-p", parent, "-m", `c${index}`], repo);
-      commits.push(parent);
-    }
-    // Written as packed refs, which Git reads like any others, instead of 600 `git tag` runs.
-    fs.writeFileSync(
-      path.join(repo, ".git", "packed-refs"),
-      commits
-        .map((hash, index) => `${hash} refs/tags/release-${"x".repeat(40)}-${index}\n`)
-        .join("")
-    );
+    // One fast-import builds every commit and tag: a thousand Git processes would take minutes
+    // on Windows. Each commit is a second newer than the last, so the order is certain.
+    const parent = gitOutput(["rev-parse", "HEAD"], repo);
+    const stream = Array.from({ length: COUNT }, (_, index) =>
+      [
+        "commit refs/heads/bulk",
+        `mark :${index + 1}`,
+        `committer T <t@t.com> ${1_700_000_000 + index} +0000`,
+        `data ${String(index).length + 1}`,
+        `c${index}`,
+        index === 0 ? `from ${parent}` : `from :${index}`,
+        `reset refs/tags/release-${"x".repeat(40)}-${index}`,
+        `from :${index + 1}`,
+        ""
+      ].join("\n")
+    ).join("\n");
+    execFileSync("git", ["fast-import", "--quiet"], { cwd: repo, input: stream + "\n" });
   });
 
   afterAll(() => {
     fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
-  it("pages through every matching tag's commit once", async () => {
+  it("pages through every matching tag's commit, newest first", async () => {
     const client = createGit(repo, "git");
+    const offsets = Array.from({ length: COUNT / 100 }, (_, page) => page * 100);
     const pages = await Promise.all(
-      [0, 100, 200, 300, 400, 500].map((offset) =>
-        loadHistory(client, { ...ANY, tag: "release-" }, offset)
-      )
+      offsets.map((offset) => loadHistory(client, { ...ANY, tag: "release-" }, offset))
     );
-    expect(pages.map((page) => [page.entries.length, page.more])).toStrictEqual([
-      [100, true],
-      [100, true],
-      [100, true],
-      [100, true],
-      [100, true],
-      [100, false]
-    ]);
-    // The commits share a timestamp, so only the set is certain, not the order.
-    const found = new Set(pages.flatMap((page) => subjects(page)));
-    expect(found).toStrictEqual(new Set(Array.from({ length: 600 }, (_, index) => `c${index}`)));
+    expect(pages.map((page) => page.more)).toStrictEqual(
+      offsets.map((offset) => offset + 100 < COUNT)
+    );
+    expect(pages.flatMap((page) => subjects(page))).toStrictEqual(
+      Array.from({ length: COUNT }, (_, index) => `c${COUNT - 1 - index}`)
+    );
   });
 });
 
