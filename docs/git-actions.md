@@ -48,7 +48,7 @@ If Git cannot load the graph, the view shows the error and a **Retry** button. R
 
 Open **Settings & Tools → Remotes** to add a remote, edit its fetch and push URLs, rename or remove it, or choose the repository's default push remote. Multiple URLs are entered one per line. Leaving push URLs blank restores Git's fallback to fetch URLs. Removing a remote removes its local remote-tracking references, not the server or local branches.
 
-Right-click a local branch and choose **Configure Upstream** to set, change or clear tracking without pushing. The status strip shows the checked-out branch's upstream and ahead/behind counts. Counts reflect the last fetch. Branch labels also show nonzero counts, and their tooltips identify worktree locations.
+Right-click a local branch and choose **Configure Upstream** to set, change or clear tracking without pushing. The status strip shows the checked-out branch's upstream and ahead/behind counts. Counts reflect the last fetch. In the graph, a filled dot before a commit's description marks a commit that no remote-tracking branch has yet, and a ring marks a commit on a branch that a local branch tracks but that no local branch has, such as one fetched but not pulled; hover over either for its meaning. Up to 1,000 commits of each kind are marked. Branch labels also show nonzero counts, and their tooltips identify worktree locations.
 
 **Fetch** can update one or all remotes, optionally pruning stale remote-tracking branches. Remote checkout offers **Fetch the latest remote revision before checkout**, enabled by default. It creates an explicit tracking branch, or checks out and fast-forwards an existing local branch. Divergent history is not reset.
 
@@ -107,6 +107,10 @@ Click either revision-change badge, or choose **Compare Submodule Revisions**, t
 Open **Settings & Tools → Find a Regression (Bisect)**, or use **Use as Good/Bad Bisect Commit** on graph commits. Choose known good and bad endpoints, commit or stash changes, then **Start Bisect**. Git checks out candidate commits. Build or test each candidate, reopen the bisect controls from the status strip, and choose **Mark Good**, **Mark Bad**, or **Skip Untestable Commit**.
 
 The result displays the first bad commit, or explains when skipped commits prevent a unique result. **Reset Bisect** ends the session and restores Git's original checkout. Native Git bisect state survives reloading VS Code, and stale classifications are rejected if the session or checkout changed. Changes made while testing must be committed or stashed before advancing/resetting. Other history-changing workflows that require an idle repository also require resetting bisect first.
+
+## Commit details
+
+Click a commit to open its details: the commit ID with **Copy Short ID** and **Copy Full ID** buttons, its parents, author, date and committer, the whole message, and the changed files. The commit menu also offers **Copy Commit ID** and **Copy Short Commit ID**. The message keeps its line breaks; inline code, fenced code blocks, `**bold**` and `*italic*` are styled, and web addresses become links. When the checked-out branch's remote, `origin` or the only remote is on github.com or a GitLab server, references such as `#12`, `GH-12`, `owner/repo#12` and, on GitLab, `!12` link to that issue or merge request.
 
 ## Search, file history, and comparison
 

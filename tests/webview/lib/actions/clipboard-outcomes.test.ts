@@ -68,7 +68,7 @@ describe("the request", () => {
 describe("the outcome", () => {
   it.each([true, "yes"])("of a copy answered %j leaves the screen as it was", async (result) => {
     vi.spyOn(rpcClient, "request").mockResolvedValue(result as never);
-    await expect(copyToClipboard("Commit Hash", "abc")).resolves.toBeUndefined();
+    await expect(copyToClipboard("Commit Hash", "abc")).resolves.toBe(true);
     expect(dialog.value).toBeNull();
   });
 
@@ -76,14 +76,14 @@ describe("the outcome", () => {
     "of a copy answered %j is a failure without a reason",
     async (result) => {
       vi.spyOn(rpcClient, "request").mockResolvedValue(result as never);
-      await copyToClipboard("Commit Hash", "abc");
+      await expect(copyToClipboard("Commit Hash", "abc")).resolves.toBe(false);
       expect(dialog.value).toMatchObject(copyFailure(null));
     }
   );
 
   it("of a failed request shows the request's error as the reason", async () => {
     vi.spyOn(rpcClient, "request").mockRejectedValue(new Error("nope"));
-    await expect(copyToClipboard("Commit Hash", "abc")).resolves.toBeUndefined();
+    await expect(copyToClipboard("Commit Hash", "abc")).resolves.toBe(false);
     expect(dialog.value).toMatchObject(copyFailure("nope"));
   });
 

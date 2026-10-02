@@ -68,7 +68,8 @@ const COMMIT_TITLES = [
   "compareWith",
   "bisectChooseGood",
   "bisectChooseBad",
-  "copyCommitHash"
+  "copyCommitHash",
+  "copyShortCommitHash"
 ];
 const LOCAL_TITLES = [
   "focusThisBranch",

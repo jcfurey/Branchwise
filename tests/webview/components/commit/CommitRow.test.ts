@@ -3,7 +3,7 @@ import { h, render } from "preact";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { GitCommitNode, GitRef } from "@/backend/types";
-import { CommitRow } from "@/webview/components/commit/CommitRow";
+import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
 import { contextMenu } from "@/webview/lib/stores";
 
 import { setupWebviewTest } from "@tests/webview/test-utils";
@@ -47,17 +47,19 @@ const COMMIT_MENU = [
   "compareWith",
   "bisectChooseGood",
   "bisectChooseBad",
-  "copyCommitHash"
+  "copyCommitHash",
+  "copyShortCommitHash"
 ];
 
 let body: HTMLTableSectionElement;
 
-function draw(commit: GitCommitNode, headBranch: string | null = null) {
+function draw(commit: GitCommitNode, headBranch: string | null = null, push?: PushState) {
   render(
     h(CommitRow, {
       commit,
       isHead: headBranch !== null,
       headBranch,
+      push,
       messages: new Map(),
       colour: undefined,
       expanded: false,
@@ -122,6 +124,30 @@ describe("the description cell", () => {
     const message = spanWithText(BARE.message);
     expect(message.closest("td")!.querySelector("span")).toBe(message);
     expect(message.getAttribute("title")).toBe(BARE.message);
+  });
+});
+
+describe("the push status", () => {
+  it("marks a commit not pushed with a filled dot and one not pulled with a ring, by name", () => {
+    draw(LABELLED);
+    expect(body.querySelector("[data-push]")).toBeNull();
+
+    draw(LABELLED, null, "unpushed");
+    const dot = body.querySelector<HTMLElement>("[data-push]")!;
+    expect(dot.getAttribute("role")).toBe("img");
+    expect(dot.getAttribute("aria-label")).toBe("commitUnpushed");
+    expect(dot.title).toBe("commitUnpushed");
+    expect(dot.classList.contains("bg-git-modified")).toBe(true);
+    // The dot leads the cell, ahead of the labels.
+    expect(
+      dot.compareDocumentPosition(spanWithText(BRANCH)) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).not.toBe(0);
+
+    draw(LABELLED, null, "unpulled");
+    const ring = body.querySelector<HTMLElement>("[data-push]")!;
+    expect(ring.getAttribute("aria-label")).toBe("commitUnpulled");
+    expect(ring.classList.contains("border-git-added")).toBe(true);
+    expect(ring.classList.contains("bg-git-modified")).toBe(false);
   });
 });
 

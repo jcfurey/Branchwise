@@ -23,6 +23,9 @@ import type { FocusDimming } from "@/webview/types";
 import { getCommitDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
 
+/** A commit that no remote-tracking branch has yet, or that no local branch has yet. */
+export type PushState = "unpushed" | "unpulled";
+
 type CommitRowProps = {
   commit: HistoryEntry;
   /** Every row of the table in display order, for arrow keys and range selection. */
@@ -38,6 +41,8 @@ type CommitRowProps = {
   keepMergedBright?: boolean;
   /** How strongly the graph dims history away from the focused branch; the labels follow it. */
   dimming?: FocusDimming;
+  /** Whether only this computer, or only a remote, has the commit; undefined for neither. */
+  push?: PushState | undefined;
   /** Whether the details of this row are open beneath it. */
   expanded: boolean;
   onSelect: (() => void) | undefined;
@@ -77,6 +82,25 @@ function useWatch(test: () => boolean, key: string) {
   return useMemo(() => computed(test), [key]).value;
 }
 
+/**
+ * A small dot before the description: filled for a commit not pushed yet, a ring for one on a
+ * remote that is not pulled yet. Its name says which, so the colour is never the only sign.
+ */
+function PushDot({ state }: { state: PushState }) {
+  const label = state === "unpushed" ? window.l10n.commitUnpushed : window.l10n.commitUnpulled;
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      data-push={state}
+      class={`mr-1.25 size-2 shrink-0 rounded-full ${
+        state === "unpushed" ? "bg-git-modified" : "border-[1.5px] border-git-added"
+      }`}
+    />
+  );
+}
+
 /** Every cell is one 24px line, which is the grid the graph is drawn on. */
 const LINE = "h-6 truncate leading-6";
 const CELL = `${LINE} px-1`;
@@ -97,6 +121,7 @@ export function CommitRow({
   relation = "normal",
   keepMergedBright = false,
   dimming = "subtle",
+  push,
   expanded,
   onSelect,
   onRevealLane
@@ -245,6 +270,7 @@ export function CommitRow({
       <td class={`${LINE} w-full max-w-0 pr-1 pl-2.5 ${isHead ? "shadow-head" : ""}`}>
         <div class="flex min-w-0 items-center">
           {isHead && <span class="mr-1.25 size-2.5 shrink-0 rounded-full border-2 border-graph" />}
+          {push !== undefined && <PushDot state={push} />}
           {commit.refs.length > 0 && (
             <span class="flex max-w-1/2 shrink-0 overflow-hidden">
               {orderRefs(commit.refs, headBranch).map((ref) => (

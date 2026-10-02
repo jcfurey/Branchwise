@@ -22,6 +22,8 @@
 
   --color-fg: var(--vscode-foreground);
   --color-muted: var(--vscode-descriptionForeground);
+  --color-link: var(--vscode-textLink-foreground);
+  --color-code: var(--vscode-textCodeBlock-background, rgba(128, 128, 128, 0.15));
   --color-focus: var(--vscode-focusBorder);
   --color-editor: var(--vscode-editor-background);
 

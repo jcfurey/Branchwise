@@ -36,8 +36,12 @@ graph's settings cog, next to **Learn more**, which opens the [user guide](docs/
 
 - **One graph for everything:** branches, tags, remotes, stashes and uncommitted changes, drawn
   with rounded or angular lanes in colours you choose.
-- **Commit details:** the full message, the changed files as a tree, and a diff for each file.
-  Select the uncommitted changes row to browse staged, unstaged, untracked and conflicted files.
+- **Commit details:** the full message with its code, links and GitHub or GitLab issue
+  references made clickable, the changed files as a tree, a diff for each file, and buttons that
+  copy the short or full commit ID. Select the uncommitted changes row to browse staged,
+  unstaged, untracked and conflicted files.
+- **Push status at a glance:** a dot marks each commit no remote has yet, and a ring each commit
+  on a tracked remote branch that you have not pulled.
 - **Search all of history** by message, commit ID, author, committer, branch or tag name, date
   or path, typed straight into the search box as `author:`, `tag:` and so on. Follow a file
   through renames, save filters for each repository, and jump back to HEAD in one click.

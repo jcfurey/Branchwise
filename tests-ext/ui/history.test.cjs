@@ -1327,6 +1327,49 @@ suite("Branchwise workflow UI", function () {
     await button("Return to Graph");
   });
 
+  test("marks unpushed and unpulled commits, links issues and copies short and full IDs", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "shared base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    commit("f", "fetched only", dir);
+    const fetched = git(["rev-parse", "HEAD"], dir);
+    git(["remote", "add", "origin", "git@github.com:owner/project.git"], dir);
+    git(["update-ref", "refs/remotes/origin/main", fetched], dir);
+    git(["reset", "--hard", base], dir);
+    git(["branch", "--set-upstream-to=origin/main"], dir);
+    commit("f", "Fix the parser (#42)\n\nUse `parse()` here.", dir);
+    const local = git(["rev-parse", "HEAD"], dir);
+    await openRepo(dir);
+    const push = (hash) =>
+      graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${hash}"] [data-push]')?.dataset.push ?? null`
+      );
+    await until(async () => (await push(local)) === "unpushed", "unpushed dot");
+    assert.equal(await push(fetched), "unpulled");
+    assert.equal(await push(base), null);
+
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${local}"]').click()`);
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('[data-details-row] a[href="https://github.com/owner/project/issues/42"]')?.textContent === "#42"`
+        ),
+      "issue link"
+    );
+    assert.equal(
+      await graph.evaluate(`document.querySelector('[data-details-row] code')?.textContent`),
+      "parse()"
+    );
+    await button("Copy Short ID", 'document.querySelector("[data-details-row]")');
+    await until(
+      async () => (await vscode.env.clipboard.readText()) === local.slice(0, 8),
+      "short ID copied"
+    );
+    await button("Copy Full ID", 'document.querySelector("[data-details-row]")');
+    await until(async () => (await vscode.env.clipboard.readText()) === local, "full ID copied");
+  });
+
   test("runs ordered selected cherry-picks and reverts, then creates and autosquashes a fixup", async () => {
     const history = directory();
     init(history);

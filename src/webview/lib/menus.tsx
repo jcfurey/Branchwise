@@ -267,6 +267,10 @@ export function commitMenu(
       {
         title: l10n.copyCommitHash,
         onClick: () => copyToClipboard(window.l10n.typeCommitHash, hash)
+      },
+      {
+        title: l10n.copyShortCommitHash,
+        onClick: () => copyToClipboard(window.l10n.typeCommitHash, abbrevCommit(hash))
       }
     ]
   );

@@ -43,6 +43,7 @@ export type RepositoryQuery =
   | HistoryQuery
   | { kind: "workingTree" }
   | { kind: "branchFocus"; branch: string; hashes: string[] }
+  | { kind: "pushStatus" }
   | { kind: "state" }
   | { kind: "stashes" }
   | { kind: "rebasePlan"; base: string; autosquash?: boolean }
@@ -53,6 +54,7 @@ export type RepositoryQueryData =
   | HistoryQueryData
   | { kind: "workingTree"; files: WorkingTreeFile[] }
   | { kind: "branchFocus"; tip: string; direct: string[]; merged: string[] }
+  | { kind: "pushStatus"; unpushed: string[]; unpulled: string[] }
   | { kind: "state"; state: RepositoryState }
   | { kind: "stashes"; stashes: StashDetails[] }
   | { kind: "rebasePlan"; plan: RebasePlan }

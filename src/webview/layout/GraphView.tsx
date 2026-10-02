@@ -250,6 +250,10 @@ export function GraphView() {
       : null
   );
 
+  const pushStatus = useRepositoryQuery<"pushStatus">(
+    rows !== undefined && rows.length > 0 ? { kind: "pushStatus" } : null
+  );
+
   useScrollRestore(rows, selectedRepo.value);
 
   if (inHistory && (history.error !== null || (history.loading && history.data === null))) {
@@ -315,6 +319,7 @@ export function GraphView() {
         head={head}
         headBranch={headBranch.value}
         focus={focusData}
+        pushStatus={pushStatus.data}
         keepMergedBright={branchDisplay.value === "ancestors"}
         dimming={focusDimming.value}
       />
