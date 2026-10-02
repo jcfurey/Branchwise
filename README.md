@@ -81,6 +81,12 @@ pull and fetch can be stopped.
 - **Bisect:** find the commit that introduced a regression with a guided `git bisect`.
 - **Clean up** local branches that are already merged.
 
+### See who works on what
+
+- **Statistics tab:** commits, contributors and active days for every branch or one, over a
+  chosen period, with a year of daily activity and each contributor's share, optionally with
+  lines added and deleted. Contributors are merged through `.mailmap`.
+
 ### Repositories and remotes
 
 - **Multi-repository workspaces**, including initialized submodules and their nested submodules,

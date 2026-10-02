@@ -65,6 +65,7 @@ describe("the toolbar", () => {
     expect(buttons).toEqual([
       { ...plain, text: "tabGraph" },
       { ...plain, text: "tabReflog" },
+      { ...plain, text: "tabStatistics" },
       { ...plain, text: "branchesPane", expanded: "true" },
       { ...plain, text: "workspaceOverview", expanded: "false" },
       { ...trigger, text: "a", title: "/r/a" },
@@ -77,7 +78,7 @@ describe("the toolbar", () => {
       { ...plain, text: "compareSubmit" },
       { text: "", label: "settingsTools", title: "settingsTools", expanded: "false", popup: "menu" }
     ]);
-    expect(picker("repo")).toBe(header().querySelectorAll("button")[4]);
+    expect(picker("repo")).toBe(header().querySelectorAll("button")[5]);
     expect(picker("branch").title).toBe("*");
     expect(picker("branchDisplay").title).toBe("filter");
     expect(headerButton("branchesPane").classList).toContain("bg-row-selected");
@@ -418,9 +419,11 @@ describe("the view tabs", () => {
     expect(navigation.activeTab.value).toBe("reflog");
     expect(document.activeElement).toBe(tab("reflog"));
     press("ArrowRight");
+    expect(navigation.activeTab.value).toBe("statistics");
+    press("ArrowRight");
     expect(navigation.activeTab.value).toBe("graph");
     press("ArrowLeft");
-    expect(navigation.activeTab.value).toBe("reflog");
+    expect(navigation.activeTab.value).toBe("statistics");
   });
 
   it("returns to the graph for a search", () => {

@@ -50,7 +50,7 @@ type NavigationState = {
   tab?: ViewTab;
 };
 /** The views the header switches between. */
-export type ViewTab = "graph" | "reflog";
+export type ViewTab = "graph" | "reflog" | "statistics";
 const initial = vscode.getState() as { navigation?: NavigationState } | null;
 let saved: NavigationState = initial?.navigation ?? { repos: {}, workspace: false };
 export const historyFilter = signal<HistoryFilter>(emptyFilter());

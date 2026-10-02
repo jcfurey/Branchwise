@@ -130,6 +130,10 @@ A commit marked **Not on any branch** is one that no branch, tag, remote branch 
 
 The tab you were on is remembered when the panel reopens. Searching, **Jump to HEAD** and **Show in Graph** return to the **Graph** tab.
 
+## Statistics
+
+The **Statistics** tab counts the commits on every branch the graph shows, or on one local branch, over the last 30 days, 90 days, year, or all time. It shows the number of commits, contributors and days with commits, a grid of commits per day over the last year (point at a day for its date and count), and every contributor with their commits, share and first and last commit. People are named as `.mailmap` names them, so someone who committed under several addresses counts once. **Count lines changed** adds the lines each contributor added and deleted outside merges; it reads every commit's changes, so it is slower on large repositories. Click a contributor to search the graph for their commits. Avatars are initials; Branchwise fetches nothing over the network.
+
 Ctrl/Cmd-click selects individual commits; Shift-click selects a range. Select up to 100 commits for **Cherry-pick Selected** or **Revert Selected**. Review and adjust the execution order before confirming. Cherry-picks default to oldest first; reverts default to newest first. Merge commits require a common mainline parent choice. The native Git sequencer retains remaining commits if a conflict interrupts the batch; use the status strip's Continue, Abort, or Skip controls.
 
 ## Keyboard navigation and activity

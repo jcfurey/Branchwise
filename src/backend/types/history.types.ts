@@ -54,6 +54,39 @@ export type ReflogEntry = {
   /** No branch, tag, remote branch or HEAD reaches the commit; only the reflog does. */
   lost: boolean;
 };
+/** One person's commits in a statistics range. Times are Unix seconds. */
+export type Contributor = {
+  name: string;
+  email: string;
+  commits: number;
+  first: number;
+  last: number;
+  /** Lines added and deleted outside merges, when they were counted. */
+  added?: number;
+  deleted?: number;
+};
+export type StatisticsQuery = {
+  kind: "statistics";
+  /** A local branch's full name, or `""` for what the graph shows across every branch. */
+  branch: string;
+  range: "30" | "90" | "365" | "all";
+  /** Also count lines added and deleted, which reads every commit's changes. */
+  lines: boolean;
+  showRemoteBranches?: boolean;
+  hiddenRemotes?: string[];
+};
+export type Statistics = {
+  commits: number;
+  /** Calendar days with at least one commit. */
+  activeDays: number;
+  first: number | null;
+  last: number | null;
+  /** Most commits first. */
+  contributors: Contributor[];
+  /** Commits per `YYYY-MM-DD` day over the last year and a week. */
+  activity: Record<string, number>;
+  lines: boolean;
+};
 export type WorkspaceEntry = {
   path: string;
   parent: string | null;
@@ -106,6 +139,7 @@ export type HistoryQuery =
       text?: string;
       lostOnly?: boolean;
     }
+  | StatisticsQuery
   | { kind: "workspace" }
   | { kind: "restorePlan"; source: string; sourcePath: string; destination: string }
   | { kind: "stagedPlan"; target: string }
@@ -116,6 +150,7 @@ export type HistoryQueryData =
   | { kind: "compare"; comparison: Comparison }
   | { kind: "compareCommits"; page: HistoryPage }
   | { kind: "reflog"; entries: ReflogEntry[]; more: boolean; refs: string[]; actions: string[] }
+  | { kind: "statistics"; statistics: Statistics }
   | { kind: "workspace"; entries: WorkspaceEntry[] }
   | { kind: "restorePlan"; plan: FileRestorePlan }
   | { kind: "stagedPlan"; plan: StagedPlan }

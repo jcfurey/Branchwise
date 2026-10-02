@@ -1,6 +1,7 @@
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
+import { loadStatistics } from "@/backend/queries/statistics";
 import type {
   BatchPlan,
   Comparison,
@@ -464,6 +465,8 @@ export async function historyQuery(
       };
     case "reflog":
       return { kind: "reflog", ...(await loadReflog(git, query)) };
+    case "statistics":
+      return { kind: "statistics", statistics: await loadStatistics(git, query) };
     case "restorePlan":
       return {
         kind: "restorePlan",
