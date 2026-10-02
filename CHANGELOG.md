@@ -14,6 +14,10 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - **Graph** and **Reflog** tabs in the header. The reflog becomes a full view of every move of HEAD and the local branches, filtered by ref, operation or text, with each operation coloured, commits that no branch reaches marked and listed on their own, and **Show in Graph**, **Create Recovery Branch**, **Check Out** and **Reset** on each entry. **Recover lost commits (reflog)** opens the tab.
 - A **Jump to HEAD** button next to search, highlighted while the checked-out commit is out of sight. Down Arrow in the search box moves into the results.
 
+### Fixed
+
+- Wait for all of Git's output before reading it. On a busy machine, a large output such as a long log or ref list could be cut short without an error, because a Git process counted as finished 50 ms after it exited.
+
 ## [0.9.8] - 2026-10-01
 
 ### Changed
