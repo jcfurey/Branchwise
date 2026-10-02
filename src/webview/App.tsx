@@ -3,6 +3,7 @@ import type { GitRepo } from "@/types";
 import { NavigationEffects } from "./components/history/NavigationEffects";
 import { ReflogView } from "./components/history/ReflogView";
 import { SearchBar } from "./components/history/SearchBar";
+import { StatisticsView } from "./components/history/StatisticsView";
 import { WorkspacePane } from "./components/history/WorkspacePane";
 import { RefsPane } from "./components/repository/RefsPane";
 import { RepositoryStatus } from "./components/repository/RepositoryStatus";
@@ -55,8 +56,14 @@ export function App({ repos }: { repos: Array<GitRepo> }) {
         <div class="flex w-full min-w-0 flex-1 flex-col self-stretch">
           {/* A view that fails to render replaces only the graph; the header and panes stay. */}
           <ErrorBoundary>
-            {/* A new repository starts the reflog's filters afresh. */}
-            {tab === "reflog" ? <ReflogView key={selectedRepo.value} /> : <GraphView />}
+            {/* A new repository starts each view's filters afresh. */}
+            {tab === "reflog" ? (
+              <ReflogView key={selectedRepo.value} />
+            ) : tab === "statistics" ? (
+              <StatisticsView key={selectedRepo.value} />
+            ) : (
+              <GraphView />
+            )}
           </ErrorBoundary>
         </div>
       </div>

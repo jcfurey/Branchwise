@@ -72,7 +72,8 @@ function ViewTabs() {
   const l10n = window.l10n;
   const tabs = [
     { id: "graph", label: l10n.tabGraph },
-    { id: "reflog", label: l10n.tabReflog }
+    { id: "reflog", label: l10n.tabReflog },
+    { id: "statistics", label: l10n.tabStatistics }
   ] as const;
   const current = activeTab.value;
   return (

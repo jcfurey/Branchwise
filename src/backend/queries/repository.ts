@@ -280,6 +280,7 @@ export async function repositoryQuery(
     case "compare":
     case "compareCommits":
     case "reflog":
+    case "statistics":
     case "restorePlan":
     case "stagedPlan":
     case "batchPlan":

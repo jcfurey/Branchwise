@@ -1277,6 +1277,56 @@ suite("Branchwise workflow UI", function () {
     await until(() => graph.evaluate('!document.querySelector("[data-reflog-view]")'), "graph tab");
   });
 
+  test("counts contributors and daily activity in the Statistics tab", async () => {
+    const counted = directory();
+    init(counted);
+    const day = 24 * 60 * 60;
+    const now = Math.floor(Date.now() / 1000);
+    const at = (daysAgo, author, message) => {
+      const date = `${now - daysAgo * day} +0000`;
+      cp.execFileSync("git", ["commit", "--allow-empty", `--author=${author}`, "-m", message], {
+        cwd: counted,
+        stdio: "pipe",
+        env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }
+      });
+    };
+    for (let i = 0; i < 40; i++) {
+      at(i * 7 + (i % 3), "Ann Lee <ann@example.test>", "ann " + i);
+    }
+    for (let i = 0; i < 12; i++) {
+      at(i * 3, "Bob Stone <bob@example.test>", "bob " + i);
+    }
+    await openRepo(counted);
+    await graph.evaluate(`document.querySelector('[data-view-tab="statistics"]').click()`);
+    await until(
+      () =>
+        graph.evaluate(
+          `[...document.querySelectorAll('[data-statistics-view] [data-contributor]')].map(b => b.dataset.contributor).join() === 'ann@example.test,bob@example.test'`
+        ),
+      "contributors by commit count"
+    );
+    assert.equal(
+      await graph.evaluate(
+        `[...document.querySelectorAll('[data-statistics-view] rect')].filter(r => Number(r.dataset.count) > 0).length > 20`
+      ),
+      true
+    );
+    const shot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(path.join(artifacts, "statistics-tab.png"), Buffer.from(shot.data, "base64"));
+    // A contributor opens their commits in the graph.
+    await graph.evaluate(
+      `document.querySelector('[data-statistics-view] [data-contributor="bob@example.test"]').click()`
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('[data-view-tab="graph"]').getAttribute('aria-selected') === 'true' && document.querySelectorAll('tr[data-commit-hash]').length === 12`
+        ),
+      "Bob's commits in the graph"
+    );
+    await button("Return to Graph");
+  });
+
   test("runs ordered selected cherry-picks and reverts, then creates and autosquashes a fixup", async () => {
     const history = directory();
     init(history);
