@@ -8,6 +8,8 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+## [0.9.9] - 2026-10-02
+
 ### Added
 
 - Search by committer, and by branch or tag name, which lists the commits those branches or tags point to. Type fields straight into the search box, such as `tag:v1.2` or `author:"Ann Lee"`, or tick **Regular expressions** to match patterns. Branches and tags whose names contain the search text are listed above the results.
