@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { simpleGit } from "simple-git";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
   createGit,
@@ -13,6 +13,7 @@ import {
   PARSED_OUTPUT_CONFIG
 } from "@/backend/gitClient";
 
+import { makeRepo } from "@tests/backend/helpers";
 import { recordingGit } from "@tests/backend/queries/loadCommits/fixtures";
 import { onWindows, run, sandbox, writeFile } from "@tests/backend/sandbox";
 
@@ -201,5 +202,29 @@ describe("gitClientFactory", () => {
     const current = factory.getInstance();
     expect(() => factory.setRepo(MISSING)).toThrow(/does not exist/);
     expect(factory.getInstance()).toBe(current);
+  });
+});
+
+describe("reading a command's output", () => {
+  let repo = "";
+
+  beforeAll(() => {
+    repo = makeRepo();
+    execFileSync("git", ["config", "alias.late", "!sh -c '(sleep 1; echo late) & echo early'"], {
+      cwd: repo
+    });
+  });
+
+  afterAll(() => {
+    fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+
+  it("waits for all of it, even when it arrives after Git has exited", async () => {
+    // The alias's shell leaves a child writing to Git's output after Git exits: what a busy
+    // machine looks like when the last of a large output is still in the pipe. simple-git's
+    // default treated a process as finished 50 ms after it exited and dropped the rest.
+    const client = createGit(repo, "git");
+    const output = await client.raw(["late"]);
+    expect(output.split("\n").filter(Boolean)).toStrictEqual(["early", "late"]);
   });
 });
