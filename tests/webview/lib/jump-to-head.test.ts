@@ -61,6 +61,13 @@ describe("Jump to HEAD", () => {
     expect(navigation.focusedCommit.value).toBe("head");
   });
 
+  it("comes back from another view to the graph", () => {
+    navigation.showTab("reflog");
+    jump.jumpToHead();
+    expect(navigation.activeTab.value).toBe("graph");
+    expect(navigation.focusedCommit.value).toBe("head");
+  });
+
   it("opens the history at HEAD when the graph has not loaded it", () => {
     stores.commitList.value = [commit("new")];
     jump.jumpToHead();

@@ -28,10 +28,12 @@ import {
 import { focusSearch } from "@/webview/lib/focus";
 import { jumpToHead, useHeadOutOfSight } from "@/webview/lib/jump-to-head";
 import {
+  activeTab,
   historyActive,
   refsVisible,
   searchVisible,
   selectedCommits,
+  showTab,
   toggleRefs,
   toggleSearch,
   toggleWorkspace,
@@ -61,6 +63,61 @@ const PICKER_CLASS = "max-w-56";
 
 /** The background of a toggle whose pane or row is open. */
 const pressed = (open: boolean) => (open ? "bg-row-selected" : undefined);
+
+/**
+ * The views below the header, as a row of tabs. Arrow keys move between them, as in any tab
+ * list, and the chosen one is the only tab stop.
+ */
+function ViewTabs() {
+  const l10n = window.l10n;
+  const tabs = [
+    { id: "graph", label: l10n.tabGraph },
+    { id: "reflog", label: l10n.tabReflog }
+  ] as const;
+  const current = activeTab.value;
+  return (
+    <div
+      role="tablist"
+      aria-label={l10n.viewTabs}
+      class="flex overflow-hidden rounded border border-line"
+      onKeyDown={(event) => {
+        const step = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
+        if (step === undefined) {
+          return;
+        }
+        event.preventDefault();
+        // The event lets go of its target once it has been handled.
+        const list = event.currentTarget;
+        const at = tabs.findIndex((tab) => tab.id === current);
+        const next = tabs[(at + step + tabs.length) % tabs.length]!;
+        showTab(next.id);
+        requestAnimationFrame(() =>
+          list.querySelector<HTMLElement>(`[data-view-tab="${next.id}"]`)?.focus()
+        );
+      }}
+    >
+      {tabs.map((tab) => {
+        const selected = tab.id === current;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            data-view-tab={tab.id}
+            aria-selected={selected}
+            tabIndex={selected ? 0 : -1}
+            class={`cursor-pointer px-2.5 py-1 font-medium focus:outline-1 focus:outline-focus ${
+              selected ? "bg-action text-action-fg" : "bg-btn hover:bg-btn-hover"
+            }`}
+            onClick={() => showTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 /** A name for a selected repository the scan did not list: its last path segment. */
 function repoLabel(path: string) {
@@ -171,6 +228,7 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
       ref={header}
       class="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-line-soft bg-editor px-3 py-2 text-ui"
     >
+      <ViewTabs />
       <Button aria-expanded={refsOpen} class={pressed(refsOpen)} onClick={toggleRefs}>
         {l10n.branchesPane}
       </Button>

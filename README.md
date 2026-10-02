@@ -74,7 +74,8 @@ pull and fetch can be stopped.
 
 ### Recover and investigate
 
-- **Recover lost commits** from the reflog and keep them on a new branch.
+- **Reflog tab:** every move of HEAD and your branches, filtered by ref, operation or text, with
+  commits that are no longer on any branch marked so you can keep them on a new branch.
 - **Compare** two branches, tags or commits, or only the changes since their common ancestor, and
   restore a file's earlier contents.
 - **Bisect:** find the commit that introduced a regression with a guided `git bisect`.

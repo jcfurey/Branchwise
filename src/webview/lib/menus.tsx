@@ -140,7 +140,7 @@ function createBranch(hash: string) {
   });
 }
 
-function checkoutCommit(hash: string) {
+export function checkoutCommit(hash: string) {
   openFormDialog({
     message: withExplanation(
       format(window.l10n.dialogCheckoutConfirm, named(abbrevCommit(hash))),
@@ -210,7 +210,7 @@ function mergeCommit(hash: string) {
   });
 }
 
-function resetToCommit(hash: string) {
+export function resetToCommit(hash: string) {
   openFormDialog({
     message: withExplanation(
       format(window.l10n.dialogResetConfirm, currentBranch(), named(abbrevCommit(hash))),

@@ -46,7 +46,11 @@ type NavigationState = {
   collapsed?: string[];
   /** The search row is open. It also opens while a filter is active. */
   search?: boolean;
+  /** The view shown below the header. Absent in state saved before the tabs existed. */
+  tab?: ViewTab;
 };
+/** The views the header switches between. */
+export type ViewTab = "graph" | "reflog";
 const initial = vscode.getState() as { navigation?: NavigationState } | null;
 let saved: NavigationState = initial?.navigation ?? { repos: {}, workspace: false };
 export const historyFilter = signal<HistoryFilter>(emptyFilter());
@@ -60,6 +64,7 @@ export const workspaceVisible = signal(saved.workspace);
 export const refsVisible = signal(saved.refs ?? true);
 export const collapsedSections = signal<ReadonlySet<string>>(new Set(saved.collapsed ?? []));
 export const searchVisible = signal(saved.search ?? false);
+export const activeTab = signal<ViewTab>(saved.tab ?? "graph");
 export const focusedCommit = signal<string | null>(null);
 export const restoreScroll = signal<number | null>(null);
 let selectionRows: HistoryEntry[] = [];
@@ -148,7 +153,19 @@ export function savedFocusBranch(repo: string) {
   return preferences === undefined ? saved.repos[repo]?.focusBranch : preferences.focusBranch;
 }
 
+/** Show a view below the header, and remember it for the next time the panel opens. */
+export function showTab(tab: ViewTab) {
+  if (activeTab.value === tab) {
+    return;
+  }
+  activeTab.value = tab;
+  saved.tab = tab;
+  persist();
+}
+
 export function setHistoryFilter(filter: HistoryFilter) {
+  // The filter and its results belong to the graph.
+  showTab("graph");
   // A filter saved before a field existed lacks it.
   historyFilter.value = { ...emptyFilter(), ...filter };
   historyOffset.value = 0;
@@ -212,6 +229,7 @@ export function toggleSearch() {
 }
 
 export function showSearch() {
+  showTab("graph");
   if (searchVisible.value) {
     return;
   }

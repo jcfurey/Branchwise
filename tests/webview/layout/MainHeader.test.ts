@@ -5,6 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 import type { HistoryEntry } from "@/backend/types";
 import { MainHeader } from "@/webview/layout/MainHeader";
+import * as navigation from "@/webview/lib/navigation";
 import {
   emptyFilter,
   historyFilter,
@@ -62,6 +63,8 @@ describe("the toolbar", () => {
     const plain = { label: null, title: null, expanded: null, popup: null };
     const trigger = { label: null, expanded: "false", popup: "listbox" };
     expect(buttons).toEqual([
+      { ...plain, text: "tabGraph" },
+      { ...plain, text: "tabReflog" },
       { ...plain, text: "branchesPane", expanded: "true" },
       { ...plain, text: "workspaceOverview", expanded: "false" },
       { ...trigger, text: "a", title: "/r/a" },
@@ -74,7 +77,7 @@ describe("the toolbar", () => {
       { ...plain, text: "compareSubmit" },
       { text: "", label: "settingsTools", title: "settingsTools", expanded: "false", popup: "menu" }
     ]);
-    expect(picker("repo")).toBe(header().querySelectorAll("button")[2]);
+    expect(picker("repo")).toBe(header().querySelectorAll("button")[4]);
     expect(picker("branch").title).toBe("*");
     expect(picker("branchDisplay").title).toBe("filter");
     expect(headerButton("branchesPane").classList).toContain("bg-row-selected");
@@ -378,5 +381,52 @@ describe("the header height", () => {
     expect(() => act(() => render(h(MainHeader, { repos: REPOS }), host))).toThrow(
       /ResizeObserver/
     );
+  });
+});
+
+describe("the view tabs", () => {
+  const tab = (id: string) =>
+    header().querySelector<HTMLButtonElement>(`[role=tab][data-view-tab="${id}"]`)!;
+
+  afterEach(() => navigation.showTab("graph"));
+
+  it("selects one view at a time and saves the choice", () => {
+    mount();
+    expect(header().querySelector("[role=tablist]")?.getAttribute("aria-label")).toBe("viewTabs");
+    expect([tab("graph").ariaSelected, tab("reflog").ariaSelected]).toEqual(["true", "false"]);
+    expect([tab("graph").tabIndex, tab("reflog").tabIndex]).toEqual([0, -1]);
+    act(() => tab("reflog").click());
+    expect(navigation.activeTab.value).toBe("reflog");
+    expect([tab("graph").ariaSelected, tab("reflog").ariaSelected]).toEqual(["false", "true"]);
+    const state = vscodeApi.setState.mock.lastCall?.[0] as { navigation: { tab: string } };
+    expect(state.navigation.tab).toBe("reflog");
+  });
+
+  it("moves between tabs with the arrow keys, wrapping round", () => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    });
+    mount();
+    const press = (key: string) =>
+      act(() => {
+        tab(navigation.activeTab.value).dispatchEvent(
+          new KeyboardEvent("keydown", { key, bubbles: true })
+        );
+      });
+    press("ArrowRight");
+    expect(navigation.activeTab.value).toBe("reflog");
+    expect(document.activeElement).toBe(tab("reflog"));
+    press("ArrowRight");
+    expect(navigation.activeTab.value).toBe("graph");
+    press("ArrowLeft");
+    expect(navigation.activeTab.value).toBe("reflog");
+  });
+
+  it("returns to the graph for a search", () => {
+    navigation.showTab("reflog");
+    mount();
+    act(() => headerButton("historySearch").click());
+    expect(navigation.activeTab.value).toBe("graph");
   });
 });

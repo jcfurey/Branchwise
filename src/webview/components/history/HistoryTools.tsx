@@ -22,7 +22,8 @@ import {
   focusHistory,
   selectedCommits,
   selectionInGraphOrder,
-  setHistoryFilter
+  setHistoryFilter,
+  showTab
 } from "@/webview/lib/navigation";
 import {
   requestPanelQuery,
@@ -32,7 +33,6 @@ import {
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 import { moveButton, useListMove } from "@/webview/lib/use-list-move";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
-import { getFullDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
 
 import { PageControls, QueryStatus, TextField } from "./QueryControls";
@@ -203,76 +203,10 @@ export function openCompare(left = "HEAD", right = "HEAD") {
   openContentDialog(window.l10n.compareRevisions, <CompareView left={left} right={right} />, true);
 }
 
-function ReflogView() {
-  const [offset, setOffset] = useState(0);
-  const query = useRepositoryQuery<"reflog">({ kind: "reflog", offset });
-  return (
-    <div class="space-y-3 text-left">
-      <p class="text-muted">{window.l10n.reflogHint}</p>
-      <QueryStatus {...query} />
-      {query.data && (
-        <>
-          <ul class="divide-y divide-line-soft">
-            {query.data.entries.map((entry, index) => (
-              <li key={entry.selector + index} class="space-y-2 py-3">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                  <code>{entry.hash.slice(0, 12)}</code>
-                  <time class="text-xs text-muted">{getFullDate(entry.date)}</time>
-                </div>
-                <p class="break-words">{entry.message}</p>
-                <p class="break-all text-xs text-muted">{entry.selector}</p>
-                <div class="flex gap-2">
-                  <Button
-                    onClick={() => {
-                      closeDialog();
-                      focusHistory(entry.hash);
-                    }}
-                  >
-                    {window.l10n.showInGraph}
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      openFormDialog({
-                        message: (
-                          <>
-                            {window.l10n.recoverBranch}: <code>{entry.hash.slice(0, 12)}</code>
-                          </>
-                        ),
-                        inputs: [
-                          {
-                            kind: "ref",
-                            label: window.l10n.recoveryBranchName,
-                            value: "recovered/" + entry.hash.slice(0, 8)
-                          }
-                        ],
-                        action: window.l10n.recoverBranch,
-                        source: null,
-                        onSubmit: ([name]) =>
-                          sendRepositoryAction({ kind: "recoverBranch", name, hash: entry.hash })
-                      })
-                    }
-                  >
-                    {window.l10n.recoverBranch}
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          {query.data.entries.length === 0 && <p>{window.l10n.noReflog}</p>}
-          <PageControls
-            offset={offset}
-            count={query.data.entries.length}
-            more={query.data.more}
-            change={setOffset}
-          />
-        </>
-      )}
-    </div>
-  );
-}
-
+/** The reflog has a tab of its own beside the graph. */
 export function openReflog() {
-  openContentDialog(window.l10n.reflog, <ReflogView />, true);
+  closeDialog();
+  showTab("reflog");
 }
 
 export function openFileHistory(file: string, revision = "") {

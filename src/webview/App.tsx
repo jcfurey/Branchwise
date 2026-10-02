@@ -1,6 +1,7 @@
 import type { GitRepo } from "@/types";
 
 import { NavigationEffects } from "./components/history/NavigationEffects";
+import { ReflogView } from "./components/history/ReflogView";
 import { SearchBar } from "./components/history/SearchBar";
 import { WorkspacePane } from "./components/history/WorkspacePane";
 import { RefsPane } from "./components/repository/RefsPane";
@@ -11,7 +12,14 @@ import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import { ScrollShadow } from "./components/ui/ScrollShadow";
 import { GraphView } from "./layout/GraphView";
 import { MainHeader } from "./layout/MainHeader";
-import { historyActive, refsVisible, searchVisible, workspaceVisible } from "./lib/navigation";
+import {
+  activeTab,
+  historyActive,
+  refsVisible,
+  searchVisible,
+  workspaceVisible
+} from "./lib/navigation";
+import { selectedRepo } from "./lib/stores";
 
 /**
  * The sidebar sits beside the graph from the `md` width up. There it stays in view while the
@@ -27,8 +35,10 @@ const SIDEBAR_CLASS = [
 export function App({ repos }: { repos: Array<GitRepo> }) {
   const refs = refsVisible.value;
   const workspace = workspaceVisible.value;
+  const tab = activeTab.value;
   // An active filter keeps the search row open, since it is where the filter is shown and changed.
-  const search = searchVisible.value || historyActive.value;
+  // It belongs to the graph, so other views hide it.
+  const search = tab === "graph" && (searchVisible.value || historyActive.value);
 
   return (
     <div data-branchwise class="flex min-h-screen flex-col">
@@ -45,7 +55,8 @@ export function App({ repos }: { repos: Array<GitRepo> }) {
         <div class="flex w-full min-w-0 flex-1 flex-col self-stretch">
           {/* A view that fails to render replaces only the graph; the header and panes stay. */}
           <ErrorBoundary>
-            <GraphView />
+            {/* A new repository starts the reflog's filters afresh. */}
+            {tab === "reflog" ? <ReflogView key={selectedRepo.value} /> : <GraphView />}
           </ErrorBoundary>
         </div>
       </div>

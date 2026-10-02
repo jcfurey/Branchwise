@@ -93,7 +93,7 @@ describe("history navigation and query lifetime", () => {
     requestPanelQuery({ kind: "workspace" }, second);
     const current = lastRequest();
     cancel();
-    respond({ kind: "reflog", entries: [], more: false }, old);
+    respond({ kind: "reflog", entries: [], more: false, refs: [], actions: [] }, old);
     respond({ kind: "workspace", entries: [] }, current);
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledOnce();

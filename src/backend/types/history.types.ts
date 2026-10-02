@@ -37,7 +37,23 @@ export type Comparison = {
   leftOnly: HistoryPage;
   rightOnly: HistoryPage;
 };
-export type ReflogEntry = { hash: string; selector: string; message: string; date: number };
+export type ReflogEntry = {
+  hash: string;
+  /** The entry's name, such as `HEAD@{1790000000}`. */
+  selector: string;
+  /** What the reflog says happened, such as `checkout: moving from main to topic`. */
+  message: string;
+  /** The subject of the commit the ref moved to. */
+  subject: string;
+  date: number;
+  /** The ref that moved: `HEAD` or a full ref name. */
+  ref: string;
+  /** The operation, such as `commit`, `checkout` or `rebase`, and its variant, such as `amend`. */
+  action: string;
+  detail: string;
+  /** No branch, tag, remote branch or HEAD reaches the commit; only the reflog does. */
+  lost: boolean;
+};
 export type WorkspaceEntry = {
   path: string;
   parent: string | null;
@@ -82,7 +98,14 @@ export type HistoryQuery =
     }
   | { kind: "compare"; left: string; right: string; mergeBase: boolean }
   | { kind: "compareCommits"; left: string; right: string; side: "left" | "right"; offset: number }
-  | { kind: "reflog"; offset: number }
+  | {
+      kind: "reflog";
+      offset: number;
+      ref?: string;
+      action?: string;
+      text?: string;
+      lostOnly?: boolean;
+    }
   | { kind: "workspace" }
   | { kind: "restorePlan"; source: string; sourcePath: string; destination: string }
   | { kind: "stagedPlan"; target: string }
@@ -92,7 +115,7 @@ export type HistoryQueryData =
   | { kind: "history"; page: HistoryPage }
   | { kind: "compare"; comparison: Comparison }
   | { kind: "compareCommits"; page: HistoryPage }
-  | { kind: "reflog"; entries: ReflogEntry[]; more: boolean }
+  | { kind: "reflog"; entries: ReflogEntry[]; more: boolean; refs: string[]; actions: string[] }
   | { kind: "workspace"; entries: WorkspaceEntry[] }
   | { kind: "restorePlan"; plan: FileRestorePlan }
   | { kind: "stagedPlan"; plan: StagedPlan }
