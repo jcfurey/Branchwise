@@ -20,8 +20,8 @@ practice; it is not legal advice.
 
 ### 1. Git Graph (mhutchie)
 
-[Git Graph](https://github.com/mhutchie/vscode-git-graph) is a VS Code extension by Michael
-Hutchison (mhutchie). At commit
+[Git Graph](https://github.com/mhutchie/vscode-git-graph) is a VS Code extension by mhutchie.
+At commit
 [`4af8583a42082b2c230d2c0187d4eaff4b69c665`](https://github.com/mhutchie/vscode-git-graph/commit/4af8583a42082b2c230d2c0187d4eaff4b69c665),
 whose `package.json` names version 1.4.6:
 
@@ -124,9 +124,12 @@ table links each module to its specification and its rewrite commit.
 Branchwise follows ideas from other extensions without copying their code, text or images:
 
 - **[Git Graph Plus](https://github.com/the0807/git-graph-plus)** (`the0807.git-graph-plus`,
-  Apache License 2.0). Features added in 0.9.9 follow ideas from it: the Graph, Reflog and
-  Statistics tabs, push-status markers, the Jump to HEAD button, and formatted commit messages
-  with linked issue references. Only the ideas were taken; no code, text or images were copied.
+  Apache License 2.0). The features added in 0.9.9 follow ideas from it: search by tag, branch,
+  author and committer; the Reflog and Statistics tabs; listing repositories cloned inside other
+  repositories, not only submodules; push-status markers; the Jump to HEAD button; formatted
+  commit messages with linked issue references; and copying a short or full commit ID. Only the
+  ideas were taken; no code, text or images were copied, and Branchwise's implementations were
+  written for this repository.
 - **Git Graph.** The overall idea of a commit graph inside VS Code, and the setting names and
   defaults that users' settings depend on, carry over from the projects Branchwise began from, as
   described above.
