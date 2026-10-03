@@ -14,6 +14,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - Slim the branch status line, the branch focus bar and the actions hint to one short line each. The hint closes with a × button.
 - Show a remote branch named like a local branch on the same commit, such as `origin/main` beside `main`, as a cloud at the end of the local branch's label; a remote's `HEAD`, such as `origin/HEAD`, joins a branch label the same way. Right-click the cloud for the remote branch's actions. A row with more than two labels shows the first one and a **+N** button that lists the rest and opens each one's menu.
 - Show each author's initials beside their name in the graph.
+- Shorten the README, and record where Branchwise came from, the license at each stage, and the third-party code it bundles in a new [provenance](docs/provenance.md) document.
 
 ## [0.9.9] - 2026-10-02
 

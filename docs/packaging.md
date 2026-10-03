@@ -3,7 +3,8 @@
 The checked-in manifest is the source of truth: `jcfurey.branchwise@0.9.9`.
 Keep `publisher` and `name` stable so that installed copies upgrade in place. When changing
 metadata, keep the README's [Origins and license](../README.md#origins-and-license) section, which
-credits the projects Branchwise began from; the manifest does not name them.
+credits the projects Branchwise began from and links to [Provenance](provenance.md); the manifest
+does not name them.
 
 Branchwise is published to [Open VSX](https://open-vsx.org/extension/jcfurey/branchwise). The
 release workflow can also publish to the VS Marketplace once a token for it is configured.
