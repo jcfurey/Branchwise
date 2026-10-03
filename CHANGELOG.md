@@ -8,6 +8,10 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+### Changed
+
+- Shorten the README, and record where Branchwise came from, the license at each stage, and the third-party code it bundles in a new [provenance](docs/provenance.md) document.
+
 ## [0.9.9] - 2026-10-02
 
 ### Added
