@@ -2,6 +2,7 @@ import type { OperationKind, OperationState } from "@/backend/types";
 import { BisectStatus } from "@/webview/components/repository/BisectView";
 import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { Button } from "@/webview/components/ui/Button";
+import { BranchIcon } from "@/webview/components/ui/Icons";
 import {
   confirmRepositoryAction,
   repositoryState,
@@ -55,11 +56,12 @@ export function RepositoryStatus() {
   const operation = state.operation;
   const repo = selectedRepo.value;
   return (
-    <div class="space-y-2 border-b border-line-soft px-3 py-2 text-ui">
+    <div class="space-y-2 border-b border-line-soft px-3 py-0.5 text-ui">
       <BisectStatus />
-      <div class="flex flex-wrap items-center gap-3" role="status">
+      <div class="flex flex-wrap items-center gap-x-2 text-xs" role="status">
+        <BranchIcon class="size-3.5 shrink-0 text-muted" />
         <b>{state.head || window.l10n.detachedHead}</b>
-        <span>
+        <span class="text-muted">
           {tracking?.upstream
             ? tracking.gone
               ? `${tracking.upstream} · ${window.l10n.upstreamGone}`
@@ -72,7 +74,11 @@ export function RepositoryStatus() {
             : window.l10n.noUpstream}
         </span>
         {tracking && (
-          <Button onClick={() => openTracking(tracking.name)}>
+          <Button
+            variant="ghost"
+            class="py-0.5 text-xs text-link"
+            onClick={() => openTracking(tracking.name)}
+          >
             {window.l10n.configureUpstream}
           </Button>
         )}

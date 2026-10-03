@@ -136,6 +136,7 @@ export function getWebviewLocalizedStrings() {
     merge: vscode.l10n.t("Merge into Current Branch"),
     reset: vscode.l10n.t("Reset Current Branch to This Commit"),
     copyCommitHash: vscode.l10n.t("Copy Commit ID"),
+    moreRefs: vscode.l10n.t("More branches and tags: {0}"),
     copyShortCommitHash: vscode.l10n.t("Copy Short Commit ID"),
     copyCommitHashShort: vscode.l10n.t("Copy Short ID"),
     copyCommitHashFull: vscode.l10n.t("Copy Full ID"),

@@ -178,3 +178,60 @@ export function LocateIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** A cloud with an arrow coming down out of it: fetch. */
+export function FetchIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <path d="M4.75 11.25H4.4A3 3 0 0 1 4 5.3 4.25 4.25 0 0 1 12.1 6 2.65 2.65 0 0 1 11.6 11.25H11.25" />
+      <path d="M8 7.5V14.25M5.75 12 8 14.25 10.25 12" />
+    </Icon>
+  );
+}
+
+/** Two arrows pointing at each other's tails: compare. */
+export function CompareIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <path d="M2 5H13M10.5 2.5 13 5 10.5 7.5M14 11H3M5.5 8.5 3 11 5.5 13.5" />
+    </Icon>
+  );
+}
+
+/** A window with a panel down its left side: the branches pane. */
+export function SidebarIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1.25" />
+      <path d="M6 2.5V13.5" />
+    </Icon>
+  );
+}
+
+/** Two boxes, one behind the other: several repositories. */
+export function ReposIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <rect x="1.5" y="5" width="10" height="9" rx="1.25" />
+      <path d="M4.5 2.5H13.25A1.25 1.25 0 0 1 14.5 3.75V11" />
+    </Icon>
+  );
+}
+
+/** A bound book: a repository. */
+export function RepoIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <path d="M3 13V3.25A1.75 1.75 0 0 1 4.75 1.5H13V11.5H4.75A1.75 1.75 0 0 0 3 13.25 1.75 1.75 0 0 0 4.75 15H13" />
+    </Icon>
+  );
+}
+
+/** A diagonal cross: close or dismiss. */
+export function CloseIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <path d="M4 4 12 12M12 4 4 12" />
+    </Icon>
+  );
+}

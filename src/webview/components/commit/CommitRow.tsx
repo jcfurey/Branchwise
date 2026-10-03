@@ -11,17 +11,24 @@ import { UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { focusColour } from "@/webview/graph/focus";
 import type { BranchRelation } from "@/webview/graph/types";
 import { closeCommitDetails, openContextMenu } from "@/webview/lib/actions";
-import { commitMenu, commitMenuSource, type CommitMessages } from "@/webview/lib/menus";
+import {
+  commitMenu,
+  commitMenuSource,
+  type CommitMessages,
+  refMenu,
+  refMenuSource
+} from "@/webview/lib/menus";
 import {
   focusedCommit,
   historyFilter,
   selectCommitRows,
   selectedCommits
 } from "@/webview/lib/navigation";
-import { activeSource, uncommittedChanges } from "@/webview/lib/stores";
+import { activeSource, contextMenu, uncommittedChanges } from "@/webview/lib/stores";
 import type { FocusDimming } from "@/webview/types";
 import { getCommitDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
+import { initials } from "@/webview/utils/initials";
 
 /** A commit that no remote-tracking branch has yet, or that no local branch has yet. */
 export type PushState = "unpushed" | "unpulled";
@@ -69,6 +76,92 @@ const MOVES = new Map<string, Move>([
 function orderRefs(refs: Array<GitRef>, headBranch: string | null) {
   const current = refs.findIndex((ref) => ref.type === "head" && ref.name === headBranch);
   return current <= 0 ? refs : [refs[current]!, ...refs.filter((_ref, index) => index !== current)];
+}
+
+/** One label on a row: a ref, and the remote branches of the same name that it stands for. */
+export type ShownRef = { ref: GitRef; remotes: Array<GitRef> };
+
+/**
+ * The labels of a row in `orderRefs` order. A remote branch named like a local branch on the
+ * same commit, such as `origin/main` beside `main`, joins that branch's label instead of taking
+ * one of its own. So does a remote's `HEAD`, such as `origin/HEAD`, which only names the
+ * remote's default branch: it joins the first branch label on the commit, if there is one.
+ */
+export function shownRefs(refs: Array<GitRef>, headBranch: string | null): Array<ShownRef> {
+  const ordered = orderRefs(refs, headBranch);
+  const locals = new Set(ordered.filter((ref) => ref.type === "head").map((ref) => ref.name));
+  const joined = (ref: GitRef) =>
+    ref.type === "remote" && !remoteHead(ref) && locals.has(remoteBranchName(ref));
+  const shown: Array<ShownRef> = ordered
+    .filter((ref) => !joined(ref) && !remoteHead(ref))
+    .map((ref) => ({
+      ref,
+      remotes:
+        ref.type === "head"
+          ? ordered.filter((other) => joined(other) && remoteBranchName(other) === ref.name)
+          : []
+    }));
+  const host = shown.find((item) => item.ref.type !== "tag");
+  for (const ref of ordered.filter(remoteHead)) {
+    if (host === undefined) {
+      shown.push({ ref, remotes: [] });
+    } else {
+      host.remotes.push(ref);
+    }
+  }
+  return shown;
+}
+
+/** Whether `ref` is a remote's `HEAD`, such as `origin/HEAD`. */
+function remoteHead(ref: GitRef) {
+  return ref.type === "remote" && ref.name.endsWith("/HEAD");
+}
+
+/** `origin/feature/x` without its remote: `feature/x`. */
+function remoteBranchName(ref: GitRef) {
+  return ref.name.slice(ref.name.indexOf("/") + 1);
+}
+
+/** Labels shown in full on a row before the rest fold into a "+N" button. */
+const LABELS_SHOWN = 2;
+
+/**
+ * The labels that do not fit on a row, as a "+N" button. Its tooltip lists them, and it opens a
+ * menu of them; choosing one opens that ref's own menu in the same place.
+ */
+function MoreRefs({ hidden, headBranch }: { hidden: Array<ShownRef>; headBranch: string | null }) {
+  const refs = hidden.flatMap((item) => [item.ref, ...item.remotes]);
+  const names = refs.map((ref) => ref.name);
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      data-more-refs={hidden.length}
+      class="mt-0.5 mr-1.25 box-content inline-flex h-4.5 shrink-0 cursor-pointer items-center rounded-md border border-line bg-btn px-1.25 align-top text-xs hover:bg-btn-hover"
+      title={names.join("\n")}
+      aria-label={window.l10n.moreRefs.replace("{0}", () => names.join(", "))}
+      onClick={(event) => {
+        openContextMenu(
+          event,
+          `refs:${refs[0]?.hash ?? ""}`,
+          refs.map((ref) => ({
+            title: ref.name,
+            onClick: () => {
+              const at = { x: event.clientX, y: event.clientY };
+              const active = ref.type === "head" && ref.name === headBranch;
+              contextMenu.value = {
+                ...at,
+                entries: refMenu(ref, active),
+                source: refMenuSource(ref)
+              };
+            }
+          }))
+        );
+      }}
+    >
+      +{hidden.length}
+    </button>
+  );
 }
 
 /** The text of the uncommitted-changes row for `count` changed paths, singular for one. */
@@ -134,6 +227,7 @@ export function CommitRow({
   const l10n = window.l10n;
 
   const message = uncommitted ? uncommittedText(uncommittedChanges.value) : commit.message;
+  const labels = shownRefs(commit.refs, headBranch);
   const date = uncommitted ? null : getCommitDate(commit.date);
   const emphasized = isHead || uncommitted || expanded || selected || menuOpen;
   const background =
@@ -271,15 +365,21 @@ export function CommitRow({
         <div class="flex min-w-0 items-center">
           {isHead && <span class="mr-1.25 size-2.5 shrink-0 rounded-full border-2 border-graph" />}
           {push !== undefined && <PushDot state={push} />}
-          {commit.refs.length > 0 && (
+          {labels.length > 0 && (
             <span class="flex max-w-1/2 shrink-0 overflow-hidden">
-              {orderRefs(commit.refs, headBranch).map((ref) => (
-                <RefLabel
-                  key={`${ref.type}:${ref.name}`}
-                  gitRef={ref}
-                  active={ref.type === "head" && ref.name === headBranch}
-                />
-              ))}
+              {(labels.length > LABELS_SHOWN ? labels.slice(0, 1) : labels).map(
+                ({ ref, remotes }) => (
+                  <RefLabel
+                    key={`${ref.type}:${ref.name}`}
+                    gitRef={ref}
+                    active={ref.type === "head" && ref.name === headBranch}
+                    remotes={remotes}
+                  />
+                )
+              )}
+              {labels.length > LABELS_SHOWN && (
+                <MoreRefs hidden={labels.slice(1)} headBranch={headBranch} />
+              )}
             </span>
           )}
           <span class="min-w-0 flex-1 truncate" title={message}>
@@ -311,7 +411,17 @@ export function CommitRow({
         class={`${CELL} max-w-31`}
         title={uncommitted ? undefined : `${commit.author} <${commit.email}>`}
       >
-        {uncommitted ? null : commit.author}
+        {uncommitted ? null : (
+          <span class="flex min-w-0 items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              class="grid size-4 shrink-0 place-items-center rounded-full bg-btn-hover text-[9px] leading-none font-semibold"
+            >
+              {initials(commit.author)}
+            </span>
+            <span class="truncate">{commit.author}</span>
+          </span>
+        )}
       </td>
       <td class={`${CELL} font-mono`} title={uncommitted ? undefined : hash}>
         {uncommitted ? null : abbrevCommit(hash)}

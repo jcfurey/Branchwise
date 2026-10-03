@@ -431,7 +431,9 @@ describe("what the row shows", () => {
       title: "selectCommitsHint"
     });
     expect(colours(tr)).toEqual(["#123456", "#123456"]);
-    expect(labels(tr)).toEqual(["v1", "origin/main", "main"]);
+    // `origin/main` joins the label of `main`, as the cloud at its end.
+    expect(labels(tr)).toEqual(["v1", "main", "origin/main"]);
+    expect(tr.querySelector("[data-remote-refs]")?.closest("span[title^='main']")).not.toBeNull();
     const message = tr.cells[1]!.querySelector<HTMLElement>(".flex-1")!;
     expect([message.textContent, message.title]).toEqual(["Fix <b>it</b>", "Fix <b>it</b>"]);
     expect(message.querySelector("b")).toBeNull();
@@ -458,7 +460,10 @@ describe("what the row shows", () => {
     expect(tr.cells).toHaveLength(5);
     expect(plainText(date!.textContent)).toBe("Nov 14, 2023 22:13");
     expect(plainText(date!.title)).toBe("Nov 14, 2023 22:13");
-    expect([author!.textContent, author!.title]).toEqual(["Ann", "Ann <ann@x>"]);
+    // The initials beside the name are hidden from screen readers.
+    const [avatar, name] = author!.querySelectorAll("span > span");
+    expect([avatar!.textContent, avatar!.getAttribute("aria-hidden")]).toEqual(["A", "true"]);
+    expect([name!.textContent, author!.title]).toEqual(["Ann", "Ann <ann@x>"]);
     expect([short!.textContent, short!.title]).toEqual(["abcdef01", hash]);
   });
 
@@ -466,7 +471,7 @@ describe("what the row shows", () => {
     const tr = drawOne({ commit, isHead: true, headBranch: "main" });
 
     expect(tr.getAttribute("data-emphasized")).toBe("true");
-    expect(labels(tr)).toEqual(["main", "v1", "origin/main"]);
+    expect(labels(tr)).toEqual(["main", "origin/main", "v1"]);
     const line = tr.cells[1]!.firstElementChild!;
     expect(line.firstElementChild!.childNodes).toHaveLength(0);
     expect(line.querySelector(".flex-1 > b")?.textContent).toBe("Fix <b>it</b>");
