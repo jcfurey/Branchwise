@@ -8,6 +8,10 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+### Changed
+
+- Redraw the icon as an open Git graph: a blue trunk with three commits, and an orange and a pink branch merged back into it for the bowls of the B, in the graph's own default lane colours and without a background tile. The graph's tab icon and the Source Control button use the same B, and the marketplace banner is now a neutral dark grey.
+
 ## [0.9.9] - 2026-10-02
 
 ### Added

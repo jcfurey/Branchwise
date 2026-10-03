@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
-  <g stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M8 4h4.5a3.75 3.75 0 0 1 0 7.5H8" stroke="#ff8a3d"/>
-    <path d="M8 11.5h5a4.25 4.25 0 0 1 0 8.5H8" stroke="#ff4f8b"/>
-    <path d="M8 4v16" stroke="#3a86ff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+  <g stroke-width="1.5" stroke-linecap="round">
+    <path d="M5 3h4a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H5" stroke="#d98500"/>
+    <path d="M5 8h4.5a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2H5" stroke="#d9008f"/>
+    <path d="M5 3v10" stroke="#0085d9"/>
   </g>
-  <g fill="#3a86ff">
-    <circle cx="8" cy="4" r="2.6"/>
-    <circle cx="8" cy="11.5" r="2.6"/>
-    <circle cx="8" cy="20" r="2.6"/>
+  <g fill="#0085d9">
+    <circle cx="5" cy="3" r="1.8"/>
+    <circle cx="5" cy="8" r="1.8"/>
+    <circle cx="5" cy="13" r="1.8"/>
   </g>
 </svg>
