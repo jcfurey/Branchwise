@@ -13,94 +13,48 @@
 
 ## Install
 
-- **VSCodium and other editors that use Open VSX:** search for **Branchwise** in the Extensions
-  view, or run `codium --install-extension jcfurey.branchwise`.
-- **Visual Studio Code:** download the `.vsix` file from
-  [Branchwise on Open VSX](https://open-vsx.org/extension/jcfurey/branchwise), then choose
-  **Extensions → ⋯ → Install from VSIX…** and select it.
+Search for **Branchwise** in VSCodium or another Open VSX editor, or run
+`codium --install-extension jcfurey.branchwise`. For Visual Studio Code, download
+the `.vsix` from [Open VSX](https://open-vsx.org/extension/jcfurey/branchwise) and choose
+**Extensions → ⋯ → Install from VSIX…**. Branchwise needs VS Code 1.125 or newer, or an editor
+based on it, and Git.
 
-Branchwise needs VS Code 1.125 or newer, or an editor based on it, and Git.
-
-## Getting started
-
-Open the graph with the Branchwise button in the Source Control view, the Branchwise item in the
-status bar, or **Branchwise: View Graph (git log)** in the Command Palette.
-
-The **Get started with Branchwise** walkthrough on the Welcome page shows how to read the graph,
-act on commits and branches, and recover from mistakes. Reopen it from **Getting Started** in the
-graph's settings cog, next to **Learn more**, which opens the [user guide](docs/git-actions.md).
+Open the graph from the Branchwise button in Source Control, the status bar, or
+**Branchwise: View Graph (git log)**. The **Get started with Branchwise** walkthrough shows the
+basics.
 
 ## Features
 
-### Read your history
+**Read your history**
 
-- **One graph for everything:** branches, tags, remotes, stashes and uncommitted changes, drawn
-  with rounded or angular lanes in colours you choose.
-- **Commit details:** the full message with its code, links and GitHub or GitLab issue
-  references made clickable, the changed files as a tree, a diff for each file, and buttons that
-  copy the short or full commit ID. Select the uncommitted changes row to browse staged,
-  unstaged, untracked and conflicted files.
-- **Push status at a glance:** a dot marks each commit no remote has yet, and a ring each commit
-  on a tracked remote branch that you have not pulled.
-- **Search all of history** by message, commit ID, author, committer, branch or tag name, date
-  or path, typed straight into the search box as `author:`, `tag:` and so on. Follow a file
-  through renames, save filters for each repository, and jump back to HEAD in one click.
-- **Large and wide graphs:** tens of thousands of commits lay out in milliseconds. Resize and
-  scroll the graph column; selecting a commit brings its lane into view.
+- One graph of branches, tags, remotes, stashes and uncommitted changes
+- Commit details with formatted messages, linked issues, a file tree and per-file diffs
+- Search by message, ID, author, committer, branch, tag, date or path
+- Dots and rings mark unpushed and unpulled commits
 
-### Focus on what matters
+**Focus**
 
-- **Branch focus:** keep one branch's direct history, or all of its ancestors, in full colour
-  and dim everything else, without checking anything out. Pause, resume or clear it at any time.
-- **Hide remotes one at a time** with the eye button beside each remote. Only the view changes,
-  never your refs.
-- **Branches pane:** local branches, remotes, tags and stashes beside the graph, with checkout,
-  fetch, apply and pop a click away.
+- Branch focus dims unrelated history, without a checkout
+- Hide remotes one at a time; [view choices](docs/preferences.md) are kept per repository
 
-Focus, hidden remotes, column widths and searches are remembered for each repository; see
-[View preferences](docs/preferences.md).
+**Work from the graph**
 
-### Work from the graph
+- Branches and tags: create, check out, rename, merge, delete, push
+- Commits: check out, cherry-pick, revert, reset, fixup; cherry-pick or revert several in order
+- Plain and interactive rebase; push and pull previews; force-push only with a lease
+- Stashes, conflict resolution, and continue, skip or abort for interrupted operations
 
-- **Branches and tags:** create, check out, rename, merge and delete branches; create, delete and
-  push tags; check out a remote branch into a new or existing tracking branch.
-- **Commits:** check out, cherry-pick, revert or reset to a commit. Select several commits to
-  cherry-pick or revert them in the order you choose, or create a fixup commit.
-- **Rebase** onto another branch while keeping merges, or reorder, reword, squash and drop
-  commits in an interactive rebase.
-- **Review before you sync:** see incoming and outgoing commits before a push or pull, apply only
-  the fast-forward you reviewed, and force-push only with an explicit lease.
-- **Stashes and conflicts:** save, apply, pop and drop stashes; continue, skip or abort an
-  interrupted merge, rebase or cherry-pick; open conflicted files in the merge editor.
+**Recover and investigate**
 
-Every change asks for confirmation first. Running Git commands show their progress, and push,
-pull and fetch can be stopped.
+- Reflog tab that recovers commits no branch reaches; compare refs; restore earlier file contents
+- Guided bisect, merged-branch cleanup, and a Statistics tab of commits and contributors
 
-### Recover and investigate
+**Repositories**
 
-- **Reflog tab:** every move of HEAD and your branches, filtered by ref, operation or text, with
-  commits that are no longer on any branch marked so you can keep them on a new branch.
-- **Compare** two branches, tags or commits, or only the changes since their common ancestor, and
-  restore a file's earlier contents.
-- **Bisect:** find the commit that introduced a regression with a guided `git bisect`.
-- **Clean up** local branches that are already merged.
+- Multi-repository workspaces with submodules, nested repositories, remotes and worktrees
+- Remote - SSH, WSL, Dev Containers and Codespaces; English, Simplified and Traditional Chinese
 
-### See who works on what
-
-- **Statistics tab:** commits, contributors and active days for every branch or one, over a
-  chosen period, with a year of daily activity and each contributor's share, optionally with
-  lines added and deleted. Contributors are merged through `.mailmap`.
-
-### Repositories and remotes
-
-- **Multi-repository workspaces**, including initialized submodules and their nested submodules,
-  with ahead and behind counts, submodule pointer review, and fetch and update across repositories.
-- **Remotes, upstreams and worktrees:** add, rename and remove remotes, set upstream tracking, and
-  manage worktrees.
-- **Remote development** over Remote - SSH, WSL, Dev Containers and Codespaces.
-- **Keyboard navigation** throughout, in English, Simplified Chinese or Traditional Chinese.
-
-The [user guide](docs/git-actions.md) describes every action in detail.
+The [user guide](docs/git-actions.md) describes every action.
 
 ## Settings
 
@@ -123,30 +77,24 @@ All settings start with `branchwise.`.
 
 ## Upgrading from (neo) Git Graph
 
-Branchwise used to be called (neo) Git Graph and installed as `jcfurey.neo-git-graph`. If you
-have that extension, or `asispts.neo-git-graph`, uninstall it so that Source Control shows one
-graph button. The first time Branchwise starts, it copies your settings from their
-`neo-git-graph.` names to `branchwise.`, keeping any you have already set under the new name.
+Branchwise was called (neo) Git Graph and installed as `jcfurey.neo-git-graph`. Uninstall that
+extension, or `asispts.neo-git-graph`, so that Source Control shows one graph button. On first
+start, Branchwise copies your `neo-git-graph.` settings to `branchwise.`, keeping any you have
+already set under the new name.
 
 ## Contributing
 
-Bug reports and feature requests are welcome in
-[Issues](https://github.com/jcfurey/Branchwise/issues). To build Branchwise from source, run its
-tests or send a change, see [Contributing](CONTRIBUTING.md). The [changelog](CHANGELOG.md) lists
-what each release changed.
+Report bugs and request features in [Issues](https://github.com/jcfurey/Branchwise/issues). See
+[Contributing](CONTRIBUTING.md) to build, test or change Branchwise, and the
+[changelog](CHANGELOG.md) for each release.
 
 ## Origins and license
 
-Branchwise began as a fork of [asispts/neo-git-graph](https://github.com/asispts/neo-git-graph),
-which continued mhutchie's [Git Graph](https://github.com/mhutchie/vscode-git-graph) from
-[`4af8583`](https://github.com/mhutchie/vscode-git-graph/commit/4af8583a42082b2c230d2c0187d4eaff4b69c665),
-its last commit under the MIT License. Later Git Graph releases use a different license, and no code
-from them is included.
-
-Branchwise has since replaced everything it inherited from both projects, module by module, in
-[jcfurey/neo-git-graph](https://github.com/jcfurey/neo-git-graph), whose
-[Replacing inherited code](https://github.com/jcfurey/neo-git-graph/blob/main/docs/provenance.md)
-describes how. This repository starts from the result. Branchwise is released under the
-[Apache License 2.0](LICENSE). Earlier versions, which still contained inherited code, were
-released under the MIT License with both projects' copyright notices. Branchwise is not affiliated
-with or endorsed by either project.
+Branchwise is released under the [Apache License 2.0](LICENSE). It began as a fork of
+[asispts/neo-git-graph](https://github.com/asispts/neo-git-graph), which continued mhutchie's
+[Git Graph](https://github.com/mhutchie/vscode-git-graph) from its last MIT-licensed commit; no
+code from later, differently licensed Git Graph releases is included. All code inherited from
+both projects has since been replaced; earlier versions that still contained it were released
+under the MIT License with both projects' notices. Branchwise is not affiliated
+with or endorsed by either project. [Provenance](docs/provenance.md) records the lineage, the
+licenses at each stage, and how the inherited code was replaced.
