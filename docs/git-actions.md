@@ -12,7 +12,7 @@ Inside the graph, a hint above the commit list says how to reach a commit's acti
 
 The header's icon buttons are named by their tooltips. **Branches** (the panel icon near the right of the header) toggles a pane beside the graph with four sections: local branches, remotes, tags and stashes. Each section collapses independently, and the filter box narrows all of them at once. Clicking a local or remote branch selects its history using the header's **View** choice, and **All branches** restores every branch without dimming. Clicking a tag opens the graph at that commit. Clicking a stash opens its diff.
 
-On a commit row, a remote branch named like a local branch on the same commit, such as `origin/main` beside `main`, appears as a cloud at the end of the local branch's label; hover over it for its name, and right-click it for the remote branch's actions. A row with more than two labels shows the first one and a **+N** button: its tooltip lists the others, and clicking it opens a menu of them that leads to each one's own actions.
+On a commit row, a remote branch named like a local branch on the same commit, such as `origin/main` beside `main`, appears as a cloud at the end of the local branch's label, and so does a remote's `HEAD`, such as `origin/HEAD`, which only names that remote's default branch; hover over the cloud for the names, and right-click it for the remote branch's actions. A row with more than two labels shows the first one and a **+N** button: its tooltip lists the others, and clicking it opens a menu of them that leads to each one's own actions.
 
 The **View** selector offers three ways to read a selected branch:
 

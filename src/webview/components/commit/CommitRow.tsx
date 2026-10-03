@@ -84,15 +84,16 @@ export type ShownRef = { ref: GitRef; remotes: Array<GitRef> };
 /**
  * The labels of a row in `orderRefs` order. A remote branch named like a local branch on the
  * same commit, such as `origin/main` beside `main`, joins that branch's label instead of taking
- * one of its own.
+ * one of its own. So does a remote's `HEAD`, such as `origin/HEAD`, which only names the
+ * remote's default branch: it joins the first branch label on the commit, if there is one.
  */
 export function shownRefs(refs: Array<GitRef>, headBranch: string | null): Array<ShownRef> {
   const ordered = orderRefs(refs, headBranch);
   const locals = new Set(ordered.filter((ref) => ref.type === "head").map((ref) => ref.name));
   const joined = (ref: GitRef) =>
-    ref.type === "remote" && !ref.name.endsWith("/HEAD") && locals.has(remoteBranchName(ref));
-  return ordered
-    .filter((ref) => !joined(ref))
+    ref.type === "remote" && !remoteHead(ref) && locals.has(remoteBranchName(ref));
+  const shown: Array<ShownRef> = ordered
+    .filter((ref) => !joined(ref) && !remoteHead(ref))
     .map((ref) => ({
       ref,
       remotes:
@@ -100,6 +101,20 @@ export function shownRefs(refs: Array<GitRef>, headBranch: string | null): Array
           ? ordered.filter((other) => joined(other) && remoteBranchName(other) === ref.name)
           : []
     }));
+  const host = shown.find((item) => item.ref.type !== "tag");
+  for (const ref of ordered.filter(remoteHead)) {
+    if (host === undefined) {
+      shown.push({ ref, remotes: [] });
+    } else {
+      host.remotes.push(ref);
+    }
+  }
+  return shown;
+}
+
+/** Whether `ref` is a remote's `HEAD`, such as `origin/HEAD`. */
+function remoteHead(ref: GitRef) {
+  return ref.type === "remote" && ref.name.endsWith("/HEAD");
 }
 
 /** `origin/feature/x` without its remote: `feature/x`. */

@@ -188,10 +188,16 @@ describe("busy rows", () => {
       ).map(({ ref: shown, remotes }) => [shown.name, remotes.map((remote) => remote.name)])
     ).toEqual([
       ["v1", []],
-      ["main", ["origin/main", "fork/main"]],
-      ["origin/HEAD", []],
+      // A remote's HEAD only names its default branch, so it joins the first branch label.
+      ["main", ["origin/main", "fork/main", "origin/HEAD"]],
       ["origin/other", []]
     ]);
+    // With no branch on the commit, it keeps a label of its own.
+    expect(
+      shownRefs([ref("tag", "v1"), ref("remote", "origin/HEAD")], null).map(
+        ({ ref: shown }) => shown.name
+      )
+    ).toEqual(["v1", "origin/HEAD"]);
   });
 
   it("shows the first label and folds the rest into a +N button whose menu reaches each", () => {
