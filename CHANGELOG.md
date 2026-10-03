@@ -8,6 +8,8 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+## [0.9.10] - 2026-10-03
+
 ### Changed
 
 - Fit the header into one row: lighter view tabs; the repository, branch and view pickers as compact icon menus; and Search, Jump to HEAD, Refresh, Fetch, Compare, the Branches and Workspace panes and Settings & Tools as icon buttons with tooltips.

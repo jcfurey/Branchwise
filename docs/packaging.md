@@ -1,6 +1,6 @@
 # Packaging and releases
 
-The checked-in manifest is the source of truth: `jcfurey.branchwise@0.9.9`.
+The checked-in manifest is the source of truth: `jcfurey.branchwise@0.9.10`.
 Keep `publisher` and `name` stable so that installed copies upgrade in place. When changing
 metadata, keep the README's [Origins and license](../README.md#origins-and-license) section, which
 credits the projects Branchwise began from and links to [Provenance](provenance.md); the manifest
@@ -17,7 +17,7 @@ Use Node.js 24 and the pnpm version pinned in `package.json`, which Corepack pro
 corepack enable pnpm
 pnpm install --frozen-lockfile
 pnpm run package:vsix
-code --install-extension ./branchwise-0.9.9.vsix --force
+code --install-extension ./branchwise-0.9.10.vsix --force
 ```
 
 `package:vsix` checks the extension identity, then runs vsce. Its prepublish hook cleans the
