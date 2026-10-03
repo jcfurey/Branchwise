@@ -172,7 +172,7 @@ describe("the commit menu hint", () => {
     expect(note.querySelector("span")?.textContent).toBe("commitMenuHint");
     const dismiss = note.querySelector("button")!;
     expect(dismiss.type).toBe("button");
-    expect(dismiss.textContent).toBe("dialogDismiss");
+    expect(dismiss.getAttribute("aria-label")).toBe("dialogDismiss");
 
     act(() => dismiss.click());
     expect(view().querySelector("[role=note]")).toBeNull();

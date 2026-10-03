@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 import { useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { ChevronDownIcon } from "@/webview/components/ui/Icons";
@@ -17,6 +18,11 @@ type Option = { label: string; value: string };
 
 type DropdownProps = {
   label: string;
+  /**
+   * A toolbar picker: the label is read by screen readers and shown as the tooltip, the icon
+   * stands in for it, and the trigger has no frame until the pointer is over it.
+   */
+  icon?: ComponentChildren;
   options: Array<Option>;
   value: string | undefined;
   onChange: (value: string) => void;
@@ -115,7 +121,8 @@ export function Dropdown({
   value,
   onChange,
   class: className,
-  disabled = false
+  disabled = false,
+  icon
 }: DropdownProps) {
   const [ids] = useState(() => {
     instances += 1;
@@ -301,7 +308,7 @@ export function Dropdown({
 
   return (
     <div ref={rootRef} class="flex min-w-0 items-center gap-2">
-      <span id={labelId} class="shrink-0 whitespace-nowrap">
+      <span id={labelId} class={icon === undefined ? "shrink-0 whitespace-nowrap" : "sr-only"}>
         {label}:
       </span>
       <div class="relative min-w-0">
@@ -309,8 +316,10 @@ export function Dropdown({
           ref={triggerRef}
           type="button"
           class={[
-            "flex w-full min-w-0 cursor-pointer items-center gap-1 rounded-md py-1 pr-2 pl-3",
-            "bg-dropdown text-dropdown-fg outline-1 outline-dropdown-border",
+            "flex w-full min-w-0 cursor-pointer items-center gap-1 rounded-md py-1 pr-2",
+            icon === undefined
+              ? "bg-dropdown pl-3 text-dropdown-fg outline-1 outline-dropdown-border"
+              : "pl-1.5 font-medium enabled:hover:bg-btn-hover",
             "focus-visible:outline-2 focus-visible:outline-focus",
             "disabled:cursor-not-allowed disabled:opacity-60",
             className
@@ -326,10 +335,13 @@ export function Dropdown({
           onClick={onTriggerClick}
           onKeyDown={onTriggerKeyDown}
         >
+          {icon !== undefined && <span class="flex shrink-0 text-muted">{icon}</span>}
           <span id={valueId} class="min-w-0 flex-1 truncate text-left">
             {chosen?.label}
           </span>
-          <ChevronDownIcon class="size-4 shrink-0" />
+          <ChevronDownIcon
+            class={`shrink-0 ${icon === undefined ? "size-4" : "size-3 text-muted"}`}
+          />
         </button>
         {shown && (
           <div

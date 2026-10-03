@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { h, render } from "preact";
+import { act } from "preact/test-utils";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { GitCommitNode, GitRef } from "@/backend/types";
-import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
+import { CommitRow, type PushState, shownRefs } from "@/webview/components/commit/CommitRow";
 import { contextMenu } from "@/webview/lib/stores";
 
 import { setupWebviewTest } from "@tests/webview/test-utils";
@@ -166,5 +167,71 @@ describe("the actions button", () => {
     expect(menu?.entries.map((entry) => (entry === null ? null : entry.title))).toEqual(
       COMMIT_MENU
     );
+  });
+});
+
+describe("busy rows", () => {
+  const ref = (type: GitRef["type"], name: string): GitRef => ({ type, name, hash: HASH });
+
+  it("joins a remote branch to the local branch of the same name", () => {
+    expect(
+      shownRefs(
+        [
+          ref("remote", "origin/main"),
+          ref("tag", "v1"),
+          ref("head", "main"),
+          ref("remote", "fork/main"),
+          ref("remote", "origin/HEAD"),
+          ref("remote", "origin/other")
+        ],
+        null
+      ).map(({ ref: shown, remotes }) => [shown.name, remotes.map((remote) => remote.name)])
+    ).toEqual([
+      ["v1", []],
+      // A remote's HEAD only names its default branch, so it joins the first branch label.
+      ["main", ["origin/main", "fork/main", "origin/HEAD"]],
+      ["origin/other", []]
+    ]);
+    // With no branch on the commit, it keeps a label of its own.
+    expect(
+      shownRefs([ref("tag", "v1"), ref("remote", "origin/HEAD")], null).map(
+        ({ ref: shown }) => shown.name
+      )
+    ).toEqual(["v1", "origin/HEAD"]);
+  });
+
+  it("shows the first label and folds the rest into a +N button whose menu reaches each", () => {
+    draw(
+      commitWith("Busy", [
+        ref("head", "main"),
+        ref("remote", "origin/main"),
+        ref("head", "feature"),
+        ref("tag", "v2"),
+        ref("tag", "v2.1")
+      ]),
+      "main"
+    );
+    const more = body.querySelector<HTMLButtonElement>("[data-more-refs]")!;
+    expect(more.textContent).toBe("+3");
+    expect(more.title).toBe("feature\nv2\nv2.1");
+    expect(spanWithText("main")).toBeDefined();
+    expect(body.querySelector("[data-remote-refs]")?.getAttribute("data-remote-refs")).toBe(
+      "origin/main"
+    );
+
+    act(() => more.click());
+    expect(contextMenu.value?.entries.map((entry) => entry?.title)).toEqual([
+      "feature",
+      "v2",
+      "v2.1"
+    ]);
+    act(() => contextMenu.value!.entries[1]!.onClick());
+    expect(contextMenu.value?.source).toBe("ref:tag:v2");
+  });
+
+  it("shows two labels in full without a +N button", () => {
+    draw(commitWith("Pair", [ref("head", "main"), ref("tag", "v2")]), "main");
+    expect(body.querySelector("[data-more-refs]")).toBeNull();
+    expect(spanWithText("v2")).toBeDefined();
   });
 });

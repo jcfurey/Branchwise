@@ -62,23 +62,31 @@ describe("the toolbar", () => {
     }));
     const plain = { label: null, title: null, expanded: null, popup: null };
     const trigger = { label: null, expanded: "false", popup: "listbox" };
+    // Every toolbar button is an icon named by its label and tooltip.
+    const icon = (name: string, expanded: string | null = null) => ({
+      ...plain,
+      text: "",
+      label: name,
+      title: name,
+      expanded
+    });
     expect(buttons).toEqual([
       { ...plain, text: "tabGraph" },
       { ...plain, text: "tabReflog" },
       { ...plain, text: "tabStatistics" },
-      { ...plain, text: "branchesPane", expanded: "true" },
-      { ...plain, text: "workspaceOverview", expanded: "false" },
       { ...trigger, text: "a", title: "/r/a" },
       { ...trigger, text: "showAll", title: "*" },
       { ...trigger, text: "filterToBranch", title: "filter" },
-      { ...plain, text: "", label: "historySearch", title: "historySearch", expanded: "false" },
-      { ...plain, text: "", label: "jumpToHead", title: "jumpToHead" },
-      { ...plain, text: "refresh" },
-      { ...plain, text: "fetch" },
-      { ...plain, text: "compareSubmit" },
+      icon("historySearch", "false"),
+      icon("jumpToHead"),
+      icon("refresh"),
+      icon("fetch"),
+      icon("compareSubmit"),
+      icon("branchesPane", "true"),
+      icon("workspaceOverview", "false"),
       { text: "", label: "settingsTools", title: "settingsTools", expanded: "false", popup: "menu" }
     ]);
-    expect(picker("repo")).toBe(header().querySelectorAll("button")[5]);
+    expect(picker("repo")).toBe(header().querySelectorAll("button")[3]);
     expect(picker("branch").title).toBe("*");
     expect(picker("branchDisplay").title).toBe("filter");
     expect(headerButton("branchesPane").classList).toContain("bg-row-selected");
