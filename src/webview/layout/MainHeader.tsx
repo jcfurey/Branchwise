@@ -14,7 +14,19 @@ import { openStashes } from "@/webview/components/repository/StashManager";
 import { openWorktrees } from "@/webview/components/repository/WorktreeManager";
 import { Button } from "@/webview/components/ui/Button";
 import { Dropdown } from "@/webview/components/ui/Dropdown";
-import { GearIcon, LocateIcon, RefreshIcon, SearchIcon } from "@/webview/components/ui/Icons";
+import {
+  BranchIcon,
+  CompareIcon,
+  EyeIcon,
+  FetchIcon,
+  GearIcon,
+  LocateIcon,
+  RefreshIcon,
+  RepoIcon,
+  ReposIcon,
+  SearchIcon,
+  SidebarIcon
+} from "@/webview/components/ui/Icons";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import {
   openContextMenu,
@@ -59,7 +71,15 @@ const TOOLS_MENU = "repository-tools";
 const HEIGHT_PROPERTY = "--main-header-height";
 
 /** Long repository and branch names are cut short rather than widening the header. */
-const PICKER_CLASS = "max-w-56";
+const PICKER_CLASS = "max-w-48";
+
+/** The size of every toolbar icon. */
+const ICON = "size-4";
+
+/** A thin upright line between groups of toolbar controls. */
+function Separator() {
+  return <span aria-hidden="true" class="mx-1 h-4 w-px shrink-0 bg-line-soft" />;
+}
 
 /** The background of a toggle whose pane or row is open. */
 const pressed = (open: boolean) => (open ? "bg-row-selected" : undefined);
@@ -80,7 +100,7 @@ function ViewTabs() {
     <div
       role="tablist"
       aria-label={l10n.viewTabs}
-      class="flex overflow-hidden rounded border border-line"
+      class="flex self-stretch"
       onKeyDown={(event) => {
         const step = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
         if (step === undefined) {
@@ -107,8 +127,8 @@ function ViewTabs() {
             data-view-tab={tab.id}
             aria-selected={selected}
             tabIndex={selected ? 0 : -1}
-            class={`cursor-pointer px-2.5 py-1 font-medium focus:outline-1 focus:outline-focus ${
-              selected ? "bg-action text-action-fg" : "bg-btn hover:bg-btn-hover"
+            class={`-mb-px cursor-pointer border-b-2 px-2.5 py-1.5 font-medium focus-visible:outline-1 focus-visible:outline-focus ${
+              selected ? "border-graph text-fg" : "border-transparent text-muted hover:text-fg"
             }`}
             onClick={() => showTab(tab.id)}
           >
@@ -227,21 +247,13 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
   return (
     <header
       ref={header}
-      class="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-line-soft bg-editor px-3 py-2 text-ui"
+      class="sticky top-0 z-20 flex flex-wrap items-center gap-x-1 gap-y-0.5 border-b border-line-soft bg-editor px-2 text-ui"
     >
       <ViewTabs />
-      <Button aria-expanded={refsOpen} class={pressed(refsOpen)} onClick={toggleRefs}>
-        {l10n.branchesPane}
-      </Button>
-      <Button
-        aria-expanded={workspaceOpen}
-        class={pressed(workspaceOpen)}
-        onClick={toggleWorkspace}
-      >
-        {l10n.workspaceOverview}
-      </Button>
+      <Separator />
       <Dropdown
         label={l10n.repo}
+        icon={<RepoIcon class={ICON} />}
         class={PICKER_CLASS}
         options={repoOptions(repos, repo)}
         value={repo}
@@ -249,6 +261,7 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
       />
       <Dropdown
         label={l10n.branch}
+        icon={<BranchIcon class={ICON} />}
         class={PICKER_CLASS}
         disabled={branches === undefined}
         options={[
@@ -263,6 +276,7 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
       />
       <Dropdown
         label={l10n.branchDisplay}
+        icon={<EyeIcon class={ICON} />}
         class={PICKER_CLASS}
         // Emphasis needs a branch, so the modes wait for a list with one in it.
         disabled={branches === undefined || branches.length === 0}
@@ -274,9 +288,10 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
         value={branchDisplay.value}
         onChange={(value) => setBranchDisplay(value as BranchDisplay)}
       />
-      <div class="ml-auto flex flex-wrap items-center gap-2">
+      <div class="ml-auto flex items-center gap-0.5 py-1">
         <ActivityIndicator />
         <Button
+          variant="ghost"
           aria-label={l10n.historySearch}
           title={l10n.historySearch}
           aria-expanded={searchOpen}
@@ -290,29 +305,63 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
             }
           }}
         >
-          <SearchIcon class="size-4" />
+          <SearchIcon class={ICON} />
         </Button>
         <Button
           aria-label={l10n.jumpToHead}
           title={headOutOfSight ? l10n.jumpToHeadOutOfSight : l10n.jumpToHead}
           // Stands out while the checked-out commit is off the screen.
-          variant={headOutOfSight ? "primary" : "default"}
+          variant={headOutOfSight ? "primary" : "ghost"}
+          class={headOutOfSight ? "px-1.5" : undefined}
           disabled={noRepo || commitHead.value === null}
           onClick={jumpToHead}
         >
-          <LocateIcon class="size-4" />
+          <LocateIcon class={ICON} />
         </Button>
-        <Button onClick={refresh}>
-          <RefreshIcon class="size-3.5" />
-          {l10n.refresh}
-        </Button>
-        <Button disabled={noRepo} onClick={() => openRemoteAction("fetch")}>
-          {l10n.fetch}
-        </Button>
-        <Button disabled={noRepo} onClick={compareSelection}>
-          {l10n.compareSubmit}
+        <Button variant="ghost" aria-label={l10n.refresh} title={l10n.refresh} onClick={refresh}>
+          <RefreshIcon class={ICON} />
         </Button>
         <Button
+          variant="ghost"
+          aria-label={l10n.fetch}
+          title={l10n.fetch}
+          disabled={noRepo}
+          onClick={() => openRemoteAction("fetch")}
+        >
+          <FetchIcon class={ICON} />
+        </Button>
+        <Button
+          variant="ghost"
+          aria-label={l10n.compareSubmit}
+          title={l10n.compareSubmit}
+          disabled={noRepo}
+          onClick={compareSelection}
+        >
+          <CompareIcon class={ICON} />
+        </Button>
+        <Separator />
+        <Button
+          variant="ghost"
+          aria-label={l10n.branchesPane}
+          title={l10n.branchesPane}
+          aria-expanded={refsOpen}
+          class={pressed(refsOpen)}
+          onClick={toggleRefs}
+        >
+          <SidebarIcon class={ICON} />
+        </Button>
+        <Button
+          variant="ghost"
+          aria-label={l10n.workspaceOverview}
+          title={l10n.workspaceOverview}
+          aria-expanded={workspaceOpen}
+          class={pressed(workspaceOpen)}
+          onClick={toggleWorkspace}
+        >
+          <ReposIcon class={ICON} />
+        </Button>
+        <Button
+          variant="ghost"
           aria-label={l10n.settingsTools}
           title={l10n.settingsTools}
           aria-haspopup="menu"
@@ -320,7 +369,7 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
           disabled={noRepo}
           onClick={(event) => openContextMenu(event, TOOLS_MENU, toolsMenu())}
         >
-          <GearIcon class="size-4" />
+          <GearIcon class={ICON} />
         </Button>
       </div>
     </header>

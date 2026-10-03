@@ -8,6 +8,7 @@ import { branchList, hiddenRemotes, showRemoteBranch } from "@/webview/lib/store
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 import { getFullDate } from "@/webview/utils/date";
+import { initials } from "@/webview/utils/initials";
 
 import { QueryStatus } from "./QueryControls";
 
@@ -48,12 +49,7 @@ export function dayKey(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-/** Up to two initials from a name, for an avatar that needs no network. */
-export function initials(name: string) {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const letters = words.length > 1 ? [words[0]!, words.at(-1)!] : words.slice(0, 1);
-  return letters.map((word) => [...word][0]!.toLocaleUpperCase()).join("") || "?";
-}
+export { initials };
 
 function format(template: string, ...values: Array<string | number>) {
   return values.reduce<string>(

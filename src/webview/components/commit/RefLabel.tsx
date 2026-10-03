@@ -3,7 +3,7 @@ import { useMemo } from "preact/hooks";
 
 import type { GitRef } from "@/backend/types";
 import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
-import { BranchIcon, TagIcon } from "@/webview/components/ui/Icons";
+import { BranchIcon, RemoteIcon, TagIcon } from "@/webview/components/ui/Icons";
 import { openContextMenu } from "@/webview/lib/actions";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
 import { repositoryState } from "@/webview/lib/repository-actions";
@@ -24,8 +24,18 @@ function localBranchFacts(gitRef: GitRef) {
 /**
  * A branch or tag on a commit row. The tooltip starts with the ref's name, then adds what the
  * repository state knows about a local branch: its upstream and the worktree holding it.
+ * `remotes` are remote branches of the same name on the same commit, shown as a cloud at the
+ * end of the label, with their own tooltip and menu.
  */
-export function RefLabel({ gitRef, active }: { gitRef: GitRef; active: boolean }) {
+export function RefLabel({
+  gitRef,
+  active,
+  remotes = []
+}: {
+  gitRef: GitRef;
+  active: boolean;
+  remotes?: Array<GitRef>;
+}) {
   const source = refMenuSource(gitRef);
   // Every label of the ref shares the key, so all of them light up while its menu is open.
   const menuOpen = useMemo(() => computed(() => activeSource.value === source), [source]).value;
@@ -81,6 +91,19 @@ export function RefLabel({ gitRef, active }: { gitRef: GitRef; active: boolean }
         <span class="ml-1 whitespace-nowrap">{`↑${branch.ahead} ↓${branch.behind}`}</span>
       )}
       {worktree !== undefined && !active && <span class="ml-1">↗</span>}
+      {remotes.length > 0 && (
+        <span
+          data-remote-refs={remotes.map((remote) => remote.name).join(" ")}
+          class="ml-1 flex shrink-0 items-center gap-0.5 text-muted"
+          title={remotes.map((remote) => remote.name).join("\n")}
+          onContextMenu={(event) =>
+            openContextMenu(event, refMenuSource(remotes[0]!), refMenu(remotes[0]!, false))
+          }
+        >
+          <RemoteIcon class="size-3.5" />
+          {remotes.length > 1 && remotes.length}
+        </span>
+      )}
     </span>
   );
 }
