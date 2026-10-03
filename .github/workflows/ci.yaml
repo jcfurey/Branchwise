@@ -72,6 +72,9 @@ jobs:
       - name: Check links in packaged Markdown
         run: pnpm run check:links
 
+      - name: Check the third-party notices
+        run: pnpm run check:notices
+
   test:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30

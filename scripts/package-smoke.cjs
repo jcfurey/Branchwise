@@ -17,6 +17,7 @@ exports.run = async () => {
     "out/web.min.css",
     "readme.md",
     "LICENSE.txt",
+    "THIRD-PARTY-NOTICES.txt",
     "changelog.md",
     "package.nls.json",
     "package.nls.zh-cn.json",

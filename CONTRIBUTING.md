@@ -50,11 +50,17 @@ pnpm run typecheck
 pnpm test               # unit and component tests
 pnpm run test:ext       # VS Code UI tests; on Linux without a display, prefix xvfb-run -a
 pnpm run l10n:check     # after changing text the page shows
+pnpm run check:notices  # after adding, removing or updating a runtime dependency
 ```
 
 Text the graph shows comes from the translation bundles, and a lint rule rejects hard-coded
 strings in the webview. After adding or changing a string, run `pnpm run l10n:export` and add the
 Simplified and Traditional Chinese translations in `l10n/`.
+
+`THIRD-PARTY-NOTICES.txt` reproduces the license of every package bundled into the extension.
+It is generated from what esbuild bundles: after a dependency change, run `pnpm run notices` and
+commit the result. A package with a license other than MIT, ISC, BSD or Apache 2.0, or without a
+license text, stops the script until someone reviews it.
 
 Add a line under **Unreleased** in the [changelog](CHANGELOG.md) for anything a user would notice.
 

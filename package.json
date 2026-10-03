@@ -43,7 +43,7 @@
     "lint:fix": "oxlint --fix",
     "format": "oxfmt --check",
     "format:fix": "oxfmt",
-    "package": "pnpm run typecheck && pnpm run lint && node esbuild.js --production",
+    "package": "pnpm run typecheck && pnpm run lint && pnpm run check:notices && node esbuild.js --production",
     "vscode:prepublish": "pnpm run clean && pnpm run package",
     "package:vsix": "node scripts/check-release.cjs && vsce package --no-dependencies",
     "test": "vitest run",
@@ -52,14 +52,16 @@
     "test:ext": "pnpm run clean && node esbuild.js --production && pnpm run compile-tests && vscode-test",
     "test:ui-harness": "node --test tests-ext/ui/diagnostics.unit.cjs && node esbuild.js --production && pnpm run compile-tests && node scripts/test-ui-harness.cjs",
     "test:lint-rules": "node --test oxlint/webview-text.test.cjs",
-    "test:release": "node --test scripts/check-l10n.test.cjs scripts/check-release.test.cjs scripts/markdown-links.test.cjs",
+    "test:release": "node --test scripts/check-l10n.test.cjs scripts/check-release.test.cjs scripts/markdown-links.test.cjs scripts/third-party-notices.test.cjs",
     "test:package": "node scripts/test-package.cjs",
     "benchmark": "node scripts/benchmark.mjs",
     "benchmark:ui": "node esbuild.js --production && node scripts/benchmark-ui.cjs",
     "l10n:export": "vscode-l10n-dev export --outDir ./l10n ./src && oxfmt ./l10n/bundle.l10n.json",
     "l10n:check": "pnpm run l10n:export && git diff --exit-code -- l10n/bundle.l10n.json && node scripts/check-l10n.js",
     "check:release": "node scripts/check-release.cjs",
-    "check:links": "node scripts/markdown-links.cjs"
+    "check:links": "node scripts/markdown-links.cjs",
+    "check:notices": "node scripts/third-party-notices.cjs --check",
+    "notices": "node scripts/third-party-notices.cjs"
   },
   "dependencies": {
     "@preact/signals": "^2.11.2",

@@ -3,6 +3,8 @@
 **
 
 !LICENSE
+# The licenses of the open-source packages bundled into out/
+!THIRD-PARTY-NOTICES.txt
 !CHANGELOG.md
 !package.nls*.json
 

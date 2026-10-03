@@ -8,6 +8,10 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+### Fixed
+
+- Ship the license and copyright notices of the open-source packages bundled into the extension, such as simple-git and Preact, in `THIRD-PARTY-NOTICES.txt`. The file is generated from what the build bundles, and CI fails when it is out of date.
+
 ## [0.9.9] - 2026-10-02
 
 ### Added
