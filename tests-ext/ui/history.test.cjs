@@ -1783,11 +1783,11 @@ suite("Branchwise workflow UI", function () {
     assert.equal(git(["branch", "--show-current"], history), "main");
     assert.equal(git(["rev-parse", "HEAD"], history), hashes[8]);
     await graph.evaluate(
-      `(() => {const b=[...document.querySelectorAll('header button')].find(e=>e.textContent.trim()==='Compare');b.focus();b.click();})()`
+      `(() => {const b=document.querySelector('header button[aria-label="Compare"]');b.focus();b.click();})()`
     );
     await button("Close");
     await until(
-      () => graph.evaluate('document.activeElement.textContent.trim()==="Compare"'),
+      () => graph.evaluate('document.activeElement.getAttribute("aria-label")==="Compare"'),
       "focus returns to toolbar"
     );
     const page = connections[0];

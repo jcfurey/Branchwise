@@ -7,7 +7,7 @@ import { CommitTable } from "@/webview/components/commit/CommitTable";
 import { openBatch, openCompare } from "@/webview/components/history/HistoryTools";
 import { PageControls, QueryStatus } from "@/webview/components/history/QueryControls";
 import { Button } from "@/webview/components/ui/Button";
-import { BranchIcon, TagIcon } from "@/webview/components/ui/Icons";
+import { BranchIcon, CloseIcon, TagIcon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
 import { Select } from "@/webview/components/ui/Select";
 import {
@@ -124,12 +124,14 @@ function FocusBanner({
     hint = l10n.focusAncestorsHint;
   }
   return (
-    <div role="status" class={`${BANNER} gap-x-3 gap-y-1 py-1.5`}>
-      <span class="max-w-80 truncate" title={target}>
+    <div role="status" class={`${BANNER} gap-x-2 gap-y-0.5 py-0.5`}>
+      <span class="max-w-80 truncate font-medium" title={target}>
         {fill(paused ? l10n.branchFocusPaused : l10n.branchFocus, target.replace(/^remotes\//, ""))}
       </span>
-      <span class="text-muted">{hint}</span>
-      <Button onClick={toggleBranchFocus}>
+      <span class="min-w-0 flex-1 truncate text-muted" title={hint}>
+        {hint}
+      </span>
+      <Button variant="ghost" class="py-0.5 text-xs" onClick={toggleBranchFocus}>
         {paused ? l10n.resumeBranchFocus : l10n.pauseBranchFocus}
       </Button>
       <label class="flex items-center gap-2">
@@ -144,7 +146,10 @@ function FocusBanner({
           onChange={(value) => setFocusDimming(value as FocusDimming)}
         />
       </label>
-      <Button onClick={() => selectBranch("*")}>{l10n.clearBranchFocus}</Button>
+      <Button variant="ghost" class="py-0.5 text-xs" onClick={() => selectBranch("*")}>
+        <CloseIcon class="size-3.5" />
+        {l10n.clearBranchFocus}
+      </Button>
     </div>
   );
 }
@@ -207,14 +212,18 @@ function SelectionBar({ selected }: { selected: Array<HistoryEntry> }) {
 
 function CommitMenuHint() {
   return (
-    <div role="note" class={`${BANNER} justify-between gap-2 py-1.5 text-muted`}>
-      <span>{window.l10n.commitMenuHint}</span>
+    <div role="note" class={`${BANNER} justify-between gap-2 py-0.5 text-muted`}>
+      <span class="min-w-0 truncate" title={window.l10n.commitMenuHint}>
+        {window.l10n.commitMenuHint}
+      </span>
       <button
         type="button"
-        class="cursor-pointer rounded-sm px-1.5 py-0.5 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
+        aria-label={window.l10n.dialogDismiss}
+        title={window.l10n.dialogDismiss}
+        class="flex shrink-0 cursor-pointer rounded-sm p-0.5 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
         onClick={dismissCommitMenuHint}
       >
-        {window.l10n.dialogDismiss}
+        <CloseIcon class="size-3.5" />
       </button>
     </div>
   );

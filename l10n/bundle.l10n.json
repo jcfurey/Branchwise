@@ -157,6 +157,7 @@
   "Merge into Current Branch": "Merge into Current Branch",
   "Reset Current Branch to This Commit": "Reset Current Branch to This Commit",
   "Copy Commit ID": "Copy Commit ID",
+  "More branches and tags: {0}": "More branches and tags: {0}",
   "Copy Short Commit ID": "Copy Short Commit ID",
   "Copy Short ID": "Copy Short ID",
   "Copy Full ID": "Copy Full ID",
