@@ -21,12 +21,14 @@ code --install-extension ./branchwise-0.9.9.vsix --force
 ```
 
 `package:vsix` checks the extension identity, then runs vsce. Its prepublish hook cleans the
-output, runs the type and lint checks, and builds the production extension and webview. vsce puts
+output, runs the type and lint checks, checks that `THIRD-PARTY-NOTICES.txt` lists the licenses
+of exactly the packages the bundles contain, and builds the production extension and webview. vsce puts
 the manifest version in the default file name; for a fixed name, use
 `pnpm run package:vsix --out branchwise.vsix`.
 
-The extension is bundled, so the VSIX holds the runtime assets, translations, the user guide and
-the walkthroughs, without development dependencies or TypeScript source. `.vscodeignore` lists
+The extension is bundled, so the VSIX holds the runtime assets, translations, the user guide, the
+walkthroughs, `LICENSE` and `THIRD-PARTY-NOTICES.txt`, without development dependencies or
+TypeScript source. `.vscodeignore` lists
 exactly what is packaged. Reload an active VS Code window after installing.
 
 ## Verify a package

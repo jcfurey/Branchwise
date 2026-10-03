@@ -17,6 +17,10 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - Shorten the README, and record where Branchwise came from, the license at each stage, and the third-party code it bundles in a new [provenance](docs/provenance.md) document.
 - Redraw the icon as an open Git graph: a blue trunk with three commits, and an orange and a pink branch merged back into it for the bowls of the B, in the graph's own default lane colours and without a background tile. The graph's tab icon and the Source Control button use the same B, and the marketplace banner is now a neutral dark grey.
 
+### Fixed
+
+- Ship the license and copyright notices of the open-source packages bundled into the extension, such as simple-git and Preact, in `THIRD-PARTY-NOTICES.txt`. The file is generated from what the build bundles, and CI fails when it is out of date.
+
 ## [0.9.9] - 2026-10-02
 
 ### Added
