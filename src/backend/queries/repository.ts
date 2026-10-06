@@ -15,6 +15,7 @@ import {
   loadSyncPlan,
   loadUpstreamPlan,
   loadCleanupPlan,
+  loadFastForwardPlan,
   submoduleComparison
 } from "@/backend/queries/workflows";
 import { loadWorkingTree } from "@/backend/queries/workingTree";
@@ -336,6 +337,8 @@ export async function repositoryQuery(
       return { kind: "upstreamPlan", plan: await loadUpstreamPlan(git) };
     case "cleanupPlan":
       return { kind: "cleanupPlan", plan: await loadCleanupPlan(git) };
+    case "fastForwardPlan":
+      return { kind: "fastForwardPlan", plan: await loadFastForwardPlan(git) };
     case "workspace":
       return {
         kind: "workspace",

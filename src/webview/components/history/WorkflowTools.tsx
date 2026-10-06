@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 
-import type { HistoryPage, SyncPlan, WorkspaceEntry } from "@/backend/types";
+import type { FastForwardSkip, HistoryPage, SyncPlan, WorkspaceEntry } from "@/backend/types";
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
 import { closeDialog, openContentDialog, selectRepo } from "@/webview/lib/actions";
@@ -10,6 +10,7 @@ import {
   repositoryRevision,
   sendRepositoryAction
 } from "@/webview/lib/repository-actions";
+import { selectedRepo } from "@/webview/lib/stores";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import {
   backgroundAction,
@@ -576,4 +577,105 @@ function CleanupView() {
 }
 export function openCleanup() {
   openContentDialog(window.l10n.cleanupBranches, <CleanupView />);
+}
+
+function skipReason(skip: FastForwardSkip) {
+  const l10n = window.l10n;
+  const text = {
+    diverged: l10n.fastForwardDiverged,
+    worktree: l10n.fastForwardWorktree,
+    uncommitted: l10n.fastForwardUncommitted
+  }[skip.reason];
+  // A function replacement inserts the name as written, even when it contains `$`.
+  return text.replace("{0}", () => skip.name);
+}
+
+/**
+ * The branches that can move up to their upstream, all chosen at first, and the ones that
+ * cannot, with why. Fetching refreshes the list; the update runs here, so the dialog stays to
+ * show what is left.
+ */
+function FastForwardView({ repo }: { repo: string }) {
+  const l10n = window.l10n;
+  const query = useRepositoryQuery<"fastForwardPlan">({ kind: "fastForwardPlan" }, repo);
+  const [excluded, setExcluded] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [moved, setMoved] = useState<number | null>(null);
+  const plan = query.data?.plan;
+  const chosen = plan?.branches.filter((branch) => !excluded.includes(branch.name)) ?? [];
+  const run = async (action: Parameters<typeof backgroundAction>[1], done?: number) => {
+    setBusy(true);
+    setMoved(null);
+    const failure = await backgroundAction(repo, action);
+    setError(failure);
+    if (failure === null && done !== undefined) {
+      setMoved(done);
+    }
+    setBusy(false);
+  };
+  return (
+    <div class="space-y-3 text-left" data-fast-forward>
+      <p>{l10n.fastForwardHint}</p>
+      <Button disabled={busy} onClick={() => run({ kind: "fetch", remote: null })}>
+        {l10n.fetchAllAndRefresh}
+      </Button>
+      <QueryStatus
+        loading={busy || (query.loading && plan === undefined)}
+        error={error || query.error}
+      />
+      {moved !== null && <p role="status">{l10n.fastForwardDone.replace("{0}", String(moved))}</p>}
+      {plan && (
+        <>
+          {plan.branches.length === 0 && <p>{l10n.noFastForwards}</p>}
+          <ul class="space-y-2">
+            {plan.branches.map((branch) => (
+              <li key={branch.name} data-fast-forward-branch={branch.name}>
+                <Checkbox
+                  label={l10n.fastForwardBehind
+                    .replace("{0}", () => branch.name)
+                    .replace("{1}", () => branch.upstream)
+                    .replace("{2}", String(branch.behind))}
+                  checked={!excluded.includes(branch.name)}
+                  onInput={(event) =>
+                    setExcluded(
+                      event.currentTarget.checked
+                        ? excluded.filter((name) => name !== branch.name)
+                        : [...excluded, branch.name]
+                    )
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+          {plan.skipped.length > 0 && (
+            <div>
+              <p class="font-semibold">{l10n.fastForwardSkipped}</p>
+              <ul class="list-disc pl-5 text-muted">
+                {plan.skipped.map((skip) => (
+                  <li key={skip.name} data-fast-forward-skipped={skip.reason}>
+                    {skipReason(skip)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <Button
+            variant="primary"
+            disabled={busy || query.loading || chosen.length === 0}
+            onClick={() => run({ kind: "fastForward", branches: chosen }, chosen.length)}
+          >
+            {l10n.fastForwardRun.replace("{0}", String(chosen.length))}
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function openFastForward() {
+  const repo = selectedRepo.value;
+  if (repo !== undefined) {
+    openContentDialog(window.l10n.fastForwardTitle, <FastForwardView repo={repo} />);
+  }
 }
