@@ -35,19 +35,44 @@ type Pending = {
 };
 
 let nextRequest = 0;
+/** Called once a push has succeeded, with the remote and the branch name it was pushed to. */
+type OnPushed = (remote: string, remoteBranch: string) => void;
+
 let pendingQuery:
-  | (Pending & { action: RemoteAction; branchName: string; remoteRef: string | undefined })
+  | (Pending & {
+      action: RemoteAction;
+      branchName: string;
+      remoteRef: string | undefined;
+      onPushed: OnPushed | undefined;
+    })
   | undefined;
 const pendingActions = new Map<string, Pending>();
 
-export function openRemoteAction(action: RemoteAction, branchName = "", remoteRef?: string) {
+/**
+ * Load the remotes, then open the dialog of `action`. A push given `onPushed` starts with
+ * "set upstream" ticked, and calls it once the push has succeeded.
+ */
+export function openRemoteAction(
+  action: RemoteAction,
+  branchName = "",
+  remoteRef?: string,
+  onPushed?: OnPushed
+) {
   const repo = selectedRepo.value;
   if (repo === undefined) {
     return;
   }
   const requestId = `remote-${++nextRequest}`;
   openRunningDialog(window.l10n.loadingRemotes);
-  pendingQuery = { requestId, repo, dialog: dialog.value!, action, branchName, remoteRef };
+  pendingQuery = {
+    requestId,
+    repo,
+    dialog: dialog.value!,
+    action,
+    branchName,
+    remoteRef,
+    onPushed
+  };
   vscode.postMessage({
     command: "loadRemotes",
     repo,
@@ -330,17 +355,26 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
       inputs: [
         { kind: "select", label: window.l10n.remote, value: remote, options },
         { kind: "ref", label: window.l10n.remoteBranch, value: remoteBranch },
-        { kind: "checkbox", label: window.l10n.setUpstream, value: upstream === null },
+        {
+          kind: "checkbox",
+          label: window.l10n.setUpstream,
+          value: upstream === null || pending.onPushed !== undefined
+        },
         { kind: "checkbox", label: window.l10n.forceWithLease, value: false }
       ],
       action: window.l10n.previewPush,
       source,
-      onSubmit: ([selectedRemote, destination, setUpstream, force]) =>
-        openSync(repo, branchName, selectedRemote, destination, {
-          operation: "push",
-          setUpstream,
-          force
-        })
+      onSubmit: ([selectedRemote, destination, setUpstream, force]) => {
+        const { onPushed } = pending;
+        openSync(
+          repo,
+          branchName,
+          selectedRemote,
+          destination,
+          { operation: "push", setUpstream, force },
+          onPushed && (() => onPushed(selectedRemote, destination))
+        );
+      }
     });
   } else {
     openFormDialog({

@@ -168,6 +168,12 @@ export function getWebviewLocalizedStrings() {
     openCommitOnHost: vscode.l10n.t("Open Commit on {0}"),
     openBranchOnHost: vscode.l10n.t("Open Branch on {0}"),
     openTagOnHost: vscode.l10n.t("Open Tag on {0}"),
+    // Open the host's page for proposing the branch: a pull request on GitHub, a merge request
+    // on GitLab. The "Push and" forms push a branch without an upstream first.
+    createPullRequest: vscode.l10n.t("Create Pull Request"),
+    createMergeRequest: vscode.l10n.t("Create Merge Request"),
+    pushAndCreatePullRequest: vscode.l10n.t("Push and Create Pull Request"),
+    pushAndCreateMergeRequest: vscode.l10n.t("Push and Create Merge Request"),
 
     // What a failed copy was copying, inserted mid-sentence into unableToCopyToClipboard
     typeCommitHash: vscode.l10n.t("commit ID"),

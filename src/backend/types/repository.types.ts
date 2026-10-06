@@ -1,4 +1,13 @@
-export type RemoteDetails = { name: string; fetchUrls: string[]; pushUrls: string[] };
+export type RemoteDetails = {
+  name: string;
+  fetchUrls: string[];
+  pushUrls: string[];
+  /**
+   * The remote's default branch, as `refs/remotes/<name>/HEAD` names it, such as `main`. Left
+   * out when that ref is missing, as it is until a clone or `git remote set-head` records it.
+   */
+  defaultBranch?: string;
+};
 /** A ref and the commit it points to. An annotated tag reports the commit, not the tag object. */
 export type RefDetails = { name: string; hash: string };
 /** A branch, remote branch or tag offered by Go to, with the subject of its commit. */
