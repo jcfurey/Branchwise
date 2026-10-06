@@ -66,6 +66,11 @@ export const collapsedSections = signal<ReadonlySet<string>>(new Set(saved.colla
 export const searchVisible = signal(saved.search ?? false);
 export const activeTab = signal<ViewTab>(saved.tab ?? "graph");
 export const focusedCommit = signal<string | null>(null);
+/**
+ * A commit to scroll to, focus and select once the rows on screen include it, or `null`. The
+ * graph table takes it; a new search or repository drops it.
+ */
+export const pendingReveal = signal<string | null>(null);
 export const restoreScroll = signal<number | null>(null);
 let selectionRows: HistoryEntry[] = [];
 let selectionAnchor: string | null = null;
@@ -145,6 +150,7 @@ export function enterNavigation(repo: string) {
   historyOffset.value = 0;
   selectedCommits.value = [];
   focusedCommit.value = null;
+  pendingReveal.value = null;
   restoreScroll.value = state?.scroll ?? 0;
 }
 
@@ -171,6 +177,7 @@ export function setHistoryFilter(filter: HistoryFilter) {
   historyOffset.value = 0;
   selectedCommits.value = [];
   focusedCommit.value = null;
+  pendingReveal.value = null;
   leaveNavigation(selectedRepo.value);
 }
 

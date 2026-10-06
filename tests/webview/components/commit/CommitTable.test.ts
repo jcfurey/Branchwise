@@ -5,7 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 import type { HistoryEntry } from "@/backend/types";
 import { CommitTable } from "@/webview/components/commit/CommitTable";
-import { focusedCommit, selectedCommits } from "@/webview/lib/navigation";
+import { focusedCommit, pendingReveal, selectedCommits } from "@/webview/lib/navigation";
 import {
   commitDetails,
   contextMenu,
@@ -241,6 +241,66 @@ describe("the reveal button", () => {
     const scroll = host.querySelector("[data-graph-scroll]")!;
     expect(scroll.hasAttribute("tabindex")).toBe(false);
     expect(scroll.classList.contains("invisible")).toBe(true);
+  });
+});
+
+describe("a commit chosen in Go to", () => {
+  // jsdom does not scroll, so each test puts a recorder in place of the method.
+  const scrollIntoView = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
+  afterEach(() => {
+    pendingReveal.value = null;
+    if (scrollIntoView === undefined) {
+      delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
+    } else {
+      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", scrollIntoView);
+    }
+  });
+
+  it("is centred, focused and selected once its row is drawn", () => {
+    const scrolled = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrolled;
+    const commits = [entry("c"), entry("b", ["a"]), entry("a")];
+    pendingReveal.value = "b";
+    drawTable({ commits });
+    expect(document.activeElement).toBe(row("b"));
+    expect(scrolled).toHaveBeenCalledOnce();
+    expect(scrolled.mock.contexts[0]).toBe(row("b"));
+    expect(scrolled).toHaveBeenCalledWith({ block: "center" });
+    expect(selectedCommits.value.map((commit) => commit.hash)).toEqual(["b"]);
+    expect(focusedCommit.value).toBe("b");
+    expect(row("b").getAttribute("aria-selected")).toBe("true");
+    expect(pendingReveal.value).toBeNull();
+  });
+
+  it("waits while the rows on screen do not include it", () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    pendingReveal.value = "b";
+    drawTable({ commits: [entry("c"), entry("a")] });
+    expect(pendingReveal.value).toBe("b");
+    expect(selectedCommits.value).toEqual([]);
+    drawTable({ commits: [entry("b"), entry("a")] });
+    expect(pendingReveal.value).toBeNull();
+    expect(document.activeElement).toBe(row("b"));
+  });
+
+  it("takes the keyboard back for its row when the page regains focus", () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    try {
+      pendingReveal.value = "b";
+      drawTable({ commits: [entry("c"), entry("b", ["a"]), entry("a")] });
+      // The workbench hands the panel the keyboard with nothing focused in it.
+      row("b").blur();
+      expect(document.activeElement).toBe(document.body);
+      window.dispatchEvent(new FocusEvent("focus"));
+      expect(document.activeElement).toBe(row("b"));
+      // Only once, and never over a control the user chose.
+      row("b").blur();
+      window.dispatchEvent(new FocusEvent("focus"));
+      expect(document.activeElement).toBe(document.body);
+    } finally {
+      hasFocus.mockRestore();
+    }
   });
 });
 

@@ -123,6 +123,11 @@
         "title": "%command.showBranches%"
       },
       {
+        "command": "branchwise.goTo",
+        "category": "Branchwise",
+        "title": "%command.goTo%"
+      },
+      {
         "command": "branchwise.openDocumentation",
         "category": "Branchwise",
         "title": "%command.openDocumentation%"
@@ -131,6 +136,14 @@
         "command": "branchwise.openWalkthrough",
         "category": "Branchwise",
         "title": "%command.openWalkthrough%"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "branchwise.goTo",
+        "key": "ctrl+alt+g",
+        "mac": "cmd+alt+g",
+        "when": "activeWebviewPanelId == 'branchwise' && !sideBarFocus && !panelFocus && !auxiliaryBarFocus"
       }
     ],
     "menus": {

@@ -1,6 +1,6 @@
 import { useComputed, useSignal } from "@preact/signals";
 import { type ComponentProps, Fragment } from "preact";
-import { useCallback, useMemo, useRef } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 
 import type { HistoryEntry } from "@/backend/types";
 import { CommitDetails } from "@/webview/components/commit/CommitDetails";
@@ -23,7 +23,12 @@ import type { GraphExpansion, GraphLine } from "@/webview/graph/types";
 import { graphWidth, laneX } from "@/webview/graph/utils";
 import { toggleCommitDetails } from "@/webview/lib/actions";
 import { commitMenuSource } from "@/webview/lib/menus";
-import { focusedCommit, selectedCommits } from "@/webview/lib/navigation";
+import {
+  focusedCommit,
+  pendingReveal,
+  selectCommitRows,
+  selectedCommits
+} from "@/webview/lib/navigation";
 import { activeSource, columnWidths, commitDetails, expandedCommit } from "@/webview/lib/stores";
 import type { FocusDimming } from "@/webview/types";
 
@@ -178,6 +183,39 @@ export function CommitTable({
     }
   };
   const onRevealLane = useCallback((hash: string) => reveal.current(hash), []);
+
+  // A commit chosen in Go to, once its row is here: centred, focused and selected.
+  const revealing = pendingReveal.value;
+  useEffect(() => {
+    const index = revealing === null ? undefined : rowOf.get(revealing);
+    const commit = index === undefined ? undefined : commits[index];
+    if (commit === undefined) {
+      return;
+    }
+    pendingReveal.value = null;
+    selectCommitRows(commit, commits, false, false);
+    const row = containerRef.current?.querySelector<HTMLElement>(
+      `tr[data-commit-hash=${JSON.stringify(commit.hash)}]`
+    );
+    row?.scrollIntoView({ block: "center" });
+    // Focusing the row makes it the focused commit and brings its dot into view.
+    row?.focus({ preventScroll: true });
+    if (row && !document.hasFocus()) {
+      // The panel may get the keyboard back after this, from a picker closing in the
+      // workbench, with nothing focused in it; the row should have it then. Clearing the
+      // pending reveal runs this effect again, so the listener is not tied to it.
+      window.addEventListener(
+        "focus",
+        () => {
+          const active = document.activeElement;
+          if (row.isConnected && (active === null || active === document.body)) {
+            row.focus({ preventScroll: true });
+          }
+        },
+        { once: true }
+      );
+    }
+  }, [revealing, rowOf, commits, containerRef]);
   const toggles = useMemo(
     () => new Map(commits.map(({ hash }) => [hash, () => toggleCommitDetails(hash)])),
     [commits]

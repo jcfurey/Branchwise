@@ -44,6 +44,7 @@ import {
   setShowRemoteBranch
 } from "@/webview/lib/actions";
 import { focusSearch } from "@/webview/lib/focus";
+import { openGoTo } from "@/webview/lib/go-to";
 import { jumpToHead, useHeadOutOfSight } from "@/webview/lib/jump-to-head";
 import {
   activeTab,
@@ -191,6 +192,7 @@ function toolsMenu(): Array<ContextMenuEntry> {
     { title: l10n.cleanupBranches, onClick: openCleanup },
     { title: l10n.bisectTitle, onClick: openBisect },
     null,
+    { title: l10n.goTo, onClick: openGoTo },
     { title: l10n.reflog, onClick: openReflog },
     { title: l10n.fileHistory, onClick: askForFileHistory },
     { title: l10n.operationActivity, onClick: openActivity },

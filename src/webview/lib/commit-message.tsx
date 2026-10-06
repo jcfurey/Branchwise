@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 
-import type { RepositoryState } from "@/backend/types";
+import type { RemoteDetails, RepositoryState } from "@/backend/types";
 
 /** Where a remote's issues and merge requests live, for the hosts whose links are known. */
 export type IssueTracker = { kind: "github" | "gitlab"; host: string; base: string };
@@ -46,6 +46,26 @@ export function issueTracker(url: string): IssueTracker | null {
 }
 
 /**
+ * The remote an upstream such as `origin/main` belongs to. Remote names may hold slashes, so the
+ * longest name that fits wins.
+ */
+export function upstreamRemote(state: RepositoryState, upstream: string): RemoteDetails | null {
+  let found: RemoteDetails | null = null;
+  for (const remote of state.remotes) {
+    if (upstream.startsWith(remote.name + "/") && remote.name.length > (found?.name.length ?? 0)) {
+      found = remote;
+    }
+  }
+  return found;
+}
+
+/** The tracker of `remote`'s first fetch address, or `null` when its host is not known. */
+export function remoteTracker(remote: RemoteDetails): IssueTracker | null {
+  const url = remote.fetchUrls[0];
+  return url === undefined ? null : issueTracker(url);
+}
+
+/**
  * The tracker of the remote the checked-out branch tracks, else of `origin`, else of the first
  * remote, or `null` when that remote's host is not known.
  */
@@ -55,11 +75,10 @@ export function repositoryTracker(state: RepositoryState | null): IssueTracker |
   }
   const upstream = state.branches.find((branch) => branch.name === state.head)?.upstream ?? "";
   const remote =
-    state.remotes.find((item) => upstream.startsWith(item.name + "/")) ??
+    upstreamRemote(state, upstream) ??
     state.remotes.find((item) => item.name === "origin") ??
     state.remotes[0]!;
-  const url = remote.fetchUrls[0];
-  return url === undefined ? null : issueTracker(url);
+  return remoteTracker(remote);
 }
 
 type Rule = {

@@ -13,6 +13,10 @@ import { setupWebviewTest } from "@tests/webview/test-utils";
 
 const MALFORMED = "Malformed response to an RPC request";
 
+// The picker's own behaviour is tested with its module; here only the routing to it.
+const goTo = vi.hoisted(() => ({ openGoTo: vi.fn(), revealChoice: vi.fn() }));
+vi.mock("@/webview/lib/go-to", () => goTo);
+
 const requests = new Map<string, PendingRpcRequest>();
 /** Exceptions that escaped the message listener, reported as window `error` events. */
 const listenerErrors: unknown[] = [];
@@ -32,6 +36,8 @@ beforeEach(() => {
   window.addEventListener("error", recordListenerError);
   vscodeApi.postMessage.mockClear();
   vscodeApi.setState.mockClear();
+  goTo.openGoTo.mockClear();
+  goTo.revealChoice.mockClear();
 });
 
 afterEach(() => {
@@ -356,6 +362,30 @@ describe("view.showPane", () => {
 
     expect(workspaceVisible.value).toBe(false);
     expect(vscodeApi.setState).not.toHaveBeenCalled();
+    expect(listenerErrors).toEqual([]);
+  });
+});
+
+describe("view.goTo and view.reveal", () => {
+  it("ask for the picker, whatever the payload", () => {
+    send(notification("view.goTo", null));
+    send(notification("view.goTo", { anything: 1 }));
+    expect(goTo.openGoTo).toHaveBeenCalledTimes(2);
+  });
+
+  it("show the commit chosen in the picker", () => {
+    send(notification("view.reveal", { repo: "/work/app", hash: "abc" }));
+    expect(goTo.revealChoice).toHaveBeenCalledExactlyOnceWith("/work/app", "abc");
+  });
+
+  it.each([
+    ["no payload", null],
+    ["no hash", { repo: "/work/app" }],
+    ["no repository", { hash: "abc" }],
+    ["a hash that is not a string", { repo: "/work/app", hash: 1 }]
+  ])("ignore a reveal with %s", (_, message) => {
+    send(notification("view.reveal", message));
+    expect(goTo.revealChoice).not.toHaveBeenCalled();
     expect(listenerErrors).toEqual([]);
   });
 });

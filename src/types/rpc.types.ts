@@ -29,6 +29,13 @@ export type RpcMethodMap = {
   "settings.open": { params: null; result: boolean };
   "docs.open": { params: null; result: boolean };
   "walkthrough.open": { params: null; result: boolean };
+  /**
+   * Show the Go to picker for the repository; `true` once it is open. The choice arrives later as
+   * `view.reveal`, as the user may take longer than a request may wait.
+   */
+  "goTo.show": { params: { repo: string }; result: boolean };
+  /** Open an `http` or `https` address in the browser; `false` when it was not opened. */
+  "url.open": { params: string; result: boolean };
 };
 
 export type RpcMethod = keyof RpcMethodMap;
@@ -40,6 +47,10 @@ export type SidebarPane = "refs" | "workspace";
 export type RpcNotificationMap = {
   /** Open this pane, once the page is ready for it. */
   "view.showPane": { pane: SidebarPane };
+  /** Ask the extension to show the Go to picker for the selected repository. */
+  "view.goTo": null;
+  /** Show this commit of this repository, chosen in the Go to picker. */
+  "view.reveal": { repo: string; hash: string };
   /** Offer this repository in the picker and select it. */
   "repo.select": GitRepo;
   /** Repositories may have appeared or gone: list them again. */

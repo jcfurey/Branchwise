@@ -9,7 +9,7 @@ const fake = vi.hoisted(() => {
   const note = (entry: string) => journal.push(entry);
   const view = Object.assign(
     vi.fn((..._args: unknown[]) => {}),
-    { showPane: vi.fn((_pane: string) => {}) }
+    { showPane: vi.fn((_pane: string) => {}), goTo: vi.fn(() => {}) }
   );
   return {
     journal,
@@ -161,11 +161,12 @@ describe("activation", () => {
     expect(fake.translate.mock.calls).toEqual([["View Graph"]]);
   });
 
-  it("registers the four commands it owns, after the status bar entry", () => {
+  it("registers the five commands it owns, after the status bar entry", () => {
     activate(context);
     expect(fake.registrations.map((registration) => registration.id)).toEqual([
       "branchwise.view",
       "branchwise.showBranches",
+      "branchwise.goTo",
       "branchwise.openDocumentation",
       "branchwise.openWalkthrough"
     ]);
@@ -198,6 +199,13 @@ describe("the commands", () => {
     activate(context);
     run("branchwise.showBranches", "ignored", { rootUri: { fsPath: "/y" } });
     expect(fake.view.showPane.mock.calls).toEqual([["refs"]]);
+    expect(fake.view).not.toHaveBeenCalled();
+  });
+
+  it("opens the Go to picker whatever branchwise.goTo is given", () => {
+    activate(context);
+    run("branchwise.goTo", "ignored");
+    expect(fake.view.goTo.mock.calls).toEqual([[]]);
     expect(fake.view).not.toHaveBeenCalled();
   });
 
