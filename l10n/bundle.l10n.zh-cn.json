@@ -623,5 +623,9 @@
   "Stage the changes to add to this commit first.": "请先暂存要添加到此提交的更改。",
   "Stage or stash the unstaged and untracked changes first. The rebase that adds the staged changes needs a clean working tree.": "请先将未暂存和未跟踪的更改暂存或存入暂存记录。添加已暂存更改的变基需要干净的工作区。",
   "Enter a commit message.": "请输入提交消息。",
-  "The staged changes changed. Review them again.": "已暂存的更改已改变。请重新查看。"
+  "The staged changes changed. Review them again.": "已暂存的更改已改变。请重新查看。",
+  "Message of the combined commit {0}": "合并后提交 {0} 的提交消息",
+  "Squash keeps these messages in one commit; Fixup messages are left out. Edit the result here.": "压缩会将这些提交消息保留在同一个提交中；修正的提交消息会被舍弃。可在此编辑最终结果。",
+  "The combined commit needs a message.": "合并后的提交需要提交消息。",
+  "Each combined commit needs a nonempty message.": "每个合并后的提交都需要非空的提交信息。"
 }

@@ -43,6 +43,11 @@ export type RebaseEntry = {
   hash: string;
   message: string;
   action: "pick" | "reword" | "squash" | "fixup" | "drop";
+  /**
+   * On the first commit of a squash group, the combined commit's message as the user edited it.
+   * Without it Git combines the messages itself.
+   */
+  squashMessage?: string;
 };
 export type RebasePlan = { base: string; head: string; branch: string; entries: RebaseEntry[] };
 /** A commit on the checked-out branch's first-parent line, as an edit of it finds it. */

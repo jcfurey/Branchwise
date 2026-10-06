@@ -81,6 +81,11 @@ export function getRepositoryLocalizedStrings() {
     moveLater: vscode.l10n.t("Move Later"),
     movedEntry: vscode.l10n.t("Moved {0} to position {1} of {2}."),
     startRebase: vscode.l10n.t("Start Rebase"),
+    combinedMessage: vscode.l10n.t("Message of the combined commit {0}"),
+    combinedMessageHint: vscode.l10n.t(
+      "Squash keeps these messages in one commit; Fixup messages are left out. Edit the result here."
+    ),
+    combinedMessageRequired: vscode.l10n.t("The combined commit needs a message."),
     editMessage: vscode.l10n.t("Edit Message"),
     editMessageIntro: vscode.l10n.t("Edit the message of {0}. Its changes stay as they are."),
     commitMessage: vscode.l10n.t("Commit message"),
