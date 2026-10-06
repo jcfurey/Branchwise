@@ -55,7 +55,7 @@ it("moves typed fields into the filter and shows them under Filters", async () =
   act(() => render(h(SearchBar, {}), container));
   const input = container.querySelector<HTMLInputElement>("[data-history-search]")!;
   act(() => {
-    input.value = 'crash tag:v1 author:"Ann Lee"';
+    input.value = 'crash tag:v1 author:"Ann Lee" diff:parseConfig';
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   act(() => {
@@ -66,7 +66,8 @@ it("moves typed fields into the filter and shows them under Filters", async () =
   expect(navigation.historyFilter.value).toMatchObject({
     text: "crash",
     tag: "v1",
-    author: "Ann Lee"
+    author: "Ann Lee",
+    changes: "parseConfig"
   });
   expect(input.value).toBe("crash");
   const fields = new Map(
@@ -77,6 +78,7 @@ it("moves typed fields into the filter and shows them under Filters", async () =
   );
   expect(fields.get("historyTag")).toBe("v1");
   expect(fields.get("historyAuthor")).toBe("Ann Lee");
+  expect(fields.get("historyChanges")).toBe("parseConfig");
 });
 
 it("fills the new fields of a saved filter that predates them", () => {
@@ -84,7 +86,7 @@ it("fills the new fields of a saved filter that predates them", () => {
   document.body.append(container);
   act(() => render(h(SearchBar, {}), container));
   const old = { ...navigation.emptyFilter(), text: "old" } as Record<string, unknown>;
-  for (const key of ["committer", "branch", "tag", "regex"]) {
+  for (const key of ["committer", "branch", "tag", "changes", "regex"]) {
     delete old[key];
   }
   act(() => navigation.setHistoryFilter(old as never));
@@ -93,6 +95,7 @@ it("fills the new fields of a saved filter that predates them", () => {
     committer: "",
     branch: "",
     tag: "",
+    changes: "",
     regex: false
   });
 });

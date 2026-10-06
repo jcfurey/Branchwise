@@ -395,6 +395,31 @@ async function openRepo(dir) {
     "loaded commits"
   );
 }
+/** Opens the search row, unless it is open already. */
+async function openSearch() {
+  if (!(await graph.evaluate('!!document.querySelector("[data-history-search]")'))) {
+    await button("Search history", 'document.querySelector("header")');
+  }
+}
+/** Types `text` into the open search box and searches. */
+async function searchHistory(text) {
+  await graph.evaluate(
+    `(() => { const input = document.querySelector('[data-history-search]'); input.value = ${JSON.stringify(text)}; input.dispatchEvent(new Event('input', {bubbles:true})); })()`
+  );
+  await button("Search", 'document.querySelector("form[role=search]")');
+}
+/** The text of each commit row on the page, graph or search results. */
+function commitRows() {
+  return graph.evaluate(
+    '[...document.querySelectorAll("tr[data-commit-hash]")].map(row => row.innerText)'
+  );
+}
+/** The value of the search form's input labelled `label`. */
+function searchField(label) {
+  return graph.evaluate(
+    `[...document.querySelectorAll("form[role=search] label")].find(label => label.innerText.includes(${JSON.stringify(label)})).querySelector("input").value`
+  );
+}
 async function headerChoice(label, option) {
   await until(
     () =>
@@ -1165,35 +1190,21 @@ suite("Branchwise workflow UI", function () {
     }
     const head = git(["rev-parse", "HEAD"], named);
     await openRepo(named);
-    if (!(await graph.evaluate('!!document.querySelector("[data-history-search]")'))) {
-      await button("Search history", 'document.querySelector("header")');
-    }
-    const search = async (text) => {
-      await graph.evaluate(
-        `(() => { const input = document.querySelector('[data-history-search]'); input.value = ${JSON.stringify(text)}; input.dispatchEvent(new Event('input', {bubbles:true})); })()`
-      );
-      await button("Search", 'document.querySelector("form[role=search]")');
-    };
-    const rows = () =>
-      graph.evaluate(
-        '[...document.querySelectorAll("tr[data-commit-hash]")].map(row => row.innerText)'
-      );
+    await openSearch();
     const screenshot = async (name) => {
       const shot = await connections[0].call("Page.captureScreenshot");
       fs.writeFileSync(path.join(artifacts, name), Buffer.from(shot.data, "base64"));
     };
 
     // A typed field moves into Filters and limits the results to the tag's commit.
-    await search("tag:v1.2");
-    await until(async () => JSON.stringify(await rows()).includes("tagged release"), "tag search");
-    assert.equal((await rows()).length, 1);
-    assert.equal(await graph.evaluate('document.querySelector("[data-history-search]").value'), "");
-    assert.equal(
-      await graph.evaluate(
-        '[...document.querySelectorAll("form[role=search] label")].find(label => label.innerText.includes("Tag name contains")).querySelector("input").value'
-      ),
-      "v1.2"
+    await searchHistory("tag:v1.2");
+    await until(
+      async () => JSON.stringify(await commitRows()).includes("tagged release"),
+      "tag search"
     );
+    assert.equal((await commitRows()).length, 1);
+    assert.equal(await graph.evaluate('document.querySelector("[data-history-search]").value'), "");
+    assert.equal(await searchField("Tag name contains"), "v1.2");
     await screenshot("search-tag.png");
 
     // Plain text searches messages and offers the branches and tags whose names hold it.
@@ -1201,12 +1212,12 @@ suite("Branchwise workflow UI", function () {
     // The row takes the cleared filter a frame later; type after the graph is back.
     await until(() => graph.evaluate(visible(head)), "graph after clearing");
     await delay(200);
-    await search("hotfix");
+    await searchHistory("hotfix");
     await until(
       () => graph.evaluate("!!document.querySelector(\"main button[title='refs/heads/hotfix']\")"),
       "matching branch chip"
     );
-    const found = await rows();
+    const found = await commitRows();
     assert.equal(found.length, 1);
     assert.ok(found[0].includes("hotfix work"));
     await screenshot("search-matching-refs.png");
@@ -1240,6 +1251,47 @@ suite("Branchwise workflow UI", function () {
           `document.activeElement?.dataset.commitHash === ${JSON.stringify(head)} && document.querySelector("header button[aria-label='Jump to HEAD']").title === "Jump to HEAD"`
         ),
       "HEAD in view and focused"
+    );
+  });
+
+  test("finds the commits whose changes add or remove text", async () => {
+    const changed = directory();
+    init(changed);
+    // The messages never name the text, so only the changes can find these commits.
+    const save = (file, value, message) => {
+      fs.writeFileSync(path.join(changed, file), value);
+      git(["add", "--", file], changed);
+      git(["commit", "-m", message], changed);
+    };
+    save("config.js", "function loadSettings() {}\n", "add the loader");
+    save("other.js", "const unrelated = 1;\n", "unrelated work");
+    save("config.js", "function loadSettings(file) {}\n", "take a file");
+    save("config.js", "// gone\n", "drop the loader");
+    await openRepo(changed);
+    await openSearch();
+
+    // The literal text: the commits that change how often it appears.
+    await searchHistory("changes:loadSettings");
+    await until(async () => (await commitRows()).length === 2, "commits that add or remove it");
+    const literal = await commitRows();
+    assert.ok(literal[0].includes("drop the loader"), literal[0]);
+    assert.ok(literal[1].includes("add the loader"), literal[1]);
+    assert.equal(await graph.evaluate('document.querySelector("[data-history-search]").value'), "");
+    assert.equal(await searchField("Text added or removed"), "loadSettings");
+
+    // As a regular expression: every commit that adds or removes a matching line.
+    await graph.evaluate(
+      '[...document.querySelectorAll("form[role=search] label")].find(label => label.innerText.includes("Regular expressions")).querySelector("input").click()'
+    );
+    await button("Search", 'document.querySelector("form[role=search]")');
+    await until(async () => (await commitRows()).length === 3, "commits with matching lines");
+    const lines = await commitRows();
+    assert.deepEqual(
+      ["drop the loader", "take a file", "add the loader"].map((subject, index) =>
+        lines[index].includes(subject)
+      ),
+      [true, true, true],
+      JSON.stringify(lines)
     );
   });
 
