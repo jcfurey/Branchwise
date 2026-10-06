@@ -53,12 +53,15 @@ basics.
 - Commits: check out, cherry-pick, revert, reset, fixup; cherry-pick or revert several in order
 - Absorb staged changes: each hunk becomes a fixup for the commit that last changed its lines
 - Plain and interactive rebase; push and pull previews; force-push only with a lease
+- Before a rebase, cherry-pick or revert, see which commit would stop with conflicts, and in which files
+- Split a commit into several, by file or by hunk, without touching the working tree
 - Fast-forward every branch that is only behind its upstream, without a checkout
 - Stashes, conflict resolution, and continue, skip or abort for interrupted operations
 
 **Recover and investigate**
 
 - Reflog tab that recovers commits no branch reaches; compare refs; restore earlier file contents
+- Undo the last reset, rebase, merge, amend or deletion in one click; a Safety Net lists what each destructive action replaced
 - Guided bisect, merged-branch cleanup, and a Statistics tab of commits and contributors
 
 ![The Statistics tab: commit, contributor and active-day counts, a year of daily activity, and each contributor's share of the commits](docs/images/statistics-dark.png)

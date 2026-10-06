@@ -7,7 +7,7 @@ import type {
   SignatureState,
   UncheckedReason
 } from "@/backend/types";
-import { readBytesWithInput, readFolder, readGitWithTimeout } from "@/backend/utils/runGit";
+import { readBytesWithInput, readDirectory, readGitWithTimeout } from "@/backend/utils/runGit";
 import { resolveCommit } from "@/backend/utils/validation";
 
 /** A full SHA-1 or SHA-256 object ID. */
@@ -99,7 +99,7 @@ function parseBatch(output: Buffer) {
 
 /** A folder of the repository to run in, without starting Git to find one when possible. */
 async function folderOf(git: SimpleGit) {
-  return gitFolderOf(git) ?? (await readFolder(git));
+  return gitFolderOf(git) ?? (await readDirectory(git));
 }
 
 async function readCommits(git: SimpleGit, folder: string, hashes: string[]) {

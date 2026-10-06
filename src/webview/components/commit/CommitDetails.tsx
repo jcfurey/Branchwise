@@ -6,6 +6,7 @@ import { abbrevCommit } from "@/backend/utils/string";
 import { FileTree } from "@/webview/components/commit/FileTree";
 import { SignatureLine } from "@/webview/components/commit/SignatureBadge";
 import { onCheckedOutLine, openEditMessage } from "@/webview/components/repository/EditCommit";
+import { openSplitCommit } from "@/webview/components/repository/SplitCommit";
 import { Icon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
 import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT, TABLE_HEADER_HEIGHT } from "@/webview/constants";
@@ -229,6 +230,15 @@ export function CommitDetails({ details }: { details: GitCommitDetails | null })
                 onClick={() => openEditMessage(details.hash)}
               >
                 {l10n.editMessage + "…"}
+              </button>
+            )}
+            {onCheckedOutLine(details.hash) && details.parents.length < 2 && (
+              <button
+                type="button"
+                class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
+                onClick={() => openSplitCommit(details.hash)}
+              >
+                {l10n.splitCommit + "…"}
               </button>
             )}
           </div>

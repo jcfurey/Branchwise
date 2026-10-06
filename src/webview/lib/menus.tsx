@@ -13,6 +13,8 @@ import {
 import { openHiddenBranches } from "@/webview/components/repository/HiddenBranches";
 import { openInteractiveRebase, openRebase } from "@/webview/components/repository/RebaseEditor";
 import { openTracking } from "@/webview/components/repository/RemoteManager";
+import { ReplayForecastFor } from "@/webview/components/repository/ReplayForecast";
+import { openSplitCommit } from "@/webview/components/repository/SplitCommit";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
 import { Explain } from "@/webview/components/ui/Explain";
 import { closeDialog, focusBranchInGraph, openFormDialog, runAction } from "@/webview/lib/actions";
@@ -184,7 +186,8 @@ export function checkoutCommit(hash: string) {
 
 /**
  * Cherry-pick or revert a commit. A merge has one change per parent, so the user picks the
- * parent (1-based, as Git's `--mainline` counts) that the change is taken against.
+ * parent (1-based, as Git's `--mainline` counts) that the change is taken against. The dialog
+ * forecasts conflicts for an ordinary commit only, since a merge's depend on the parent chosen.
  */
 function applyCommit(
   commit: GitCommitNode,
@@ -202,7 +205,20 @@ function applyCommit(
 
   if (commit.parentHashes.length < 2) {
     openFormDialog({
-      message: question,
+      message: (
+        <>
+          {question}
+          <ReplayForecastFor
+            query={{
+              kind: "replayForecast",
+              mode: cherryPick ? "pick" : "revert",
+              onto: "HEAD",
+              commits: [commitHash]
+            }}
+            operation={cherryPick ? "cherry-pick" : "revert"}
+          />
+        </>
+      ),
       inputs: [],
       action,
       source,
@@ -292,6 +308,10 @@ export function commitMenu(
       ...(onCheckedOutLine(hash)
         ? [
             { title: more(l10n.editMessage), onClick: () => openEditMessage(hash) },
+            // A merge's changes are relative to more than one parent, so it has no single split.
+            ...(commit.parentHashes.length < 2
+              ? [{ title: more(l10n.splitCommit), onClick: () => openSplitCommit(hash) }]
+              : []),
             ...(hasStagedChanges()
               ? [{ title: more(l10n.addStagedToCommit), onClick: () => openAddStaged(hash) }]
               : [])

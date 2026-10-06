@@ -333,6 +333,46 @@ async function toolsMenu(text) {
     "tools menu " + text
   );
 }
+/**
+ * Choose `text` from the Settings & Tools menu once its entries include it. The entries are built
+ * when the menu opens, so a menu opened before the repository state arrived is opened again.
+ */
+async function freshToolsMenu(text) {
+  await until(
+    () =>
+      graph.evaluate(
+        `(() => { const item = [...document.querySelectorAll('[role="menuitem"]')].find(e => e.textContent.trim() === ${JSON.stringify(text)}); if (item) { item.click(); return true; } document.querySelector('header button[aria-label="Settings & Tools"]')?.click(); return false; })()`
+      ),
+    "fresh tools menu " + text
+  );
+}
+/** Click `label` on the VS Code notification whose message contains `message`. */
+async function notificationAction(message, label) {
+  await vscode.commands.executeCommand("notifications.showList");
+  try {
+    await until(async () => {
+      for (const connection of connections.filter(
+        (item) => item.ws.readyState === WebSocket.OPEN
+      )) {
+        for (const context of connection.contexts) {
+          try {
+            if (
+              await connection.evaluate(
+                `(() => { const item = [...document.querySelectorAll('.notifications-center .notification-list-item')].find(e => e.textContent.includes(${JSON.stringify(message)})); const action = item && [...item.querySelectorAll('.monaco-button')].find(b => b.textContent.trim() === ${JSON.stringify(label)}); if (!action) return false; action.click(); return true; })()`,
+                context
+              )
+            ) {
+              return true;
+            }
+          } catch {}
+        }
+      }
+      return false;
+    }, `notification ${message}: ${label}`);
+  } finally {
+    await vscode.commands.executeCommand("notifications.hideList");
+  }
+}
 async function menu(text) {
   await until(
     () =>
@@ -1016,6 +1056,77 @@ suite("Branchwise workflow UI", function () {
     assert.equal(fs.existsSync(path.join(repo, ".git", "MERGE_HEAD")), false);
   });
 
+  test("undoes a hard reset from the menu and a branch deletion from its notification", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "undo-base", dir);
+    commit("a", "undo-first", dir);
+    commit("b", "undo-second", dir);
+    const [second, first, base] = git(["rev-list", "HEAD"], dir).split("\n");
+    await openRepo(dir);
+    try {
+      await contextCommit("undo-base");
+      await menu("Reset Current Branch to This Commit…");
+      await select("hard");
+      await button("Reset");
+      await finished();
+      await until(
+        () => graph.evaluate(`!${visible(first)} && !${visible(second)} && ${visible(base)}`),
+        "commits after the reset leave the graph"
+      );
+      assert.equal(git(["rev-parse", "HEAD"], dir), base);
+      // Backups stay out of the graph and the branch picker.
+      assert.match(
+        git(["for-each-ref", "refs/branchwise/"], dir),
+        /^\S+ commit\trefs\/branchwise\//
+      );
+
+      await freshToolsMenu("Undo Hard Reset of main");
+      await finished();
+      await until(
+        () => graph.evaluate(`${visible(first)} && ${visible(second)}`),
+        "the commits return to the graph"
+      );
+      assert.equal(git(["rev-parse", "HEAD"], dir), second);
+      assert.equal(git(["status", "--porcelain"], dir), "");
+
+      git(["branch", "undo-topic", first], dir);
+      await button("Refresh");
+      await contextRef("undo-topic");
+      await menu("Delete Local Branch…");
+      await button("Delete Local Branch");
+      await finished();
+      assert.equal(git(["branch", "--list", "undo-topic"], dir), "");
+      await notificationAction("Deletion of Branch undo-topic", "Undo");
+      await until(
+        () => git(["branch", "--list", "undo-topic"], dir) !== "",
+        "the deleted branch returns"
+      );
+      assert.equal(git(["rev-parse", "undo-topic"], dir), first);
+      await until(
+        () =>
+          graph.evaluate(
+            `[...document.querySelectorAll('span[title]')].some(e => e.title.split(String.fromCharCode(10))[0] === "undo-topic")`
+          ),
+        "the branch label returns"
+      );
+
+      // Both actions are listed in the Safety Net as undone.
+      await freshToolsMenu("Safety Net…");
+      await until(
+        () =>
+          graph.evaluate(
+            `[...document.querySelectorAll('[data-safety-entry]')].map(e => e.querySelector('b').textContent).join("|") === "Deletion of Branch undo-topic|Hard Reset of main"`
+          ),
+        "the Safety Net lists both actions"
+      );
+      await button("Close");
+    } finally {
+      await vscode.commands.executeCommand("notifications.clearAll");
+      await openRepo(repo);
+    }
+  });
+
   test("switches repositories through SCM and runs an interactive rebase from a commit menu", async () => {
     const second = directory();
     init(second);
@@ -1085,18 +1196,31 @@ suite("Branchwise workflow UI", function () {
       ),
       "pick,squash,squash,pick"
     );
+    // The combined commit's message is offered as Git would combine it, after the group.
+    const combined = "[role=dialog] [data-combined] textarea";
+    assert.equal(
+      await graph.evaluate(`document.querySelector(${JSON.stringify(combined)}).value`),
+      "squash first\n\nsquash second\n\nsquash third"
+    );
+    assert.equal(
+      await graph.evaluate(
+        `[...document.querySelectorAll("[role=dialog] [data-entry], [role=dialog] [data-combined]")].map(e => e.dataset.combined ? "message" : "commit").join(",")`
+      ),
+      "commit,commit,commit,message,commit"
+    );
+    const edited = "Squashed in the UI ✓\n\n# kept heading\n'quoted' $(not run)";
+    await graph.evaluate(
+      `(() => { const input = document.querySelector(${JSON.stringify(combined)}); input.focus(); input.value = ${JSON.stringify(edited)}; input.dispatchEvent(new Event('input', {bubbles: true})); })()`
+    );
     // Opening the editor rewrites nothing; the user starts the rebase.
     assert.equal(git(["rev-parse", "HEAD"], dir), head);
     await button("Start Rebase");
     await finished();
     assert.equal(
       git(["log", "--reverse", "--format=%s", base + "..HEAD"], dir),
-      "squash first\nsquash later"
+      "Squashed in the UI ✓\nsquash later"
     );
-    assert.equal(
-      git(["log", "-1", "--format=%B", "HEAD^"], dir),
-      "squash first\n\nsquash second\n\nsquash third"
-    );
+    assert.equal(git(["log", "-1", "--format=%B", "HEAD^"], dir), edited);
     assert.equal(
       git(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD^"], dir),
       "a\nb\nc"
@@ -1732,6 +1856,59 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await badge("clash")) === null, "badge gone after the merge");
   });
 
+  test("forecasts the commit a rebase would stop at, and the real rebase stops there", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "replay base", dir);
+    git(["checkout", "-b", "replay-topic"], dir);
+    commit("a", "first replayed item", dir);
+    commit("f", "second replayed item", dir);
+    const second = git(["rev-parse", "HEAD"], dir);
+    commit("c", "third replayed item", dir);
+    const tip = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    commit("f", "main replay change", dir);
+    git(["checkout", "replay-topic"], dir);
+    await openRepo(dir);
+
+    await contextRef("main");
+    await menu("Move the current branch onto this (rebase)…");
+    const forecast = () =>
+      graph.evaluate(`(() => {
+        const line = document.querySelector("[role=dialog] [data-replay-forecast]");
+        return line ? [line.dataset.replayForecast, line.textContent] : null;
+      })()`);
+    await until(async () => (await forecast())?.[0] === "stop", "rebase forecast");
+    assert.deepEqual(await forecast(), [
+      "stop",
+      `Rebase would stop at ${second.slice(0, 8)} second replayed item: conflicts in f`
+    ]);
+    // Working out the forecast changed nothing.
+    assert.equal(git(["rev-parse", "HEAD"], dir), tip);
+    assert.equal(git(["status", "--porcelain"], dir), "");
+
+    await button("Start Rebase");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]")?.innerText.startsWith("Unable") === true'
+        ),
+      "rebase stopped on a conflict"
+    );
+    await button("Dismiss");
+    assert.equal(git(["rev-parse", "REBASE_HEAD"], dir), second);
+    assert.equal(git(["diff", "--name-only", "--diff-filter=U"], dir), "f");
+    await until(
+      () => graph.evaluate('document.body.innerText.includes("Rebase in progress")'),
+      "operation status"
+    );
+    await button("Abort");
+    await button("Abort");
+    await finished();
+    assert.equal(git(["rev-parse", "HEAD"], dir), tip);
+    assert.equal(fs.existsSync(path.join(dir, ".git", "rebase-merge")), false);
+  });
+
   test("warns that a teammate's remote branch would conflict with the checked-out one", async () => {
     const seed = directory();
     init(seed);
@@ -2009,6 +2186,78 @@ suite("Branchwise workflow UI", function () {
       "edits in Git Activity"
     );
     await button("Close");
+  });
+
+  test("splits a commit into two from the commit menu", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "split base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    for (const file of ["alpha", "beta", "gamma"]) {
+      fs.writeFileSync(path.join(dir, file), file + "\n");
+    }
+    git(["add", "alpha", "beta", "gamma"], dir);
+    git(["commit", "-m", "split three files"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    // An unrelated change in the working tree stays where it is.
+    fs.writeFileSync(path.join(dir, "f"), "uncommitted");
+    await openRepo(dir);
+    const setValue = (label, value, event) =>
+      graph.evaluate(
+        `(() => { const input = document.querySelector('[role=dialog] [aria-label=${JSON.stringify(label)}]'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event(${JSON.stringify(event)}, {bubbles: true})); })()`
+      );
+    const preview = () =>
+      graph.evaluate('document.querySelector("[role=dialog] [data-split-preview]")?.textContent');
+
+    await contextCommit("split three files");
+    await menu("Split Commit…");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('[role=dialog] [aria-label="Message of Part 1"]')?.value === "split three files"`
+        ),
+      "split dialog with the original message"
+    );
+    assert.equal(await preview(), "2 commits: Part 1 (3 files), Part 2 (0 files)");
+    await setValue("Part for gamma", "1", "change");
+    await setValue("Message of Part 1", "split alpha and beta", "input");
+    await setValue("Message of Part 2", "split gamma", "input");
+    await until(
+      async () => (await preview()) === "2 commits: Part 1 (2 files), Part 2 (1 file)",
+      "split preview"
+    );
+    await button("Split Commit");
+    await finished();
+    assert.equal(
+      git(["log", "--format=%s", base + "..HEAD"], dir),
+      "split gamma\nsplit alpha and beta"
+    );
+    assert.equal(git(["rev-parse", "HEAD^{tree}"], dir), tree);
+    assert.equal(git(["status", "--porcelain"], dir), "M f");
+
+    // The graph shows both commits, each with its own files.
+    const filesOf = async (subject) => {
+      await until(
+        () =>
+          graph.evaluate(
+            `(() => { const row = [...document.querySelectorAll('tr[data-commit-hash]')].find(r => r.textContent.includes(${JSON.stringify(subject)})); if (!row) return false; row.click(); return true; })()`
+          ),
+        "commit row " + subject
+      );
+      return until(async () => {
+        const names = await graph.evaluate(
+          `[...document.querySelectorAll('[data-details-row] li button > span.min-w-0')].map(span => span.textContent).join()`
+        );
+        const message = await graph.evaluate(
+          `document.querySelector('[data-details-row]')?.innerText || ""`
+        );
+        return message.includes(subject) && names !== "" ? names : false;
+      }, "details of " + subject);
+    };
+    assert.equal(await filesOf("split alpha and beta"), "alpha,beta");
+    await button("Close", 'document.querySelector("[data-details-row]")');
+    assert.equal(await filesOf("split gamma"), "gamma");
+    await button("Close", 'document.querySelector("[data-details-row]")');
   });
 
   test("absorbs staged fixes into the commits they fix and squashes them in", async () => {

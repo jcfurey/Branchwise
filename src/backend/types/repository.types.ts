@@ -51,12 +51,19 @@ export type RepositoryState = {
   conflicts: string[];
   /** How many paths have staged changes. */
   staged: number;
+  /** The last destructive action that Undo can put back, if any. */
+  undo?: SafetyUndo | null;
 };
 export type StashDetails = { ref: string; hash: string; message: string };
 export type RebaseEntry = {
   hash: string;
   message: string;
   action: "pick" | "reword" | "squash" | "fixup" | "drop";
+  /**
+   * On the first commit of a squash group, the combined commit's message as the user edited it.
+   * Without it Git combines the messages itself.
+   */
+  squashMessage?: string;
 };
 export type RebasePlan = { base: string; head: string; branch: string; entries: RebaseEntry[] };
 /** A commit on the checked-out branch's first-parent line, as an edit of it finds it. */
@@ -74,6 +81,28 @@ export type EditPlan = {
 };
 /** An edit that adds the staged changes to the target commit. */
 export type AmendPlan = EditPlan & { staged: StagedPlan };
+/** What replaying commits would do, worked out without touching the work tree, index or refs. */
+export type ReplayForecast = {
+  /** The first commit that would stop with conflicts, and its conflicted files. */
+  stop: { hash: string; subject: string; files: string[] } | null;
+  /** How many commits would apply cleanly: all of them, or those before the stop. */
+  replayed: number;
+  /** Why nothing was tried: too many commits, or a Git older than 2.40. */
+  skipped?: "limit" | "unsupported";
+};
+/**
+ * Commits to replay onto `onto`. A rebase replays what `git rebase onto` would, merges included;
+ * a pick or revert replays `commits` in order, using parent `mainline` (1-based) of a merge.
+ */
+export type ReplayForecastQuery =
+  | { kind: "replayForecast"; mode: "rebase"; onto: string }
+  | {
+      kind: "replayForecast";
+      mode: "pick" | "revert";
+      onto: string;
+      commits: string[];
+      mainline?: number;
+    };
 /** One hunk of the staged changes: where its lines are in HEAD's version and in the staged one. */
 export type AbsorbHunk = {
   path: string;
@@ -113,6 +142,36 @@ export type AbsorbPlan = {
   clean: boolean;
 };
 
+/** A run of changed lines in a file, which a split can put in a part of its own. */
+export type SplitHunk = {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  /** The hunk's lines, each starting with `-` or `+`, up to `SPLIT_PREVIEW_LINES` of them. */
+  lines: string[];
+  /** How many more lines the hunk has than `lines` shows. */
+  hidden: number;
+};
+/** A file the commit to split changes. */
+export type SplitFile = {
+  path: string;
+  /** The path before a rename; the same as `path` otherwise. */
+  from: string;
+  status: "A" | "M" | "D" | "R";
+  /**
+   * Two or more hunks that may go to different parts, or null for a file that goes whole:
+   * one added, deleted, renamed, binary, changing its mode or type, or with one hunk only.
+   */
+  hunks: SplitHunk[] | null;
+};
+export type SplitPlan = EditPlan & { files: SplitFile[] };
+/**
+ * Which part each file of a split plan goes to, by the file's index in the plan: one part for
+ * the whole file, or one per hunk. Parts are numbered from 0.
+ */
+export type SplitAssignment = Array<number | number[]>;
+
 export type RepositoryQuery =
   | WorkflowQuery
   | HistoryQuery
@@ -127,6 +186,7 @@ export type RepositoryQuery =
       hiddenRemotes?: string[];
       hiddenBranchPatterns?: string[];
     }
+  | ReplayForecastQuery
   | { kind: "state" }
   | { kind: "stashes" }
   | {
@@ -138,8 +198,10 @@ export type RepositoryQuery =
     }
   | { kind: "editPlan"; target: string }
   | { kind: "amendPlan"; target: string }
+  | { kind: "splitPlan"; target: string }
   | { kind: "absorbPlan" }
   | { kind: "lease"; remote: string; branch: string }
+  | { kind: "safetyNet" }
   /** Check the signature of the commit `hash` names. */
   | { kind: "signature"; hash: string };
 
@@ -150,13 +212,16 @@ export type RepositoryQueryData =
   | { kind: "branchFocus"; tip: string; direct: string[]; merged: string[] }
   | { kind: "pushStatus"; unpushed: string[]; unpulled: string[] }
   | { kind: "conflictForecast"; conflicts: ConflictForecastEntry[] }
+  | { kind: "replayForecast"; forecast: ReplayForecast }
   | { kind: "state"; state: RepositoryState }
   | { kind: "stashes"; stashes: StashDetails[] }
   | { kind: "rebasePlan"; plan: RebasePlan }
   | { kind: "editPlan"; plan: EditPlan }
   | { kind: "amendPlan"; plan: AmendPlan }
+  | { kind: "splitPlan"; plan: SplitPlan }
   | { kind: "absorbPlan"; plan: AbsorbPlan }
   | { kind: "lease"; hash: string }
+  | { kind: "safetyNet"; entries: SafetyNetEntry[] }
   | { kind: "signature"; hash: string; check: SignatureCheck };
 
 export type RepositoryAction =
@@ -181,13 +246,16 @@ export type RepositoryAction =
   | { kind: "interactiveRebase"; plan: RebasePlan }
   | { kind: "reword"; plan: EditPlan; message: string }
   | { kind: "amendCommit"; plan: AmendPlan }
+  | { kind: "splitCommit"; plan: SplitPlan; messages: string[]; assignment: SplitAssignment }
   | { kind: "absorb"; plan: AbsorbPlan }
   | { kind: "recover"; operation: OperationState; resolution: "continue" | "abort" | "skip" }
   | { kind: "conflict"; path: string; operation: "open" | "stage" }
   | { kind: "addWorktree"; path: string; branch: string; newBranch: boolean; startPoint: string }
   | { kind: "removeWorktree"; path: string; expectedHead: string }
-  | { kind: "openWorktree"; path: string };
+  | { kind: "openWorktree"; path: string }
+  | { kind: "undoSafetyNet"; id: string };
 import type { GitRef, SignatureCheck } from "./git.types";
 import type { HistoryAction, HistoryQuery, HistoryQueryData, StagedPlan } from "./history.types";
+import type { SafetyNetEntry, SafetyUndo } from "./safetyNet.types";
 import type { WorkflowAction, WorkflowQuery, WorkflowQueryData } from "./workflow.types";
 import type { WorkingTreeFile, WorkingTreeGroup } from "./workingTree.types";
