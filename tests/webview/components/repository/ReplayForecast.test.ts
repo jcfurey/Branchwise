@@ -168,7 +168,9 @@ describe("the interactive rebase editor", () => {
     act(() => render(h(RebaseEditor, { plan, repo: "/repo" }), container));
     expect(forecastRequests()).toHaveLength(0);
     expect(line().textContent).toBe("Checking for conflicts…");
-    act(() => vi.advanceTimersByTime(300));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     const [first] = forecastRequests();
     expect(first?.query).toMatchObject({ mode: "pick", onto: plan.base, commits: [A, B, C] });
 
@@ -185,14 +187,20 @@ describe("the interactive rebase editor", () => {
     moveLater(A);
     expect(container.querySelectorAll("[data-forecast-stop]")).toHaveLength(0);
     moveLater(A);
-    act(() => vi.advanceTimersByTime(299));
+    act(() => {
+      vi.advanceTimersByTime(299);
+    });
     expect(forecastRequests()).toHaveLength(1);
-    act(() => vi.advanceTimersByTime(1));
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
     const [, second] = forecastRequests();
     expect(second?.query).toMatchObject({ commits: [B, C, A] });
 
     moveLater(B);
-    act(() => vi.advanceTimersByTime(300));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     expect(posted()).toContainEqual({
       command: "cancelRepositoryQuery",
       repo: "/repo",
@@ -209,7 +217,9 @@ describe("the interactive rebase editor", () => {
       select.value = "drop";
       select.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    act(() => vi.advanceTimersByTime(300));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     expect(forecastRequests().at(-1)?.query).toMatchObject({ commits: [A, C] });
   });
 });
@@ -236,7 +246,9 @@ describe("the cherry-pick and revert editors", () => {
   ])("forecast a %s onto HEAD in the order shown", (operation, mode, text) => {
     vi.useFakeTimers();
     act(() => render(h(BatchEditor, { plan: batch, operation, repo: "/repo" }), container));
-    act(() => vi.advanceTimersByTime(300));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     const [request] = forecastRequests();
     expect(request?.query).toEqual({ kind: "replayForecast", mode, onto: C, commits: [A, B] });
     answer(request!, { stop: { hash: A, subject: "commit a", files: ["g"] }, replayed: 0 });
@@ -254,7 +266,9 @@ describe("the cherry-pick and revert editors", () => {
     act(() =>
       render(h(BatchEditor, { plan: batch, operation: "revert", repo: "/repo" }), container)
     );
-    act(() => vi.advanceTimersByTime(300));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     answer(forecastRequests()[0]!, { stop: null, replayed: 2 });
     expect(line().textContent).toBe("Reverts 2 commits cleanly");
   });
