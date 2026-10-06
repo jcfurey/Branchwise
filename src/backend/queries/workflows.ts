@@ -7,7 +7,7 @@ import { gitClientFactory } from "@/backend/gitClient";
 import { compareCommits, loadComparison, loadHistory } from "@/backend/queries/history";
 import { loadWorktrees } from "@/backend/queries/repository";
 import { submoduleLinks } from "@/backend/queries/workspace";
-import type { CleanupPlan, SubmodulePlan, SyncPlan } from "@/backend/types";
+import type { CleanupPlan, FastForwardPlan, SubmodulePlan, SyncPlan } from "@/backend/types";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import {
   requireBranchName,
@@ -166,4 +166,59 @@ export async function loadCleanupPlan(git: SimpleGit): Promise<CleanupPlan> {
         return protectedBranches.has(name) ? [] : [{ name, hash }];
       })
   };
+}
+
+/**
+ * The local branches whose upstream has commits they lack, split into those that can move
+ * forward to their upstream and those that cannot: a branch with commits of its own has
+ * diverged, a branch checked out in another worktree would leave that worktree behind its
+ * branch, and the branch checked out here moves only with a clean work tree.
+ */
+export async function loadFastForwardPlan(git: SimpleGit): Promise<FastForwardPlan> {
+  const [branches, refs, worktrees, status] = await Promise.all([
+    git.raw([
+      "for-each-ref",
+      "--format=%(refname:lstrip=2)%00%(objectname)%00%(upstream)%00%(upstream:short)%00%(upstream:track)",
+      "refs/heads/"
+    ]),
+    git.raw([
+      "for-each-ref",
+      "--format=%(refname)%00%(objectname)",
+      "refs/heads/",
+      "refs/remotes/"
+    ]),
+    loadWorktrees(git),
+    git.status()
+  ]);
+  const hashOf = new Map(
+    refs
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => line.split("\0") as [string, string])
+  );
+  const here = status.detached ? "" : (status.current ?? "");
+  const elsewhere = new Set(
+    worktrees
+      .map((worktree) => worktree.branch)
+      .filter((branch) => branch !== "" && branch !== here)
+  );
+  const plan: FastForwardPlan = { branches: [], skipped: [] };
+  for (const line of branches.split("\n").filter(Boolean)) {
+    const [name = "", from = "", upstreamRef = "", upstream = "", track = ""] = line.split("\0");
+    const to = hashOf.get(upstreamRef);
+    const behind = Number(track.match(/behind (\d+)/)?.[1] ?? 0);
+    if (to === undefined || behind === 0) {
+      continue;
+    }
+    if (/ahead \d+/.test(track)) {
+      plan.skipped.push({ name, upstream, reason: "diverged" });
+    } else if (elsewhere.has(name)) {
+      plan.skipped.push({ name, upstream, reason: "worktree" });
+    } else if (name === here && !status.isClean()) {
+      plan.skipped.push({ name, upstream, reason: "uncommitted" });
+    } else {
+      plan.branches.push({ name, upstream, from, to, behind, current: name === here });
+    }
+  }
+  return plan;
 }

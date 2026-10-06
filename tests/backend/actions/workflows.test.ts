@@ -10,6 +10,7 @@ import { bisectResult, loadBisect } from "@/backend/queries/bisect";
 import { repositoryQuery } from "@/backend/queries/repository";
 import {
   loadCleanupPlan,
+  loadFastForwardPlan,
   loadSubmodulePlan,
   loadSyncPlan,
   loadUpstreamPlan,
@@ -180,6 +181,95 @@ describe("merged branch cleanup", () => {
     const stale = await loadCleanupPlan(git());
     read(["branch", "-f", "merged", "unmerged"]);
     await expect(run({ kind: "cleanup", plan: stale })).rejects.toThrow("changed");
+  });
+});
+
+describe("fast-forwarding branches", () => {
+  /** Points `origin/<name>` at `hash` and makes it the upstream of the local branch `name`. */
+  function track(name: string, hash: string) {
+    read(["update-ref", `refs/remotes/origin/${name}`, hash]);
+    read(["branch", `--set-upstream-to=origin/${name}`, name]);
+  }
+  /** A commit on top of `parent` that no branch points to, as a fetch would bring in. */
+  function fetched(parent: string, message: string) {
+    return read(["commit-tree", `${parent}^{tree}`, "-p", parent, "-m", message]);
+  }
+  const hash = (ref: string) => read(["rev-parse", ref]);
+
+  beforeEach(() => {
+    read(["remote", "add", "origin", "https://example.invalid/repo.git"]);
+  });
+
+  it("moves branches that are only behind and says why the others stay", async () => {
+    const base = hash("HEAD");
+    const ahead = fetched(fetched(base, "upstream 1"), "upstream 2");
+    read(["branch", "behind", base]);
+    track("behind", ahead);
+    read(["branch", "div", base]);
+    track("div", ahead);
+    read(["checkout", "-q", "div"]);
+    commit("local only");
+    read(["checkout", "-q", "main"]);
+    read(["branch", "elsewhere", base]);
+    track("elsewhere", ahead);
+    const other = path.join(anotherRepo(), "wt");
+    read(["worktree", "add", "-q", other, "elsewhere"]);
+    read(["branch", "fresh", base]);
+    track("fresh", base);
+    track("main", ahead);
+
+    const plan = await loadFastForwardPlan(git());
+    expect(plan.branches).toEqual([
+      {
+        name: "behind",
+        upstream: "origin/behind",
+        from: base,
+        to: ahead,
+        behind: 2,
+        current: false
+      },
+      { name: "main", upstream: "origin/main", from: base, to: ahead, behind: 2, current: true }
+    ]);
+    expect(plan.skipped).toEqual([
+      { name: "div", upstream: "origin/div", reason: "diverged" },
+      { name: "elsewhere", upstream: "origin/elsewhere", reason: "worktree" }
+    ]);
+
+    await run({ kind: "fastForward", branches: plan.branches });
+    expect(hash("behind")).toBe(ahead);
+    expect(hash("HEAD")).toBe(ahead);
+    expect(read(["status", "--porcelain"])).toBe("");
+    // Branches that were not chosen, or could not move, are where they were.
+    expect(hash("elsewhere")).toBe(base);
+    expect(read(["reflog", "-1", "--format=%gs", "behind"])).toBe(
+      "branchwise: fast-forward to origin/behind"
+    );
+  });
+
+  it("leaves the checked-out branch alone while it has uncommitted changes", async () => {
+    const base = hash("HEAD");
+    track("main", fetched(base, "upstream"));
+    fs.writeFileSync(path.join(repo, "f"), "edited");
+    expect((await loadFastForwardPlan(git())).skipped).toEqual([
+      { name: "main", upstream: "origin/main", reason: "uncommitted" }
+    ]);
+  });
+
+  it("refuses a reviewed plan once a branch or its upstream has moved, moving nothing", async () => {
+    const base = hash("HEAD");
+    const ahead = fetched(base, "upstream");
+    read(["branch", "one", base]);
+    track("one", ahead);
+    read(["branch", "two", base]);
+    track("two", ahead);
+    const plan = await loadFastForwardPlan(git());
+    read(["update-ref", "refs/remotes/origin/two", fetched(ahead, "later")]);
+
+    await expect(run({ kind: "fastForward", branches: plan.branches })).rejects.toThrow(
+      "The branches or their upstreams changed"
+    );
+    expect([hash("one"), hash("two")]).toEqual([base, base]);
+    await expect(run({ kind: "fastForward", branches: [] })).rejects.toThrow();
   });
 });
 

@@ -108,6 +108,8 @@ Click either revision-change badge, or choose **Compare Submodule Revisions**, t
 
 **Pull Branch** first fetches the selected remote, then displays the incoming and outgoing commits. **Apply Reviewed Fast-forward** requires a clean checkout of the selected branch and applies the exact reviewed commit without fetching again. A local or remote-tracking tip that changes before submission invalidates the plan. Refresh the preview to include later commits.
 
+**Settings & Tools → Fast-forward Branches** moves every local branch whose upstream has new commits, and which has none of its own, up to that upstream in one step, without checking anything out. **Fetch All & Refresh** fetches every remote first. All movable branches are chosen to begin with; untick any to leave them. The list also names the branches that stay, and why: a branch with commits of its own has diverged and needs a pull or rebase; a branch checked out in another worktree is left for that worktree; and the checked-out branch moves only when it has no uncommitted changes, by a fast-forward merge. Each other branch moves only if it still points where the review saw it, and its reflog records the fast-forward.
+
 **Settings & Tools → Clean Up Merged Branches** lists local branches whose tips are ancestors of the current HEAD. Select branches and confirm the names and tips before deleting them. Branches used by any worktree, `main`, `master`, and known remote default branches are excluded. The backend repeats these checks and compare-and-deletes each selected ref using its reviewed tip. A failure stops the remaining deletions and reports how many completed. Remote branches are unaffected.
 
 ## Finding regressions with bisect

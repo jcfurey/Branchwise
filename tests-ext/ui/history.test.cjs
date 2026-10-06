@@ -1641,6 +1641,52 @@ suite("Branchwise workflow UI", function () {
     assert.equal(git(["diff", "--cached", "--name-only"], parent), "other");
   });
 
+  test("fetches and fast-forwards every branch that is only behind, without a checkout", async () => {
+    const local = directory();
+    init(local);
+    commit("f", "ff base", local);
+    git(["branch", "topic"], local);
+    const bare = directory();
+    git(["clone", "--bare", local, bare]);
+    git(["remote", "add", "origin", bare], local);
+    git(["fetch", "origin"], local);
+    git(["branch", "--set-upstream-to=origin/main", "main"], local);
+    git(["branch", "--set-upstream-to=origin/topic", "topic"], local);
+    const peer = directory();
+    git(["clone", bare, peer]);
+    git(["config", "user.name", "UI Test"], peer);
+    git(["config", "user.email", "ui@test"], peer);
+    commit("f", "peer main", peer);
+    git(["checkout", "topic"], peer);
+    commit("t", "peer topic", peer);
+    git(["push", "origin", "main", "topic"], peer);
+    await openRepo(local);
+    await button("Settings & Tools", 'document.querySelector("header")');
+    await menu("Fast-forward Branches");
+    const dialog = 'document.querySelector("[role=dialog]")';
+    await until(
+      () => graph.evaluate(`${dialog}?.innerText.includes("No branch can move")`),
+      "nothing to move before fetching"
+    );
+    await button("Fetch All & Refresh");
+    const listed = () =>
+      graph.evaluate(
+        `[...${dialog}.querySelectorAll("[data-fast-forward-branch]")].map(e => e.dataset.fastForwardBranch).join()`
+      );
+    await until(async () => (await listed()) === "main,topic", "branches behind after the fetch");
+    await button("Fast-forward 2 Branches");
+    await until(
+      () => graph.evaluate(`${dialog}?.innerText.includes("Fast-forwarded 2 branches.")`),
+      "fast-forward result"
+    );
+    assert.equal(git(["rev-parse", "main"], local), git(["rev-parse", "main"], bare));
+    assert.equal(git(["rev-parse", "topic"], local), git(["rev-parse", "topic"], bare));
+    assert.equal(git(["branch", "--show-current"], local), "main");
+    assert.equal(git(["status", "--porcelain"], local), "");
+    await until(async () => (await listed()) === "", "nothing left to move");
+    await keypress("Escape");
+  });
+
   test("previews pushes and fast-forward pulls and removes only selected merged branches", async () => {
     const local = directory();
     init(local);

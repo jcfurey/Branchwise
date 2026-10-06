@@ -49,6 +49,21 @@ export function getWorkflowLocalizedStrings() {
     ),
     deleteSelectedBranches: vscode.l10n.t("Delete Selected Branches"),
     noMergedBranches: vscode.l10n.t("No removable merged branches."),
+    fastForwardTitle: vscode.l10n.t("Fast-forward Branches"),
+    fastForwardHint: vscode.l10n.t(
+      "Move local branches up to their upstream when they have no commits of their own. Nothing is checked out, and the checked-out branch moves only when it has no uncommitted changes."
+    ),
+    fetchAllAndRefresh: vscode.l10n.t("Fetch All & Refresh"),
+    noFastForwards: vscode.l10n.t(
+      "No branch can move: each one with an upstream is up to date or has commits of its own."
+    ),
+    fastForwardBehind: vscode.l10n.t("{0} → {1}, {2} new commits"),
+    fastForwardSkipped: vscode.l10n.t("Not moved"),
+    fastForwardDiverged: vscode.l10n.t("{0} has commits of its own; pull or rebase it instead"),
+    fastForwardWorktree: vscode.l10n.t("{0} is checked out in another worktree"),
+    fastForwardUncommitted: vscode.l10n.t("{0} is checked out here with uncommitted changes"),
+    fastForwardRun: vscode.l10n.t("Fast-forward {0} Branches"),
+    fastForwardDone: vscode.l10n.t("Fast-forwarded {0} branches."),
     bisectTitle: vscode.l10n.t("Find a Regression (Bisect)"),
     bisectHint: vscode.l10n.t(
       "Choose a known good and known bad commit. Git checks out candidates; test each one, then mark it good, bad, or untestable. Reset returns to your original checkout."

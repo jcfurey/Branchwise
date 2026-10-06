@@ -47,6 +47,7 @@ basics.
 - Branches and tags: create, check out, rename, merge, delete, push
 - Commits: check out, cherry-pick, revert, reset, fixup; cherry-pick or revert several in order
 - Plain and interactive rebase; push and pull previews; force-push only with a lease
+- Fast-forward every branch that is only behind its upstream, without a checkout
 - Stashes, conflict resolution, and continue, skip or abort for interrupted operations
 
 **Recover and investigate**
