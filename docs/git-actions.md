@@ -119,6 +119,16 @@ Two commit-menu entries change a single commit of the checked-out branch without
 
 Both are refused on a detached `HEAD`, on the first commit of the history unless it is `HEAD`, when the commit or one after it is a merge (again unless the commit is `HEAD`), and when the branch moved after the dialog opened. An empty message is refused too. When a remote-tracking branch already contains the commit, the dialog warns that sharing the rewritten history needs a force push; see [Remotes and tracking](#remotes-and-tracking) for **Force with lease**.
 
+### Absorbing staged changes into the commits they fix
+
+When staged changes correct lines that earlier commits of the branch introduced, **Absorb Staged Changes…** splits them hunk by hunk into `fixup!` commits, one for each commit they correct. The button sits beside **Staged Changes** in the uncommitted changes' details, and appears while something is staged.
+
+Each hunk of `git diff --cached` goes to the commit that last changed its lines, as `git blame` at `HEAD` tells; for a hunk that only adds lines, the lines just above and below it decide. Only the branch's own commits count: those on `HEAD`'s first-parent line after where it meets its upstream or, without an upstream, after the commits any remote-tracking branch or the local `main` or `master` already has. The search stops at a merge and after 100 commits. A hunk stays staged when its lines were last changed by a commit outside those, or by more than one commit, or when there is no line around it to go by. Added, deleted, renamed and binary files, and files whose mode or type changes, stay staged whole.
+
+The preview lists, for each commit, its short ID and subject and the hunks it receives (file and lines), then what stays staged and why. Working this out changes nothing. **Create Fixup Commits** commits one `fixup! <subject>` per commit, oldest target first, on top of the branch. They are built in a temporary index, so unstaged and untracked changes are not touched, and the hunks that could not be absorbed stay staged. Before the branch moves, the fixups and the changes left staged must add up to exactly what was staged; otherwise, or if `HEAD` or the staged changes changed since the preview, nothing changes. Git's commit hooks do not run for these commits.
+
+**Create and Squash Now** does the same and then opens the [interactive rebase](#rebasing) editor from the parent of the oldest target, with the fixups already arranged by **Arrange Fixup / Squash Commits**. Nothing is rewritten until **Start Rebase**. It is available only when nothing would be left staged, unstaged or untracked, as the rebase needs a clean working tree, and not when a fixup goes into the repository's first commit. When nothing can be absorbed, the preview says so and offers no action.
+
 ## Worktrees
 
 Open **Settings & Tools → Worktrees** to inspect locations and checked-out branches, create a worktree, open one in a new VS Code window, or remove one. Creation accepts an absolute folder path and either a new branch with a start point or an existing branch. A branch already checked out elsewhere cannot be reused.

@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef } from "preact/hooks";
 import type { WorkingTreeFile, WorkingTreeGroup } from "@/backend/types";
 import { DetailsRow } from "@/webview/components/commit/CommitDetails";
 import { QueryStatus } from "@/webview/components/history/QueryControls";
+import { openAbsorb } from "@/webview/components/repository/Absorb";
 import { Button } from "@/webview/components/ui/Button";
 import { refresh } from "@/webview/lib/actions";
 import { sendRepositoryAction } from "@/webview/lib/repository-actions";
@@ -120,9 +121,14 @@ function FileGroup({ group, files }: { group: WorkingTreeGroup; files: WorkingTr
   const label = groupLabel(group);
   return (
     <section class="pb-3" aria-label={label}>
-      <h3 class="pb-1 font-semibold">
-        {label} ({files.length})
-      </h3>
+      <div class="flex flex-wrap items-center justify-between gap-2 pb-1">
+        <h3 class="font-semibold">
+          {label} ({files.length})
+        </h3>
+        {group === "staged" && (
+          <Button onClick={openAbsorb}>{window.l10n.absorbStaged + "…"}</Button>
+        )}
+      </div>
       <ul class="list-none">
         {page.shown.map((file, index) => (
           <li key={file.path}>

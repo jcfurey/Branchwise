@@ -60,6 +60,44 @@ export type EditPlan = {
 };
 /** An edit that adds the staged changes to the target commit. */
 export type AmendPlan = EditPlan & { staged: StagedPlan };
+/** One hunk of the staged changes: where its lines are in HEAD's version and in the staged one. */
+export type AbsorbHunk = {
+  path: string;
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+};
+/**
+ * Why a staged change stays staged: the file is added, deleted, renamed, binary, or changes its
+ * mode or kind; its lines were last changed by a commit outside the branch's own unpushed ones,
+ * or by more than one commit; or it adds lines with none around them to go by.
+ */
+export type AbsorbReason =
+  | "added"
+  | "deleted"
+  | "renamed"
+  | "binary"
+  | "special"
+  | "outside"
+  | "several"
+  | "noContext";
+/** How the staged changes split into fixup commits, as Absorb Staged Changes shows it first. */
+export type AbsorbPlan = {
+  branch: string;
+  /** HEAD when the plan was made. The absorb is refused once the branch has moved on. */
+  head: string;
+  /** A digest of the staged changes. The absorb is refused once they differ. */
+  staged: string;
+  /** The commits that get a fixup commit, oldest first, each with the hunks it gets. */
+  targets: Array<{ hash: string; subject: string; hunks: AbsorbHunk[] }>;
+  /** What stays staged: one hunk, or a whole file when `hunk` is null. */
+  left: Array<{ path: string; hunk: AbsorbHunk | null; reason: AbsorbReason }>;
+  /** The oldest target's parent, where a rebase squashing the fixups starts; null for a root. */
+  base: string | null;
+  /** Whether nothing else would be staged, unstaged or untracked, as that rebase needs. */
+  clean: boolean;
+};
 
 export type RepositoryQuery =
   | WorkflowQuery
@@ -79,6 +117,7 @@ export type RepositoryQuery =
     }
   | { kind: "editPlan"; target: string }
   | { kind: "amendPlan"; target: string }
+  | { kind: "absorbPlan" }
   | { kind: "lease"; remote: string; branch: string };
 
 export type RepositoryQueryData =
@@ -93,6 +132,7 @@ export type RepositoryQueryData =
   | { kind: "rebasePlan"; plan: RebasePlan }
   | { kind: "editPlan"; plan: EditPlan }
   | { kind: "amendPlan"; plan: AmendPlan }
+  | { kind: "absorbPlan"; plan: AbsorbPlan }
   | { kind: "lease"; hash: string };
 
 export type RepositoryAction =
@@ -117,6 +157,7 @@ export type RepositoryAction =
   | { kind: "interactiveRebase"; plan: RebasePlan }
   | { kind: "reword"; plan: EditPlan; message: string }
   | { kind: "amendCommit"; plan: AmendPlan }
+  | { kind: "absorb"; plan: AbsorbPlan }
   | { kind: "recover"; operation: OperationState; resolution: "continue" | "abort" | "skip" }
   | { kind: "conflict"; path: string; operation: "open" | "stage" }
   | { kind: "addWorktree"; path: string; branch: string; newBranch: boolean; startPoint: string }

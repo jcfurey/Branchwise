@@ -1824,6 +1824,69 @@ suite("Branchwise workflow UI", function () {
     await button("Close");
   });
 
+  test("absorbs staged fixes into the commits they fix and squashes them in", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base.txt", "absorb base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const write = (file, text) => fs.writeFileSync(path.join(dir, file), text);
+    write("one.txt", "one a\none b\none c\n");
+    git(["add", "one.txt"], dir);
+    git(["commit", "-m", "absorb first"], dir);
+    write("two.txt", "two a\ntwo b\n");
+    git(["add", "two.txt"], dir);
+    git(["commit", "-m", "absorb second"], dir);
+    write("one.txt", "one a\none b fixed\none c\n");
+    write("two.txt", "two a fixed\ntwo b\n");
+    git(["add", "one.txt", "two.txt"], dir);
+    const staged = git(["write-tree"], dir);
+    await openRepo(dir);
+
+    await until(
+      () => graph.evaluate(`!!document.querySelector('tr[data-commit-hash="*"]')`),
+      "uncommitted changes row"
+    );
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="*"]').click()`);
+    await button("Absorb Staged Changes…", 'document.querySelector("[data-working-tree-details]")');
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelectorAll("[role=dialog] [data-absorb-target]").length === 2'
+        ),
+      "absorb preview"
+    );
+    // Oldest commit first, each with the hunk that fixes its lines; nothing stays staged.
+    assert.deepEqual(
+      await graph.evaluate(
+        '[...document.querySelectorAll("[role=dialog] [data-absorb-target]")].map(s => s.querySelector("h3").textContent.replace(/^\\S+ /, "") + ": " + [...s.querySelectorAll("li")].map(li => li.textContent).join())'
+      ),
+      ["absorb first: one.txt:2 +1 −1", "absorb second: two.txt:1 +1 −1"]
+    );
+    assert.equal(await graph.evaluate('!!document.querySelector("[data-absorb-left]")'), false);
+    assert.equal(git(["write-tree"], dir), staged);
+
+    await button("Create and Squash Now");
+    await until(
+      () =>
+        graph.evaluate(
+          '[...document.querySelectorAll("[role=dialog] select")].map(s => s.value).join() === "pick,fixup,pick,fixup"'
+        ),
+      "rebase plan with the fixups arranged"
+    );
+    assert.equal(
+      git(["log", "--format=%s", base + "..HEAD"], dir),
+      "fixup! absorb second\nfixup! absorb first\nabsorb second\nabsorb first"
+    );
+    await button("Start Rebase");
+    await finished();
+    assert.equal(git(["log", "--format=%s", base + "..HEAD"], dir), "absorb second\nabsorb first");
+    assert.equal(git(["show", "HEAD~1:one.txt"], dir), "one a\none b fixed\none c");
+    assert.equal(git(["diff", "--name-only", "HEAD~1", "HEAD"], dir), "two.txt");
+    assert.equal(git(["show", "HEAD:two.txt"], dir), "two a fixed\ntwo b");
+    assert.equal(git(["rev-parse", "HEAD^{tree}"], dir), staged);
+    assert.equal(git(["status", "--porcelain"], dir), "");
+  });
+
   test("shows nested repository status, updates a submodule and switches its graph from the sidebar", async () => {
     const child = directory();
     init(child);
