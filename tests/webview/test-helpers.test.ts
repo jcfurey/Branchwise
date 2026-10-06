@@ -25,6 +25,7 @@ type DispatcherModule = typeof import("@/webview/lib/dispatcher");
 /** The settings the helper must hand over; other tests assert on each of these values. */
 const expectedSettings: WebviewConfig = {
   autoCenterCommitDetailsView: true,
+  conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   graphColours: [],
   graphStyle: "rounded",

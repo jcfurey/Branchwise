@@ -66,7 +66,15 @@ const moduleEntry: WorkspaceEntry = {
   ahead: 0,
   behind: 0,
   initialized: true,
-  error: null
+  error: null,
+  operation: null,
+  conflicts: 0,
+  stashes: 0,
+  detached: false,
+  upstream: "origin/main",
+  aheadBranches: 0,
+  remotes: 1,
+  fetched: null
 };
 
 it("keeps a clean submodule with a staged pointer in the changed-only view", () => {

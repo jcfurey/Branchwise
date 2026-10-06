@@ -3,6 +3,7 @@ import path from "node:path";
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
+import { absorbStaged } from "@/backend/actions/absorb";
 import { amendCommit, rewordCommit } from "@/backend/actions/editCommit";
 import { runHistoryAction } from "@/backend/actions/history";
 import {
@@ -142,6 +143,8 @@ export async function runRepositoryAction(
       return amendCommit(git, action.plan, binary);
     case "splitCommit":
       return splitCommit(git, action.plan, action.messages, action.assignment, binary);
+    case "absorb":
+      return absorbStaged(git, action.plan, binary);
     case "recover": {
       const current = await loadOperation(git);
       if (

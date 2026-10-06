@@ -395,6 +395,23 @@ async function openRepo(dir) {
     "loaded commits"
   );
 }
+/**
+ * Click, once, the label of the Branches pane row whose tooltip is `title`, after waiting for the
+ * row: the pane fills in from the repository state, which can arrive after the graph's rows.
+ */
+async function clickPaneRow(title) {
+  await until(
+    () =>
+      graph.evaluate(`(() => {
+        const nav = document.querySelector('nav[aria-label="Branches"]');
+        const label = [...(nav?.querySelectorAll('button[title]') ?? [])].find(b => b.title === ${JSON.stringify(title)});
+        if (!label) return false;
+        label.click();
+        return true;
+      })()`),
+    "Branches pane row " + title
+  );
+}
 /** Opens the search row, unless it is open already. */
 async function openSearch() {
   if (!(await graph.evaluate('!!document.querySelector("[data-history-search]")'))) {
@@ -1641,6 +1658,102 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await badge("clash")) === null, "badge gone after the merge");
   });
 
+  test("warns that a teammate's remote branch would conflict with the checked-out one", async () => {
+    const seed = directory();
+    init(seed);
+    commit("api.ts", "export const total = 1;\n", seed);
+    const bare = directory();
+    git(["clone", "--bare", seed, bare]);
+    const clone = (name) => {
+      const dir = directory();
+      git(["clone", bare, dir]);
+      git(["config", "user.name", name], dir);
+      git(["config", "user.email", "ui@test"], dir);
+      git(["config", "commit.gpgsign", "false"], dir);
+      return dir;
+    };
+    const local = clone("UI Test");
+    const teammate = clone("Alice Teammate");
+    git(["checkout", "-b", "teammate"], teammate);
+    commit("api.ts", "export const total = 2;\n", teammate);
+    git(["push", "origin", "teammate"], teammate);
+    // The same line, changed on this side too and not pushed.
+    commit("api.ts", "export const total = 3;\n", local);
+    await openRepo(local);
+    git(["fetch", "origin"], local);
+    await button("Refresh");
+
+    const badge = (branch) =>
+      graph.evaluate(`(() => {
+        const label = [...document.querySelectorAll("tr[data-commit-hash] span[title]")].find(
+          (span) => span.title.split("\\n")[0] === ${JSON.stringify(branch)}
+        );
+        const badge = label?.querySelector("[data-conflicts]");
+        return badge ? [badge.textContent, badge.title] : null;
+      })()`);
+    await until(async () => (await badge("origin/teammate")) !== null, "badge on origin/teammate");
+    const [count, title] = await badge("origin/teammate");
+    assert.equal(count, "1");
+    const lines = title.split("\n");
+    assert.deepEqual(lines.slice(0, 2), ["Would conflict with your branch main in:", "api.ts"]);
+    assert.match(lines[2], /^Last commit by Alice Teammate, .+ ago$/);
+    // The upstream of main is only behind, and gets no mark.
+    assert.equal(await badge("origin/main"), null);
+
+    const summary = 'document.querySelector("[data-team-overlap]")';
+    await until(
+      () =>
+        graph.evaluate(
+          `${summary}?.innerText.trim() === "1 teammate's branch would conflict with yours"`
+        ),
+      "team overlap summary"
+    );
+    await button("1 teammate's branch would conflict with yours", summary);
+    const dialog = 'document.querySelector("[role=dialog]")';
+    await until(
+      () =>
+        graph.evaluate(
+          `${dialog}?.innerText.includes("Remote branches that would conflict with main")`
+        ),
+      "team overlap dialog"
+    );
+    const listed = await graph.evaluate(
+      `[...${dialog}.querySelectorAll("[data-team-overlap-branch]")].map(b => b.innerText.replace(/\\s+/g, " ").trim())`
+    );
+    assert.equal(listed.length, 1);
+    assert.match(listed[0], /^origin\/teammate ?1 Last commit by Alice Teammate, .+ ago api\.ts$/);
+    await graph.evaluate(
+      `${dialog}.querySelector('[data-team-overlap-branch="origin/teammate"]').click()`
+    );
+    await until(() => graph.evaluate(`!${dialog}`), "dialog closed");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('main > [role=status] span[title]')?.title === "remotes/origin/teammate"`
+        ),
+      "teammate branch focused in the graph"
+    );
+
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    if (!(await graph.evaluate("!!" + nav))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    await until(
+      () =>
+        graph.evaluate(
+          `[...${nav}.querySelectorAll('button[title]')].find(b => b.title === "origin/teammate")?.parentElement.querySelector("[data-conflicts]")?.textContent === "1"`
+        ),
+      "conflict mark on the remote row"
+    );
+    // The forecast and the focus left the work tree, the checkout and the branches alone.
+    assert.equal(git(["status", "--porcelain"], local), "");
+    assert.equal(git(["branch", "--show-current"], local), "main");
+    assert.equal(
+      git(["for-each-ref", "--format=%(refname)", "refs/heads"], local),
+      "refs/heads/main"
+    );
+  });
+
   test("runs ordered selected cherry-picks and reverts, then creates and autosquashes a fixup", async () => {
     const history = directory();
     init(history);
@@ -1894,6 +2007,69 @@ suite("Branchwise workflow UI", function () {
     await button("Close", 'document.querySelector("[data-details-row]")');
     assert.equal(await filesOf("split gamma"), "gamma");
     await button("Close", 'document.querySelector("[data-details-row]")');
+  });
+
+  test("absorbs staged fixes into the commits they fix and squashes them in", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base.txt", "absorb base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const write = (file, text) => fs.writeFileSync(path.join(dir, file), text);
+    write("one.txt", "one a\none b\none c\n");
+    git(["add", "one.txt"], dir);
+    git(["commit", "-m", "absorb first"], dir);
+    write("two.txt", "two a\ntwo b\n");
+    git(["add", "two.txt"], dir);
+    git(["commit", "-m", "absorb second"], dir);
+    write("one.txt", "one a\none b fixed\none c\n");
+    write("two.txt", "two a fixed\ntwo b\n");
+    git(["add", "one.txt", "two.txt"], dir);
+    const staged = git(["write-tree"], dir);
+    await openRepo(dir);
+
+    await until(
+      () => graph.evaluate(`!!document.querySelector('tr[data-commit-hash="*"]')`),
+      "uncommitted changes row"
+    );
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="*"]').click()`);
+    await button("Absorb Staged Changes…", 'document.querySelector("[data-working-tree-details]")');
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelectorAll("[role=dialog] [data-absorb-target]").length === 2'
+        ),
+      "absorb preview"
+    );
+    // Oldest commit first, each with the hunk that fixes its lines; nothing stays staged.
+    assert.deepEqual(
+      await graph.evaluate(
+        '[...document.querySelectorAll("[role=dialog] [data-absorb-target]")].map(s => s.querySelector("h3").textContent.replace(/^\\S+ /, "") + ": " + [...s.querySelectorAll("li")].map(li => li.textContent).join())'
+      ),
+      ["absorb first: one.txt:2 +1 −1", "absorb second: two.txt:1 +1 −1"]
+    );
+    assert.equal(await graph.evaluate('!!document.querySelector("[data-absorb-left]")'), false);
+    assert.equal(git(["write-tree"], dir), staged);
+
+    await button("Create and Squash Now");
+    await until(
+      () =>
+        graph.evaluate(
+          '[...document.querySelectorAll("[role=dialog] select")].map(s => s.value).join() === "pick,fixup,pick,fixup"'
+        ),
+      "rebase plan with the fixups arranged"
+    );
+    assert.equal(
+      git(["log", "--format=%s", base + "..HEAD"], dir),
+      "fixup! absorb second\nfixup! absorb first\nabsorb second\nabsorb first"
+    );
+    await button("Start Rebase");
+    await finished();
+    assert.equal(git(["log", "--format=%s", base + "..HEAD"], dir), "absorb second\nabsorb first");
+    assert.equal(git(["show", "HEAD~1:one.txt"], dir), "one a\none b fixed\none c");
+    assert.equal(git(["diff", "--name-only", "HEAD~1", "HEAD"], dir), "two.txt");
+    assert.equal(git(["show", "HEAD:two.txt"], dir), "two a fixed\ntwo b");
+    assert.equal(git(["rev-parse", "HEAD^{tree}"], dir), staged);
+    assert.equal(git(["status", "--porcelain"], dir), "");
   });
 
   test("shows nested repository status, updates a submodule and switches its graph from the sidebar", async () => {
@@ -2213,6 +2389,97 @@ suite("Branchwise workflow UI", function () {
     await button("Apply Reviewed Fast-forward");
     await until(() => fs.existsSync(path.join(local, "new")), "workspace fast-forward");
     await button("Close");
+  });
+
+  test("totals workspace status, filters to a behind repository and pulls only what is safe", async () => {
+    const base = directory();
+    const repos = {};
+    for (const name of ["behind", "dirty", "clean"]) {
+      const dir = path.join(base, name);
+      fs.mkdirSync(dir);
+      init(dir);
+      commit("f", `status ${name}`, dir);
+      git(["clone", "--bare", "-q", dir, `${name}.git`], base);
+      git(["remote", "add", "origin", path.join(base, `${name}.git`)], dir);
+      git(["fetch", "origin"], dir);
+      git(["branch", "--set-upstream-to=origin/main"], dir);
+      repos[name] = dir;
+    }
+    const peer = path.join(base, "peer");
+    git(["clone", "-q", "behind.git", "peer"], base);
+    git(["config", "user.name", "UI Test"], peer);
+    git(["config", "user.email", "ui@test"], peer);
+    commit("incoming", "status incoming", peer);
+    git(["push", "origin", "main"], peer);
+    git(["fetch", "origin"], repos.behind);
+    fs.writeFileSync(path.join(repos.dirty, "f"), "uncommitted");
+    const heads = Object.fromEntries(
+      Object.entries(repos).map(([name, dir]) => [name, git(["rev-parse", "HEAD"], dir)])
+    );
+    for (const dir of Object.values(repos)) {
+      await openRepo(dir);
+    }
+    const pane = 'document.querySelector("aside[aria-label=Workspace]")';
+    if (!(await graph.evaluate(`!!${pane}`))) {
+      await button("Workspace");
+    }
+    const setNameFilter = (value) =>
+      graph.evaluate(
+        `(() => { const input = ${pane}.querySelector('input[aria-label="Filter repositories…"]'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event("input", { bubbles: true })); })()`
+      );
+    const totals = `[...${pane}.querySelectorAll("[data-total]")].map((chip) => chip.textContent).join(" | ")`;
+    const rows = `[...${pane}.querySelectorAll("button[title]")].map((row) => row.title).join(" | ")`;
+    try {
+      await setNameFilter(repoKey(base));
+      await until(
+        async () =>
+          (await graph.evaluate(totals)) ===
+          "2 repositories need attention | 1 behind | 1 with changes",
+        "workspace status totals"
+      );
+      await graph.evaluate(`${pane}.querySelector('[data-total="behind"]').click()`);
+      await until(
+        async () => (await graph.evaluate(rows)) === repoKey(repos.behind),
+        "only the repository behind its remote"
+      );
+      await graph.evaluate(`${pane}.querySelector('[data-total="behind"]').click()`);
+      await until(
+        async () => (await graph.evaluate(rows)).split(" | ").length === 3,
+        "every repository again"
+      );
+      await button("Pull All", pane);
+      await until(
+        () =>
+          graph.evaluate(
+            `(() => { const text = document.querySelector("[role=dialog]")?.innerText ?? ""; return text.includes("main → origin/main, 1 new commits") && text.includes("Skip main: uncommitted changes") && text.includes("Skip main: already up to date"); })()`
+          ),
+        "pull confirmation"
+      );
+      assert.equal(git(["rev-parse", "HEAD"], repos.behind), heads.behind);
+      await button("Fast-forward 1 Branches");
+      await until(
+        () =>
+          graph.evaluate(
+            'document.querySelector("[role=dialog]")?.innerText.includes("1 completed · 2 skipped · 0 failed")'
+          ),
+        "pull summary"
+      );
+      assert.equal(git(["rev-parse", "HEAD"], repos.behind), git(["rev-parse", "HEAD"], peer));
+      assert.equal(git(["status", "--porcelain"], repos.behind), "");
+      assert.equal(git(["rev-parse", "HEAD"], repos.dirty), heads.dirty);
+      assert.equal(git(["rev-parse", "HEAD"], repos.clean), heads.clean);
+      assert.equal(fs.readFileSync(path.join(repos.dirty, "f"), "utf8"), "uncommitted");
+      await button("Close");
+      await until(
+        async () =>
+          (await graph.evaluate(totals)) === "1 repository needs attention | 1 with changes",
+        "totals after the pull"
+      );
+    } finally {
+      // The name filter and the chosen total outlive this scenario's repositories otherwise.
+      await graph.evaluate(`${pane}?.querySelector('[data-total][aria-pressed="true"]')?.click()`);
+      await setNameFilter("").catch(() => {});
+    }
   });
 
   test("guides bisect to a regression, restores the branch, and restores keyboard focus", async () => {
@@ -2785,16 +3052,17 @@ suite("Branchwise workflow UI", function () {
       "saved patterns"
     );
 
-    // Choosing a hidden branch shows it, and marks it, without dropping the pattern. A page that
-    // has only just opened can miss a click on the Branches pane, whatever the branch, so the
-    // click is repeated until the header follows it; choosing the chosen branch does nothing.
-    const chosen = `[...document.querySelectorAll('header button[aria-haspopup="listbox"]')].some(b => b.title === 'bot/one')`;
-    await until(async () => {
-      if (!(await graph.evaluate(chosen))) {
-        await graph.evaluate(`${paneRow("bot/one")}.querySelector('button').click()`);
-      }
-      return graph.evaluate(chosen);
-    }, "hidden branch chosen");
+    // Choosing a hidden branch shows it, and marks it, without dropping the pattern. One click
+    // on its row is enough, once the row is there: the reopened page can show the graph's rows
+    // while the Branches pane still waits for the repository state.
+    await clickPaneRow("bot/one");
+    await until(
+      () =>
+        graph.evaluate(
+          `[...document.querySelectorAll('header button[aria-haspopup="listbox"]')].some(b => b.title === 'bot/one')`
+        ),
+      "hidden branch chosen"
+    );
     await until(
       () =>
         graph.evaluate(
@@ -3461,6 +3729,44 @@ suite("Branchwise workflow UI", function () {
       path.join(artifacts, "branches-pane.png"),
       Buffer.from(screenshot.data, "base64")
     );
+  });
+
+  test("selects a branch clicked in the Branches pane as soon as a reopened graph lists it", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "reopen-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    const names = ["reopen-one", "reopen-two", "reopen-three"];
+    for (const name of names) {
+      git(
+        [
+          "update-ref",
+          `refs/heads/${name}`,
+          git(["commit-tree", tree, "-p", base, "-m", name], dir)
+        ],
+        dir
+      );
+    }
+    await openRepo(dir);
+    if (!(await graph.evaluate(`!!document.querySelector('nav[aria-label="Branches"]')`))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    for (const name of names) {
+      await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+      await vscode.commands.executeCommand("branchwise.view", { rootUri: vscode.Uri.file(dir) });
+      graph = await findGraph();
+      // The click lands while the page is still loading the branch list, rows and forecast.
+      await clickPaneRow(name);
+      await until(
+        () =>
+          graph.evaluate(
+            `!!document.querySelector('header button[title=${JSON.stringify(name)}]') && [...document.querySelectorAll('tbody tr')].some(row => row.innerText.includes(${JSON.stringify(name)}))`
+          ),
+        "graph filtered to " + name
+      );
+    }
+    await button("All branches", "document.querySelector('nav[aria-label=\"Branches\"]')");
   });
 
   test("pins and sorts branches in the Branches pane and flags merged, stale and conflicting ones", async () => {

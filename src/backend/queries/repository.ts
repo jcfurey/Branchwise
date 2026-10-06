@@ -5,6 +5,7 @@ import path from "node:path";
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
+import { loadAbsorbPlan } from "@/backend/queries/absorb";
 import { loadBisect } from "@/backend/queries/bisect";
 import { loadBranchFocus } from "@/backend/queries/branchFocus";
 import { loadConflictForecast } from "@/backend/queries/conflictForecast";
@@ -13,6 +14,7 @@ import { historyQuery } from "@/backend/queries/history";
 import { loadPushStatus } from "@/backend/queries/pushStatus";
 import { loadSplitPlan } from "@/backend/queries/splitCommit";
 import {
+  loadBulkSyncPlan,
   loadSyncPlan,
   loadUpstreamPlan,
   loadCleanupPlan,
@@ -31,6 +33,7 @@ import type {
   RepositoryQueryData,
   RepositoryState,
   StashDetails,
+  WorkspaceOperation,
   WorktreeDetails
 } from "@/backend/types";
 import { autosquashPlan } from "@/backend/utils/autosquash";
@@ -52,8 +55,12 @@ export async function readOptional(filename: string) {
   }
 }
 
-export async function loadOperation(git: SimpleGit): Promise<OperationState | null> {
-  const directory = await gitDirectory(git);
+/** `directory` is the repository's Git directory, when the caller has it already. */
+export async function loadOperation(
+  git: SimpleGit,
+  directory?: string
+): Promise<OperationState | null> {
+  directory ??= await gitDirectory(git);
   const files = [
     "rebase-merge/head-name",
     "rebase-apply/head-name",
@@ -83,6 +90,22 @@ export async function loadOperation(git: SimpleGit): Promise<OperationState | nu
       .update(JSON.stringify([kind, head, contents]))
       .digest("hex")
   };
+}
+
+/**
+ * The operation stopped partway, counting a bisect, which the repository state leaves to its own
+ * view since a bisect does not block other work the way a stopped merge does.
+ */
+export async function loadOperationKind(
+  git: SimpleGit,
+  directory?: string
+): Promise<WorkspaceOperation | null> {
+  directory ??= await gitDirectory(git);
+  const [operation, bisect] = await Promise.all([
+    loadOperation(git, directory),
+    readOptional(path.join(directory, "BISECT_START"))
+  ]);
+  return operation?.kind ?? (bisect === null ? null : "bisect");
 }
 
 export async function loadWorktrees(git: SimpleGit): Promise<WorktreeDetails[]> {
@@ -310,7 +333,7 @@ export async function repositoryQuery(
       // While a merge, rebase or pick is under way, HEAD is not where the user will merge into.
       return {
         kind: "conflictForecast",
-        conflicts: (await loadOperation(git)) === null ? await loadConflictForecast(git) : []
+        conflicts: (await loadOperation(git)) === null ? await loadConflictForecast(git, query) : []
       };
     case "bisect":
       return {
@@ -340,6 +363,8 @@ export async function repositoryQuery(
       return { kind: "cleanupPlan", plan: await loadCleanupPlan(git) };
     case "fastForwardPlan":
       return { kind: "fastForwardPlan", plan: await loadFastForwardPlan(git) };
+    case "bulkSyncPlan":
+      return { kind: "bulkSyncPlan", plan: await loadBulkSyncPlan(git, query.operation) };
     case "workspace":
       return {
         kind: "workspace",
@@ -374,6 +399,8 @@ export async function repositoryQuery(
       return { kind: "amendPlan", plan: await loadAmendPlan(git, query.target) };
     case "splitPlan":
       return { kind: "splitPlan", plan: await loadSplitPlan(git, query.target) };
+    case "absorbPlan":
+      return { kind: "absorbPlan", plan: await loadAbsorbPlan(git) };
     case "lease": {
       await requireRemote(git, query.remote);
       await requireBranchName(git, query.branch);

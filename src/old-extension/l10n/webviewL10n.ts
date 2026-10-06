@@ -147,6 +147,16 @@ export function getWebviewLocalizedStrings() {
     commitUnpulled: vscode.l10n.t("Not pulled: only the tracked remote branch has this commit"),
     conflictForecast: vscode.l10n.t("Merging this branch into {0} would conflict in:"),
     conflictForecastMore: vscode.l10n.t("and {0} more files"),
+    // A remote branch: {0} is the checked-out branch, then the files follow, one per line.
+    teamConflictForecast: vscode.l10n.t("Would conflict with your branch {0} in:"),
+    // {0} is the committer's name, {1} how long ago, such as "2 days ago".
+    lastCommitBy: vscode.l10n.t("Last commit by {0}, {1}"),
+    teamOverlapOne: vscode.l10n.t("1 teammate's branch would conflict with yours"),
+    teamOverlapMany: vscode.l10n.t("{0} teammates' branches would conflict with yours"),
+    teamOverlapTitle: vscode.l10n.t("Remote branches that would conflict with {0}"),
+    teamOverlapHint: vscode.l10n.t(
+      "Recent work on the remote that would not merge cleanly into your branch. Choose a branch to show it in the graph."
+    ),
     copyTagName: vscode.l10n.t("Copy Tag Name"),
     copyBranchName: vscode.l10n.t("Copy Branch Name"),
     deleteTag: vscode.l10n.t("Delete Local Tag"),
