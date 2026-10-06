@@ -2143,6 +2143,97 @@ suite("Branchwise workflow UI", function () {
     await button("Close");
   });
 
+  test("totals workspace status, filters to a behind repository and pulls only what is safe", async () => {
+    const base = directory();
+    const repos = {};
+    for (const name of ["behind", "dirty", "clean"]) {
+      const dir = path.join(base, name);
+      fs.mkdirSync(dir);
+      init(dir);
+      commit("f", `status ${name}`, dir);
+      git(["clone", "--bare", "-q", dir, `${name}.git`], base);
+      git(["remote", "add", "origin", path.join(base, `${name}.git`)], dir);
+      git(["fetch", "origin"], dir);
+      git(["branch", "--set-upstream-to=origin/main"], dir);
+      repos[name] = dir;
+    }
+    const peer = path.join(base, "peer");
+    git(["clone", "-q", "behind.git", "peer"], base);
+    git(["config", "user.name", "UI Test"], peer);
+    git(["config", "user.email", "ui@test"], peer);
+    commit("incoming", "status incoming", peer);
+    git(["push", "origin", "main"], peer);
+    git(["fetch", "origin"], repos.behind);
+    fs.writeFileSync(path.join(repos.dirty, "f"), "uncommitted");
+    const heads = Object.fromEntries(
+      Object.entries(repos).map(([name, dir]) => [name, git(["rev-parse", "HEAD"], dir)])
+    );
+    for (const dir of Object.values(repos)) {
+      await openRepo(dir);
+    }
+    const pane = 'document.querySelector("aside[aria-label=Workspace]")';
+    if (!(await graph.evaluate(`!!${pane}`))) {
+      await button("Workspace");
+    }
+    const setNameFilter = (value) =>
+      graph.evaluate(
+        `(() => { const input = ${pane}.querySelector('input[aria-label="Filter repositories…"]'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event("input", { bubbles: true })); })()`
+      );
+    const totals = `[...${pane}.querySelectorAll("[data-total]")].map((chip) => chip.textContent).join(" | ")`;
+    const rows = `[...${pane}.querySelectorAll("button[title]")].map((row) => row.title).join(" | ")`;
+    try {
+      await setNameFilter(repoKey(base));
+      await until(
+        async () =>
+          (await graph.evaluate(totals)) ===
+          "2 repositories need attention | 1 behind | 1 with changes",
+        "workspace status totals"
+      );
+      await graph.evaluate(`${pane}.querySelector('[data-total="behind"]').click()`);
+      await until(
+        async () => (await graph.evaluate(rows)) === repoKey(repos.behind),
+        "only the repository behind its remote"
+      );
+      await graph.evaluate(`${pane}.querySelector('[data-total="behind"]').click()`);
+      await until(
+        async () => (await graph.evaluate(rows)).split(" | ").length === 3,
+        "every repository again"
+      );
+      await button("Pull All", pane);
+      await until(
+        () =>
+          graph.evaluate(
+            `(() => { const text = document.querySelector("[role=dialog]")?.innerText ?? ""; return text.includes("main → origin/main, 1 new commits") && text.includes("Skip main: uncommitted changes") && text.includes("Skip main: already up to date"); })()`
+          ),
+        "pull confirmation"
+      );
+      assert.equal(git(["rev-parse", "HEAD"], repos.behind), heads.behind);
+      await button("Fast-forward 1 Branches");
+      await until(
+        () =>
+          graph.evaluate(
+            'document.querySelector("[role=dialog]")?.innerText.includes("1 completed · 2 skipped · 0 failed")'
+          ),
+        "pull summary"
+      );
+      assert.equal(git(["rev-parse", "HEAD"], repos.behind), git(["rev-parse", "HEAD"], peer));
+      assert.equal(git(["status", "--porcelain"], repos.behind), "");
+      assert.equal(git(["rev-parse", "HEAD"], repos.dirty), heads.dirty);
+      assert.equal(git(["rev-parse", "HEAD"], repos.clean), heads.clean);
+      assert.equal(fs.readFileSync(path.join(repos.dirty, "f"), "utf8"), "uncommitted");
+      await button("Close");
+      await until(
+        async () =>
+          (await graph.evaluate(totals)) === "1 repository needs attention | 1 with changes",
+        "totals after the pull"
+      );
+    } finally {
+      // The name filter and the chosen total outlive this scenario's repositories otherwise.
+      await graph.evaluate(`${pane}?.querySelector('[data-total][aria-pressed="true"]')?.click()`);
+      await setNameFilter("").catch(() => {});
+    }
+  });
+
   test("guides bisect to a regression, restores the branch, and restores keyboard focus", async () => {
     const history = directory();
     init(history);

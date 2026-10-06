@@ -42,6 +42,39 @@ export function getWorkflowLocalizedStrings() {
       "Fetch runs independently for each selected repository. Review its upstream commits before updating its current branch."
     ),
     queued: vscode.l10n.t("Queued"),
+    bulkFetch: vscode.l10n.t("Fetch All"),
+    bulkPull: vscode.l10n.t("Pull All"),
+    bulkPush: vscode.l10n.t("Push All"),
+    bulkActions: vscode.l10n.t("Actions on the listed repositories"),
+    bulkFetchHint: vscode.l10n.t(
+      "Fetches every remote of each listed repository. No branch, work tree or index changes."
+    ),
+    bulkPullHint: vscode.l10n.t(
+      "Fast-forwards the checked-out branch of each listed repository to its fetched upstream. Anything that cannot simply move forward is skipped; nothing is merged or forced."
+    ),
+    bulkPushHint: vscode.l10n.t(
+      "Pushes each branch that is ahead of its upstream branch. Branches without an upstream, or with commits to pull first, are skipped; nothing is forced."
+    ),
+    bulkFetchStep: vscode.l10n.t("Fetch every remote"),
+    bulkPushStep: vscode.l10n.t("{0} → {1}, {2} commits"),
+    bulkSkipBranch: vscode.l10n.t("Skip {0}: {1}"),
+    bulkSkipRepository: vscode.l10n.t("Skip: {0}"),
+    bulkSkipOperation: vscode.l10n.t("an operation is in progress"),
+    bulkSkipUncommitted: vscode.l10n.t("uncommitted changes"),
+    bulkSkipDetached: vscode.l10n.t("HEAD is detached"),
+    bulkSkipNoUpstream: vscode.l10n.t("no upstream branch"),
+    bulkSkipUpstreamGone: vscode.l10n.t("its upstream branch was deleted"),
+    bulkSkipDiverged: vscode.l10n.t("it has commits of its own and commits to pull"),
+    bulkSkipUpToDate: vscode.l10n.t("already up to date"),
+    bulkSkipNothingToPush: vscode.l10n.t("nothing to push"),
+    bulkSkipUninitialized: vscode.l10n.t("not initialized"),
+    bulkSkipNoRemote: vscode.l10n.t("no remote"),
+    bulkSkipUnreadable: vscode.l10n.t("it could not be read"),
+    bulkNothingToDo: vscode.l10n.t("Nothing to do in the listed repositories."),
+    bulkRunFetch: vscode.l10n.t("Fetch {0} Repositories"),
+    bulkRunPush: vscode.l10n.t("Push {0} Branches"),
+    bulkSkipped: vscode.l10n.t("Skipped"),
+    bulkSummary: vscode.l10n.t("{0} completed · {1} skipped · {2} failed"),
     reviewUpdate: vscode.l10n.t("Review Update"),
     cleanupBranches: vscode.l10n.t("Clean Up Merged Branches"),
     cleanupHint: vscode.l10n.t(

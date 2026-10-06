@@ -40,6 +40,22 @@ export type FastForwardSkip = {
   reason: "diverged" | "worktree" | "uncommitted";
 };
 export type FastForwardPlan = { branches: FastForwardBranch[]; skipped: FastForwardSkip[] };
+/** Why a pull or push across the workspace leaves a branch, or a whole repository, alone. */
+export type BulkSkipReason =
+  | "operation"
+  | "uncommitted"
+  | "detached"
+  | "noUpstream"
+  | "upstreamGone"
+  | "diverged"
+  | "upToDate";
+/** A branch left alone; `""` names a repository skipped with HEAD detached. */
+export type BulkSkip = { branch: string; reason: BulkSkipReason };
+/**
+ * What a pull or push across the workspace would do in one repository. Each sync is the reviewed
+ * sync of one branch, which the action checks again just before it runs.
+ */
+export type BulkSyncPlan = { operation: "pull" | "push"; syncs: SyncPlan[]; skipped: BulkSkip[] };
 export type BisectState = {
   id: string;
   original: string;
@@ -59,6 +75,7 @@ export type WorkflowQuery =
   | { kind: "upstreamPlan" }
   | { kind: "cleanupPlan" }
   | { kind: "fastForwardPlan" }
+  | { kind: "bulkSyncPlan"; operation: "pull" | "push" }
   | { kind: "bisect" };
 export type WorkflowQueryData =
   | { kind: "submodulePlan"; plan: SubmodulePlan; comparison: Comparison | null }
@@ -66,6 +83,7 @@ export type WorkflowQueryData =
   | { kind: "upstreamPlan"; plan: SyncPlan }
   | { kind: "cleanupPlan"; plan: CleanupPlan }
   | { kind: "fastForwardPlan"; plan: FastForwardPlan }
+  | { kind: "bulkSyncPlan"; plan: BulkSyncPlan }
   | { kind: "bisect"; state: BisectState | null; head: string | null };
 export type WorkflowAction =
   | { kind: "submodulePointer"; operation: "stage" | "unstage"; plan: SubmodulePlan }

@@ -1,8 +1,10 @@
+import { stat } from "node:fs/promises";
 import path from "node:path";
 
 import type { SimpleGit } from "simple-git";
 
 import { gitClientFactory } from "@/backend/gitClient";
+import { loadOperationKind } from "@/backend/queries/repository";
 import type { WorkspaceEntry } from "@/backend/types";
 import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 
@@ -24,6 +26,52 @@ export async function submoduleLinks(git: SimpleGit) {
       ? [{ path: match[2]!, recorded: match[1]!, committed: committed.get(match[2]!) ?? null }]
       : [];
   });
+}
+
+/**
+ * What needs attention in a repository besides its changed files: which branches have an
+ * upstream, how many other branches are ahead of theirs, how many stashes there are and when it
+ * last fetched. One ref listing answers the branch questions; the stash count needs a second Git
+ * process only when there is a stash.
+ */
+async function attention(git: SimpleGit, directory: string) {
+  const [refs, remotes, fetched] = await Promise.all([
+    git.raw([
+      "for-each-ref",
+      "--format=%(refname)%00%(HEAD)%00%(upstream:short)%00%(upstream:track)",
+      "refs/heads/",
+      "refs/stash"
+    ]),
+    git.raw(["remote"]),
+    // FETCH_HEAD is rewritten by every fetch, even one that brings nothing new.
+    stat(path.join(directory, "FETCH_HEAD")).then(
+      (file) => Math.floor(file.mtimeMs / 1000),
+      () => null
+    )
+  ]);
+  let upstream: string | null = null;
+  let aheadBranches = 0;
+  let stashed = false;
+  for (const line of refs.split("\n").filter(Boolean)) {
+    const [name = "", head = "", tracked = "", track = ""] = line.split("\0");
+    if (name === "refs/stash") {
+      stashed = true;
+    } else if (head === "*") {
+      upstream = tracked || null;
+    } else if (/ahead \d+/.test(track)) {
+      aheadBranches++;
+    }
+  }
+  const stashes = stashed
+    ? Number((await git.raw(["rev-list", "--walk-reflogs", "--count", "refs/stash"])).trim())
+    : 0;
+  return {
+    upstream,
+    aheadBranches,
+    stashes,
+    remotes: remotes.split("\n").filter(Boolean).length,
+    fetched
+  };
 }
 
 /**
@@ -65,28 +113,41 @@ export async function loadWorkspace(
           ahead: 0,
           behind: 0,
           initialized: false,
-          error: null
+          error: null,
+          operation: null,
+          conflicts: 0,
+          stashes: 0,
+          detached: false,
+          upstream: null,
+          aheadBranches: 0,
+          remotes: 0,
+          fetched: null
         };
         try {
           const git = gitClientFactory(repo, binary, signal).getInstance();
-          const top = normalizeRepoPath(
-            (await git.raw(["rev-parse", "--show-toplevel"])).replace(/\n$/, "")
-          );
-          if (top !== repo) {
+          const [top = "", directory = ""] = (
+            await git.raw(["rev-parse", "--show-toplevel", "--absolute-git-dir"])
+          ).split("\n");
+          if (normalizeRepoPath(top) !== repo) {
             return { entry, children: [] };
           }
           entry.initialized = true;
-          const [status, head, children] = await Promise.all([
+          const [status, head, children, operation, extra] = await Promise.all([
             git.status(),
             git.raw(["rev-parse", "--verify", "--quiet", "HEAD"]),
-            submoduleLinks(git)
+            submoduleLinks(git),
+            loadOperationKind(git, directory),
+            attention(git, directory)
           ]);
-          Object.assign(entry, {
+          Object.assign(entry, extra, {
             head: head.trim() || null,
             branch: status.detached ? "" : (status.current ?? ""),
             dirty: status.files.length,
             ahead: status.ahead,
-            behind: status.behind
+            behind: status.behind,
+            operation,
+            conflicts: status.conflicted.length,
+            detached: status.detached
           });
           return { entry, children };
         } catch (error) {

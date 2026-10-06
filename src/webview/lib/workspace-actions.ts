@@ -1,6 +1,7 @@
 import { computed, signal } from "@preact/signals";
 
 import type {
+  BulkSyncPlan,
   RepositoryAction,
   RepositoryQuery,
   RepositoryQueryData,
@@ -50,7 +51,15 @@ export function backgroundQuery(
   });
 }
 
-export async function fetchWorkspace(repos: string[]) {
+/**
+ * Run `work` in each repository, two repositories at a time to bound concurrent Git and network
+ * work, and record each one's progress and outcome in `workspaceJobs`. Does nothing while
+ * another workspace run is under way.
+ */
+async function runWorkspaceJobs(
+  repos: string[],
+  work: (repo: string) => Promise<Partial<WorkspaceJob>>
+) {
   if (workspaceBusy.value) {
     return;
   }
@@ -70,21 +79,51 @@ export async function fetchWorkspace(repos: string[]) {
   async function worker() {
     for (let repo = queue.shift(); repo !== undefined; repo = queue.shift()) {
       update(repo, { state: "running" });
-      // Two workers bound concurrent Git/network work; each repository is sequential.
+      // Each repository's steps run one after another.
       // eslint-disable-next-line no-await-in-loop
-      const error = await backgroundAction(repo, { kind: "fetch", remote: null });
-      if (error) {
-        update(repo, { state: "error", error });
-        continue;
-      }
-      // eslint-disable-next-line no-await-in-loop
-      const result = await backgroundQuery(repo, { kind: "upstreamPlan" });
-      update(repo, {
-        state: "done",
-        plan: result.data?.kind === "upstreamPlan" ? result.data.plan : null,
-        planError: result.error
-      });
+      update(repo, await work(repo));
     }
   }
   await Promise.all([worker(), worker()]);
+}
+
+export function fetchWorkspace(repos: string[]) {
+  return runWorkspaceJobs(repos, async (repo) => {
+    const error = await backgroundAction(repo, { kind: "fetch", remote: null });
+    if (error) {
+      return { state: "error", error };
+    }
+    const result = await backgroundQuery(repo, { kind: "upstreamPlan" });
+    return {
+      state: "done",
+      plan: result.data?.kind === "upstreamPlan" ? result.data.plan : null,
+      planError: result.error
+    };
+  });
+}
+
+/**
+ * Run the reviewed syncs of each repository's pull or push plan. Each is the action a single
+ * reviewed sync runs, never forced, which checks the branch and its upstream again first; the
+ * first that fails stops the rest of that repository.
+ */
+export function syncWorkspace(plans: ReadonlyArray<{ repo: string; plan: BulkSyncPlan }>) {
+  const byRepo = new Map(plans.map(({ repo, plan }) => [repo, plan]));
+  return runWorkspaceJobs([...byRepo.keys()], async (repo) => {
+    const bulk = byRepo.get(repo)!;
+    for (const plan of bulk.syncs) {
+      // eslint-disable-next-line no-await-in-loop
+      const error = await backgroundAction(repo, {
+        kind: "sync",
+        operation: bulk.operation,
+        plan,
+        force: false,
+        setUpstream: false
+      });
+      if (error) {
+        return { state: "error", error };
+      }
+    }
+    return { state: "done" };
+  });
 }
