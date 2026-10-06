@@ -267,6 +267,48 @@ describe("RefsPane", () => {
     );
   });
 
+  it("shows rows only once the repository state arrives, and keeps them while the rest loads", () => {
+    // A reopened graph can show its rows before the Branches pane has the repository state.
+    act(() => {
+      actions.repositoryState.value = null;
+    });
+    expect(hasRow("feature\norigin/feature")).toBe(false);
+    expect(container.querySelector('nav [role="status"]')).not.toBeNull();
+    act(() => {
+      actions.repositoryState.value = state;
+    });
+    const button = row("feature\norigin/feature");
+
+    // The forecast, a new HEAD, the saved pins and a fresh state all arrive after the rows.
+    const forecast = mocks.postMessage.mock.calls
+      .map((call) => call[0] as { command: string; requestId: string; query?: { kind: string } })
+      .findLast(
+        (message) =>
+          message.command === "repositoryQuery" && message.query?.kind === "conflictForecast"
+      );
+    act(() =>
+      actions.handleRepositoryQuery({
+        repo: "/repo",
+        requestId: forecast!.requestId,
+        data: { kind: "conflictForecast", conflicts: [{ branch: "feature", files: ["a.ts"] }] },
+        status: null
+      })
+    );
+    act(() => {
+      stores.commitHead.value = "f".repeat(40);
+      stores.repoStates.value = {
+        "/repo": { columnWidths: null, pinnedBranches: ["main"], branchSort: "recent" }
+      };
+      actions.repositoryState.value = { ...state, branches: [...state.branches] };
+    });
+    expect(row("feature\norigin/feature")).toBe(button);
+    act(() => button.click());
+    expect(stores.selectedBranch.value).toBe("feature");
+    act(() => {
+      stores.repoStates.value = {};
+    });
+  });
+
   it("dims remote branches hidden from the graph and shows them again when one is selected", () => {
     act(() => {
       stores.showRemoteBranch.value = false;
