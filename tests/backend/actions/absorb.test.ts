@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { runRepositoryAction } from "@/backend/actions/repository";
-import { createGit } from "@/backend/gitClient";
+import { createGit, PARSED_OUTPUT_ARGS } from "@/backend/gitClient";
 import { loadAbsorbPlan } from "@/backend/queries/absorb";
 import { loadOperation, repositoryQuery } from "@/backend/queries/repository";
 import type { AbsorbPlan, RepositoryAction } from "@/backend/types";
@@ -13,8 +13,11 @@ import type { AbsorbPlan, RepositoryAction } from "@/backend/types";
 import { makeRepo } from "@tests/backend/helpers";
 
 let repo = "";
+/** Git's output in `repo`, with the settings the backend pins, so never in colour. */
 const read = (args: string[]) =>
-  execFileSync("git", args, { cwd: repo, stdio: "pipe" }).toString().trim();
+  execFileSync("git", [...PARSED_OUTPUT_ARGS, ...args], { cwd: repo, stdio: "pipe" })
+    .toString()
+    .trim();
 const git = () => createGit(repo, "git");
 const run = (action: RepositoryAction) => runRepositoryAction(git(), action);
 const write = (file: string, lines: string[]) =>
