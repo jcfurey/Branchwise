@@ -183,6 +183,25 @@ A commit marked **Not on any branch** is one that no branch, tag, remote branch 
 
 The tab you were on is remembered when the panel reopens. Searching, **Jump to HEAD** and **Show in Graph** return to the **Graph** tab.
 
+## Undo and the Safety Net
+
+Before Branchwise runs an action that moves or deletes refs, it writes down which refs the action may change, where they point, and the branch HEAD is on, and keeps each old commit under `refs/branchwise/backup/`. Git keeps whatever those refs reach, and the graph, the branch lists, Go to and the reflog leave the namespace out. When the backups cannot be written, the action does not run. The actions recorded are:
+
+- reset (soft, mixed and hard); a hard reset also keeps the uncommitted changes it discards, as `git stash create` does, and a mixed reset keeps what was staged
+- rebase and interactive rebase, including squash, **Edit Message…** and **Add Staged Changes to This Commit…**
+- merge, cherry-pick and revert, of one commit or a selection
+- **Fast-forward Branches**
+- deleting and force-deleting a branch, and **Clean Up Merged Branches**; the branch's settings, such as its upstream, are kept too
+- renaming a branch, and deleting a tag
+- dropping a stash
+- a force push with lease and deleting a remote branch, which are only recorded: the remote branch's previous commit is kept, but Undo cannot push it back
+
+Once an action is done, a notification offers **Undo**, and **Settings & Tools** starts with **Undo** and the action's name, such as **Undo Hard Reset of main**, while there is something to undo. Undo puts every ref back with a compare-and-swap (`git update-ref <ref> <old> <new>`), so it refuses, and changes nothing, when any of them has moved since, such as after a new commit. The checked-out branch moves with `git reset --keep`, which refuses to overwrite uncommitted changes, or with `--soft` after a message edit or an amend, which leaves the folded-in changes staged again. A deleted branch or tag is created again, a renamed branch is renamed back, a dropped stash goes back on the stash list, and a hard reset's discarded changes are applied again. Undo also refuses while a merge, rebase, cherry-pick or revert is stopped, and for a branch checked out in another worktree. What Undo replaces is kept as well. After one Undo, the menu offers the action before it.
+
+An action that stops on a conflict is completed in the record when **Continue** or **Abort** in the status strip ends it; one finished outside Branchwise stays listed, but cannot be undone in one step.
+
+**Settings & Tools → Safety Net…** lists the recorded actions, newest first, with the refs each one changed, from which commit to which, and the commits no branch, tag, remote branch or HEAD reaches any more because of it. **Restore** puts an action's refs back the same way as Undo, and **Create Recovery Branch…** keeps a lost commit under a new branch. The record is kept in the repository's Git directory, in `branchwise/safety-net.json`, so every worktree and VS Code window shares it; the 50 most recent records of the last 30 days are kept, and older ones and their backups are removed.
+
 ## Statistics
 
 The **Statistics** tab counts the commits on every branch the graph shows, or on one local branch, over the last 30 days, 90 days, year, or all time. It shows the number of commits, contributors and days with commits, a grid of commits per day over the last year (point at a day for its date and count), and every contributor with their commits, share and first and last commit. People are named as `.mailmap` names them, so someone who committed under several addresses counts once. **Count lines changed** adds the lines each contributor added and deleted outside merges; it reads every commit's changes, so it is slower on large repositories. Click a contributor to search the graph for their commits. Avatars are initials; Branchwise fetches nothing over the network.

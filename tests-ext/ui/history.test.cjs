@@ -333,6 +333,46 @@ async function toolsMenu(text) {
     "tools menu " + text
   );
 }
+/**
+ * Choose `text` from the Settings & Tools menu once its entries include it. The entries are built
+ * when the menu opens, so a menu opened before the repository state arrived is opened again.
+ */
+async function freshToolsMenu(text) {
+  await until(
+    () =>
+      graph.evaluate(
+        `(() => { const item = [...document.querySelectorAll('[role="menuitem"]')].find(e => e.textContent.trim() === ${JSON.stringify(text)}); if (item) { item.click(); return true; } document.querySelector('header button[aria-label="Settings & Tools"]')?.click(); return false; })()`
+      ),
+    "fresh tools menu " + text
+  );
+}
+/** Click `label` on the VS Code notification whose message contains `message`. */
+async function notificationAction(message, label) {
+  await vscode.commands.executeCommand("notifications.showList");
+  try {
+    await until(async () => {
+      for (const connection of connections.filter(
+        (item) => item.ws.readyState === WebSocket.OPEN
+      )) {
+        for (const context of connection.contexts) {
+          try {
+            if (
+              await connection.evaluate(
+                `(() => { const item = [...document.querySelectorAll('.notifications-center .notification-list-item')].find(e => e.textContent.includes(${JSON.stringify(message)})); const action = item && [...item.querySelectorAll('.monaco-button')].find(b => b.textContent.trim() === ${JSON.stringify(label)}); if (!action) return false; action.click(); return true; })()`,
+                context
+              )
+            ) {
+              return true;
+            }
+          } catch {}
+        }
+      }
+      return false;
+    }, `notification ${message}: ${label}`);
+  } finally {
+    await vscode.commands.executeCommand("notifications.hideList");
+  }
+}
 async function menu(text) {
   await until(
     () =>
@@ -997,6 +1037,77 @@ suite("Branchwise workflow UI", function () {
     await finished();
     assert.equal(git(["show", "-s", "--format=%P", "HEAD"]).split(" ").length, 2);
     assert.equal(fs.existsSync(path.join(repo, ".git", "MERGE_HEAD")), false);
+  });
+
+  test("undoes a hard reset from the menu and a branch deletion from its notification", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "undo-base", dir);
+    commit("a", "undo-first", dir);
+    commit("b", "undo-second", dir);
+    const [second, first, base] = git(["rev-list", "HEAD"], dir).split("\n");
+    await openRepo(dir);
+    try {
+      await contextCommit("undo-base");
+      await menu("Reset Current Branch to This Commit…");
+      await select("hard");
+      await button("Reset");
+      await finished();
+      await until(
+        () => graph.evaluate(`!${visible(first)} && !${visible(second)} && ${visible(base)}`),
+        "commits after the reset leave the graph"
+      );
+      assert.equal(git(["rev-parse", "HEAD"], dir), base);
+      // Backups stay out of the graph and the branch picker.
+      assert.match(
+        git(["for-each-ref", "refs/branchwise/"], dir),
+        /^\S+ commit\trefs\/branchwise\//
+      );
+
+      await freshToolsMenu("Undo Hard Reset of main");
+      await finished();
+      await until(
+        () => graph.evaluate(`${visible(first)} && ${visible(second)}`),
+        "the commits return to the graph"
+      );
+      assert.equal(git(["rev-parse", "HEAD"], dir), second);
+      assert.equal(git(["status", "--porcelain"], dir), "");
+
+      git(["branch", "undo-topic", first], dir);
+      await button("Refresh");
+      await contextRef("undo-topic");
+      await menu("Delete Local Branch…");
+      await button("Delete Local Branch");
+      await finished();
+      assert.equal(git(["branch", "--list", "undo-topic"], dir), "");
+      await notificationAction("Deletion of Branch undo-topic", "Undo");
+      await until(
+        () => git(["branch", "--list", "undo-topic"], dir) !== "",
+        "the deleted branch returns"
+      );
+      assert.equal(git(["rev-parse", "undo-topic"], dir), first);
+      await until(
+        () =>
+          graph.evaluate(
+            `[...document.querySelectorAll('span[title]')].some(e => e.title.split(String.fromCharCode(10))[0] === "undo-topic")`
+          ),
+        "the branch label returns"
+      );
+
+      // Both actions are listed in the Safety Net as undone.
+      await freshToolsMenu("Safety Net…");
+      await until(
+        () =>
+          graph.evaluate(
+            `[...document.querySelectorAll('[data-safety-entry]')].map(e => e.querySelector('b').textContent).join("|") === "Deletion of Branch undo-topic|Hard Reset of main"`
+          ),
+        "the Safety Net lists both actions"
+      );
+      await button("Close");
+    } finally {
+      await vscode.commands.executeCommand("notifications.clearAll");
+      await openRepo(repo);
+    }
   });
 
   test("switches repositories through SCM and runs an interactive rebase from a commit menu", async () => {

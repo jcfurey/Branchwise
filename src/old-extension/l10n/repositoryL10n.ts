@@ -194,7 +194,7 @@ export function getRepositoryLocalizedStrings() {
       "Nothing changes until you start the rebase. If it stops on a conflict, the status strip offers Continue and Abort, and Abort restores the branch as it was."
     ),
     explainDropStash: vscode.l10n.t(
-      "A dropped stash is hard to recover. Apply it first if you are not sure."
+      "Branchwise keeps a dropped stash in the Safety Net for 30 days, so Undo can bring it back."
     )
   };
 }

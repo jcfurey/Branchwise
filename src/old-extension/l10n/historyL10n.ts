@@ -110,6 +110,22 @@ export function getHistoryLocalizedStrings() {
     recoverBranch: vscode.l10n.t("Create Recovery Branch"),
     recoveryBranchName: vscode.l10n.t("Branch Name"),
     noReflog: vscode.l10n.t("No reflog entries available."),
+    safetyNet: vscode.l10n.t("Safety Net"),
+    safetyNetHint: vscode.l10n.t(
+      "Before Branchwise resets, rebases, merges, deletes or otherwise rewrites refs, it records where they pointed and keeps their old commits. Restore puts the refs back while nothing has moved them since. Records are kept for 30 days, 50 at most."
+    ),
+    safetyNetEmpty: vscode.l10n.t("No destructive actions recorded yet."),
+    undoAction: vscode.l10n.t("Undo {0}"),
+    safetyNetRestore: vscode.l10n.t("Restore"),
+    safetyNetUndone: vscode.l10n.t("Undone"),
+    safetyNetPending: vscode.l10n.t("In progress"),
+    safetyNetUnfinished: vscode.l10n.t("Finished outside Branchwise"),
+    safetyNetRecordedOnly: vscode.l10n.t("Recorded only"),
+    safetyNetNone: vscode.l10n.t("none"),
+    safetyNetSaved: vscode.l10n.t("Discarded changes kept as {0}"),
+    safetyNetStash: vscode.l10n.t("Dropped stash kept as {0}"),
+    safetyNetLost: vscode.l10n.t("Commits no branch reaches any more"),
+    safetyNetMoreLost: vscode.l10n.t("More are listed in the Reflog tab."),
     selectCommitsHint: vscode.l10n.t(
       "Ctrl/Cmd-click to select commits; Shift-click to select a range."
     ),
