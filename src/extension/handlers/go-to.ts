@@ -121,6 +121,9 @@ async function pickTarget(repo: string) {
     }
     picker.hide();
     if (hash !== undefined) {
+      // Bring the graph forward with the keyboard first, so that the row the page then focuses
+      // keeps it; the workbench hands focus back only once the picker has gone.
+      await vscode.commands.executeCommand("branchwise.view").then(undefined, () => {});
       void rpcNotify.notify("view.reveal", { repo, hash });
     }
   });

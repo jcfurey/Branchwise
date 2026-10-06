@@ -10,6 +10,7 @@ const world = vi.hoisted(() => ({
   targets: Promise.resolve([] as unknown[]),
   resolveCommit: vi.fn(),
   notify: vi.fn(),
+  executeCommand: vi.fn(() => Promise.resolve()),
   showErrorMessage: vi.fn(),
   createGit: vi.fn()
 }));
@@ -65,6 +66,7 @@ vi.mock("vscode", () => ({
     },
     showErrorMessage: world.showErrorMessage
   },
+  commands: { executeCommand: world.executeCommand },
   QuickPickItemKind: { Separator: -1, Default: 0 },
   l10n: {
     t: (message: string, ...args: unknown[]) =>
@@ -156,6 +158,11 @@ describe("showing the picker", () => {
     await picker().accept(picker().items.find((item) => item.label.endsWith("v1.0")));
     expect(world.notify).toHaveBeenCalledExactlyOnceWith("view.reveal", { repo: "/repo", hash: B });
     expect(picker().disposed).toBe(true);
+    // The graph takes the keyboard before the page is told, so the revealed row keeps it.
+    expect(world.executeCommand).toHaveBeenCalledExactlyOnceWith("branchwise.view");
+    expect(world.executeCommand.mock.invocationCallOrder[0]).toBeLessThan(
+      world.notify.mock.invocationCallOrder[0]!
+    );
   });
 
   it("resolves a typed commit ID before showing it", async () => {

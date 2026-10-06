@@ -200,6 +200,21 @@ export function CommitTable({
     row?.scrollIntoView({ block: "center" });
     // Focusing the row makes it the focused commit and brings its dot into view.
     row?.focus({ preventScroll: true });
+    if (row && !document.hasFocus()) {
+      // The panel may get the keyboard back after this, from a picker closing in the
+      // workbench, with nothing focused in it; the row should have it then. Clearing the
+      // pending reveal runs this effect again, so the listener is not tied to it.
+      window.addEventListener(
+        "focus",
+        () => {
+          const active = document.activeElement;
+          if (row.isConnected && (active === null || active === document.body)) {
+            row.focus({ preventScroll: true });
+          }
+        },
+        { once: true }
+      );
+    }
   }, [revealing, rowOf, commits, containerRef]);
   const toggles = useMemo(
     () => new Map(commits.map(({ hash }) => [hash, () => toggleCommitDetails(hash)])),

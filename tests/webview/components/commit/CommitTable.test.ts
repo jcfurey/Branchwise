@@ -282,6 +282,26 @@ describe("a commit chosen in Go to", () => {
     expect(pendingReveal.value).toBeNull();
     expect(document.activeElement).toBe(row("b"));
   });
+
+  it("takes the keyboard back for its row when the page regains focus", () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    try {
+      pendingReveal.value = "b";
+      drawTable({ commits: [entry("c"), entry("b", ["a"]), entry("a")] });
+      // The workbench hands the panel the keyboard with nothing focused in it.
+      row("b").blur();
+      expect(document.activeElement).toBe(document.body);
+      window.dispatchEvent(new FocusEvent("focus"));
+      expect(document.activeElement).toBe(row("b"));
+      // Only once, and never over a control the user chose.
+      row("b").blur();
+      window.dispatchEvent(new FocusEvent("focus"));
+      expect(document.activeElement).toBe(document.body);
+    } finally {
+      hasFocus.mockRestore();
+    }
+  });
 });
 
 describe("details", () => {
