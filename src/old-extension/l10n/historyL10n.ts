@@ -116,6 +116,18 @@ export function getHistoryLocalizedStrings() {
     clearSelection: vscode.l10n.t("Clear Selection"),
     batchCherryPick: vscode.l10n.t("Cherry-pick Selected"),
     batchRevert: vscode.l10n.t("Revert Selected"),
+    squashSelected: vscode.l10n.t("Squash {0} Commits…"),
+    squashNeedsTwo: vscode.l10n.t("Select at least two commits to squash."),
+    squashNeedsBranch: vscode.l10n.t("Check out a branch to squash its commits."),
+    squashMergeSelected: vscode.l10n.t("Merge commits cannot be squashed."),
+    squashRootSelected: vscode.l10n.t(
+      "The first commit of the repository has no parent to rebase onto, so it cannot be squashed."
+    ),
+    squashOtherBranch: vscode.l10n.t("Only commits on the current branch can be squashed."),
+    squashNotConsecutive: vscode.l10n.t("Select consecutive commits to squash."),
+    squashMergeAfter: vscode.l10n.t(
+      "A merge commit follows the selection. Interactive rebase needs a linear range."
+    ),
     batchOrderHint: vscode.l10n.t(
       "Commits run from top to bottom. Review the order before starting."
     ),

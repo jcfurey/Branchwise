@@ -10,8 +10,11 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ### Added
 
+- Pin local branches to the top of the Branches pane, and list local branches by their latest commit instead of by name. Both choices are remembered per repository.
+- Flag local branches in the Branches pane that are already merged into the checked-out branch, whose upstream is gone, that have had no commits for 90 days, or that would conflict if merged. Ahead and behind counts turn amber when a branch has diverged from its upstream.
 - Search inside changes: **Text added or removed** under **Filters**, or `changes:` (alias `diff:`) in the search box, finds the commits that add or remove a string (`git log -S`), or with **Regular expressions** the commits that add or remove matching lines (`git log -G`). It combines with the other fields, such as `path:`, and pages through the matches 100 at a time. See [search](docs/git-actions.md#search-file-history-and-comparison).
 - Forecast merge conflicts: a local branch that would not merge cleanly into the checked-out branch shows a red mark with the number of conflicted files on its label, and its tooltip names them. Git tries each merge in memory with `git merge-tree`, leaving the work tree, the index and the refs untouched; it needs Git 2.38 or later. See [conflict forecast](docs/git-actions.md#conflict-forecast).
+- Squash selected commits: with consecutive commits of the current branch selected in the graph, **Squash N Commits…** in the selection bar opens the interactive rebase editor with the oldest commit as Pick and the rest as Squash, ready to review before starting. When the selection cannot be squashed, such as commits from another branch, a gap, a merge or the repository's first commit, the button is disabled and its tooltip says why. See [rebasing](docs/git-actions.md#rebasing).
 
 ### Changed
 

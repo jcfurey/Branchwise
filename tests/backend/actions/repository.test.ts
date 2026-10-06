@@ -410,6 +410,99 @@ describe("interactive rebase", () => {
   });
 });
 
+describe("squashing selected commits", () => {
+  /** The plan the graph asks for when squashing `hashes`, whose oldest has `base` as parent. */
+  async function squashPlan(base: string, hashes: string[]) {
+    const data = await repositoryQuery(createGit(repo, "git"), {
+      kind: "rebasePlan",
+      base,
+      squash: hashes
+    });
+    if (data.kind !== "rebasePlan") {
+      throw new Error("No plan");
+    }
+    return data.plan;
+  }
+
+  it("squashes a run in the middle and picks the commits after it", async () => {
+    const base = commit("base", "base");
+    const a = commit("a", "a");
+    const b = commit("b", "b");
+    const c = commit("c", "c");
+    const later = commit("later", "later");
+    const plan = await squashPlan(base, [c, a, b]);
+    expect(plan.base).toBe(base);
+    expect(plan.entries.map(({ hash, action }) => [hash, action])).toEqual([
+      [a, "pick"],
+      [b, "squash"],
+      [c, "squash"],
+      [later, "pick"]
+    ]);
+    // Nothing is rewritten until the plan is submitted.
+    expect(read(["rev-parse", "HEAD"])).toBe(later);
+
+    const tree = read(["rev-parse", "HEAD^{tree}"]);
+    await run({ kind: "interactiveRebase", plan });
+    expect(read(["log", "--reverse", "--format=%s", `${base}..HEAD`])).toBe("a\nlater");
+    expect(read(["log", "-1", "--format=%B", "HEAD^"])).toBe("a\n\nb\n\nc");
+    expect(read(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD^"])).toBe("a\nb\nc");
+    expect(read(["rev-parse", "HEAD^{tree}"])).toBe(tree);
+  });
+
+  it("squashes a run that ends at HEAD", async () => {
+    const base = read(["rev-parse", "HEAD"]);
+    const a = commit("a", "a");
+    const b = commit("b", "b");
+    const plan = await squashPlan(base, [a, b]);
+    expect(plan.entries.map((entry) => entry.action)).toEqual(["pick", "squash"]);
+    const tree = read(["rev-parse", "HEAD^{tree}"]);
+    await run({ kind: "interactiveRebase", plan });
+    expect(read(["rev-parse", "HEAD^"])).toBe(base);
+    expect(read(["rev-parse", "HEAD^{tree}"])).toBe(tree);
+    expect(read(["log", "-1", "--format=%B"])).toBe("a\n\nb");
+  });
+
+  it("refuses the root commit, which has no parent to rebase onto", async () => {
+    const root = read(["rev-parse", "HEAD"]);
+    const a = commit("a", "a");
+    await expect(squashPlan(root, [root, a])).rejects.toThrow(/current branch/);
+  });
+
+  it("builds the plan with uncommitted changes but refuses to start, as interactive rebase does", async () => {
+    const base = read(["rev-parse", "HEAD"]);
+    const a = commit("a", "a");
+    const b = commit("b", "b");
+    fs.writeFileSync(path.join(repo, "a"), "uncommitted");
+    const plan = await squashPlan(base, [a, b]);
+    await expect(run({ kind: "interactiveRebase", plan })).rejects.toThrow(/Commit or stash/);
+    expect(read(["rev-parse", "HEAD"])).toBe(b);
+    expect(fs.readFileSync(path.join(repo, "a"), "utf8")).toBe("uncommitted");
+  });
+
+  it("refuses commits from another branch", async () => {
+    const base = read(["rev-parse", "HEAD"]);
+    read(["checkout", "-b", "other"]);
+    const other = commit("other", "other");
+    read(["checkout", "main"]);
+    const a = commit("a", "a");
+    const b = commit("b", "b");
+    await expect(squashPlan(base, [a, other])).rejects.toThrow(/current branch/);
+    // Branches merged into the current one are refused too: their range is not linear.
+    read(["merge", "--no-ff", "-m", "merge", "other"]);
+    await expect(squashPlan(base, [a, b])).rejects.toThrow(/merge commits/);
+  });
+
+  it("needs at least two consecutive commits", async () => {
+    const base = read(["rev-parse", "HEAD"]);
+    const a = commit("a", "a");
+    commit("b", "b");
+    const c = commit("c", "c");
+    await expect(squashPlan(base, [a])).rejects.toThrow(/at least two/);
+    await expect(squashPlan(base, [a, a])).rejects.toThrow(/at least two/);
+    await expect(squashPlan(base, [a, c])).rejects.toThrow(/consecutive/);
+  });
+});
+
 describe("worktrees", () => {
   it("creates and opens a linked worktree, reports occupancy, and removes only clean worktrees", async () => {
     const folder = path.join(

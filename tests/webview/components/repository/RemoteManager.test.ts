@@ -41,7 +41,16 @@ const origin: RemoteDetails = {
 const mirror: RemoteDetails = { name: "team/mirror", fetchUrls: ["/srv/m"], pushUrls: [] };
 
 function branchNamed(name: string, upstream = "", gone = false): BranchDetails {
-  return { name, upstream, gone, hash: "0".repeat(40), ahead: 0, behind: 0 };
+  return {
+    name,
+    upstream,
+    gone,
+    hash: "0".repeat(40),
+    ahead: 0,
+    behind: 0,
+    date: 0,
+    merged: false
+  };
 }
 
 function repository(extra: Partial<RepositoryState> = {}): RepositoryState {

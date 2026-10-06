@@ -30,9 +30,20 @@ const state: RepositoryState = {
       upstream: "origin/feature",
       ahead: 2,
       behind: 1,
-      gone: false
+      gone: false,
+      date: 0,
+      merged: false
     },
-    { name: "main", hash: "a".repeat(40), upstream: "", ahead: 0, behind: 0, gone: false }
+    {
+      name: "main",
+      hash: "a".repeat(40),
+      upstream: "",
+      ahead: 0,
+      behind: 0,
+      gone: false,
+      date: 0,
+      merged: false
+    }
   ],
   remoteBranches: [
     { name: "origin/feature", hash: "f".repeat(40) },
@@ -149,6 +160,102 @@ describe("RefsPane", () => {
     expect(text).toContain("v1");
     expect(text).toContain("WIP on main: work");
     expect(text).toContain("stash@{0}");
+  });
+
+  it("pins a branch above the others and saves the pin for the repository", () => {
+    const localRows = () =>
+      [...container.querySelectorAll("section")][0]!.querySelectorAll<HTMLButtonElement>(
+        "button[aria-current], button[title]:not([aria-label])"
+      );
+    const labels = () =>
+      [...localRows()].map((button) => button.querySelector("span.truncate")?.textContent);
+    expect(labels()).toEqual(["showAll", "feature", "main"]);
+
+    const pin =
+      row("main").parentElement!.querySelector<HTMLButtonElement>("button[aria-pressed]")!;
+    expect(pin.getAttribute("aria-pressed")).toBe("false");
+    act(() => pin.click());
+    expect(mocks.postMessage).toHaveBeenCalledWith({
+      command: "saveRepoState",
+      repo: "/repo",
+      state: { pinnedBranches: ["main"] }
+    });
+    expect(labels()).toEqual(["showAll", "main", "feature"]);
+    expect(row("main").querySelector('[aria-label="pinnedBranch"]')).not.toBeNull();
+
+    act(() =>
+      row("main").parentElement!.querySelector<HTMLButtonElement>("button[aria-pressed]")!.click()
+    );
+    expect(labels()).toEqual(["showAll", "feature", "main"]);
+    expect(stores.pinnedBranches.value).toEqual([]);
+  });
+
+  it("sorts local branches by their last commit when asked, and saves the choice", () => {
+    const sortButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="sortBranchesByRecent"]'
+    )!;
+    expect(sortButton.getAttribute("aria-pressed")).toBe("false");
+    act(() => {
+      actions.repositoryState.value = {
+        ...state,
+        branches: [
+          { ...state.branches[0]!, date: 100 },
+          { ...state.branches[1]!, date: 200 }
+        ]
+      };
+    });
+    act(() => sortButton.click());
+    expect(mocks.postMessage).toHaveBeenCalledWith({
+      command: "saveRepoState",
+      repo: "/repo",
+      state: { branchSort: "recent" }
+    });
+    expect(sortButton.getAttribute("aria-pressed")).toBe("true");
+    const order = [...container.querySelectorAll("section")][0]!.textContent!;
+    expect(order.indexOf("main")).toBeLessThan(order.indexOf("feature"));
+    act(() => sortButton.click());
+    expect(stores.branchSort.value).toBe("name");
+  });
+
+  it("flags merged, gone, stale and diverged branches beside their names, never the checked-out one", () => {
+    const now = Date.now() / 1000;
+    act(() => {
+      actions.repositoryState.value = {
+        ...state,
+        branches: [
+          { ...state.branches[0]!, merged: true, date: now - 200 * 24 * 60 * 60 },
+          { ...state.branches[1]!, merged: true, date: now },
+          {
+            name: "old",
+            hash: "b".repeat(40),
+            upstream: "origin/old",
+            ahead: 0,
+            behind: 0,
+            gone: true,
+            date: now,
+            merged: false
+          }
+        ]
+      };
+    });
+    const flags = (title: string) =>
+      [...row(title).parentElement!.querySelectorAll<HTMLElement>("[data-branch-flag]")].map(
+        (flag) => [flag.dataset.branchFlag, flag.title]
+      );
+    expect(flags("feature\norigin/feature")).toEqual([
+      ["merged", "branchMergedTitle"],
+      ["stale", "branchStaleTitle"]
+    ]);
+    expect(flags("main")).toEqual([]);
+    expect(flags("old\norigin/old\nupstreamGone")).toEqual([["gone", "upstreamGone"]]);
+    // The row's own button still reads as the branch's name.
+    expect(row("feature\norigin/feature").querySelector("[data-branch-flag]")).toBeNull();
+    // Ahead of and behind its upstream at once.
+    const tracking = [...row("feature\norigin/feature").querySelectorAll("span")].find(
+      (span) => span.textContent === "↑2 ↓1"
+    )!;
+    expect(tracking.classList.contains("text-git-modified")).toBe(true);
+    expect(tracking.title).toBe("branchDiverged");
   });
 
   it("limits the graph to a clicked branch", () => {

@@ -8,6 +8,10 @@ export type BranchDetails = {
   ahead: number;
   behind: number;
   gone: boolean;
+  /** When the branch's last commit was committed, in seconds since 1970; 0 when unknown. */
+  date: number;
+  /** Whether HEAD already contains the branch's last commit, as for HEAD's own branch. */
+  merged: boolean;
 };
 export type WorktreeDetails = {
   path: string;
@@ -47,7 +51,13 @@ export type RepositoryQuery =
   | { kind: "conflictForecast" }
   | { kind: "state" }
   | { kind: "stashes" }
-  | { kind: "rebasePlan"; base: string; autosquash?: boolean }
+  | {
+      kind: "rebasePlan";
+      base: string;
+      autosquash?: boolean;
+      /** Commits to squash into the oldest of them; they must be consecutive in the plan. */
+      squash?: string[];
+    }
   | { kind: "lease"; remote: string; branch: string };
 
 export type RepositoryQueryData =

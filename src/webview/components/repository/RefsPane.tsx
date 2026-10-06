@@ -6,6 +6,7 @@ import type { BranchDetails, GitRef, RefDetails, RemoteDetails } from "@/backend
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { abbrevCommit } from "@/backend/utils/string";
 import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
+import { ConflictBadge } from "@/webview/components/commit/RefLabel";
 import { addRemote, remoteMenu } from "@/webview/components/repository/RemoteManager";
 import {
   applyStash,
@@ -16,9 +17,11 @@ import {
 import {
   BranchIcon,
   ChevronDownIcon,
+  ClockIcon,
   EyeClosedIcon,
   EyeIcon,
   KebabIcon,
+  PinIcon,
   PlusIcon,
   RemoteIcon,
   StashIcon,
@@ -32,17 +35,22 @@ import {
   openFormDialog,
   runAction,
   selectBranch,
+  setBranchPinned,
+  setBranchSort,
   setRemoteVisible,
   setShowRemoteBranch
 } from "@/webview/lib/actions";
+import { branchHealth, orderBranches } from "@/webview/lib/branch-health";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
 import { collapsedSections, focusHistory, toggleSection } from "@/webview/lib/navigation";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
 import { repositoryState } from "@/webview/lib/repository-actions";
 import {
   activeSource,
+  branchSort,
   commitHead,
   hiddenRemotes,
+  pinnedBranches,
   selectedBranch,
   selectedRepo,
   showRemoteBranch
@@ -96,13 +104,35 @@ function newBranch(head: string) {
   });
 }
 
-function TrackingBadge({ branch }: { branch: BranchDetails }) {
+function TrackingBadge({ branch, diverged }: { branch: BranchDetails; diverged: boolean }) {
   if (!branch.upstream || branch.gone || (branch.ahead === 0 && branch.behind === 0)) {
     return null;
   }
   return (
-    <span class="shrink-0 text-xs text-muted">
+    <span
+      class={`shrink-0 text-xs ${diverged ? "text-git-modified" : "text-muted"}`}
+      title={
+        diverged
+          ? window.l10n.branchDiverged
+              .replace("{0}", String(branch.ahead))
+              .replace("{1}", String(branch.behind))
+          : undefined
+      }
+    >
       ↑{branch.ahead} ↓{branch.behind}
+    </span>
+  );
+}
+
+/** A small word after a branch's name, such as "merged", with the reason in its tooltip. */
+function Flag({ kind, label, title }: { kind: string; label: string; title: string }) {
+  return (
+    <span
+      data-branch-flag={kind}
+      class="shrink-0 rounded-sm border border-line px-1 text-xs leading-tight text-muted"
+      title={title}
+    >
+      {label}
     </span>
   );
 }
@@ -124,6 +154,7 @@ function Row({
   dimmed = false,
   depth = 0,
   badge,
+  flags,
   actions,
   onSelect,
   menu
@@ -138,6 +169,8 @@ function Row({
   dimmed?: boolean;
   depth?: number;
   badge?: ComponentChildren;
+  /** Shown after the label, outside it, so the label still reads as the ref's name alone. */
+  flags?: ComponentChildren;
   actions?: ComponentChildren;
   onSelect: () => void;
   menu?: () => Array<ContextMenuEntry>;
@@ -163,9 +196,11 @@ function Row({
         <span class={`truncate ${bold ? "font-bold" : ""}`}>{label}</span>
         {badge}
       </button>
+      {flags !== undefined && <span class="flex shrink-0 items-center gap-1">{flags}</span>}
+      {/* Out of sight, the actions take no room, so the flags line up at the row's end. */}
       <span
-        class={`flex shrink-0 items-center gap-0.5 group-hover:opacity-100 group-focus-within:opacity-100 ${
-          menuOpen ? "" : "opacity-0"
+        class={`flex shrink-0 items-center gap-0.5 group-hover:max-w-none group-hover:opacity-100 group-focus-within:max-w-none group-focus-within:opacity-100 ${
+          menuOpen ? "" : "max-w-0 overflow-hidden opacity-0"
         }`}
       >
         {actions}
@@ -295,7 +330,18 @@ export function RefsPane() {
   const stashes = stashQuery.data?.stashes ?? [];
   const needle = filter.trim().toLowerCase();
   const matches = (text: string) => needle === "" || text.toLowerCase().includes(needle);
-  const branches = (state?.branches ?? []).filter((branch) => matches(branch.name));
+  const pinned = pinnedBranches.value;
+  const sort = branchSort.value;
+  const branches = orderBranches(
+    (state?.branches ?? []).filter((branch) => matches(branch.name)),
+    sort,
+    pinned
+  );
+  const forecast = useRepositoryQuery<"conflictForecast">(
+    state === null ? null : { kind: "conflictForecast" }
+  );
+  const conflicts = new Map(forecast.data?.conflicts.map(({ branch, files }) => [branch, files]));
+  const now = Date.now() / 1000;
   const groups = groupRemoteBranches(state?.remotes ?? [], state?.remoteBranches ?? []).flatMap(
     (group) => {
       const refs = group.branches.filter((ref) => matches(ref.name));
@@ -338,16 +384,32 @@ export function RefsPane() {
             count={state.branches.length}
             icon={<BranchIcon class={ROW_ICON} />}
             trailing={
-              <button
-                type="button"
-                class={ACTION_CLASS}
-                aria-label={window.l10n.createBranchHere}
-                title={window.l10n.createBranchHere}
-                disabled={head === null}
-                onClick={() => head !== null && newBranch(head)}
-              >
-                <PlusIcon class="size-3.5" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  class={ACTION_CLASS}
+                  aria-label={window.l10n.sortBranchesByRecent}
+                  aria-pressed={sort === "recent"}
+                  title={
+                    sort === "recent"
+                      ? window.l10n.branchesSortedByRecent
+                      : window.l10n.branchesSortedByName
+                  }
+                  onClick={() => setBranchSort(sort === "recent" ? "name" : "recent")}
+                >
+                  <ClockIcon class={`size-3.5 ${sort === "recent" ? "text-focus" : ""}`} />
+                </button>
+                <button
+                  type="button"
+                  class={ACTION_CLASS}
+                  aria-label={window.l10n.createBranchHere}
+                  title={window.l10n.createBranchHere}
+                  disabled={head === null}
+                  onClick={() => head !== null && newBranch(head)}
+                >
+                  <PlusIcon class="size-3.5" />
+                </button>
+              </>
             }
           >
             {needle === "" && (
@@ -362,6 +424,9 @@ export function RefsPane() {
             {branchPage.shown.map((branch) => {
               const gitRef: GitRef = { type: "head", name: branch.name, hash: branch.hash };
               const isHead = state.head === branch.name;
+              const isPinned = pinned.includes(branch.name);
+              const health = branchHealth(branch, state.head, head, now);
+              const conflicted = conflicts.get(branch.name);
               const worktree = isHead
                 ? undefined
                 : state.worktrees.find((entry) => entry.branch === branch.name);
@@ -372,7 +437,17 @@ export function RefsPane() {
                   label={branch.name}
                   name={`refs/heads/${branch.name}`}
                   bold={isHead}
-                  icon={<BranchIcon class={ROW_ICON} />}
+                  icon={
+                    isPinned ? (
+                      <PinIcon
+                        class="size-3.5 shrink-0 text-focus"
+                        role="img"
+                        aria-label={window.l10n.pinnedBranch}
+                      />
+                    ) : (
+                      <BranchIcon class={ROW_ICON} />
+                    )
+                  }
                   active={selectedBranch.value === branch.name}
                   title={[
                     branch.name,
@@ -385,24 +460,73 @@ export function RefsPane() {
                   badge={
                     <>
                       <BranchFocusBadge branch={branch.name} />
-                      <TrackingBadge branch={branch} />
+                      <TrackingBadge branch={branch} diverged={health.diverged} />
                       {worktree && <span class="shrink-0 text-xs">↗</span>}
+                    </>
+                  }
+                  flags={
+                    <>
+                      {conflicted !== undefined && <ConflictBadge files={conflicted} />}
+                      {health.merged && (
+                        <Flag
+                          kind="merged"
+                          label={window.l10n.branchMerged}
+                          title={window.l10n.branchMergedTitle.replace(
+                            "{0}",
+                            () => state.head || "HEAD"
+                          )}
+                        />
+                      )}
+                      {health.gone && (
+                        <Flag
+                          kind="gone"
+                          label={window.l10n.branchGone}
+                          title={window.l10n.upstreamGone}
+                        />
+                      )}
+                      {health.staleDays !== null && (
+                        <Flag
+                          kind="stale"
+                          label={window.l10n.branchStale}
+                          title={window.l10n.branchStaleTitle.replace(
+                            "{0}",
+                            String(health.staleDays)
+                          )}
+                        />
+                      )}
                     </>
                   }
                   onSelect={() => selectBranch(branch.name)}
                   menu={() => refMenu(gitRef, isHead)}
                   actions={
-                    !isHead &&
-                    !worktree && (
+                    <>
                       <button
                         type="button"
                         class={ACTION_CLASS}
-                        aria-label={`${window.l10n.checkout} refs/heads/${branch.name}`}
-                        onClick={() => checkoutBranchAction(gitRef)}
+                        aria-label={(isPinned
+                          ? window.l10n.unpinBranch
+                          : window.l10n.pinBranch
+                        ).replace("{0}", () => branch.name)}
+                        aria-pressed={isPinned}
+                        title={(isPinned ? window.l10n.unpinBranch : window.l10n.pinBranch).replace(
+                          "{0}",
+                          () => branch.name
+                        )}
+                        onClick={() => setBranchPinned(branch.name, !isPinned)}
                       >
-                        {window.l10n.checkout}
+                        <PinIcon class="size-3.5" />
                       </button>
-                    )
+                      {!isHead && !worktree && (
+                        <button
+                          type="button"
+                          class={ACTION_CLASS}
+                          aria-label={`${window.l10n.checkout} refs/heads/${branch.name}`}
+                          onClick={() => checkoutBranchAction(gitRef)}
+                        >
+                          {window.l10n.checkout}
+                        </button>
+                      )}
+                    </>
                   }
                 />
               );

@@ -37,3 +37,22 @@ it("reports the commit behind every branch, remote branch and tag", async () => 
     { name: "light", hash: head }
   ]);
 });
+
+it("dates each branch by its last commit and says whether HEAD contains it", async () => {
+  const other = makeRepo();
+  try {
+    const env = { ...process.env, GIT_COMMITTER_DATE: "@1700000000 +0000" };
+    cp.execFileSync("git", ["checkout", "-q", "-b", "ahead"], { cwd: other });
+    cp.execFileSync("git", ["commit", "-q", "--allow-empty", "-m", "ahead"], { cwd: other, env });
+    git(["checkout", "-q", "main"], other);
+    git(["branch", "behind"], other);
+    const state = await loadRepositoryState(createGit(other, "git"));
+    const byName = new Map(state.branches.map((branch) => [branch.name, branch]));
+    expect(byName.get("ahead")).toMatchObject({ date: 1700000000, merged: false });
+    expect(byName.get("behind")).toMatchObject({ merged: true });
+    expect(byName.get("main")).toMatchObject({ merged: true });
+    expect(byName.get("main")!.date).toBeGreaterThan(0);
+  } finally {
+    fs.rmSync(other, { recursive: true, force: true });
+  }
+});
