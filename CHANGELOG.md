@@ -8,6 +8,10 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+### Changed
+
+- Show screenshots of the graph, branch focus and the Statistics tab in the README, and add search keywords such as `git log`, `git history`, `reflog` and `visualization`. `pnpm run screenshots` regenerates the images from a demo repository (see [testing](docs/testing.md)).
+
 ## [0.9.10] - 2026-10-03
 
 ### Changed

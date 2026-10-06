@@ -11,6 +11,8 @@
   </p>
 </div>
 
+![The Branchwise graph in VS Code's dark theme: branch and tag labels, dots for unpushed and unpulled commits, and a commit's details open with a linked issue and its changed files](docs/images/graph-dark.png)
+
 ## Install
 
 Search for **Branchwise** in VSCodium or another Open VSX editor, or run
@@ -37,6 +39,8 @@ basics.
 - Branch focus dims unrelated history, without a checkout
 - Hide remotes one at a time; [view choices](docs/preferences.md) are kept per repository
 
+![Branch focus in VS Code's light theme: the focused branch's history in full colour, other history dimmed, and the Branches pane with ahead and behind counts](docs/images/branch-focus-light.png)
+
 **Work from the graph**
 
 - Branches and tags: create, check out, rename, merge, delete, push
@@ -48,6 +52,8 @@ basics.
 
 - Reflog tab that recovers commits no branch reaches; compare refs; restore earlier file contents
 - Guided bisect, merged-branch cleanup, and a Statistics tab of commits and contributors
+
+![The Statistics tab: commit, contributor and active-day counts, a year of daily activity, and each contributor's share of the commits](docs/images/statistics-dark.png)
 
 **Repositories**
 

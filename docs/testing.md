@@ -79,6 +79,21 @@ successful recovery, and minimum run. `compatibility.json` records both actual v
 the minimum needed a separate run. Local installation overrides are identified in the report;
 without overrides, the test tooling resolves and downloads stable/minimum VS Code.
 
+## Regenerate the README screenshots
+
+```sh
+pnpm run screenshots
+```
+
+This builds the extension and runs one opt-in scenario, `captures the README screenshots` in
+`tests-ext/ui/screenshots.cjs`, which `pnpm test:ext` and CI skip unless `NGG_SCREENSHOTS=1` is
+set. It creates a demo repository with three authors, merged branches, tags and a remote that is
+ahead and behind, opens it in a 1280×800 window, and writes the editor area to the PNGs in
+`docs/images/`, overwriting them. Commit dates count back from the day of the run, so the images
+always differ slightly; check each one before committing it. To show a new feature, add a step to
+that file. As with the other scenarios, prefix the command with `xvfb-run -a` on Linux without a
+display, and set `NGG_VSCODE_PATH` to use an installed VS Code.
+
 ## Suite overview and performance
 
 `pnpm test:ext` includes the committed end-to-end UI checks and launches an isolated VS Code instance with a disposable workspace. Failed tests save diagnostic text under `test-results/`; successful UI checks capture screenshots there. CI is configured for Linux, Windows, and macOS and produces an installable VSIX artifact. `NGG_VSCODE_PATH` can select a local VS Code executable, and `NGG_HEADLESS=1` enables Linux headless runs.

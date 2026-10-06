@@ -524,6 +524,22 @@ suite("Branchwise workflow UI", function () {
     });
   }
 
+  if (process.env.NGG_SCREENSHOTS === "1") {
+    test("captures the README screenshots", async function () {
+      this.timeout(300000);
+      await require("./screenshots.cjs")({
+        directory,
+        openRepo,
+        graph: () => graph,
+        connections,
+        button,
+        contextRef,
+        menu,
+        until
+      });
+    });
+  }
+
   test("focuses direct or merged branch history without hiding rows or changing checkout", async () => {
     const dir = directory();
     init(dir);
