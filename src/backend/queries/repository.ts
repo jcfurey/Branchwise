@@ -14,6 +14,7 @@ import { historyQuery } from "@/backend/queries/history";
 import { loadPushStatus } from "@/backend/queries/pushStatus";
 import { loadReplayForecast } from "@/backend/queries/replayForecast";
 import { loadSafetyNet, loadSafetyUndo } from "@/backend/queries/safetyNet";
+import { loadSplitPlan } from "@/backend/queries/splitCommit";
 import {
   loadBulkSyncPlan,
   loadSyncPlan,
@@ -404,6 +405,8 @@ export async function repositoryQuery(
       return { kind: "editPlan", plan: await loadRewordPlan(git, query.target) };
     case "amendPlan":
       return { kind: "amendPlan", plan: await loadAmendPlan(git, query.target) };
+    case "splitPlan":
+      return { kind: "splitPlan", plan: await loadSplitPlan(git, query.target) };
     case "absorbPlan":
       return { kind: "absorbPlan", plan: await loadAbsorbPlan(git) };
     case "lease": {

@@ -41,7 +41,7 @@ export function hasStagedChanges(): boolean {
 }
 
 /** The target commit as the dialogs name it: its short ID and subject. */
-function Target({ plan }: { plan: EditPlan }) {
+export function Target({ plan }: { plan: EditPlan }) {
   return (
     <>
       <code>{abbrevCommit(plan.target)}</code> <b>{plan.message.split("\n")[0]}</b>
@@ -50,7 +50,7 @@ function Target({ plan }: { plan: EditPlan }) {
 }
 
 /** What else the edit rewrites, and a warning when the commit was already pushed. */
-function Consequences({ plan }: { plan: EditPlan }) {
+export function Consequences({ plan }: { plan: EditPlan }) {
   return (
     <>
       {plan.later > 0 && (

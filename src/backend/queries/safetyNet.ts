@@ -92,6 +92,8 @@ export function safetyTitle(record: Pick<SafetyRecord, "kind" | "subject" | "det
       return l10n.t("Commit Amend on {0}", subject);
     case "absorb":
       return l10n.t("Absorb into {0}", subject);
+    case "split":
+      return l10n.t("Commit Split on {0}", subject);
     case "merge":
       return l10n.t("Merge into {0}", subject);
     case "cherryPick":

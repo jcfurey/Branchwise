@@ -10,6 +10,7 @@ export type SafetyActionKind =
   | "reword"
   | "amend"
   | "absorb"
+  | "split"
   | "merge"
   | "cherryPick"
   | "revert"

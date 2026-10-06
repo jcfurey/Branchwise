@@ -142,6 +142,36 @@ export type AbsorbPlan = {
   clean: boolean;
 };
 
+/** A run of changed lines in a file, which a split can put in a part of its own. */
+export type SplitHunk = {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  /** The hunk's lines, each starting with `-` or `+`, up to `SPLIT_PREVIEW_LINES` of them. */
+  lines: string[];
+  /** How many more lines the hunk has than `lines` shows. */
+  hidden: number;
+};
+/** A file the commit to split changes. */
+export type SplitFile = {
+  path: string;
+  /** The path before a rename; the same as `path` otherwise. */
+  from: string;
+  status: "A" | "M" | "D" | "R";
+  /**
+   * Two or more hunks that may go to different parts, or null for a file that goes whole:
+   * one added, deleted, renamed, binary, changing its mode or type, or with one hunk only.
+   */
+  hunks: SplitHunk[] | null;
+};
+export type SplitPlan = EditPlan & { files: SplitFile[] };
+/**
+ * Which part each file of a split plan goes to, by the file's index in the plan: one part for
+ * the whole file, or one per hunk. Parts are numbered from 0.
+ */
+export type SplitAssignment = Array<number | number[]>;
+
 export type RepositoryQuery =
   | WorkflowQuery
   | HistoryQuery
@@ -168,6 +198,7 @@ export type RepositoryQuery =
     }
   | { kind: "editPlan"; target: string }
   | { kind: "amendPlan"; target: string }
+  | { kind: "splitPlan"; target: string }
   | { kind: "absorbPlan" }
   | { kind: "lease"; remote: string; branch: string }
   | { kind: "safetyNet" };
@@ -185,6 +216,7 @@ export type RepositoryQueryData =
   | { kind: "rebasePlan"; plan: RebasePlan }
   | { kind: "editPlan"; plan: EditPlan }
   | { kind: "amendPlan"; plan: AmendPlan }
+  | { kind: "splitPlan"; plan: SplitPlan }
   | { kind: "absorbPlan"; plan: AbsorbPlan }
   | { kind: "lease"; hash: string }
   | { kind: "safetyNet"; entries: SafetyNetEntry[] };
@@ -211,6 +243,7 @@ export type RepositoryAction =
   | { kind: "interactiveRebase"; plan: RebasePlan }
   | { kind: "reword"; plan: EditPlan; message: string }
   | { kind: "amendCommit"; plan: AmendPlan }
+  | { kind: "splitCommit"; plan: SplitPlan; messages: string[]; assignment: SplitAssignment }
   | { kind: "absorb"; plan: AbsorbPlan }
   | { kind: "recover"; operation: OperationState; resolution: "continue" | "abort" | "skip" }
   | { kind: "conflict"; path: string; operation: "open" | "stage" }

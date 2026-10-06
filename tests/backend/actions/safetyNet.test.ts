@@ -30,6 +30,7 @@ import {
   safetyJournalFile,
   SAFETY_NET_LIMIT
 } from "@/backend/queries/safetyNet";
+import { loadSplitPlan } from "@/backend/queries/splitCommit";
 import { loadCleanupPlan, loadFastForwardPlan } from "@/backend/queries/workflows";
 import type { ActionRequest, RepositoryAction, SafetyRecord } from "@/backend/types";
 
@@ -203,6 +204,24 @@ describe("recording and undoing each destructive action", () => {
       repositoryAction({ kind: "absorb", plan: await loadAbsorbPlan(git()) })
     );
     expect(record).toMatchObject({ kind: "absorb", subject: "main" });
+  });
+
+  it("undoes a split, leaving the files as they were", async () => {
+    commit("a", "one");
+    write("b", "two");
+    write("c", "three");
+    read(["add", "--", "b", "c"]);
+    read(["commit", "-q", "-m", "two files"]);
+    const plan = await loadSplitPlan(git(), "HEAD");
+    const record = await roundTrip(async () =>
+      repositoryAction({
+        kind: "splitCommit",
+        plan,
+        messages: ["first part", "second part"],
+        assignment: plan.files.map((_, index) => index)
+      })
+    );
+    expect(record).toMatchObject({ kind: "split", subject: "main" });
   });
 
   it("undoes message edits and amends, leaving the folded-in changes staged again", async () => {

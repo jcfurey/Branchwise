@@ -133,8 +133,8 @@ describe("which commits can be edited in place", () => {
     repositoryState.value = { ...STATE, staged: 2 };
     const entries = titles(commitMenu(ROWS[2]!, new Map()));
     expect(
-      entries.slice(entries.indexOf("editMessage…"), entries.indexOf("editMessage…") + 3)
-    ).toEqual(["editMessage…", "addStagedToCommit…", "interactiveRebase…"]);
+      entries.slice(entries.indexOf("editMessage…"), entries.indexOf("editMessage…") + 4)
+    ).toEqual(["editMessage…", "splitCommit…", "addStagedToCommit…", "interactiveRebase…"]);
     expect(titles(commitMenu(ROWS[3]!, new Map()))).not.toContain("addStagedToCommit…");
     repositoryState.value = null;
     expect(titles(commitMenu(ROWS[2]!, new Map()))).not.toContain("addStagedToCommit…");

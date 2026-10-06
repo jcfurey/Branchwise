@@ -251,6 +251,9 @@ function safetyPlan(request: ActionRequest): SafetyPlan | null {
     case "absorb":
       // The fixups hold what was staged, and the index still does; moving back leaves it staged.
       return { ...onHead("absorb"), mode: "soft" };
+    case "splitCommit":
+      // The last part has the split commit's files, so moving back changes no file.
+      return { ...onHead("split"), mode: "soft" };
     case "batch":
       return action.operation === "cherry-pick"
         ? onHead("cherryPick", "cherry-pick")
