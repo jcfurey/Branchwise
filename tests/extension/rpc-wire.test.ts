@@ -99,6 +99,7 @@ test("hands the page its strings and settings", async () => {
     initialLoadCommits: 300,
     loadMoreCommits: 100,
     locale: "en",
-    showCurrentBranchByDefault: false
+    showCurrentBranchByDefault: false,
+    singleKeyShortcuts: true
   });
 });

@@ -22,7 +22,8 @@ const settings: WebviewConfig = {
   initialLoadCommits: 50,
   loadMoreCommits: 25,
   locale: "de",
-  showCurrentBranchByDefault: true
+  showCurrentBranchByDefault: true,
+  singleKeyShortcuts: true
 };
 
 /** Edits a configuration in place, which the types forbid. Compiled, never called. */
@@ -42,7 +43,7 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the nine display settings", () => {
+  it("holds exactly the ten display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
       | "conflictForecast"
@@ -53,8 +54,9 @@ describe("WebviewConfig", () => {
       | "loadMoreCommits"
       | "locale"
       | "showCurrentBranchByDefault"
+      | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(9);
+    expect(Object.keys(settings)).toHaveLength(10);
   });
 });
 

@@ -12,7 +12,8 @@ const first: WebviewConfig = {
   initialLoadCommits: 250,
   loadMoreCommits: 75,
   locale: "de",
-  showCurrentBranchByDefault: true
+  showCurrentBranchByDefault: true,
+  singleKeyShortcuts: true
 };
 
 const later: WebviewConfig = { ...first, dateFormat: "Relative", initialLoadCommits: 1200 };

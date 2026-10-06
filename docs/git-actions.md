@@ -279,6 +279,27 @@ Ctrl/Cmd-click selects individual commits; Shift-click selects a range. Select u
 
 Arrow keys move between commit rows; Home/End move to the first/last loaded row. Enter opens details, Space selects, and Shift+F10 opens actions. Ctrl/Cmd+F or `/` opens and focuses history search when no dialog is active, and Ctrl+Alt+G (Cmd+Alt+G on macOS) opens **Go to Branch, Tag or Commit…**. Repository switches preserve filters and scroll position.
 
+Single keys act on the commit row that has focus, without opening its menu. Each one opens the same dialog or confirmation as the matching menu entry, so nothing changes until you confirm:
+
+| Key | Action                                                        |
+| --- | ------------------------------------------------------------- |
+| C   | **Check Out…** the commit                                     |
+| B   | **Create Branch…**                                            |
+| T   | **Create Tag…**                                               |
+| P   | **Cherry-pick…**; with several commits selected, all of them  |
+| V   | **Revert…**                                                   |
+| R   | Rebase the current branch onto the branch on the row          |
+| I   | **Edit commits after this (interactive rebase)…**             |
+| M   | **Merge into Current Branch…**: the branch on the row, if any |
+| X   | **Reset Current Branch to This Commit…**                      |
+| E   | **Edit Message…**, for commits of the checked-out branch      |
+| Y   | Copy the short commit ID; Shift+Y copies the full ID          |
+| O   | Open the commit on GitHub or GitLab                           |
+| D   | Open or close the details, like Enter                         |
+| ?   | Show every keyboard shortcut                                  |
+
+R and M use the first branch label on the row whose own menu offers the action. A key whose action the row does not offer, such as E on a commit of another branch, does nothing; a screen reader announces that it is not available here. Menus show each entry's key at the right. The keys are ignored while typing in the search box or a dialog, while a dialog or menu is open, and with modifiers such as Ctrl, so VS Code's own shortcuts keep working. **Settings & Tools → Keyboard Shortcuts** opens the same list as `?`. To turn the single keys off, for example for a screen reader or an extension that sends single keys, set `branchwise.singleKeyShortcuts` to `false`.
+
 Running operations show their repository, action, and elapsed time. **Hide** closes the progress dialog while Git continues. Push, pull, fetch, remote branch and tag deletion, and checkouts that fetch first also offer **Stop Git**, which ends the Git process, for example when a server stops responding, and frees the repository for other actions. Git never waits for a password typed in a terminal; use a credential helper or SSH agent. **Git Activity** retains the last 100 operations from this view, including results that arrive after switching repositories or opening another dialog. Errors have selectable output and **Copy Error Details**. This activity list lasts for the current graph view; it is separate from Git's reflog.
 
 Closing a menu or dialog restores focus to the original control or commit row. On narrow windows the workspace sidebar moves above the graph and dialog fields stack vertically. Superseded history queries cancel their Git processes; hiding a mutation's progress dialog leaves that operation running.

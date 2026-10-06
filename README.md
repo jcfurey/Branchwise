@@ -57,6 +57,7 @@ basics.
 - Split a commit into several, by file or by hunk, without touching the working tree
 - Fast-forward every branch that is only behind its upstream, without a checkout
 - Stashes, conflict resolution, and continue, skip or abort for interrupted operations
+- Single keys on the focused commit, such as B to create a branch; `?` lists every shortcut
 
 **Recover and investigate**
 
@@ -93,6 +94,7 @@ All settings start with `branchwise.`.
 | `showCurrentBranchByDefault`  | `false`            | Open showing only the checked-out branch                                 |
 | `showSignatures`              | `true`             | Mark signed commits in the graph                                         |
 | `showUncommittedChanges`      | `true`             | Show the uncommitted changes row                                         |
+| `singleKeyShortcuts`          | `true`             | Let single keys act on the focused commit row                            |
 | `tabIconColourTheme`          | `"colour"`         | Graph tab icon in `"colour"` or `"grey"`                                 |
 
 ## Upgrading from (neo) Git Graph

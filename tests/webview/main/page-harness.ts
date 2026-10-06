@@ -27,7 +27,8 @@ export const PAGE_CONFIG: WebviewConfig = {
   loadMoreCommits: 50,
   autoCenterCommitDetailsView: false,
   conflictForecast: "localAndRemote",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 export const initialized = (): Reply => ({

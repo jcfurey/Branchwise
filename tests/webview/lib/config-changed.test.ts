@@ -29,7 +29,8 @@ const changed: WebviewConfig = {
   initialLoadCommits: 500,
   loadMoreCommits: 100,
   locale: "en",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 function notifyConfig(config: WebviewConfig) {

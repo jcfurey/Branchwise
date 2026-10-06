@@ -61,3 +61,13 @@ hidden-branch pattern or **Show Remote Branches in Graph** turned off leaves bra
 tree. `branchwise.showSignatures` (on by default) marks signed commits with a small key, which
 reads the loaded commits once more; turning it off saves about 10 ms for 300 rows and 40 ms for
 3,000 (see [performance](performance.md)). The commit details still check signatures. See [commit signatures](git-actions.md#commit-signatures).
+
+### Single-key shortcuts
+
+`branchwise.singleKeyShortcuts` (default `true`) lets single keys act on the focused commit row,
+such as B for **Create Branch…** or Y to copy the short commit ID, and lets `?` open the list of
+keyboard shortcuts. Turn it off if you use a screen reader that reads the graph with single-letter
+commands, or an extension that sends single keys of its own. With it off, the menus stop showing
+the keys and the shortcut sheet says they are off; arrow keys, Enter, Space, Escape, Shift+F10,
+Ctrl/Cmd+F, `/` and Ctrl+Alt+G keep working. See
+[keyboard navigation](git-actions.md#keyboard-navigation-and-activity).

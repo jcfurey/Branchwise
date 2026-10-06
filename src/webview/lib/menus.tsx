@@ -16,6 +16,7 @@ import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { ReplayForecastFor } from "@/webview/components/repository/ReplayForecast";
 import { openSplitCommit } from "@/webview/components/repository/SplitCommit";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
+import { announce } from "@/webview/components/ui/Announcer";
 import { Explain } from "@/webview/components/ui/Explain";
 import { closeDialog, focusBranchInGraph, openFormDialog, runAction } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
@@ -23,6 +24,7 @@ import { openUrl } from "@/webview/lib/actions/open-url";
 import { branchPage, commitPage, type HostPage, tagPage } from "@/webview/lib/host-links";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
 import { repositoryState } from "@/webview/lib/repository-actions";
+import type { ShortcutId } from "@/webview/lib/shortcuts";
 import { patternLike } from "@/webview/lib/stores/hidden-branches.store";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
@@ -101,10 +103,15 @@ function focusEntry(branch: string): Entry {
  * The entry that opens `page` on its host, titled from `title` with the host's name. None when
  * the repository's host is not known.
  */
-function hostEntry(title: string, page: HostPage | null): Array<Entry> {
-  return page === null
-    ? []
-    : [{ title: title.replaceAll("{0}", () => page.host), onClick: () => void openUrl(page.url) }];
+function hostEntry(title: string, page: HostPage | null, shortcut?: ShortcutId): Array<Entry> {
+  if (page === null) {
+    return [];
+  }
+  const entry: Entry = {
+    title: title.replaceAll("{0}", () => page.host),
+    onClick: () => void openUrl(page.url)
+  };
+  return [shortcut === undefined ? entry : { ...entry, shortcut }];
 }
 
 function copyBranchEntry(name: string): Entry {
@@ -123,6 +130,15 @@ function hideLikeEntry(gitRef: GitRef): Entry {
 }
 
 // Commit menu
+
+/** Copy a commit ID, and tell a screen reader once it is on the clipboard. */
+function copyCommitId(id: string) {
+  void copyToClipboard(window.l10n.typeCommitHash, id).then((copied) => {
+    if (copied) {
+      announce(window.l10n.copiedToClipboard);
+    }
+  });
+}
 
 function addTag(hash: string) {
   openFormDialog({
@@ -288,26 +304,39 @@ export function commitMenu(
   const l10n = window.l10n;
   return grouped(
     [
-      { title: more(l10n.addTag), onClick: () => addTag(hash) },
-      { title: more(l10n.createBranch), onClick: () => createBranch(hash) }
+      { title: more(l10n.addTag), onClick: () => addTag(hash), shortcut: "addTag" },
+      {
+        title: more(l10n.createBranch),
+        onClick: () => createBranch(hash),
+        shortcut: "createBranch"
+      }
     ],
     [
-      { title: more(l10n.checkout), onClick: () => checkoutCommit(hash) },
+      { title: more(l10n.checkout), onClick: () => checkoutCommit(hash), shortcut: "checkout" },
       {
         title: more(l10n.cherryPick),
-        onClick: () => applyCommit(commit, messages, "cherrypickCommit")
+        onClick: () => applyCommit(commit, messages, "cherrypickCommit"),
+        shortcut: "cherryPick"
       },
-      { title: more(l10n.revert), onClick: () => applyCommit(commit, messages, "revertCommit") }
+      {
+        title: more(l10n.revert),
+        onClick: () => applyCommit(commit, messages, "revertCommit"),
+        shortcut: "revert"
+      }
     ],
     [
-      { title: more(l10n.merge), onClick: () => mergeCommit(hash) },
-      { title: more(l10n.reset), onClick: () => resetToCommit(hash) }
+      { title: more(l10n.merge), onClick: () => mergeCommit(hash), shortcut: "merge" },
+      { title: more(l10n.reset), onClick: () => resetToCommit(hash), shortcut: "reset" }
     ],
     [
       // Editing in place rewrites the checked-out branch, so only its own commits offer it.
       ...(onCheckedOutLine(hash)
         ? [
-            { title: more(l10n.editMessage), onClick: () => openEditMessage(hash) },
+            {
+              title: more(l10n.editMessage),
+              onClick: () => openEditMessage(hash),
+              shortcut: "editMessage" as const
+            },
             // A merge's changes are relative to more than one parent, so it has no single split.
             ...(commit.parentHashes.length < 2
               ? [{ title: more(l10n.splitCommit), onClick: () => openSplitCommit(hash) }]
@@ -317,19 +346,21 @@ export function commitMenu(
               : [])
           ]
         : []),
-      { title: more(l10n.interactiveRebase), onClick: () => openInteractiveRebase(hash) },
+      {
+        title: more(l10n.interactiveRebase),
+        onClick: () => openInteractiveRebase(hash),
+        shortcut: "interactiveRebase"
+      },
       { title: more(l10n.createFixupMenu), onClick: () => openFixup(hash) },
       compareEntry(hash),
       { title: l10n.bisectChooseGood, onClick: () => chooseBisectCommit("good", hash) },
       { title: l10n.bisectChooseBad, onClick: () => chooseBisectCommit("bad", hash) },
-      ...hostEntry(l10n.openCommitOnHost, commitPage(repositoryState.peek(), hash)),
-      {
-        title: l10n.copyCommitHash,
-        onClick: () => copyToClipboard(window.l10n.typeCommitHash, hash)
-      },
+      ...hostEntry(l10n.openCommitOnHost, commitPage(repositoryState.peek(), hash), "openOnHost"),
+      { title: l10n.copyCommitHash, onClick: () => copyCommitId(hash), shortcut: "copyFullId" },
       {
         title: l10n.copyShortCommitHash,
-        onClick: () => copyToClipboard(window.l10n.typeCommitHash, abbrevCommit(hash))
+        onClick: () => copyCommitId(abbrevCommit(hash)),
+        shortcut: "copyShortId"
       }
     ]
   );
@@ -411,7 +442,7 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean) {
 
   // Rebasing onto, checking out, deleting, or merging the checked-out branch has nothing to do;
   // pulling into it is offered instead.
-  const tools = isHeadBranch
+  const tools: Array<Entry> = isHeadBranch
     ? [
         upstream,
         worktree,
@@ -422,12 +453,12 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean) {
     : [
         upstream,
         worktree,
-        { title: more(l10n.rebaseOnto), onClick: () => openRebase(fullName) },
+        { title: more(l10n.rebaseOnto), onClick: () => openRebase(fullName), shortcut: "rebase" },
         { title: l10n.checkoutBranch, onClick: () => checkoutBranchAction(gitRef) },
         push,
         rename,
         { title: more(l10n.deleteBranch), onClick: () => deleteBranch(gitRef) },
-        { title: more(l10n.merge), onClick: () => mergeBranch(gitRef) }
+        { title: more(l10n.merge), onClick: () => mergeBranch(gitRef), shortcut: "merge" }
       ];
   return grouped([focusEntry(name), compareEntry(gitRef.hash)], tools, [
     ...hostEntry(l10n.openBranchOnHost, branchPage(repositoryState.peek(), name)),
@@ -440,7 +471,11 @@ function remoteBranchMenu(gitRef: GitRef) {
   const { name } = gitRef;
   const fullName = "refs/remotes/" + name;
   const l10n = window.l10n;
-  const rebase = { title: more(l10n.rebaseOnto), onClick: () => openRebase(fullName) };
+  const rebase: Entry = {
+    title: more(l10n.rebaseOnto),
+    onClick: () => openRebase(fullName),
+    shortcut: "rebase"
+  };
   const worktree = { title: more(l10n.addWorktree), onClick: () => openAddWorktree(fullName) };
   const fetch = { title: more(l10n.fetch), onClick: () => openRemoteAction("fetch", "", name) };
 

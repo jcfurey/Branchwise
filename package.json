@@ -302,6 +302,11 @@
           "type": "boolean",
           "default": true
         },
+        "branchwise.singleKeyShortcuts": {
+          "description": "%config.singleKeyShortcuts%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.tabIconColourTheme": {
           "description": "%config.tabIconColourTheme%",
           "type": "string",

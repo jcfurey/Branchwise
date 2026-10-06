@@ -27,6 +27,7 @@
   "config.showCurrentBranchByDefault": "開啟 Branchwise 時預設顯示目前分支。預設值：false（顯示所有分支）",
   "config.showSignatures": "在分支圖中標示已簽署的提交。尋找它們需要再讀取一次每個已載入的提交，因此關閉此項可稍微加快大型儲存庫的載入速度。開啟提交的詳細資料時仍會檢查其簽章。",
   "config.showUncommittedChanges": "在分支圖頂部顯示一列未提交的變更。關閉此項會略過對工作目錄的掃描，可加快大型儲存庫的載入速度。",
+  "config.singleKeyShortcuts": "允許在分支圖中以單一按鍵操作目前聚焦的提交列，例如按 B 建立分支、按 Y 複製提交的短 ID。在分支圖中按 ? 檢視完整清單。如果你使用螢幕閱讀器或會自行傳送單鍵的擴充功能，請關閉此項。",
   "config.tabIconColourTheme": "指定 Branchwise 索引標籤上所顯示圖示的色彩主題。",
   "config.tabIconColourTheme.colour": "顯示彩色圖示，適合大多數 Visual Studio Code 色彩主題",
   "config.tabIconColourTheme.grey": "顯示適合以灰階為主的 Visual Studio Code 顏色主題的灰色圖示",
