@@ -8,6 +8,7 @@ import type { SimpleGit } from "simple-git";
 import { loadBisect } from "@/backend/queries/bisect";
 import { loadBranchFocus } from "@/backend/queries/branchFocus";
 import { loadConflictForecast } from "@/backend/queries/conflictForecast";
+import { loadContainingRefs } from "@/backend/queries/containingRefs";
 import { loadAmendPlan, loadRewordPlan } from "@/backend/queries/editCommit";
 import { historyQuery } from "@/backend/queries/history";
 import { loadPushStatus } from "@/backend/queries/pushStatus";
@@ -303,6 +304,10 @@ export async function repositoryQuery(
       return { kind: "workingTree", files: await loadWorkingTree(git) };
     case "branchFocus":
       return { kind: "branchFocus", ...(await loadBranchFocus(git, query.branch, query.hashes)) };
+    case "containingRefs": {
+      const { kind, hash, ...visibility } = query;
+      return { kind, ...(await loadContainingRefs(git, hash, visibility)) };
+    }
     case "pushStatus":
       return { kind: "pushStatus", ...(await loadPushStatus(git)) };
     case "conflictForecast":

@@ -61,11 +61,35 @@ export type EditPlan = {
 /** An edit that adds the staged changes to the target commit. */
 export type AmendPlan = EditPlan & { staged: StagedPlan };
 
+/** The refs that hold a commit, and the tag it came after. */
+export type ContainingRefs = {
+  /**
+   * The visible branches whose history contains the commit, spelt as in the branch list:
+   * the checked-out branch first, then the other local ones, then `remotes/<remote>/<branch>`.
+   */
+  branches: string[];
+  /** The tags whose history contains the commit, the earliest-dated first. */
+  tags: RefDetails[];
+  /** The nearest tag before the commit, from its first parent, or `null` when there is none. */
+  follows: RefDetails | null;
+};
+/**
+ * Which branches a `containingRefs` query may name: those the graph shows, under the same
+ * remote and hidden-branch choices as a `loadCommits` request.
+ */
+export type ContainingRefsScope = {
+  showRemoteBranches: boolean;
+  hiddenRemotes: string[];
+  hiddenBranchPatterns?: string[];
+  shownBranch?: string;
+};
+
 export type RepositoryQuery =
   | WorkflowQuery
   | HistoryQuery
   | { kind: "workingTree" }
   | { kind: "branchFocus"; branch: string; hashes: string[] }
+  | ({ kind: "containingRefs"; hash: string } & ContainingRefsScope)
   | { kind: "pushStatus" }
   | { kind: "conflictForecast" }
   | { kind: "state" }
@@ -86,6 +110,7 @@ export type RepositoryQueryData =
   | HistoryQueryData
   | { kind: "workingTree"; files: WorkingTreeFile[] }
   | { kind: "branchFocus"; tip: string; direct: string[]; merged: string[] }
+  | ({ kind: "containingRefs" } & ContainingRefs)
   | { kind: "pushStatus"; unpushed: string[]; unpulled: string[] }
   | { kind: "conflictForecast"; conflicts: Array<{ branch: string; files: string[] }> }
   | { kind: "state"; state: RepositoryState }

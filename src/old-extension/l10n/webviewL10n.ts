@@ -230,6 +230,17 @@ export function getWebviewLocalizedStrings() {
     detailAuthor: vscode.l10n.t("Author: {0}"),
     detailDate: vscode.l10n.t("Date: {0}"),
     detailCommitter: vscode.l10n.t("Committer: {0}"),
+    // The branches and tags that contain the commit, loaded after the rest of the details.
+    // {0} is a tag, shown as a button that selects its commit.
+    checkingRefs: vscode.l10n.t("Checking…"),
+    detailContainedIn: vscode.l10n.t("Contained in:"),
+    moreBranches: vscode.l10n.t("and {0} more"),
+    firstReleasedIn: vscode.l10n.t("First released in {0}"),
+    laterTag: vscode.l10n.t("also in {0} later tag"),
+    laterTags: vscode.l10n.t("also in {0} later tags"),
+    followsTag: vscode.l10n.t("Follows {0}"),
+    focusBranchChip: vscode.l10n.t("Focus {0} in the graph"),
+    selectTaggedCommit: vscode.l10n.t("Select the commit tagged {0}"),
 
     // Uncommitted changes. {0} is the number of changed paths; the singular is used for 1.
     uncommittedChange: vscode.l10n.t("Uncommitted changes in {0} file"),

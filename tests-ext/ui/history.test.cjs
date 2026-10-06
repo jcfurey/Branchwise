@@ -1610,6 +1610,52 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await vscode.env.clipboard.readText()) === local, "full ID copied");
   });
 
+  test("names the branches and tags that contain a commit and jumps to them", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "contain base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    git(["tag", "-a", "-m", "earlier", "contain-v1"], dir);
+    commit("f", "contain target", dir);
+    const target = git(["rev-parse", "HEAD"], dir);
+    git(["branch", "contain-feature"], dir);
+    commit("f", "contain release", dir);
+    git(["tag", "-a", "-m", "release", "contain-v2"], dir);
+    commit("f", "contain later", dir);
+    git(["tag", "contain-v3"], dir);
+    await openRepo(dir);
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${target}"]').click()`);
+    const line = (name) =>
+      graph.evaluate(`document.querySelector('[data-details-row] [${name}]')?.innerText ?? null`);
+    await until(async () => (await line("data-contained-in")) !== null, "containing branches");
+    assert.match(await line("data-contained-in"), /^Contained in:\s*main\s*contain-feature$/);
+    assert.match(
+      await line("data-released-in"),
+      /^First released in\s*contain-v2\s*also in 1 later tag\s*Follows\s*contain-v1$/
+    );
+    await graph.evaluate(
+      `[...document.querySelectorAll('[data-details-row] [data-contained-in] button')].find(b => b.textContent === "contain-feature").click()`
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelectorAll('[data-focus-branch="contain-feature"]').length > 0`
+        ),
+      "focused branch from its chip"
+    );
+    await graph.evaluate(
+      `[...document.querySelectorAll('[data-details-row] [data-released-in] button')].find(b => b.textContent === "contain-v1").click()`
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('tr[data-commit-hash="${base}"]')?.getAttribute('aria-selected') === 'true'`
+        ),
+      "tagged commit selected from its chip"
+    );
+    await button("Clear focus");
+  });
+
   test("forecasts which branches would conflict if merged into the checked-out branch", async () => {
     const dir = directory();
     init(dir);

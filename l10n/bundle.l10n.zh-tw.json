@@ -204,6 +204,15 @@
   "Author: {0}": "作者：{0}",
   "Date: {0}": "日期：{0}",
   "Committer: {0}": "提交者：{0}",
+  "Checking…": "正在檢查…",
+  "Contained in:": "包含於：",
+  "and {0} more": "及另外 {0} 個",
+  "First released in {0}": "首次發佈於 {0}",
+  "also in {0} later tag": "也包含在之後的 {0} 個標籤中",
+  "also in {0} later tags": "也包含在之後的 {0} 個標籤中",
+  "Follows {0}": "位於 {0} 之後",
+  "Focus {0} in the graph": "在提交圖中聚焦 {0}",
+  "Select the commit tagged {0}": "選取標籤 {0} 所在的提交",
   "Uncommitted changes in {0} file": "{0} 個檔案有未提交的變更",
   "Uncommitted changes in {0} files": "{0} 個檔案有未提交的變更",
   "Click or press Enter to view uncommitted changes.": "按一下或按 Enter 檢視未提交的變更。",
@@ -622,6 +631,7 @@
   "This commit or one after it is a merge, which rewriting would flatten. Edit a commit after the last merge instead.": "此提交或其後的某個提交是合併提交，改寫會將其攤平。請改為編輯最後一次合併之後的提交。",
   "Stage the changes to add to this commit first.": "請先暫存要加入此提交的變更。",
   "Stage or stash the unstaged and untracked changes first. The rebase that adds the staged changes needs a clean working tree.": "請先將未暫存和未追蹤的變更暫存或存入暫存紀錄。加入已暫存變更的重定基底需要乾淨的工作樹。",
+  "{0} is not a full commit ID.": "{0} 不是完整的提交 ID。",
   "Enter a commit message.": "請輸入提交訊息。",
   "The staged changes changed. Review them again.": "已暫存的變更已改變。請重新檢視。"
 }
