@@ -93,6 +93,22 @@ A local branch that would not merge cleanly into the checked-out branch shows a 
 
 Only branches not yet merged into `HEAD` are tried: the 50 with the newest commits. Each result is remembered for that pair of commits, so a refresh tries again only the branches that moved, or all of them when `HEAD` does. Branches with no history in common with `HEAD`, which `git merge` refuses, get no mark. Nothing is forecast while a merge, rebase, cherry-pick or revert is under way, or with Git older than 2.38, which has no `merge-tree --write-tree`.
 
+### Teammates' branches
+
+Remote branches are forecast too, so a teammate's work that would conflict with yours shows up before either of you opens a pull request. A remote branch's label in the graph, and its row in the Branches pane, carry the same mark; the tooltip names the files and says whose work it is, from its last commit: "Last commit by Alice, 2 days ago". Fetch to see the latest.
+
+While any remote branch would conflict, a line above the graph says how many, such as "2 teammates' branches would conflict with yours". Click it for a list of them, with the author and age of each one's last commit and the files in conflict; choosing one closes the list and focuses that branch in the graph.
+
+Up to 50 remote branches are tried on top of the local ones, newest first, and only those:
+
+- with a commit in the last 30 days;
+- not merged into `HEAD`;
+- other than the checked-out branch's own upstream, which only tells you that you are behind, and `<remote>/HEAD`;
+- shown in the graph: hidden remotes, [hidden-branch patterns](#hiding-branches-by-name) and turning remote branches off all leave branches out;
+- not at the same commit as a local branch, and not the upstream of a local branch that is tried, since the local branch's mark already says it.
+
+The `branchwise.conflictForecast` setting chooses what is tried: `localAndRemote` (the default), `local` for local branches only, or `off`.
+
 ## Stashes
 
 Open **Settings & Tools → Stashes** to save changes, optionally including untracked files. Each stash can be inspected as a diff in VS Code, applied, popped or dropped. Apply and pop can restore staged changes as staged. A conflicting pop keeps the stash and displays the conflicts. Drop requires confirmation. Stash selections include the commit ID so a newer stash does not silently redirect a pending action.

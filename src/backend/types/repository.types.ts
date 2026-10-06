@@ -23,6 +23,20 @@ export type WorktreeDetails = {
   locked: boolean;
   prunable: boolean;
 };
+/** Values of the `branchwise.conflictForecast` setting: which branches the forecast tries. */
+export type ConflictForecastScope = "local" | "localAndRemote" | "off";
+/**
+ * A branch that would not merge cleanly into HEAD. `branch` is a local branch's name, or a
+ * remote-tracking branch's as `<remote>/<branch>` when `remote` is set. `committer` and `date`
+ * (seconds since 1970) belong to its last commit, so the page can say whose work it is.
+ */
+export type ConflictForecastEntry = {
+  branch: string;
+  remote: boolean;
+  files: string[];
+  committer: string;
+  date: number;
+};
 export type OperationKind = "merge" | "rebase" | "cherry-pick" | "revert";
 export type OperationState = { kind: OperationKind; id: string };
 export type RepositoryState = {
@@ -105,7 +119,14 @@ export type RepositoryQuery =
   | { kind: "workingTree" }
   | { kind: "branchFocus"; branch: string; hashes: string[] }
   | { kind: "pushStatus" }
-  | { kind: "conflictForecast" }
+  | {
+      kind: "conflictForecast";
+      scope: ConflictForecastScope;
+      /** Which remote-tracking branches the graph shows; the forecast leaves out the others. */
+      showRemoteBranches?: boolean;
+      hiddenRemotes?: string[];
+      hiddenBranchPatterns?: string[];
+    }
   | { kind: "state" }
   | { kind: "stashes" }
   | {
@@ -126,7 +147,7 @@ export type RepositoryQueryData =
   | { kind: "workingTree"; files: WorkingTreeFile[] }
   | { kind: "branchFocus"; tip: string; direct: string[]; merged: string[] }
   | { kind: "pushStatus"; unpushed: string[]; unpulled: string[] }
-  | { kind: "conflictForecast"; conflicts: Array<{ branch: string; files: string[] }> }
+  | { kind: "conflictForecast"; conflicts: ConflictForecastEntry[] }
   | { kind: "state"; state: RepositoryState }
   | { kind: "stashes"; stashes: StashDetails[] }
   | { kind: "rebasePlan"; plan: RebasePlan }

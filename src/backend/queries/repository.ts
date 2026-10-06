@@ -310,7 +310,7 @@ export async function repositoryQuery(
       // While a merge, rebase or pick is under way, HEAD is not where the user will merge into.
       return {
         kind: "conflictForecast",
-        conflicts: (await loadOperation(git)) === null ? await loadConflictForecast(git) : []
+        conflicts: (await loadOperation(git)) === null ? await loadConflictForecast(git, query) : []
       };
     case "bisect":
       return {

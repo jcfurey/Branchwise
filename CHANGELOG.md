@@ -10,6 +10,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ### Added
 
+- Forecast conflicts with teammates' work: remote branches with commits in the last 30 days that would not merge cleanly into the checked-out branch get the same red mark as local ones, in the graph and the Branches pane, and the tooltip says whose last commit it is and when. A line above the graph counts them and opens a list that focuses the chosen branch. The checked-out branch's upstream, `<remote>/HEAD` and hidden remotes and branches are left out. The new `branchwise.conflictForecast` setting chooses `localAndRemote` (the default), `local` or `off`. See [teammates' branches](docs/git-actions.md#teammates-branches).
 - Pin local branches to the top of the Branches pane, and list local branches by their latest commit instead of by name. Both choices are remembered per repository.
 - Flag local branches in the Branches pane that are already merged into the checked-out branch, whose upstream is gone, that have had no commits for 90 days, or that would conflict if merged. Ahead and behind counts turn amber when a branch has diverged from its upstream.
 - Fast-forward every local branch that is only behind its upstream in one step, from **Settings & Tools → Fast-forward Branches**, without checking any of them out. The review lists the branches that stay and why: diverged, checked out in another worktree, or checked out here with uncommitted changes.

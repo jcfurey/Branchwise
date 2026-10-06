@@ -1641,6 +1641,102 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await badge("clash")) === null, "badge gone after the merge");
   });
 
+  test("warns that a teammate's remote branch would conflict with the checked-out one", async () => {
+    const seed = directory();
+    init(seed);
+    commit("api.ts", "export const total = 1;\n", seed);
+    const bare = directory();
+    git(["clone", "--bare", seed, bare]);
+    const clone = (name) => {
+      const dir = directory();
+      git(["clone", bare, dir]);
+      git(["config", "user.name", name], dir);
+      git(["config", "user.email", "ui@test"], dir);
+      git(["config", "commit.gpgsign", "false"], dir);
+      return dir;
+    };
+    const local = clone("UI Test");
+    const teammate = clone("Alice Teammate");
+    git(["checkout", "-b", "teammate"], teammate);
+    commit("api.ts", "export const total = 2;\n", teammate);
+    git(["push", "origin", "teammate"], teammate);
+    // The same line, changed on this side too and not pushed.
+    commit("api.ts", "export const total = 3;\n", local);
+    await openRepo(local);
+    git(["fetch", "origin"], local);
+    await button("Refresh");
+
+    const badge = (branch) =>
+      graph.evaluate(`(() => {
+        const label = [...document.querySelectorAll("tr[data-commit-hash] span[title]")].find(
+          (span) => span.title.split("\\n")[0] === ${JSON.stringify(branch)}
+        );
+        const badge = label?.querySelector("[data-conflicts]");
+        return badge ? [badge.textContent, badge.title] : null;
+      })()`);
+    await until(async () => (await badge("origin/teammate")) !== null, "badge on origin/teammate");
+    const [count, title] = await badge("origin/teammate");
+    assert.equal(count, "1");
+    const lines = title.split("\n");
+    assert.deepEqual(lines.slice(0, 2), ["Would conflict with your branch main in:", "api.ts"]);
+    assert.match(lines[2], /^Last commit by Alice Teammate, .+ ago$/);
+    // The upstream of main is only behind, and gets no mark.
+    assert.equal(await badge("origin/main"), null);
+
+    const summary = 'document.querySelector("[data-team-overlap]")';
+    await until(
+      () =>
+        graph.evaluate(
+          `${summary}?.innerText.trim() === "1 teammate's branch would conflict with yours"`
+        ),
+      "team overlap summary"
+    );
+    await button("1 teammate's branch would conflict with yours", summary);
+    const dialog = 'document.querySelector("[role=dialog]")';
+    await until(
+      () =>
+        graph.evaluate(
+          `${dialog}?.innerText.includes("Remote branches that would conflict with main")`
+        ),
+      "team overlap dialog"
+    );
+    const listed = await graph.evaluate(
+      `[...${dialog}.querySelectorAll("[data-team-overlap-branch]")].map(b => b.innerText.replace(/\\s+/g, " ").trim())`
+    );
+    assert.equal(listed.length, 1);
+    assert.match(listed[0], /^origin\/teammate ?1 Last commit by Alice Teammate, .+ ago api\.ts$/);
+    await graph.evaluate(
+      `${dialog}.querySelector('[data-team-overlap-branch="origin/teammate"]').click()`
+    );
+    await until(() => graph.evaluate(`!${dialog}`), "dialog closed");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('main > [role=status] span[title]')?.title === "remotes/origin/teammate"`
+        ),
+      "teammate branch focused in the graph"
+    );
+
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    if (!(await graph.evaluate("!!" + nav))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    await until(
+      () =>
+        graph.evaluate(
+          `[...${nav}.querySelectorAll('button[title]')].find(b => b.title === "origin/teammate")?.parentElement.querySelector("[data-conflicts]")?.textContent === "1"`
+        ),
+      "conflict mark on the remote row"
+    );
+    // The forecast and the focus left the work tree, the checkout and the branches alone.
+    assert.equal(git(["status", "--porcelain"], local), "");
+    assert.equal(git(["branch", "--show-current"], local), "main");
+    assert.equal(
+      git(["for-each-ref", "--format=%(refname)", "refs/heads"], local),
+      "refs/heads/main"
+    );
+  });
+
   test("runs ordered selected cherry-picks and reverts, then creates and autosquashes a fixup", async () => {
     const history = directory();
     init(history);
