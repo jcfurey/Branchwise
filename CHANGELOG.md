@@ -10,6 +10,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ### Added
 
+- Search inside changes: **Text added or removed** under **Filters**, or `changes:` (alias `diff:`) in the search box, finds the commits that add or remove a string (`git log -S`), or with **Regular expressions** the commits that add or remove matching lines (`git log -G`). It combines with the other fields, such as `path:`, and pages through the matches 100 at a time. See [search](docs/git-actions.md#search-file-history-and-comparison).
 - Forecast merge conflicts: a local branch that would not merge cleanly into the checked-out branch shows a red mark with the number of conflicted files on its label, and its tooltip names them. Git tries each merge in memory with `git merge-tree`, leaving the work tree, the index and the refs untouched; it needs Git 2.38 or later. See [conflict forecast](docs/git-actions.md#conflict-forecast).
 
 ### Changed
