@@ -78,6 +78,19 @@ function parentRows(
   return { firstParent, otherParents };
 }
 
+/**
+ * Whether a commit names two different parents, loaded or not. A parent listed twice counts
+ * once, as Git itself records it.
+ */
+function isMerge(parentHashes: ReadonlyArray<string>) {
+  for (let index = 1; index < parentHashes.length; index++) {
+    if (parentHashes[index] !== parentHashes[0]) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Only the lines of the uncommitted row's own edges are uncommitted. */
 function addLine(
   walk: Walk,
@@ -263,7 +276,8 @@ export function computeGraphLayout(
     y: row,
     colour: walk.branches[walk.placedBy[row]!]!.colour,
     isCommitted: row !== walk.uncommittedRow,
-    isCurrent: row === current
+    isCurrent: row === current,
+    isMerge: isMerge(commits[row]!.parentHashes)
   }));
 
   let lanes = 0;

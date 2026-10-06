@@ -11,9 +11,14 @@ import { resolveCommit } from "@/backend/utils/validation";
  * Only HEAD's first-parent line qualifies: a commit that arrived through a merge belongs to
  * another branch's history. HEAD itself is amended, so it may be a root or a merge; an older
  * commit is rewritten by an interactive rebase from its parent, which needs a parent and,
- * like the rebase editor, a range without merges.
+ * like the rebase editor, a range without merges. An edit that rebuilds the later commits
+ * itself, rather than rebasing them, passes `olderRoot` to take the first commit too.
  */
-export async function loadEditPlan(git: SimpleGit, target: string): Promise<EditPlan> {
+export async function loadEditPlan(
+  git: SimpleGit,
+  target: string,
+  olderRoot = false
+): Promise<EditPlan> {
   // `symbolic-ref --quiet` prints nothing for a detached HEAD.
   const branch = (
     await git.raw(["symbolic-ref", "--quiet", "--short", "HEAD"]).catch(() => "")
@@ -52,14 +57,20 @@ export async function loadEditPlan(git: SimpleGit, target: string): Promise<Edit
   const [parents = "", message = ""] = details.split("\0");
   if (hash !== head) {
     const parent = parents.split(" ").find(Boolean);
-    if (parent === undefined) {
+    if (parent === undefined && !olderRoot) {
       throw new Error(
         l10n.t(
           "The first commit can be edited only while it is the latest one, as there is nothing to rebase it onto."
         )
       );
     }
-    const merges = await git.raw(["rev-list", "--count", "--min-parents=2", `${parent}..${head}`]);
+    // A first commit has no parents, so it is no merge itself.
+    const merges = await git.raw([
+      "rev-list",
+      "--count",
+      "--min-parents=2",
+      `${parent ?? hash}..${head}`
+    ]);
     if (Number(merges.trim()) > 0) {
       throw new Error(
         l10n.t(

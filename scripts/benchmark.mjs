@@ -36,6 +36,7 @@ try {
       contents: `export {loadHistory} from "./src/backend/queries/history";
 export {loadWorkspace} from "./src/backend/queries/workspace";
 export {loadCommits} from "./src/backend/queries/loadCommits";
+export {signedCommits} from "./src/backend/queries/signatures";
 export {loadBranchFocus} from "./src/backend/queries/branchFocus";
 export {gitClientFactory} from "./src/backend/gitClient";
 export {computeGraphLayout} from "./src/webview/graph/layout";`,
@@ -52,6 +53,7 @@ export {computeGraphLayout} from "./src/webview/graph/layout";`,
     loadHistory,
     loadWorkspace,
     loadCommits,
+    signedCommits,
     loadBranchFocus,
     gitClientFactory,
     computeGraphLayout
@@ -144,6 +146,10 @@ export {computeGraphLayout} from "./src/webview/graph/layout";`,
     (commit) => commit.hash
   );
   const wanted = new Set(focusHashes);
+  // The read that finds signed commits for the graph, on its own; the loads above include it.
+  await measure("signedMarks3000", async () => {
+    assert.equal((await signedCommits(client, focusHashes)).size, 0);
+  });
   for (const branch of ["main", "bench/topic", "remotes/origin/lane-0"]) {
     await measure(`focus:${branch}`, async () => {
       const focus = await loadBranchFocus(client, branch, focusHashes);

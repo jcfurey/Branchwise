@@ -10,13 +10,15 @@ export function webviewConfig(): WebviewConfig {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
+    dragAndDrop: extConfig.dragAndDrop(),
     graphColours: extConfig.graphColours(),
     graphStyle: extConfig.graphStyle(),
     initialLoadCommits: extConfig.initialLoadCommits(),
     loadMoreCommits: extConfig.loadMoreCommits(),
     // Dates are formatted for VS Code's display language.
     locale: vscode.env.language,
-    showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault()
+    showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
+    singleKeyShortcuts: extConfig.singleKeyShortcuts()
   };
 }
 

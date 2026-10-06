@@ -125,7 +125,15 @@ it("copies every declared setting except the one without an effect and the new o
   const declared = Object.keys(manifest.contributes.configuration.properties).map((key) =>
     key.replace(/^branchwise\./, "")
   );
-  // The old extension never had `nestedRepoSearchDepth` or `conflictForecast`.
-  const notCopied = new Set(["fetchAvatars", "nestedRepoSearchDepth", "conflictForecast"]);
+  // The old extension never had `nestedRepoSearchDepth`, `conflictForecast`, `showSignatures`,
+  // `singleKeyShortcuts` or `dragAndDrop`.
+  const notCopied = new Set([
+    "fetchAvatars",
+    "nestedRepoSearchDepth",
+    "conflictForecast",
+    "showSignatures",
+    "singleKeyShortcuts",
+    "dragAndDrop"
+  ]);
   expect(MIGRATED_SETTINGS).toEqual(declared.filter((key) => !notCopied.has(key)));
 });

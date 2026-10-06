@@ -333,6 +333,46 @@ async function toolsMenu(text) {
     "tools menu " + text
   );
 }
+/**
+ * Choose `text` from the Settings & Tools menu once its entries include it. The entries are built
+ * when the menu opens, so a menu opened before the repository state arrived is opened again.
+ */
+async function freshToolsMenu(text) {
+  await until(
+    () =>
+      graph.evaluate(
+        `(() => { const item = [...document.querySelectorAll('[role="menuitem"]')].find(e => e.textContent.trim() === ${JSON.stringify(text)}); if (item) { item.click(); return true; } document.querySelector('header button[aria-label="Settings & Tools"]')?.click(); return false; })()`
+      ),
+    "fresh tools menu " + text
+  );
+}
+/** Click `label` on the VS Code notification whose message contains `message`. */
+async function notificationAction(message, label) {
+  await vscode.commands.executeCommand("notifications.showList");
+  try {
+    await until(async () => {
+      for (const connection of connections.filter(
+        (item) => item.ws.readyState === WebSocket.OPEN
+      )) {
+        for (const context of connection.contexts) {
+          try {
+            if (
+              await connection.evaluate(
+                `(() => { const item = [...document.querySelectorAll('.notifications-center .notification-list-item')].find(e => e.textContent.includes(${JSON.stringify(message)})); const action = item && [...item.querySelectorAll('.monaco-button')].find(b => b.textContent.trim() === ${JSON.stringify(label)}); if (!action) return false; action.click(); return true; })()`,
+                context
+              )
+            ) {
+              return true;
+            }
+          } catch {}
+        }
+      }
+      return false;
+    }, `notification ${message}: ${label}`);
+  } finally {
+    await vscode.commands.executeCommand("notifications.hideList");
+  }
+}
 async function menu(text) {
   await until(
     () =>
@@ -1016,6 +1056,77 @@ suite("Branchwise workflow UI", function () {
     assert.equal(fs.existsSync(path.join(repo, ".git", "MERGE_HEAD")), false);
   });
 
+  test("undoes a hard reset from the menu and a branch deletion from its notification", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "undo-base", dir);
+    commit("a", "undo-first", dir);
+    commit("b", "undo-second", dir);
+    const [second, first, base] = git(["rev-list", "HEAD"], dir).split("\n");
+    await openRepo(dir);
+    try {
+      await contextCommit("undo-base");
+      await menu("Reset Current Branch to This Commit…");
+      await select("hard");
+      await button("Reset");
+      await finished();
+      await until(
+        () => graph.evaluate(`!${visible(first)} && !${visible(second)} && ${visible(base)}`),
+        "commits after the reset leave the graph"
+      );
+      assert.equal(git(["rev-parse", "HEAD"], dir), base);
+      // Backups stay out of the graph and the branch picker.
+      assert.match(
+        git(["for-each-ref", "refs/branchwise/"], dir),
+        /^\S+ commit\trefs\/branchwise\//
+      );
+
+      await freshToolsMenu("Undo Hard Reset of main");
+      await finished();
+      await until(
+        () => graph.evaluate(`${visible(first)} && ${visible(second)}`),
+        "the commits return to the graph"
+      );
+      assert.equal(git(["rev-parse", "HEAD"], dir), second);
+      assert.equal(git(["status", "--porcelain"], dir), "");
+
+      git(["branch", "undo-topic", first], dir);
+      await button("Refresh");
+      await contextRef("undo-topic");
+      await menu("Delete Local Branch…");
+      await button("Delete Local Branch");
+      await finished();
+      assert.equal(git(["branch", "--list", "undo-topic"], dir), "");
+      await notificationAction("Deletion of Branch undo-topic", "Undo");
+      await until(
+        () => git(["branch", "--list", "undo-topic"], dir) !== "",
+        "the deleted branch returns"
+      );
+      assert.equal(git(["rev-parse", "undo-topic"], dir), first);
+      await until(
+        () =>
+          graph.evaluate(
+            `[...document.querySelectorAll('span[title]')].some(e => e.title.split(String.fromCharCode(10))[0] === "undo-topic")`
+          ),
+        "the branch label returns"
+      );
+
+      // Both actions are listed in the Safety Net as undone.
+      await freshToolsMenu("Safety Net…");
+      await until(
+        () =>
+          graph.evaluate(
+            `[...document.querySelectorAll('[data-safety-entry]')].map(e => e.querySelector('b').textContent).join("|") === "Deletion of Branch undo-topic|Hard Reset of main"`
+          ),
+        "the Safety Net lists both actions"
+      );
+      await button("Close");
+    } finally {
+      await vscode.commands.executeCommand("notifications.clearAll");
+      await openRepo(repo);
+    }
+  });
+
   test("switches repositories through SCM and runs an interactive rebase from a commit menu", async () => {
     const second = directory();
     init(second);
@@ -1085,18 +1196,31 @@ suite("Branchwise workflow UI", function () {
       ),
       "pick,squash,squash,pick"
     );
+    // The combined commit's message is offered as Git would combine it, after the group.
+    const combined = "[role=dialog] [data-combined] textarea";
+    assert.equal(
+      await graph.evaluate(`document.querySelector(${JSON.stringify(combined)}).value`),
+      "squash first\n\nsquash second\n\nsquash third"
+    );
+    assert.equal(
+      await graph.evaluate(
+        `[...document.querySelectorAll("[role=dialog] [data-entry], [role=dialog] [data-combined]")].map(e => e.dataset.combined ? "message" : "commit").join(",")`
+      ),
+      "commit,commit,commit,message,commit"
+    );
+    const edited = "Squashed in the UI ✓\n\n# kept heading\n'quoted' $(not run)";
+    await graph.evaluate(
+      `(() => { const input = document.querySelector(${JSON.stringify(combined)}); input.focus(); input.value = ${JSON.stringify(edited)}; input.dispatchEvent(new Event('input', {bubbles: true})); })()`
+    );
     // Opening the editor rewrites nothing; the user starts the rebase.
     assert.equal(git(["rev-parse", "HEAD"], dir), head);
     await button("Start Rebase");
     await finished();
     assert.equal(
       git(["log", "--reverse", "--format=%s", base + "..HEAD"], dir),
-      "squash first\nsquash later"
+      "Squashed in the UI ✓\nsquash later"
     );
-    assert.equal(
-      git(["log", "-1", "--format=%B", "HEAD^"], dir),
-      "squash first\n\nsquash second\n\nsquash third"
-    );
+    assert.equal(git(["log", "-1", "--format=%B", "HEAD^"], dir), edited);
     assert.equal(
       git(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD^"], dir),
       "a\nb\nc"
@@ -1488,8 +1612,17 @@ suite("Branchwise workflow UI", function () {
     await goTo(command, typed.slice(0, 10), typed.slice(0, 10));
     await revealed(typed);
 
-    // The shortcut works while the graph has focus.
-    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${typed}"]').focus()`);
+    // The shortcut works while the graph has focus. A row can be focused while the workbench
+    // still holds the keyboard after the last picker closed, so bring the graph forward first.
+    await until(async () => {
+      if (!(await graph.evaluate("document.hasFocus()"))) {
+        await vscode.commands.executeCommand("branchwise.view");
+      }
+      await graph.evaluate(`document.querySelector('tr[data-commit-hash="${typed}"]').focus()`);
+      return graph.evaluate(
+        `document.hasFocus() && document.activeElement?.dataset?.commitHash === "${typed}"`
+      );
+    }, "the graph has the keyboard");
     const shortcut = () => keypress("g", process.platform === "darwin" ? 1 | 4 : 1 | 2);
     await goTo(shortcut, "goto-target", "goto-target");
     await revealed(target);
@@ -1706,6 +1839,152 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await vscode.env.clipboard.readText()) === local, "full ID copied");
   });
 
+  test("acts on the focused commit with single keys and lists them on the shortcut sheet", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "keys base", dir);
+    commit("f", "keys target", dir);
+    const target = git(["rev-parse", "HEAD"], dir);
+    commit("f", "keys head", dir);
+    await openRepo(dir);
+    const row = `document.querySelector('tr[data-commit-hash="${target}"]')`;
+    const focusRow = async () => {
+      await graph.evaluate(`${row}.focus()`);
+      await until(() => graph.evaluate(`document.activeElement === ${row}`), "focused row");
+    };
+
+    // B opens Create Branch; the letters of the name go into its field, not to more shortcuts.
+    await focusRow();
+    await keypress("b");
+    const field = 'document.querySelector("[role=dialog] input[type=text]")';
+    await until(() => graph.evaluate(`document.activeElement === ${field}`), "branch name field");
+    for (const letter of "byctrim") {
+      await keypress(letter);
+    }
+    assert.equal(await graph.evaluate(`${field}.value`), "byctrim");
+    assert.equal(await graph.evaluate('document.querySelectorAll("[role=dialog]").length'), 1);
+    await button("Create Branch");
+    await finished();
+    await until(
+      () =>
+        graph.evaluate(
+          `[...${row}.querySelectorAll('span[title]')].some(label => label.title.split(String.fromCharCode(10))[0] === "byctrim")`
+        ),
+      "branch label on the row"
+    );
+    assert.equal(
+      git(["for-each-ref", "--format=%(objectname)", "refs/heads/byctrim"], dir),
+      target
+    );
+
+    // ? opens the sheet, and Escape closes it again.
+    await focusRow();
+    await keypress("?", 8);
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog] h2")?.textContent === "Keyboard Shortcuts"'
+        ),
+      "shortcut sheet"
+    );
+    const listed = await graph.evaluate(
+      '[...document.querySelectorAll("[role=dialog] [data-shortcut-id]")].map(row => row.innerText.replace(/\\s+/g, " ").trim())'
+    );
+    assert.ok(listed.includes("B Create Branch…"), listed.join("\n"));
+    // Keys are drawn as VS Code draws them: with symbols on macOS.
+    const shift = process.platform === "darwin" ? "⇧" : "Shift+";
+    assert.ok(listed.includes(`${shift}Y Copy Commit ID`), listed.join("\n"));
+    assert.ok(listed.includes(`${shift}F10 Menu Open the commit's menu`), listed.join("\n"));
+    await keypress("Escape");
+    await until(() => graph.evaluate('!document.querySelector("[role=dialog]")'), "sheet closed");
+
+    // Y copies the short ID, Shift+Y the full one.
+    await vscode.env.clipboard.writeText("");
+    await focusRow();
+    await keypress("y");
+    await until(
+      async () => (await vscode.env.clipboard.readText()) === target.slice(0, 8),
+      "short ID copied"
+    );
+    await keypress("Y", 8);
+    await until(async () => (await vscode.env.clipboard.readText()) === target, "full ID copied");
+    assert.equal(git(["rev-parse", "HEAD"], dir), git(["rev-parse", "main"], dir));
+  });
+
+  test("marks a signed commit and checks its signature when its details open", async function () {
+    const dir = directory();
+    init(dir);
+    const key = path.join(directory(), "signer");
+    const allowed = path.join(dir, ".git", "allowed_signers");
+    const forGit = (file) => file.split(path.sep).join("/");
+    try {
+      // Signing with SSH keys needs ssh-keygen from OpenSSH 8.2 and Git 2.34.
+      cp.execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-C", "", "-f", key], {
+        stdio: "pipe"
+      });
+      git(["config", "gpg.format", "ssh"], dir);
+      git(["config", "user.signingkey", forGit(key)], dir);
+      commit("f", "unsigned change", dir);
+      fs.writeFileSync(path.join(dir, "g"), "signed change");
+      git(["add", "g"], dir);
+      git(["commit", "-S", "-m", "signed change"], dir);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn(`Skipping the signature scenario, as SSH signing is unavailable: ${error}`);
+      this.skip();
+    }
+    const signed = git(["rev-parse", "HEAD"], dir);
+    const unsigned = git(["rev-parse", "HEAD~1"], dir);
+    // The allowed signers name nobody yet.
+    fs.writeFileSync(allowed, "");
+    git(["config", "gpg.ssh.allowedSignersFile", forGit(allowed)], dir);
+    await openRepo(dir);
+
+    const mark = (hash) =>
+      graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${hash}"] [data-signed]')?.title ?? null`
+      );
+    await until(
+      async () => (await mark(signed)) === "Signed — open the details to verify",
+      "signed mark"
+    );
+    assert.equal(await mark(unsigned), null);
+
+    const verdict = () =>
+      graph.evaluate(
+        `document.querySelector('[data-details-row] [data-signature]')?.textContent ?? null`
+      );
+    const open = async (hash) => {
+      if (await graph.evaluate('!!document.querySelector("[data-details-row]")')) {
+        await button("Close", 'document.querySelector("[data-details-row]")');
+        await until(
+          () => graph.evaluate('!document.querySelector("[data-details-row]")'),
+          "details closed"
+        );
+      }
+      await graph.evaluate(`document.querySelector('tr[data-commit-hash="${hash}"]').click()`);
+    };
+    await open(signed);
+    await until(
+      async () => (await verdict()) === "Good signature from a key that is not trusted",
+      "untrusted verdict"
+    );
+
+    // Once the signer is allowed, opening the details again checks the signature again.
+    fs.writeFileSync(allowed, `ui@test ${fs.readFileSync(`${key}.pub`, "utf8").trim()}\n`);
+    await open(signed);
+    await until(async () => (await verdict()) === "Good signature by ui@test", "good verdict");
+    assert.match(
+      await graph.evaluate(
+        `document.querySelector('[data-details-row] [data-signature]').parentElement.innerText`
+      ),
+      /Key SHA256:/
+    );
+
+    await open(unsigned);
+    await until(async () => (await verdict()) === "Unsigned", "unsigned verdict");
+  });
+
   test("forecasts which branches would conflict if merged into the checked-out branch", async () => {
     const dir = directory();
     init(dir);
@@ -1735,6 +2014,59 @@ suite("Branchwise workflow UI", function () {
     // Once the branch is merged, there is nothing left to forecast.
     git(["merge", "-X", "theirs", "-m", "merge clash", "clash"], dir);
     await until(async () => (await badge("clash")) === null, "badge gone after the merge");
+  });
+
+  test("forecasts the commit a rebase would stop at, and the real rebase stops there", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "replay base", dir);
+    git(["checkout", "-b", "replay-topic"], dir);
+    commit("a", "first replayed item", dir);
+    commit("f", "second replayed item", dir);
+    const second = git(["rev-parse", "HEAD"], dir);
+    commit("c", "third replayed item", dir);
+    const tip = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    commit("f", "main replay change", dir);
+    git(["checkout", "replay-topic"], dir);
+    await openRepo(dir);
+
+    await contextRef("main");
+    await menu("Move the current branch onto this (rebase)…");
+    const forecast = () =>
+      graph.evaluate(`(() => {
+        const line = document.querySelector("[role=dialog] [data-replay-forecast]");
+        return line ? [line.dataset.replayForecast, line.textContent] : null;
+      })()`);
+    await until(async () => (await forecast())?.[0] === "stop", "rebase forecast");
+    assert.deepEqual(await forecast(), [
+      "stop",
+      `Rebase would stop at ${second.slice(0, 8)} second replayed item: conflicts in f`
+    ]);
+    // Working out the forecast changed nothing.
+    assert.equal(git(["rev-parse", "HEAD"], dir), tip);
+    assert.equal(git(["status", "--porcelain"], dir), "");
+
+    await button("Start Rebase");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]")?.innerText.startsWith("Unable") === true'
+        ),
+      "rebase stopped on a conflict"
+    );
+    await button("Dismiss");
+    assert.equal(git(["rev-parse", "REBASE_HEAD"], dir), second);
+    assert.equal(git(["diff", "--name-only", "--diff-filter=U"], dir), "f");
+    await until(
+      () => graph.evaluate('document.body.innerText.includes("Rebase in progress")'),
+      "operation status"
+    );
+    await button("Abort");
+    await button("Abort");
+    await finished();
+    assert.equal(git(["rev-parse", "HEAD"], dir), tip);
+    assert.equal(fs.existsSync(path.join(dir, ".git", "rebase-merge")), false);
   });
 
   test("warns that a teammate's remote branch would conflict with the checked-out one", async () => {
@@ -1833,6 +2165,81 @@ suite("Branchwise workflow UI", function () {
     );
   });
 
+  test("tells commits and changes apart by shape, letter and spoken summary as well as colour", async () => {
+    const dir = directory();
+    init(dir);
+    commit("kept", "signal base", dir);
+    commit("gone", "signal doomed", dir);
+    commit("moved", "a file long enough to be found again after a rename\n".repeat(4), dir);
+    git(["checkout", "-b", "topic"], dir);
+    commit("side", "signal side", dir);
+    git(["checkout", "main"], dir);
+    fs.writeFileSync(path.join(dir, "kept"), "signal kept, changed");
+    fs.writeFileSync(path.join(dir, "new"), "signal new");
+    git(["rm", "-q", "gone"], dir);
+    git(["mv", "moved", "renamed"], dir);
+    git(["add", "--", "kept", "new"], dir);
+    git(["commit", "-m", "signal changes"], dir);
+    const changes = git(["rev-parse", "HEAD"], dir);
+    git(["merge", "--no-ff", "-m", "signal merge", "topic"], dir);
+    const merge = git(["rev-parse", "HEAD"], dir);
+    fs.writeFileSync(path.join(dir, "kept"), "signal kept, uncommitted");
+    await openRepo(dir);
+
+    const dot = (hash) =>
+      graph.evaluate(`(() => {
+        const rows = [...document.querySelectorAll("tr[data-commit-hash]")];
+        const index = rows.findIndex((row) => row.dataset.commitHash === ${JSON.stringify(hash)});
+        const circle = document.querySelectorAll("[data-graph-viewport] circle")[index];
+        return circle ? [circle.dataset.dot, circle.hasAttribute("stroke-dasharray")] : null;
+      })()`);
+    await until(async () => (await dot("*"))?.[0] === "uncommitted", "uncommitted dot");
+    assert.deepEqual(await dot("*"), ["uncommitted", true]);
+    assert.deepEqual(await dot(merge), ["merge", false]);
+    assert.deepEqual(await dot(changes), ["commit", false]);
+
+    const summary = await graph.evaluate(
+      `document.querySelector('tr[data-commit-hash="${merge}"]').getAttribute("aria-label")`
+    );
+    assert.match(
+      summary,
+      /^signal merge, UI Test, .+, checked out, merge of 2 parents, branch main$/
+    );
+
+    // Unset, the lanes take the theme colours, whose defaults are the colours used before.
+    assert.equal(
+      await graph.evaluate(
+        `getComputedStyle(document.documentElement).getPropertyValue("--vscode-branchwise-graphLane1").trim().toLowerCase()`
+      ),
+      "#0085d9"
+    );
+    assert.equal(
+      await graph.evaluate(`(() => {
+        const line = [...document.querySelectorAll("path[data-branch-relation]")].find((path) =>
+          path.getAttribute("stroke").startsWith("var(--vscode-branchwise-graphLane1,")
+        );
+        return line && getComputedStyle(line).stroke;
+      })()`),
+      "rgb(0, 133, 217)"
+    );
+
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${changes}"]').click()`);
+    const letters = () =>
+      graph.evaluate(
+        `[...document.querySelectorAll("[data-details-row] [data-change]")].map((cell) => [cell.closest("button").querySelector("span").textContent, cell.textContent, cell.getAttribute("aria-label")])`
+      );
+    await until(async () => (await letters()).length === 4, "status letters");
+    assert.deepEqual(
+      (await letters()).toSorted((a, b) => a[0].localeCompare(b[0])),
+      [
+        ["gone", "D", "Deleted"],
+        ["kept", "M", "Modified"],
+        ["new", "A", "Added"],
+        ["renamed", "R", "Renamed"]
+      ]
+    );
+  });
+
   test("runs ordered selected cherry-picks and reverts, then creates and autosquashes a fixup", async () => {
     const history = directory();
     init(history);
@@ -1920,6 +2327,54 @@ suite("Branchwise workflow UI", function () {
       true
     );
     await button("Close");
+  });
+
+  test("cherry-picks a dragged commit and merges a dragged branch, each after confirming", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "drag base", dir);
+    git(["checkout", "-b", "topic"], dir);
+    commit("picked.txt", "drag picked", dir);
+    const picked = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "-b", "side", "main"], dir);
+    commit("side.txt", "drag side", dir);
+    const side = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    commit("main.txt", "drag main", dir);
+    const before = git(["rev-parse", "HEAD"], dir);
+    await openRepo(dir);
+    const label = (ref) => `document.querySelector('tr[data-commit-hash] [data-ref="${ref}"]')`;
+
+    // The drop only asks: nothing changes until the dialog is confirmed.
+    const hint = await dragOnto(
+      `document.querySelector('tr[data-commit-hash="${picked}"]')`,
+      label("head:main")
+    );
+    assert.equal(hint, `Cherry-pick ${picked.slice(0, 8)} onto main`);
+    await until(
+      () => graph.evaluate('document.querySelector("[role=dialog]")?.innerText.includes("Cherry")'),
+      "cherry-pick confirmation"
+    );
+    assert.equal(git(["rev-parse", "HEAD"], dir), before);
+    await button("Cherry-pick");
+    await finished();
+    assert.equal(git(["log", "-1", "--format=%s"], dir), "drag picked");
+    assert.equal(git(["rev-parse", "HEAD^"], dir), before);
+    const cherryPicked = git(["rev-parse", "HEAD"], dir);
+    await until(() => graph.evaluate(visible(cherryPicked)), "cherry-picked commit in the graph");
+
+    assert.equal(await dragOnto(label("head:side"), label("head:main")), "Merge side into main");
+    await until(
+      () => graph.evaluate('document.querySelector("[role=dialog]")?.innerText.includes("side")'),
+      "merge confirmation"
+    );
+    assert.equal(git(["rev-parse", "HEAD"], dir), cherryPicked);
+    await button("Merge");
+    await finished();
+    assert.equal(git(["rev-parse", "HEAD^1"], dir), cherryPicked);
+    assert.equal(git(["rev-parse", "HEAD^2"], dir), side);
+    const merge = git(["rev-parse", "HEAD"], dir);
+    await until(() => graph.evaluate(visible(merge)), "merge commit in the graph");
   });
 
   test("edits commit messages and adds staged changes to an older commit in place", async () => {
@@ -2014,6 +2469,78 @@ suite("Branchwise workflow UI", function () {
       "edits in Git Activity"
     );
     await button("Close");
+  });
+
+  test("splits a commit into two from the commit menu", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "split base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    for (const file of ["alpha", "beta", "gamma"]) {
+      fs.writeFileSync(path.join(dir, file), file + "\n");
+    }
+    git(["add", "alpha", "beta", "gamma"], dir);
+    git(["commit", "-m", "split three files"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    // An unrelated change in the working tree stays where it is.
+    fs.writeFileSync(path.join(dir, "f"), "uncommitted");
+    await openRepo(dir);
+    const setValue = (label, value, event) =>
+      graph.evaluate(
+        `(() => { const input = document.querySelector('[role=dialog] [aria-label=${JSON.stringify(label)}]'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event(${JSON.stringify(event)}, {bubbles: true})); })()`
+      );
+    const preview = () =>
+      graph.evaluate('document.querySelector("[role=dialog] [data-split-preview]")?.textContent');
+
+    await contextCommit("split three files");
+    await menu("Split Commit…");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('[role=dialog] [aria-label="Message of Part 1"]')?.value === "split three files"`
+        ),
+      "split dialog with the original message"
+    );
+    assert.equal(await preview(), "2 commits: Part 1 (3 files), Part 2 (0 files)");
+    await setValue("Part for gamma", "1", "change");
+    await setValue("Message of Part 1", "split alpha and beta", "input");
+    await setValue("Message of Part 2", "split gamma", "input");
+    await until(
+      async () => (await preview()) === "2 commits: Part 1 (2 files), Part 2 (1 file)",
+      "split preview"
+    );
+    await button("Split Commit");
+    await finished();
+    assert.equal(
+      git(["log", "--format=%s", base + "..HEAD"], dir),
+      "split gamma\nsplit alpha and beta"
+    );
+    assert.equal(git(["rev-parse", "HEAD^{tree}"], dir), tree);
+    assert.equal(git(["status", "--porcelain"], dir), "M f");
+
+    // The graph shows both commits, each with its own files.
+    const filesOf = async (subject) => {
+      await until(
+        () =>
+          graph.evaluate(
+            `(() => { const row = [...document.querySelectorAll('tr[data-commit-hash]')].find(r => r.textContent.includes(${JSON.stringify(subject)})); if (!row) return false; row.click(); return true; })()`
+          ),
+        "commit row " + subject
+      );
+      return until(async () => {
+        const names = await graph.evaluate(
+          `[...document.querySelectorAll('[data-details-row] li button > span.min-w-0')].map(span => span.textContent).join()`
+        );
+        const message = await graph.evaluate(
+          `document.querySelector('[data-details-row]')?.innerText || ""`
+        );
+        return message.includes(subject) && names !== "" ? names : false;
+      }, "details of " + subject);
+    };
+    assert.equal(await filesOf("split alpha and beta"), "alpha,beta");
+    await button("Close", 'document.querySelector("[data-details-row]")');
+    assert.equal(await filesOf("split gamma"), "gamma");
+    await button("Close", 'document.querySelector("[data-details-row]")');
   });
 
   test("absorbs staged fixes into the commits they fix and squashes them in", async () => {
@@ -3947,6 +4474,40 @@ suite("Branchwise workflow UI", function () {
   });
 });
 
+/**
+ * Drag the element `from` evaluates to onto the one `to` evaluates to, and drop it there once
+ * the target accepts it. The events are made in the page with Chromium's own DataTransfer, which
+ * runs the page's handlers exactly as a pointer drag would, without depending on where the
+ * webview's frame sits in the workbench. Returns the hint shown beside the pointer.
+ */
+async function dragOnto(from, to) {
+  return until(
+    () =>
+      graph.evaluate(`(() => {
+        const from = ${from}, to = ${to};
+        if (!from || !to) return false;
+        const data = new DataTransfer();
+        const fire = (type, target) => {
+          const box = target.getBoundingClientRect();
+          const event = new DragEvent(type, { bubbles: true, cancelable: true, composed: true,
+            dataTransfer: data, clientX: box.left + box.width / 2, clientY: box.top + box.height / 2 });
+          target.dispatchEvent(event);
+          return event;
+        };
+        fire("dragstart", from);
+        fire("dragenter", to);
+        if (!fire("dragover", to).defaultPrevented) {
+          fire("dragend", from);
+          return false;
+        }
+        const hint = document.querySelector("[data-drop-hint]")?.textContent;
+        fire("drop", to);
+        fire("dragend", from);
+        return hint;
+      })()`),
+    "drop accepted"
+  );
+}
 async function contextCommit(subject) {
   await until(
     () =>

@@ -20,6 +20,8 @@ const posix = process.platform !== "win32";
 
 const FORMAT = "--format=%H%x00%P%x00%an%x00%ae%x00%at%x00%s";
 const STATUS = "status --porcelain -b -u --null --untracked-files=all";
+/** The read of the page's commits that finds the signed ones. */
+const COMMITS = "cat-file --batch --buffer";
 
 /** The Git processes one load runs, through a Git executable that records them. */
 async function processes(input: GraphInput, dirty = false) {
@@ -33,14 +35,15 @@ async function processes(input: GraphInput, dirty = false) {
 }
 
 describe.runIf(posix)("Git processes", () => {
-  it("runs show-ref, log and status once each, through the client", async () => {
+  it("runs show-ref, log, status and cat-file once each, with the client's Git", async () => {
     const { S, result, runs } = await processes(defaults);
     expect(result.commits).toHaveLength(2);
-    expect(runs).toEqual([
+    expect(runs.slice(0, 2)).toEqual([
       "show-ref -d --head",
-      `log -z --max-count=301 ${FORMAT} --date-order --branches --tags --remotes ${S} --`,
-      STATUS
+      `log -z --max-count=301 ${FORMAT} --date-order --branches --tags --remotes ${S} --`
     ]);
+    // The status and the read of the commits run side by side, so they start in either order.
+    expect(runs.slice(2).toSorted()).toEqual([COMMITS, STATUS]);
   });
 
   it("runs no status when the row is off", async () => {
@@ -50,7 +53,17 @@ describe.runIf(posix)("Git processes", () => {
     );
     expect(runs).toEqual([
       "show-ref --heads --tags -d --head",
-      `log -z --max-count=301 ${FORMAT} --date-order --branches --tags ${S} --`
+      `log -z --max-count=301 ${FORMAT} --date-order --branches --tags ${S} --`,
+      COMMITS
+    ]);
+  });
+
+  it("reads no commits again when the signature marks are off", async () => {
+    const { S, runs } = await processes({ ...defaults, showSignatures: false });
+    expect(runs).toEqual([
+      "show-ref -d --head",
+      `log -z --max-count=301 ${FORMAT} --date-order --branches --tags --remotes ${S} --`,
+      STATUS
     ]);
   });
 
@@ -61,11 +74,11 @@ describe.runIf(posix)("Git processes", () => {
       dateType: "Commit Date",
       maxCommits: 1
     });
-    expect(runs).toEqual([
+    expect(runs.slice(0, 2)).toEqual([
       "show-ref -d --head",
-      `log -z --max-count=2 ${FORMAT.replace("%at", "%ct")} --date-order refs/heads/main --`,
-      STATUS
+      `log -z --max-count=2 ${FORMAT.replace("%at", "%ct")} --date-order refs/heads/main --`
     ]);
+    expect(runs.slice(2).toSorted()).toEqual([COMMITS, STATUS]);
   });
 
   it("adds the two visibility processes only when a remote is hidden", async () => {
@@ -73,17 +86,17 @@ describe.runIf(posix)("Git processes", () => {
     expect(runs.slice(0, 3).toSorted()).toEqual(
       ["for-each-ref --format=%(refname) refs/remotes/", "remote", "show-ref -d --head"].toSorted()
     );
-    expect(runs.slice(3)).toEqual([
-      `log -z --max-count=301 ${FORMAT} --date-order --branches --tags --exclude=origin/* --remotes ${S} --`,
-      STATUS
-    ]);
+    expect(runs[3]).toBe(
+      `log -z --max-count=301 ${FORMAT} --date-order --branches --tags --exclude=origin/* --remotes ${S} --`
+    );
+    expect(runs.slice(4).toSorted()).toEqual([COMMITS, STATUS]);
     const off = await processes({
       ...defaults,
       showRemoteBranches: false,
       hiddenRemotes: ["origin"],
       showUncommittedChanges: false
     });
-    expect(off.runs).toHaveLength(2);
+    expect(off.runs).toHaveLength(3);
   });
 
   it("hands branch patterns to Git as exclusions, once per remote for remote branches", async () => {
@@ -105,7 +118,8 @@ describe.runIf(posix)("Git processes", () => {
     );
     expect(runs.slice(3)).toEqual([
       `log -z --max-count=301 ${FORMAT} --date-order --exclude=bot/* --exclude=wip --branches ` +
-        `--tags --exclude=origin/bot/* --exclude=origin/wip --remotes ${S} --`
+        `--tags --exclude=origin/bot/* --exclude=origin/wip --remotes ${S} --`,
+      COMMITS
     ]);
   });
 });

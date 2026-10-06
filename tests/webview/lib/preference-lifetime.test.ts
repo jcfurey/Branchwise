@@ -44,12 +44,14 @@ async function freshPanel() {
     autoCenterCommitDetailsView: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dragAndDrop: true,
     graphColours: [],
     graphStyle: "rounded",
     initialLoadCommits: 300,
     loadMoreCommits: 100,
     locale: "en",
-    showCurrentBranchByDefault: false
+    showCurrentBranchByDefault: false,
+    singleKeyShortcuts: true
   });
   function branches(names = ["main", "topic"], head: string | null = "main") {
     const request = messages().findLast((message) => message.command === "loadBranches");

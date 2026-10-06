@@ -48,6 +48,7 @@ import {
 } from "@/webview/lib/actions";
 import { branchHealth, orderBranches } from "@/webview/lib/branch-health";
 import { conflictForecastQuery, conflictsByBranch } from "@/webview/lib/conflict-forecast";
+import { DROP_TARGET_CLASS, dragHandlers, refDragAttributes } from "@/webview/lib/drag-drop";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
 import { collapsedSections, focusHistory, toggleSection } from "@/webview/lib/navigation";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
@@ -73,6 +74,8 @@ const ACTION_CLASS =
 const ROW_ICON = "size-3.5 shrink-0 text-muted";
 /** Rows each list renders before Show more, so thousands of refs stay responsive. */
 export const REF_PAGE = PAGE_SIZE;
+/** The pane's drag listeners. Only branches are dragged from it, so it has no commits to find. */
+const PANE_DRAG = dragHandlers(() => null);
 
 type RemoteGroup = { remote: string; details: RemoteDetails | undefined; branches: RefDetails[] };
 
@@ -149,12 +152,14 @@ function Flag({ kind, label, title }: { kind: string; label: string; title: stri
  * One ref, stash or remote. The label selects it; the trailing controls and
  * the context menu carry its actions. `depth` indents rows under a remote.
  * `name` identifies the row in its controls' names, such as `refs/remotes/origin/main` for a
- * row labelled `main`, so rows with the same label stay distinct.
+ * row labelled `main`, so rows with the same label stay distinct. A branch row names its
+ * `gitRef`, which makes it a drop target and, for a local branch, something to drag.
  */
 function Row({
   source,
   label,
   name = label,
+  gitRef,
   icon,
   title,
   active = false,
@@ -170,6 +175,7 @@ function Row({
   source: string;
   label: string;
   name?: string;
+  gitRef?: GitRef;
   icon: ComponentChildren;
   title?: string;
   active?: boolean;
@@ -189,8 +195,9 @@ function Row({
     <div
       class={`group flex items-center gap-1 pr-1 ${
         active ? "bg-row-head" : menuOpen ? "bg-btn-hover" : "hover:bg-row-hover"
-      } ${dimmed ? "text-muted" : ""}`}
+      } ${dimmed ? "text-muted" : ""} ${gitRef === undefined ? "" : DROP_TARGET_CLASS}`}
       style={{ paddingLeft: 8 + depth * 12 }}
+      {...(gitRef === undefined ? {} : refDragAttributes(gitRef))}
       onContextMenu={menu && ((event) => openContextMenu(event, source, menu()))}
     >
       <button
@@ -295,6 +302,7 @@ function RemoteBranches({
             source={refMenuSource(gitRef)}
             label={ref.name.slice(group.remote.length + 1)}
             name={`refs/remotes/${ref.name}`}
+            gitRef={gitRef}
             title={ref.name}
             icon={<BranchIcon class={ROW_ICON} />}
             dimmed={!shown || isBranchHidden(value)}
@@ -376,6 +384,7 @@ export function RefsPane() {
     <nav
       aria-label={window.l10n.branchesPane}
       class="flex max-h-72 min-h-0 w-full flex-1 flex-col border-b border-line-soft bg-editor text-ui md:max-h-none md:border-b-0"
+      {...PANE_DRAG}
     >
       <div class="space-y-2 border-b border-line-soft p-3">
         <h2 class="font-semibold">{window.l10n.branchesPane}</h2>
@@ -450,6 +459,7 @@ export function RefsPane() {
                   label={branch.name}
                   dimmed={isBranchHidden(branch.name)}
                   name={`refs/heads/${branch.name}`}
+                  gitRef={gitRef}
                   bold={isHead}
                   icon={
                     isPinned ? (

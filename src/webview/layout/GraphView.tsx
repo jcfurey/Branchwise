@@ -14,6 +14,7 @@ import { Button } from "@/webview/components/ui/Button";
 import { BranchIcon, CloseIcon, TagIcon } from "@/webview/components/ui/Icons";
 import { GraphSkeleton, Loading } from "@/webview/components/ui/Loading";
 import { Select } from "@/webview/components/ui/Select";
+import { BATCH_LIMIT } from "@/webview/constants";
 import {
   loadMoreCommits,
   refresh,
@@ -53,9 +54,6 @@ import { branchPatternScope } from "@/webview/lib/stores/hidden-branches.store";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { NoCommitsPage } from "@/webview/pages/NoCommitsPage";
 import type { FocusDimming } from "@/webview/types";
-
-/** The batch dialogs refuse selections larger than this. */
-const BATCH_LIMIT = 100;
 
 /** A full object name: SHA-1 or SHA-256. Anything else is shown as typed. */
 const OBJECT_NAME = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;

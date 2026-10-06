@@ -7,6 +7,8 @@ import * as vscode from "vscode";
 
 import { configuredGitPath, extConfig, wholeNumber } from "@/extension/config";
 
+import { themeGraphColours } from "./manifest";
+
 type Manifest = {
   contributes: { configuration: { properties: Record<string, { default: unknown }> } };
 };
@@ -22,19 +24,23 @@ it("falls back to the defaults declared in package.json", () => {
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
     dateType: extConfig.dateType(),
-    graphColours: extConfig.graphColours(),
+    dragAndDrop: extConfig.dragAndDrop(),
     graphStyle: extConfig.graphStyle(),
     initialLoadCommits: extConfig.initialLoadCommits(),
     loadMoreCommits: extConfig.loadMoreCommits(),
     maxDepthOfRepoSearch: extConfig.maxDepthOfRepoSearch(),
     nestedRepoSearchDepth: extConfig.nestedRepoSearchDepth(),
     showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
+    showSignatures: extConfig.showSignatures(),
     showUncommittedChanges: extConfig.showUncommittedChanges(),
+    singleKeyShortcuts: extConfig.singleKeyShortcuts(),
     tabIconColourTheme: extConfig.tabIconColourTheme()
   };
   for (const [key, value] of Object.entries(fallbacks)) {
     expect(value, key).toEqual(declared[`branchwise.${key}`]?.default);
   }
+  // Unset, the colours come from the theme, whose defaults are the setting's default colours.
+  expect(extConfig.graphColours()).toEqual(themeGraphColours);
   expect(extConfig.gitPath()).toBe("git");
 });
 

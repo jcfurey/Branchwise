@@ -9,12 +9,14 @@ const config: WebviewConfig = {
   autoCenterCommitDetailsView: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dragAndDrop: true,
   graphColours: [],
   graphStyle: "rounded",
   initialLoadCommits: 300,
   loadMoreCommits: 100,
   locale: "en",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 beforeAll(() => initializeWebviewConfig(config));

@@ -29,6 +29,13 @@ vi.mock("vscode", () => ({
 vi.mock("@/backend/gitClient", () => ({
   gitClientFactory: (repo: string) => ({ getInstance: () => ({ repo }) })
 }));
+// The stand-in clients cannot run Git, so actions run without the Safety Net's records.
+vi.mock("@/backend/actions/safetyNet", () => ({
+  recordedAction: async (_git: unknown, _request: unknown, work: () => Promise<unknown>) => ({
+    result: await work(),
+    record: null
+  })
+}));
 vi.mock("@/backend/actions/tag", () => backend);
 vi.mock("@/backend/actions/branch", () => backend);
 vi.mock("@/backend/actions/commit", () => backend);

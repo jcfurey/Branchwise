@@ -39,6 +39,13 @@ vi.mock("@/backend/gitClient", () => ({
   gitClientFactory: () => ({ getInstance: () => ({}) })
 }));
 vi.mock("@/backend/actions/repository", () => ({ runRepositoryAction: vi.fn() }));
+// The stand-in clients cannot run Git, so actions run without the Safety Net's records.
+vi.mock("@/backend/actions/safetyNet", () => ({
+  recordedAction: async (_git: unknown, _request: unknown, work: () => Promise<unknown>) => ({
+    result: await work(),
+    record: null
+  })
+}));
 vi.mock("@/backend/actions/tag", () => ({
   addTag: vi.fn(),
   deleteTag: vi.fn(),

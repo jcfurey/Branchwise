@@ -5,12 +5,15 @@ import { useMemo } from "preact/hooks";
 import type { ConflictForecastEntry, GitRef, HistoryEntry } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
+import { SignedMark } from "@/webview/components/commit/SignatureBadge";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
 import { KebabIcon } from "@/webview/components/ui/Icons";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { focusColour } from "@/webview/graph/focus";
 import type { BranchRelation } from "@/webview/graph/types";
 import { closeCommitDetails, openContextMenu } from "@/webview/lib/actions";
+import { runRowShortcut } from "@/webview/lib/commit-shortcuts";
+import { dragAndDropOn } from "@/webview/lib/drag-drop";
 import {
   commitMenu,
   commitMenuSource,
@@ -29,6 +32,7 @@ import type { FocusDimming } from "@/webview/types";
 import { getCommitDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
 import { initials } from "@/webview/utils/initials";
+import { commitRowLabel } from "@/webview/utils/rowDescription";
 
 /** A commit that no remote-tracking branch has yet, or that no local branch has yet. */
 export type PushState = "unpushed" | "unpulled";
@@ -212,7 +216,8 @@ const CELL = `${LINE} px-1`;
 /**
  * One commit of the history table: its graph cell, description, date, author and short hash.
  * The row is also a keyboard stop: arrows move between rows, Enter opens the details, Space
- * toggles the selection, and the menu key opens the commit's actions.
+ * toggles the selection, and the menu key opens the commit's actions. Other single keys run the
+ * actions of `lib/shortcuts`.
  */
 export function CommitRow({
   commit,
@@ -330,6 +335,8 @@ export function CommitRow({
         clientY: box.bottom
       });
       openContextMenu(at, source, menuEntries());
+    } else {
+      runRowShortcut(event, { commit, headBranch, messages, toggleDetails: activate });
     }
   }
 
@@ -346,8 +353,10 @@ export function CommitRow({
       data-branch-relation={relation === "merged" && keepMergedBright ? "direct" : relation}
       data-emphasized={String(emphasized)}
       tabIndex={tabStop ? 0 : -1}
+      draggable={uncommitted || !dragAndDropOn() ? undefined : true}
       aria-selected={uncommitted ? expanded : selected}
       aria-expanded={expanded}
+      aria-label={commitRowLabel({ commit, message, isHead, headBranch, push, conflicts })}
       title={uncommitted ? l10n.viewWorkingTreeChanges : l10n.selectCommitsHint}
       onFocus={(event) => {
         if (event.target === event.currentTarget) {
@@ -402,6 +411,7 @@ export function CommitRow({
           <span class="min-w-0 flex-1 truncate" title={message}>
             {isHead || uncommitted ? <b>{message}</b> : message}
           </span>
+          {commit.signed === true && <SignedMark />}
           {!uncommitted && (
             <button
               type="button"

@@ -262,7 +262,7 @@ describe("files", () => {
     const binary = entry("img.png");
 
     expect(binary.title).toBe("tooltipBinaryFile");
-    expect(binary.textContent).toBe("img.png");
+    expect(binary.textContent).toBe("img.pngM");
     expect(binary.getAttribute("aria-disabled")).toBe("true");
     expect(binary.disabled).toBe(false);
     expect(binary.hasAttribute("disabled")).toBe(false);
@@ -287,10 +287,10 @@ describe("files", () => {
       changed("moved.ts", "R", [0, 0], "was.ts")
     ]);
 
-    expect(entry("added.ts").textContent).toBe("added.ts");
-    expect(entry("deleted.ts").textContent).toBe("deleted.ts");
-    expect(entry("modified.ts").textContent).toBe("modified.ts(+3|-1)");
-    expect(entry("moved.ts").textContent).toBe("moved.tsR(+0|-0)");
+    expect(entry("added.ts").textContent).toBe("added.tsA");
+    expect(entry("deleted.ts").textContent).toBe("deleted.tsD");
+    expect(entry("modified.ts").textContent).toBe("modified.ts(+3|-1)M");
+    expect(entry("moved.ts").textContent).toBe("moved.ts(+0|-0)R");
 
     const titles = [...entry("modified.ts").querySelectorAll("[title]")].map((node) => [
       node.textContent,
@@ -298,7 +298,8 @@ describe("files", () => {
     ]);
     expect(titles).toEqual([
       ["+3", "tooltipAdditions"],
-      ["-1", "tooltipDeletion"]
+      ["-1", "tooltipDeletion"],
+      ["M", "changeModified"]
     ]);
   });
 
@@ -311,12 +312,49 @@ describe("files", () => {
       changed("single", "M", [1, 0])
     ]);
     const tooltips = (name: string) =>
-      [...entry(name).querySelectorAll("[title]")].map((node) => node.getAttribute("title"));
+      [...entry(name).querySelectorAll("[title]:not([data-change])")].map((node) =>
+        node.getAttribute("title")
+      );
 
     expect(tooltips("one")).toEqual(["1 line added", "1 line deleted"]);
     expect(tooltips("zero")).toEqual(["0 lines added", "0 lines deleted"]);
     expect(tooltips("many")).toEqual(["1234 lines added", "2 lines deleted"]);
     expect(tooltips("single")).toEqual(["1 line added", "0 lines deleted"]);
+  });
+
+  it("marks every change with its status letter, named for tooltips and screen readers", () => {
+    show([
+      changed("added.ts", "A"),
+      changed("modified.ts", "M"),
+      changed("deleted.ts", "D"),
+      changed("moved.ts", "R", [1, 0], "was.ts"),
+      changed("img.png", "A", [null, null])
+    ]);
+    const status = (name: string) => {
+      const cell = entry(name).querySelector<HTMLElement>("[data-change]")!;
+      return {
+        letter: cell.textContent,
+        role: cell.getAttribute("role"),
+        label: cell.getAttribute("aria-label"),
+        last: cell === entry(name).lastElementChild,
+        muted: cell.classList.contains("text-muted"),
+        fixed: cell.classList.contains("w-6") && cell.classList.contains("shrink-0")
+      };
+    };
+
+    const common = { role: "img", last: true, muted: true, fixed: true };
+    expect(status("added.ts")).toEqual({ ...common, letter: "A", label: "changeAdded" });
+    expect(status("modified.ts")).toEqual({ ...common, letter: "M", label: "changeModified" });
+    expect(status("deleted.ts")).toEqual({ ...common, letter: "D", label: "changeDeleted" });
+    expect(status("moved.ts")).toEqual({ ...common, letter: "R", label: "changeRenamed" });
+    // A binary file has no line counts, but still says what happened to it.
+    expect(status("img.png")).toEqual({ ...common, letter: "A", label: "changeAdded" });
+    // The colour stays as well.
+    expect(entry("added.ts").classList.contains("text-git-added")).toBe(true);
+    expect(entry("deleted.ts").classList.contains("text-git-deleted")).toBe(true);
+    expect(entry("added.ts").querySelector("[data-change]")!.getAttribute("title")).toBe(
+      "changeAdded"
+    );
   });
 
   it("marks a rename with its change letter and both paths", () => {
@@ -332,7 +370,7 @@ describe("files", () => {
       [...entry(name).querySelectorAll("span")].find((span) => span.textContent === "R");
 
     expect(marker("path.ts")?.title).toBe("Renamed from old/path.ts to new/path.ts");
-    expect(entry("path.ts").textContent).toBe("path.tsR(+2|-3)");
+    expect(entry("path.ts").textContent).toBe("path.ts(+2|-3)R");
     expect(marker("rb.png")?.title).toBe("Renamed from ra.png to rb.png");
     expect(entry("rb.png").textContent).toBe("rb.pngR");
     expect(entry("rb.png").title).toBe(
@@ -341,6 +379,7 @@ describe("files", () => {
     for (const name of ["m.ts", "a.ts", "d.ts"]) {
       expect(marker(name)).toBeUndefined();
     }
+    expect(marker("path.ts")?.getAttribute("aria-label")).toBe("changeRenamed");
   });
 
   it("puts paths into the rename text exactly as they are (Q1)", () => {
@@ -460,7 +499,13 @@ describe("structure", () => {
       expect(svg.textContent).toBe("");
     }
     expect(host.querySelector("[id]")).toBeNull();
-    expect(host.querySelectorAll("[role]")).toHaveLength(0);
+    // Only the status letters take a role, so that their names are read in place of the letters.
+    const roles = [...host.querySelectorAll("[role]")];
+    expect(roles.map((node) => [node.getAttribute("role"), node.textContent])).toEqual([
+      ["img", "M"],
+      ["img", "M"],
+      ["img", "A"]
+    ]);
   });
 
   it("changes the folder glyph when the folder closes", () => {
@@ -532,7 +577,7 @@ describe("structure", () => {
     show([changed(""), changed("/a//b/")]);
 
     expect(names()).toEqual(["a", "b", ""]);
-    expect(buttons()[2]!.textContent).toBe("(+1|-0)");
+    expect(buttons()[2]!.textContent).toBe("(+1|-0)M");
   });
 
   it("leaves focus on a file when the same commit's tree arrives again", () => {
@@ -553,7 +598,7 @@ describe("structure", () => {
     show([changed(deep)]);
 
     expect(buttons()).toHaveLength(2001);
-    expect(entry("leaf.ts").textContent).toBe("leaf.ts(+1|-0)");
+    expect(entry("leaf.ts").textContent).toBe("leaf.ts(+1|-0)M");
     const last = host.querySelectorAll("li")[2000]!;
     expect(last.style.paddingLeft).toBe(`${10 + 30 * 2000}px`);
 

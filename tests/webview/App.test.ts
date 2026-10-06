@@ -74,9 +74,13 @@ describe("the page", () => {
     expect(sidebar!.querySelector(":scope > nav")?.getAttribute("aria-label")).toBe("branchesPane");
     expect(sidebar!.querySelector("aside")).toBeNull();
     expect(graph!.querySelector("main")).not.toBeNull();
-    // The shade along the top edge follows the row; the effects, menu and dialog render nothing.
+    // The shade along the top edge follows the row, then the live region, which stays mounted;
+    // the effects, menu and dialog render nothing.
     expect(row.nextElementSibling?.getAttribute("aria-hidden")).toBe("true");
-    expect(row.nextElementSibling?.nextElementSibling).toBeNull();
+    const live = row.nextElementSibling?.nextElementSibling;
+    expect(live?.getAttribute("aria-live")).toBe("polite");
+    expect(live?.textContent).toBe("");
+    expect(live?.nextElementSibling).toBeNull();
   });
 
   it("shows the search row when asked, and while a filter is active", () => {
