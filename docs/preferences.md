@@ -56,3 +56,8 @@ VS Code settings, unlike the choices above, apply to every repository; the
 
 The remote branches tried follow the graph's choices for this repository: a hidden remote, a
 hidden-branch pattern or **Show Remote Branches in Graph** turned off leaves branches out.
+
+`branchwise.dragAndDrop` (default `true`) lets commit rows and local branches be dragged onto
+branch labels in the graph and the Branches pane to cherry-pick, merge or rebase, each after a
+confirmation. Turn it off if you drag by accident; every action stays in the menus. See
+[drag and drop](git-actions.md#drag-and-drop).

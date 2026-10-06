@@ -221,6 +221,11 @@
             "%config.dateType.commitDate%"
           ]
         },
+        "branchwise.dragAndDrop": {
+          "description": "%config.dragAndDrop%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.fetchAvatars": {
           "description": "%config.fetchAvatars%",
           "deprecationMessage": "%config.fetchAvatars.deprecation%",

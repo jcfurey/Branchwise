@@ -23,6 +23,7 @@ import type { GraphExpansion, GraphLine } from "@/webview/graph/types";
 import { graphWidth, laneX } from "@/webview/graph/utils";
 import { toggleCommitDetails } from "@/webview/lib/actions";
 import { conflictsByBranch } from "@/webview/lib/conflict-forecast";
+import { type CommitLookup, dragHandlers } from "@/webview/lib/drag-drop";
 import { commitMenuSource } from "@/webview/lib/menus";
 import {
   focusedCommit,
@@ -237,6 +238,17 @@ export function CommitTable({
   };
   const onRevealLane = useCallback((hash: string) => reveal.current(hash), []);
 
+  // One set of drag listeners for every row and label, reading the rows as they are now.
+  const rowsNow = useRef<CommitLookup | null>(null);
+  rowsNow.current = {
+    commit: (hash) => {
+      const index = rowOf.get(hash);
+      return index === undefined ? undefined : commits[index];
+    },
+    messages
+  };
+  const drag = useMemo(() => dragHandlers(() => rowsNow.current), []);
+
   // A commit chosen in Go to, once its row is here: centred, focused and selected.
   const revealing = pendingReveal.value;
   useEffect(() => {
@@ -309,6 +321,7 @@ export function CommitTable({
           hovered.value = null;
         }}
         onWheel={scroll.onWheel}
+        {...drag}
       >
         <colgroup>
           <col style="width: var(--col-graph)" />

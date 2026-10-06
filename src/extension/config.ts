@@ -113,6 +113,7 @@ export const extConfig = {
   conflictForecast: () => setting<ConflictForecastScope>("conflictForecast", "localAndRemote"),
   dateFormat: () => setting<DateFormat>("dateFormat", "Date & Time"),
   dateType: () => setting<DateType>("dateType", "Author Date"),
+  dragAndDrop: () => setting<boolean>("dragAndDrop", true),
   /** The built-in Git extension's executable when known, otherwise the `git.path` setting. */
   gitPath: (): string =>
     builtInGitPath ?? configuredGitPath(vscode.workspace.getConfiguration("git").get("path")),

@@ -241,6 +241,24 @@ export function getWebviewLocalizedStrings() {
     detailDate: vscode.l10n.t("Date: {0}"),
     detailCommitter: vscode.l10n.t("Committer: {0}"),
 
+    // Drag and drop onto branch labels. Each action names what the drop offers, beside the
+    // pointer and in the chooser; each hint says why a branch refuses the drop.
+    // {0} is a short commit ID, {1} the checked-out branch.
+    dropCherryPick: vscode.l10n.t("Cherry-pick {0} onto {1}"),
+    // {0} is the dragged branch, {1} the branch it was dropped on.
+    dropMerge: vscode.l10n.t("Merge {0} into {1}"),
+    dropRebase: vscode.l10n.t("Rebase {0} onto {1}"),
+    // {0} is the branch the commit was dragged over.
+    dropCherryPickCheckout: vscode.l10n.t(
+      "Check out {0} first: a cherry-pick applies to the checked-out branch"
+    ),
+    // {0} is the branch dragged over, {1} the dragged branch.
+    dropMergeOrRebaseCheckout: vscode.l10n.t(
+      "Check out {0} to merge {1} into it, or check out {1} to rebase it onto {0}"
+    ),
+    // {0} is the dragged branch, {1} the remote branch dragged over.
+    dropRebaseCheckout: vscode.l10n.t("Check out {0} to rebase it onto {1}"),
+
     // Uncommitted changes. {0} is the number of changed paths; the singular is used for 1.
     uncommittedChange: vscode.l10n.t("Uncommitted changes in {0} file"),
     uncommittedChanges: vscode.l10n.t("Uncommitted changes in {0} files"),

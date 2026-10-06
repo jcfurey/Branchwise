@@ -23,6 +23,8 @@ export type WebviewConfig = Readonly<{
    */
   conflictForecast: ConflictForecastScope;
   dateFormat: DateFormat;
+  /** Let commits and branches be dragged onto branch labels to start an action. */
+  dragAndDrop: boolean;
   /**
    * The branch palette, in the order the graph hands colours out. Entries are kept exactly as
    * written in the setting, and the list may be empty.

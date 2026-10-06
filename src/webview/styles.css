@@ -69,6 +69,8 @@
   --color-row-hover: var(--vscode-list-hoverBackground);
   --color-row-selected: rgba(128, 128, 128, 0.25);
   --color-row-selected-hover: rgba(128, 128, 128, 0.35);
+  /* A branch that would accept what is being dragged over it. */
+  --color-drop: var(--vscode-list-dropBackground);
 
   /* The branch colour of a commit row. Each row sets its own; see .branch-focus-row. */
   --color-graph: var(--vscode-focusBorder);

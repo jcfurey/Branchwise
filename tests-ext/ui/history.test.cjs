@@ -1843,6 +1843,55 @@ suite("Branchwise workflow UI", function () {
     await button("Close");
   });
 
+  test("cherry-picks a dragged commit and merges a dragged branch, each after confirming", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "drag base", dir);
+    git(["checkout", "-b", "topic"], dir);
+    commit("picked.txt", "drag picked", dir);
+    const picked = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "-b", "side", "main"], dir);
+    commit("side.txt", "drag side", dir);
+    const side = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    commit("main.txt", "drag main", dir);
+    const before = git(["rev-parse", "HEAD"], dir);
+    await openRepo(dir);
+    const label = (ref) => `document.querySelector('tr[data-commit-hash] [data-ref="${ref}"]')`;
+
+    // The drop only asks: nothing changes until the dialog is confirmed.
+    const hint = await dragOnto(
+      `document.querySelector('tr[data-commit-hash="${picked}"]')`,
+      label("head:main")
+    );
+    assert.equal(hint, `Cherry-pick ${picked.slice(0, 8)} onto main`);
+    await until(
+      () => graph.evaluate('document.querySelector("[role=dialog]")?.innerText.includes("Cherry")'),
+      "cherry-pick confirmation"
+    );
+    assert.equal(git(["rev-parse", "HEAD"], dir), before);
+    await button("Cherry-pick");
+    await finished();
+    assert.equal(git(["log", "-1", "--format=%s"], dir), "drag picked");
+    assert.equal(git(["rev-parse", "HEAD^"], dir), before);
+    const cherryPicked = git(["rev-parse", "HEAD"], dir);
+    await until(() => graph.evaluate(visible(cherryPicked)), "cherry-picked commit in the graph");
+
+    assert.equal(await dragOnto(label("head:side"), label("head:main")), "Merge side into main");
+    await menu("Merge side into main");
+    await until(
+      () => graph.evaluate('document.querySelector("[role=dialog]")?.innerText.includes("side")'),
+      "merge confirmation"
+    );
+    assert.equal(git(["rev-parse", "HEAD"], dir), cherryPicked);
+    await button("Merge");
+    await finished();
+    assert.equal(git(["rev-parse", "HEAD^1"], dir), cherryPicked);
+    assert.equal(git(["rev-parse", "HEAD^2"], dir), side);
+    const merge = git(["rev-parse", "HEAD"], dir);
+    await until(() => graph.evaluate(visible(merge)), "merge commit in the graph");
+  });
+
   test("edits commit messages and adds staged changes to an older commit in place", async () => {
     const edit = directory();
     init(edit);
@@ -3868,6 +3917,40 @@ suite("Branchwise workflow UI", function () {
   });
 });
 
+/**
+ * Drag the element `from` evaluates to onto the one `to` evaluates to, and drop it there once
+ * the target accepts it. The events are made in the page with Chromium's own DataTransfer, which
+ * runs the page's handlers exactly as a pointer drag would, without depending on where the
+ * webview's frame sits in the workbench. Returns the hint shown beside the pointer.
+ */
+async function dragOnto(from, to) {
+  return until(
+    () =>
+      graph.evaluate(`(() => {
+        const from = ${from}, to = ${to};
+        if (!from || !to) return false;
+        const data = new DataTransfer();
+        const fire = (type, target) => {
+          const box = target.getBoundingClientRect();
+          const event = new DragEvent(type, { bubbles: true, cancelable: true, composed: true,
+            dataTransfer: data, clientX: box.left + box.width / 2, clientY: box.top + box.height / 2 });
+          target.dispatchEvent(event);
+          return event;
+        };
+        fire("dragstart", from);
+        fire("dragenter", to);
+        if (!fire("dragover", to).defaultPrevented) {
+          fire("dragend", from);
+          return false;
+        }
+        const hint = document.querySelector("[data-drop-hint]")?.textContent;
+        fire("drop", to);
+        fire("dragend", from);
+        return hint;
+      })()`),
+    "drop accepted"
+  );
+}
 async function contextCommit(subject) {
   await until(
     () =>

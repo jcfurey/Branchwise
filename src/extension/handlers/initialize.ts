@@ -10,6 +10,7 @@ export function webviewConfig(): WebviewConfig {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
+    dragAndDrop: extConfig.dragAndDrop(),
     graphColours: extConfig.graphColours(),
     graphStyle: extConfig.graphStyle(),
     initialLoadCommits: extConfig.initialLoadCommits(),

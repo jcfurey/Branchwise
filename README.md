@@ -53,6 +53,7 @@ basics.
 - Absorb staged changes: each hunk becomes a fixup for the commit that last changed its lines
 - Plain and interactive rebase; push and pull previews; force-push only with a lease
 - Fast-forward every branch that is only behind its upstream, without a checkout
+- Drag a commit onto your branch to cherry-pick it, or a branch onto another to merge or rebase, always confirmed first
 - Stashes, conflict resolution, and continue, skip or abort for interrupted operations
 
 **Recover and investigate**
@@ -80,6 +81,7 @@ All settings start with `branchwise.`.
 | `conflictForecast`            | `"localAndRemote"` | Branches checked for conflicts: `"localAndRemote"`, `"local"` or `"off"` |
 | `dateFormat`                  | `"Date & Time"`    | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"`             |
 | `dateType`                    | `"Author Date"`    | Show each commit's `"Author Date"` or `"Commit Date"`                    |
+| `dragAndDrop`                 | `true`             | Drag commits and branches onto branch labels                             |
 | `graphColours`                | 12 colours         | Colours of the graph's lanes, in order                                   |
 | `graphStyle`                  | `"rounded"`        | Lines that change lanes: `"rounded"` or `"angular"`                      |
 | `initialLoadCommits`          | `300`              | Commits first loaded for a repository or branch                          |

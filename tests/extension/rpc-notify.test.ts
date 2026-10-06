@@ -436,6 +436,7 @@ it("delivers every notification in the form the webview accepts", async () => {
     autoCenterCommitDetailsView: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dragAndDrop: true,
     graphColours: ["#0085d9"],
     graphStyle: "rounded",
     initialLoadCommits: 300,
