@@ -170,7 +170,9 @@ describe("settings passed through", () => {
       "maxDepthOfRepoSearch",
       "nestedRepoSearchDepth",
       "showCurrentBranchByDefault",
+      "showSignatures",
       "showUncommittedChanges",
+      "singleKeyShortcuts",
       "tabIconColourTheme"
     ]);
   });

@@ -3,10 +3,12 @@ import { Fragment, h } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { SafetyUndo } from "@/backend/types";
 import { Dialog } from "@/webview/components/ui/Dialog";
 import { MainHeader } from "@/webview/layout/MainHeader";
 import { closeContextMenu } from "@/webview/lib/actions";
 import { emptyFilter, historyFilter } from "@/webview/lib/navigation";
+import { repositoryState, resetRepositoryState } from "@/webview/lib/repository-actions";
 import * as stores from "@/webview/lib/stores";
 
 import { vscodeApi } from "@tests/webview/setup";
@@ -23,6 +25,7 @@ const openers = vi.hoisted(() => ({
   openCleanup: vi.fn(),
   openBisect: vi.fn(),
   openReflog: vi.fn(),
+  openSafetyNet: vi.fn(),
   openActivity: vi.fn()
 }));
 
@@ -48,6 +51,9 @@ vi.mock("@/webview/components/repository/BisectView", async (original) =>
 );
 vi.mock("@/webview/components/history/HistoryTools", async (original) =>
   withOpeners(await original(), ["openReflog"])
+);
+vi.mock("@/webview/components/history/SafetyNetView", async (original) =>
+  withOpeners(await original(), ["openSafetyNet"])
 );
 vi.mock("@/webview/components/history/ActivityView", async (original) =>
   withOpeners(await original(), ["openActivity"])
@@ -92,12 +98,14 @@ describe("the Settings & Tools menu", () => {
       null,
       "goTo",
       "reflog",
+      "safetyNet…",
       "fileHistory",
       "operationActivity",
       null,
       "✓ showRemoteBranches",
       "hiddenBranches…",
       "gettingStarted",
+      "keyboardShortcuts",
       "learnMore",
       "openSettings"
     ]);
@@ -137,6 +145,7 @@ describe("the Settings & Tools menu", () => {
     ["cleanupBranches", "openCleanup"],
     ["bisectTitle", "openBisect"],
     ["reflog", "openReflog"],
+    ["safetyNet…", "openSafetyNet"],
     ["operationActivity", "openActivity"]
   ] as const)("opens %s with %s", (title, opener) => {
     mount();
@@ -177,6 +186,68 @@ describe("the Settings & Tools menu", () => {
   });
 });
 
+describe("Undo", () => {
+  afterEach(() => resetRepositoryState());
+
+  function withUndo(undo: SafetyUndo | null) {
+    act(() => {
+      repositoryState.value = {
+        remotes: [],
+        pushDefault: null,
+        branches: [],
+        remoteBranches: [],
+        tags: [],
+        worktrees: [],
+        head: "main",
+        operation: null,
+        conflicts: [],
+        staged: 0,
+        undo
+      };
+    });
+  }
+
+  it("leads the menu while an action can be undone, and undoes it in one click", () => {
+    withUndo({ id: "1700000000000-0", title: "Hard Reset of main" });
+    mount();
+    const [first, separator] = openTools().entries;
+    expect(first?.title).toBe("undoAction");
+    expect(separator).toBeNull();
+    act(() => {
+      closeContextMenu();
+      first!.onClick();
+    });
+    expect(vscodeApi.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: "repositoryAction",
+        repo: "/r/a",
+        action: { kind: "undoSafetyNet", id: "1700000000000-0" }
+      })
+    );
+  });
+
+  it("names the action it would undo", () => {
+    const strings = Object.getOwnPropertyDescriptor(window, "l10n")!;
+    Object.defineProperty(window, "l10n", {
+      value: new Proxy({}, { get: (_target, key) => (key === "undoAction" ? "Undo {0}" : key) }),
+      configurable: true
+    });
+    try {
+      withUndo({ id: "1-0", title: "Deletion of Branch topic" });
+      mount();
+      expect(openTools().entries[0]?.title).toBe("Undo Deletion of Branch topic");
+    } finally {
+      Object.defineProperty(window, "l10n", strings);
+    }
+  });
+
+  it("is left out when nothing can be undone", () => {
+    withUndo(null);
+    mount();
+    expect(openTools().entries[0]?.title).toBe("manageRemotes");
+  });
+});
+
 describe("Go to", () => {
   it("asks the extension for the picker of the selected repository", () => {
     mount();
@@ -187,6 +258,16 @@ describe("Go to", () => {
       params: { repo: stores.selectedRepo.value },
       id: expect.any(String)
     });
+  });
+});
+
+describe("Keyboard Shortcuts", () => {
+  it("opens the shortcut sheet, and shows its own key", () => {
+    mount();
+    const entry = openTools().entries.find((candidate) => candidate?.title === "keyboardShortcuts");
+    expect(entry?.shortcut).toBe("shortcutSheet");
+    runEntry("keyboardShortcuts");
+    expect(stores.dialog.value).toMatchObject({ kind: "content", message: "keyboardShortcuts" });
   });
 });
 

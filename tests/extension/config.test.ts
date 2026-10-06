@@ -30,7 +30,9 @@ it("falls back to the defaults declared in package.json", () => {
     maxDepthOfRepoSearch: extConfig.maxDepthOfRepoSearch(),
     nestedRepoSearchDepth: extConfig.nestedRepoSearchDepth(),
     showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
+    showSignatures: extConfig.showSignatures(),
     showUncommittedChanges: extConfig.showUncommittedChanges(),
+    singleKeyShortcuts: extConfig.singleKeyShortcuts(),
     tabIconColourTheme: extConfig.tabIconColourTheme()
   };
   for (const [key, value] of Object.entries(fallbacks)) {

@@ -169,6 +169,29 @@ export function getWebviewLocalizedStrings() {
     openBranchOnHost: vscode.l10n.t("Open Branch on {0}"),
     openTagOnHost: vscode.l10n.t("Open Tag on {0}"),
 
+    // Keyboard shortcuts: the sheet's title, groups and descriptions. Menu titles name the rest.
+    keyboardShortcuts: vscode.l10n.t("Keyboard Shortcuts"),
+    shortcutGroupNavigation: vscode.l10n.t("Navigation"),
+    shortcutGroupCommit: vscode.l10n.t("Commit actions"),
+    shortcutGroupPanels: vscode.l10n.t("Panels"),
+    shortcutKeysColumn: vscode.l10n.t("Keys"),
+    shortcutActionColumn: vscode.l10n.t("Action"),
+    shortcutMove: vscode.l10n.t("Move to the previous or next commit"),
+    shortcutFirstLast: vscode.l10n.t("Move to the first or last loaded commit"),
+    shortcutExtendSelection: vscode.l10n.t("Move and add the commits passed to the selection"),
+    shortcutSelect: vscode.l10n.t("Select or deselect the commit; with Shift, select a range"),
+    shortcutDetails: vscode.l10n.t("Open or close the commit's details"),
+    shortcutClose: vscode.l10n.t("Close the details, a dialog or a menu"),
+    shortcutMenu: vscode.l10n.t("Open the commit's menu"),
+    shortcutSheet: vscode.l10n.t("Show keyboard shortcuts"),
+    shortcutOpenOnHost: vscode.l10n.t("Open Commit on GitHub or GitLab"),
+    shortcutRowHint: vscode.l10n.t("These keys act on the commit row that has focus."),
+    shortcutsOff: vscode.l10n.t(
+      "Single keys are turned off. Turn on the branchwise.singleKeyShortcuts setting to use them."
+    ),
+    // Announced, not shown, when a key's action does not apply to the focused row.
+    shortcutUnavailable: vscode.l10n.t("Not available here: {0}"),
+
     // What a failed copy was copying, inserted mid-sentence into unableToCopyToClipboard
     typeCommitHash: vscode.l10n.t("commit ID"),
     typeTagName: vscode.l10n.t("tag name"),
@@ -240,6 +263,39 @@ export function getWebviewLocalizedStrings() {
     detailAuthor: vscode.l10n.t("Author: {0}"),
     detailDate: vscode.l10n.t("Date: {0}"),
     detailCommitter: vscode.l10n.t("Committer: {0}"),
+    detailSignature: vscode.l10n.t("Signature: {0}"),
+
+    // Commit signatures: the mark on a signed commit's row, then the verdicts in its details.
+    // {0} in signatureGoodBy and signatureSigner is the signer's name, or an SSH principal such
+    // as an email address. "gpg.ssh.allowedSignersFile" is a Git setting and stays as it is.
+    signedCommit: vscode.l10n.t("Signed — open the details to verify"),
+    signatureChecking: vscode.l10n.t("Checking the signature…"),
+    signatureGoodBy: vscode.l10n.t("Good signature by {0}"),
+    signatureGood: vscode.l10n.t("Good signature"),
+    signatureUntrusted: vscode.l10n.t("Good signature from a key that is not trusted"),
+    signatureBad: vscode.l10n.t("Bad signature"),
+    signatureExpired: vscode.l10n.t("Expired signature"),
+    signatureExpiredKey: vscode.l10n.t("Signed with an expired key"),
+    signatureRevoked: vscode.l10n.t("Signed with a revoked key"),
+    signatureUnchecked: vscode.l10n.t("Signature can't be checked"),
+    signatureUnsigned: vscode.l10n.t("Unsigned"),
+    signatureSigner: vscode.l10n.t("Signer: {0}"),
+    // {0} is the start of the key's fingerprint.
+    signatureKey: vscode.l10n.t("Key {0}"),
+    // {0} is one of the trust levels below.
+    signatureTrust: vscode.l10n.t("Trust: {0}"),
+    trustNever: vscode.l10n.t("never"),
+    trustMarginal: vscode.l10n.t("marginal"),
+    trustFully: vscode.l10n.t("full"),
+    trustUltimate: vscode.l10n.t("ultimate"),
+    signatureMissingKey: vscode.l10n.t("The key that made it is not available here."),
+    // {0} is the program's name: gpg, gpgsm or ssh-keygen.
+    signatureNoProgram: vscode.l10n.t("Git could not start {0} to check it."),
+    signatureAllowedSigners: vscode.l10n.t(
+      "Set gpg.ssh.allowedSignersFile to check SSH signatures."
+    ),
+    signatureTimeout: vscode.l10n.t("The check took too long and was stopped."),
+    signatureUnreadable: vscode.l10n.t("Git could not read the signature."),
 
     // Drag and drop onto branch labels. Each action names what the drop offers, beside the
     // pointer; each hint says why a branch refuses the drop.

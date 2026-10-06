@@ -124,7 +124,9 @@ export const extConfig = {
   maxDepthOfRepoSearch: () => wholeNumberSetting("maxDepthOfRepoSearch", 0, 0),
   nestedRepoSearchDepth: () => wholeNumberSetting("nestedRepoSearchDepth", 0, 3),
   showCurrentBranchByDefault: () => setting<boolean>("showCurrentBranchByDefault", false),
+  showSignatures: () => setting<boolean>("showSignatures", true),
   showUncommittedChanges: () => setting<boolean>("showUncommittedChanges", true),
+  singleKeyShortcuts: () => setting<boolean>("singleKeyShortcuts", true),
   tabIconColourTheme: () => setting<TabIconColourTheme>("tabIconColourTheme", "colour")
 };
 

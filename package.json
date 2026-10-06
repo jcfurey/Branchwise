@@ -297,8 +297,18 @@
           "type": "boolean",
           "default": false
         },
+        "branchwise.showSignatures": {
+          "description": "%config.showSignatures%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.showUncommittedChanges": {
           "description": "%config.showUncommittedChanges%",
+          "type": "boolean",
+          "default": true
+        },
+        "branchwise.singleKeyShortcuts": {
+          "description": "%config.singleKeyShortcuts%",
           "type": "boolean",
           "default": true
         },

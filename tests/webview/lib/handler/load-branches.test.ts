@@ -24,7 +24,8 @@ const settings: WebviewConfig = {
   initialLoadCommits: 300,
   loadMoreCommits: 50,
   locale: "en",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 beforeAll(() => {

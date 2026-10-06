@@ -54,6 +54,7 @@ const noCommits: Commits = {
 const settings = {
   gitPath: () => "/opt/git",
   dateType: () => "Commit Date" as const,
+  showSignatures: () => false,
   showUncommittedChanges: () => false
 };
 
@@ -110,7 +111,8 @@ describe("graph reads", () => {
       showRemoteBranches: true,
       hard: true,
       dateType: "Commit Date",
-      showUncommittedChanges: false
+      showUncommittedChanges: false,
+      showSignatures: false
     });
     expect(vi.mocked(loadBranches).mock.calls[0]?.[1]).toStrictEqual({
       showRemoteBranches: false,

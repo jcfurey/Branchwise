@@ -33,7 +33,8 @@ const expectedSettings: WebviewConfig = {
   initialLoadCommits: 300,
   loadMoreCommits: 100,
   locale: "en",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 // The global as the setup file installed it for this file, put back after every test.
