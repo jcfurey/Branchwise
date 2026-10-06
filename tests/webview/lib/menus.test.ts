@@ -664,7 +664,8 @@ describe("opening a commit, branch or tag on the repository's host", () => {
       worktrees: [],
       head: "trunk",
       operation: null,
-      conflicts: []
+      conflicts: [],
+      staged: 0
     };
   }
 

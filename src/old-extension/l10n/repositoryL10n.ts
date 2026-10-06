@@ -81,6 +81,21 @@ export function getRepositoryLocalizedStrings() {
     moveLater: vscode.l10n.t("Move Later"),
     movedEntry: vscode.l10n.t("Moved {0} to position {1} of {2}."),
     startRebase: vscode.l10n.t("Start Rebase"),
+    editMessage: vscode.l10n.t("Edit Message"),
+    editMessageIntro: vscode.l10n.t("Edit the message of {0}. Its changes stay as they are."),
+    commitMessage: vscode.l10n.t("Commit message"),
+    saveMessage: vscode.l10n.t("Save Message"),
+    rewritesOneLater: vscode.l10n.t("The commit after it is rewritten too and gets a new ID."),
+    rewritesLater: vscode.l10n.t("The {0} commits after it are rewritten too and get new IDs."),
+    alreadyPushed: vscode.l10n.t(
+      "This commit is already on a remote. Sharing the rewritten history needs a force push, and anyone who fetched it has to rebase their work onto it."
+    ),
+    addStagedToCommit: vscode.l10n.t("Add Staged Changes to This Commit"),
+    addStagedConfirm: vscode.l10n.t("Add these staged changes to {0}?"),
+    addStagedSubmit: vscode.l10n.t("Add Staged Changes"),
+    explainAddStaged: vscode.l10n.t(
+      "The changes are committed as a fixup! commit, which an autosquash rebase then folds into this commit. If the rebase stops on a conflict, the status strip offers Continue and Abort, and Abort leaves the changes in the fixup! commit."
+    ),
     invalidRebasePlan: vscode.l10n.t(
       "Keep at least one commit; the first retained commit cannot be Squash. Reword requires a message."
     ),

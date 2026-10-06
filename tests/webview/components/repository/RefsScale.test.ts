@@ -38,7 +38,8 @@ const state = (count: number): RepositoryState => ({
   worktrees: [],
   head: "branch-0",
   operation: null,
-  conflicts: []
+  conflicts: [],
+  staged: 0
 });
 
 /** Count renders of components with this name while `run` runs. */

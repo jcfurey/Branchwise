@@ -50,6 +50,7 @@ describe("repositoryTracker", () => {
     head: "main",
     operation: null,
     conflicts: [],
+    staged: 0,
     ...patch
   });
   const remote = (name: string, url: string) => ({ name, fetchUrls: [url], pushUrls: [] });

@@ -56,3 +56,17 @@ it("dates each branch by its last commit and says whether HEAD contains it", asy
     fs.rmSync(other, { recursive: true, force: true });
   }
 });
+
+it("counts the paths with staged changes, not unstaged or untracked ones", async () => {
+  expect((await loadRepositoryState(createGit(repo, "git"))).staged).toBe(0);
+  fs.writeFileSync(`${repo}/f`, "staged");
+  git(["add", "f"], repo);
+  fs.writeFileSync(`${repo}/f`, "and unstaged");
+  fs.writeFileSync(`${repo}/new`, "untracked");
+  try {
+    expect((await loadRepositoryState(createGit(repo, "git"))).staged).toBe(1);
+  } finally {
+    git(["reset", "-q", "--hard"], repo);
+    fs.rmSync(`${repo}/new`);
+  }
+});

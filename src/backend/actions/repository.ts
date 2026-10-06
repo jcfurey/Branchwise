@@ -3,6 +3,7 @@ import path from "node:path";
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
+import { amendCommit, rewordCommit } from "@/backend/actions/editCommit";
 import { runHistoryAction } from "@/backend/actions/history";
 import {
   interactiveRebase,
@@ -134,6 +135,10 @@ export async function runRepositoryAction(
       return rebaseBranch(git, action.branch, action.onto, action.expectedHead, binary);
     case "interactiveRebase":
       return interactiveRebase(git, action.plan, binary);
+    case "reword":
+      return rewordCommit(git, action.plan, action.message, binary);
+    case "amendCommit":
+      return amendCommit(git, action.plan, binary);
     case "recover": {
       const current = await loadOperation(git);
       if (

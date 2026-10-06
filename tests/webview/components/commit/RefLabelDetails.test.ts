@@ -74,7 +74,8 @@ const STATE: RepositoryState = {
   ],
   head: "main",
   operation: null,
-  conflicts: []
+  conflicts: [],
+  staged: 0
 };
 
 const ref = (type: GitRef["type"], name: string): GitRef => ({ hash: "1", name, type });

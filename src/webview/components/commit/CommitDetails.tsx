@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { GitCommitDetails } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { FileTree } from "@/webview/components/commit/FileTree";
+import { onCheckedOutLine, openEditMessage } from "@/webview/components/repository/EditCommit";
 import { Icon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
 import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT, TABLE_HEADER_HEIGHT } from "@/webview/constants";
@@ -220,6 +221,15 @@ export function CommitDetails({ details }: { details: GitCommitDetails | null })
             </div>
             <CopyButton label={l10n.copyCommitHashShort} text={abbrevCommit(details.hash)} />
             <CopyButton label={l10n.copyCommitHashFull} text={details.hash} />
+            {onCheckedOutLine(details.hash) && (
+              <button
+                type="button"
+                class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
+                onClick={() => openEditMessage(details.hash)}
+              >
+                {l10n.editMessage + "…"}
+              </button>
+            )}
           </div>
           <Fact template={l10n.detailParents}>{details.parents.join(", ")}</Fact>
           <Fact template={l10n.detailAuthor}>

@@ -408,7 +408,8 @@ describe("the message", () => {
       worktrees: [],
       head: "main",
       operation: null,
-      conflicts: []
+      conflicts: [],
+      staged: 0
     };
     drawUnderOwner(h(CommitDetails, { details: sample({ body: "Fix `x` (#7)" }) }));
     const link = detailsRow().querySelector("a[href*='issues']")!;
