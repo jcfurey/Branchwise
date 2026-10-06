@@ -19,6 +19,7 @@ const openers = vi.hoisted(() => ({
   openStashes: vi.fn(),
   openWorktrees: vi.fn(),
   openWorkspaceSync: vi.fn(),
+  openFastForward: vi.fn(),
   openCleanup: vi.fn(),
   openBisect: vi.fn(),
   openReflog: vi.fn(),
@@ -40,7 +41,7 @@ vi.mock("@/webview/components/repository/WorktreeManager", async (original) =>
   withOpeners(await original(), ["openWorktrees"])
 );
 vi.mock("@/webview/components/history/WorkflowTools", async (original) =>
-  withOpeners(await original(), ["openWorkspaceSync", "openCleanup"])
+  withOpeners(await original(), ["openWorkspaceSync", "openFastForward", "openCleanup"])
 );
 vi.mock("@/webview/components/repository/BisectView", async (original) =>
   withOpeners(await original(), ["openBisect"])
@@ -85,6 +86,7 @@ describe("the Settings & Tools menu", () => {
       "stashes",
       "worktrees",
       "workspaceSync",
+      "fastForwardTitle",
       "cleanupBranches",
       "bisectTitle",
       null,
@@ -130,6 +132,7 @@ describe("the Settings & Tools menu", () => {
     ["stashes", "openStashes"],
     ["worktrees", "openWorktrees"],
     ["workspaceSync", "openWorkspaceSync"],
+    ["fastForwardTitle", "openFastForward"],
     ["cleanupBranches", "openCleanup"],
     ["bisectTitle", "openBisect"],
     ["reflog", "openReflog"],
@@ -152,7 +155,7 @@ describe("the Settings & Tools menu", () => {
     const sent = vscodeApi.postMessage.mock.calls.map(([message]) => message.command);
     expect(sent).toEqual(expect.arrayContaining(["loadBranches", "saveRepoState"]));
 
-    expect(openTools().entries[12]?.title).toBe("showRemoteBranches");
+    expect(openTools().entries.map((entry) => entry?.title)).toContain("showRemoteBranches");
     runEntry("showRemoteBranches");
     expect(stores.showRemoteBranch.value).toBe(true);
   });

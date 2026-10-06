@@ -307,8 +307,7 @@ async function findGraph() {
 }
 async function button(text, scope = '(document.querySelector("[role=dialog]") || document)') {
   if (["Remotes", "Stashes", "Worktrees"].includes(text)) {
-    await button("Settings & Tools", 'document.querySelector("header")');
-    await menu(text);
+    await toolsMenu(text);
     return;
   }
 
@@ -318,6 +317,20 @@ async function button(text, scope = '(document.querySelector("[role=dialog]") ||
         `(() => { const root = ${scope}; const button = [...root.querySelectorAll('button')].find(b => (b.textContent.trim() === ${JSON.stringify(text)} || b.getAttribute('aria-label') === ${JSON.stringify(text)}) && !b.disabled); if (!button) return false; button.click(); return true; })()`
       ),
     "button " + text
+  );
+}
+/**
+ * Choose `text` from the Settings & Tools menu. Any scroll closes a menu, and a refresh that
+ * lands just after it opens can scroll the graph, so the menu is opened again until the entry
+ * is chosen.
+ */
+async function toolsMenu(text) {
+  await until(
+    () =>
+      graph.evaluate(
+        `(() => { const item = [...document.querySelectorAll('[role="menuitem"]')].find(e => e.textContent.trim() === ${JSON.stringify(text)}); if (item) { item.click(); return true; } if (!document.querySelector('[role="menu"]')) { document.querySelector('header button[aria-label="Settings & Tools"]')?.click(); } return false; })()`
+      ),
+    "tools menu " + text
   );
 }
 async function menu(text) {
@@ -1385,8 +1398,7 @@ suite("Branchwise workflow UI", function () {
       () => graph.evaluate('!document.querySelector("tbody").innerText.includes("lost contents")'),
       "graph without the reset commit"
     );
-    await button("Settings & Tools");
-    await menu("Recover lost commits (reflog)");
+    await toolsMenu("Recover lost commits (reflog)");
     // The reflog opens as a tab; only commits no branch reaches are the ones worth recovering.
     await until(
       () =>
@@ -1635,8 +1647,7 @@ suite("Branchwise workflow UI", function () {
         ),
       "keyboard focus on the next commit"
     );
-    await button("Settings & Tools");
-    await menu("Git Activity");
+    await toolsMenu("Git Activity");
     assert.equal(
       await graph.evaluate(
         'document.querySelector("[role=dialog]").innerText.includes("Create Fixup Commit")'
@@ -1780,6 +1791,51 @@ suite("Branchwise workflow UI", function () {
     assert.equal(git(["diff", "--cached", "--name-only"], parent), "other");
   });
 
+  test("fetches and fast-forwards every branch that is only behind, without a checkout", async () => {
+    const local = directory();
+    init(local);
+    commit("f", "ff base", local);
+    git(["branch", "topic"], local);
+    const bare = directory();
+    git(["clone", "--bare", local, bare]);
+    git(["remote", "add", "origin", bare], local);
+    git(["fetch", "origin"], local);
+    git(["branch", "--set-upstream-to=origin/main", "main"], local);
+    git(["branch", "--set-upstream-to=origin/topic", "topic"], local);
+    const peer = directory();
+    git(["clone", bare, peer]);
+    git(["config", "user.name", "UI Test"], peer);
+    git(["config", "user.email", "ui@test"], peer);
+    commit("f", "peer main", peer);
+    git(["checkout", "topic"], peer);
+    commit("t", "peer topic", peer);
+    git(["push", "origin", "main", "topic"], peer);
+    await openRepo(local);
+    await toolsMenu("Fast-forward Branches");
+    const dialog = 'document.querySelector("[role=dialog]")';
+    await until(
+      () => graph.evaluate(`${dialog}?.innerText.includes("No branch can move")`),
+      "nothing to move before fetching"
+    );
+    await button("Fetch All & Refresh");
+    const listed = () =>
+      graph.evaluate(
+        `[...${dialog}.querySelectorAll("[data-fast-forward-branch]")].map(e => e.dataset.fastForwardBranch).join()`
+      );
+    await until(async () => (await listed()) === "main,topic", "branches behind after the fetch");
+    await button("Fast-forward 2 Branches");
+    await until(
+      () => graph.evaluate(`${dialog}?.innerText.includes("Fast-forwarded 2 branches.")`),
+      "fast-forward result"
+    );
+    assert.equal(git(["rev-parse", "main"], local), git(["rev-parse", "main"], bare));
+    assert.equal(git(["rev-parse", "topic"], local), git(["rev-parse", "topic"], bare));
+    assert.equal(git(["branch", "--show-current"], local), "main");
+    assert.equal(git(["status", "--porcelain"], local), "");
+    await until(async () => (await listed()) === "", "nothing left to move");
+    await keypress("Escape");
+  });
+
   test("previews pushes and fast-forward pulls and removes only selected merged branches", async () => {
     const local = directory();
     init(local);
@@ -1835,8 +1891,7 @@ suite("Branchwise workflow UI", function () {
       () => graph.evaluate('document.querySelector("tbody").innerText.includes("merged-cleanup")'),
       "graph with the new branch"
     );
-    await button("Settings & Tools");
-    await menu("Clean Up Merged Branches");
+    await toolsMenu("Clean Up Merged Branches");
     await until(
       () =>
         graph.evaluate(
@@ -1878,8 +1933,7 @@ suite("Branchwise workflow UI", function () {
     git(["remote", "add", "origin", path.join(broken, "missing-remote")], broken);
     await openRepo(broken);
     await openRepo(local);
-    await button("Settings & Tools");
-    await menu("Workspace Fetch & Update");
+    await toolsMenu("Workspace Fetch & Update");
     for (const dir of [local, broken]) {
       await until(
         () =>
@@ -1898,8 +1952,7 @@ suite("Branchwise workflow UI", function () {
       "independent fetch results"
     );
     await button("Close");
-    await button("Settings & Tools");
-    await menu("Workspace Fetch & Update");
+    await toolsMenu("Workspace Fetch & Update");
     assert.equal(
       await graph.evaluate('document.querySelector("[role=dialog]").innerText.includes("Failed")'),
       true

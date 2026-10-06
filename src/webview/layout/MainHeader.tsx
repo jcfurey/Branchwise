@@ -7,7 +7,11 @@ import {
   openFileHistory,
   openReflog
 } from "@/webview/components/history/HistoryTools";
-import { openCleanup, openWorkspaceSync } from "@/webview/components/history/WorkflowTools";
+import {
+  openCleanup,
+  openFastForward,
+  openWorkspaceSync
+} from "@/webview/components/history/WorkflowTools";
 import { openBisect } from "@/webview/components/repository/BisectView";
 import { openRemotes } from "@/webview/components/repository/RemoteManager";
 import { openStashes } from "@/webview/components/repository/StashManager";
@@ -179,6 +183,7 @@ function toolsMenu(): Array<ContextMenuEntry> {
     { title: l10n.stashes, onClick: openStashes },
     { title: l10n.worktrees, onClick: openWorktrees },
     { title: l10n.workspaceSync, onClick: openWorkspaceSync },
+    { title: l10n.fastForwardTitle, onClick: openFastForward },
     { title: l10n.cleanupBranches, onClick: openCleanup },
     { title: l10n.bisectTitle, onClick: openBisect },
     null,

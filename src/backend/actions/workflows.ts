@@ -5,7 +5,12 @@ import { requireIdle } from "@/backend/actions/rebase";
 import { fetchRemote } from "@/backend/actions/remote";
 import { loadBisect } from "@/backend/queries/bisect";
 import { loadOperation } from "@/backend/queries/repository";
-import { loadCleanupPlan, loadSubmodulePlan, loadSyncPlan } from "@/backend/queries/workflows";
+import {
+  loadCleanupPlan,
+  loadFastForwardPlan,
+  loadSubmodulePlan,
+  loadSyncPlan
+} from "@/backend/queries/workflows";
 import type { WorkflowAction } from "@/backend/types";
 import { runGit } from "@/backend/utils/runGit";
 import { requireCurrentBranch, resolveCommit } from "@/backend/utils/validation";
@@ -122,6 +127,66 @@ export async function runWorkflowAction(
           l10n.t(
             "Deleted {0} branches before stopping: {1}",
             deleted,
+            error instanceof Error ? error.message : String(error)
+          ),
+          { cause: error }
+        );
+      }
+      return;
+    }
+    case "fastForward": {
+      await requireIdle(git);
+      const current = await loadFastForwardPlan(git);
+      const reviewed = action.branches;
+      if (
+        reviewed.length === 0 ||
+        new Set(reviewed.map((branch) => branch.name)).size !== reviewed.length ||
+        reviewed.some(
+          (branch) =>
+            !current.branches.some(
+              (candidate) =>
+                candidate.name === branch.name &&
+                candidate.from === branch.from &&
+                candidate.to === branch.to &&
+                candidate.current === branch.current
+            )
+        )
+      ) {
+        throw new Error(
+          l10n.t("The branches or their upstreams changed. Review the fast-forwards again.")
+        );
+      }
+      // The checked-out branch moves by merging, which needs it unchanged and a clean work tree.
+      const checkedOut = reviewed.find((branch) => branch.current);
+      if (checkedOut !== undefined) {
+        await requireCurrentBranch(git, checkedOut.name, checkedOut.from);
+        await requireClean(git);
+      }
+      let moved = 0;
+      try {
+        for (const branch of reviewed) {
+          if (branch.current) {
+            // eslint-disable-next-line no-await-in-loop
+            await git.raw(["merge", "--ff-only", "--no-autostash", branch.to]);
+          } else {
+            // Compare-and-swap: a branch another Git client moved meanwhile is left alone.
+            // eslint-disable-next-line no-await-in-loop
+            await git.raw([
+              "update-ref",
+              "-m",
+              `branchwise: fast-forward to ${branch.upstream}`,
+              `refs/heads/${branch.name}`,
+              branch.to,
+              branch.from
+            ]);
+          }
+          moved++;
+        }
+      } catch (error) {
+        throw new Error(
+          l10n.t(
+            "Fast-forwarded {0} branches before stopping: {1}",
+            moved,
             error instanceof Error ? error.message : String(error)
           ),
           { cause: error }
