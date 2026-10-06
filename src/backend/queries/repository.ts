@@ -14,6 +14,7 @@ import { historyQuery } from "@/backend/queries/history";
 import { loadPushStatus } from "@/backend/queries/pushStatus";
 import { loadReplayForecast } from "@/backend/queries/replayForecast";
 import {
+  loadBulkSyncPlan,
   loadSyncPlan,
   loadUpstreamPlan,
   loadCleanupPlan,
@@ -32,6 +33,7 @@ import type {
   RepositoryQueryData,
   RepositoryState,
   StashDetails,
+  WorkspaceOperation,
   WorktreeDetails
 } from "@/backend/types";
 import { autosquashPlan } from "@/backend/utils/autosquash";
@@ -53,8 +55,12 @@ export async function readOptional(filename: string) {
   }
 }
 
-export async function loadOperation(git: SimpleGit): Promise<OperationState | null> {
-  const directory = await gitDirectory(git);
+/** `directory` is the repository's Git directory, when the caller has it already. */
+export async function loadOperation(
+  git: SimpleGit,
+  directory?: string
+): Promise<OperationState | null> {
+  directory ??= await gitDirectory(git);
   const files = [
     "rebase-merge/head-name",
     "rebase-apply/head-name",
@@ -84,6 +90,22 @@ export async function loadOperation(git: SimpleGit): Promise<OperationState | nu
       .update(JSON.stringify([kind, head, contents]))
       .digest("hex")
   };
+}
+
+/**
+ * The operation stopped partway, counting a bisect, which the repository state leaves to its own
+ * view since a bisect does not block other work the way a stopped merge does.
+ */
+export async function loadOperationKind(
+  git: SimpleGit,
+  directory?: string
+): Promise<WorkspaceOperation | null> {
+  directory ??= await gitDirectory(git);
+  const [operation, bisect] = await Promise.all([
+    loadOperation(git, directory),
+    readOptional(path.join(directory, "BISECT_START"))
+  ]);
+  return operation?.kind ?? (bisect === null ? null : "bisect");
 }
 
 export async function loadWorktrees(git: SimpleGit): Promise<WorktreeDetails[]> {
@@ -343,6 +365,8 @@ export async function repositoryQuery(
       return { kind: "cleanupPlan", plan: await loadCleanupPlan(git) };
     case "fastForwardPlan":
       return { kind: "fastForwardPlan", plan: await loadFastForwardPlan(git) };
+    case "bulkSyncPlan":
+      return { kind: "bulkSyncPlan", plan: await loadBulkSyncPlan(git, query.operation) };
     case "workspace":
       return {
         kind: "workspace",

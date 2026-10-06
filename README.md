@@ -66,6 +66,7 @@ basics.
 **Repositories**
 
 - Multi-repository workspaces with submodules, nested repositories, remotes and worktrees
+- Workspace status: what needs attention across repositories, with Fetch, Pull and Push All
 - Remote - SSH, WSL, Dev Containers and Codespaces; English, Simplified and Traditional Chinese
 
 The [user guide](docs/git-actions.md) describes every action.
