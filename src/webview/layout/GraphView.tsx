@@ -6,6 +6,7 @@ import { branchListRef } from "@/backend/utils/refs";
 import { CommitTable } from "@/webview/components/commit/CommitTable";
 import { openBatch, openCompare } from "@/webview/components/history/HistoryTools";
 import { PageControls, QueryStatus } from "@/webview/components/history/QueryControls";
+import { openInteractiveRebase } from "@/webview/components/repository/RebaseEditor";
 import { Button } from "@/webview/components/ui/Button";
 import { BranchIcon, CloseIcon, TagIcon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
@@ -27,6 +28,7 @@ import {
   selectedCommits,
   setHistoryFilter
 } from "@/webview/lib/navigation";
+import { squashSelection } from "@/webview/lib/squash-selection";
 import {
   branchDisplay,
   branchFocusTarget,
@@ -187,6 +189,12 @@ function SelectionBar({ selected }: { selected: Array<HistoryEntry> }) {
   const l10n = window.l10n;
   const tooMany = selected.length > BATCH_LIMIT;
   const [first, second] = selected;
+  const squash = squashSelection(
+    selected,
+    commitList.value ?? [],
+    commitHead.value,
+    headBranch.value
+  );
   return (
     <div class="flex flex-wrap items-center gap-2 border-b border-line-soft bg-row-head px-3 py-2 text-ui">
       <span>{fill(l10n.selectedCount, String(selected.length))}</span>
@@ -198,6 +206,18 @@ function SelectionBar({ selected }: { selected: Array<HistoryEntry> }) {
       </Button>
       <Button disabled={tooMany} onClick={() => openBatch("revert")}>
         {l10n.batchRevert}
+      </Button>
+      {/* Unlike the batches, a squash can only be offered for some selections: say why not. */}
+      <Button
+        disabled={"reason" in squash}
+        title={"reason" in squash ? squash.reason : undefined}
+        onClick={() => {
+          if ("base" in squash) {
+            openInteractiveRebase(squash.base, false, squash.hashes);
+          }
+        }}
+      >
+        {fill(l10n.squashSelected, String(selected.length))}
       </Button>
       <Button
         onClick={() => {

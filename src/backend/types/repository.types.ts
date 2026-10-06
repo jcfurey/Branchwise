@@ -51,7 +51,13 @@ export type RepositoryQuery =
   | { kind: "conflictForecast" }
   | { kind: "state" }
   | { kind: "stashes" }
-  | { kind: "rebasePlan"; base: string; autosquash?: boolean }
+  | {
+      kind: "rebasePlan";
+      base: string;
+      autosquash?: boolean;
+      /** Commits to squash into the oldest of them; they must be consecutive in the plan. */
+      squash?: string[];
+    }
   | { kind: "lease"; remote: string; branch: string };
 
 export type RepositoryQueryData =

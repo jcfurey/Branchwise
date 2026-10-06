@@ -18,6 +18,8 @@ import {
   click,
   entry,
   hideGraphView,
+  lastQuery,
+  reply,
   resetGraphView,
   sentQueries,
   showGraphView,
@@ -160,6 +162,75 @@ describe("the selection bar", () => {
       selectedCommits.value = chain("solo");
     });
     expect(buttonNamed("clearSelection")).toBeUndefined();
+    expect(buttonNamed("squashSelected")).toBeUndefined();
+  });
+
+  it("opens consecutive commits of the current branch in the rebase editor to squash", () => {
+    withEnglish({ squashSelected: "Squash {0} Commits…" });
+    showRows(["d", "c", "b", "a"]);
+    act(() => {
+      selectedCommits.value = chain("d", "c", "b", "a").slice(0, 3);
+    });
+    const squash = buttonNamed("Squash 3 Commits…");
+    expect(squash?.disabled).toBe(false);
+    expect(squash?.title).toBe("");
+
+    click("Squash 3 Commits…");
+    // Only the plan is asked for: the history changes once the editor's plan is started.
+    expect(sentQueries("rebasePlan").map(({ query }) => query)).toEqual([
+      { kind: "rebasePlan", base: "a", autosquash: false, squash: ["b", "c", "d"] }
+    ]);
+    expect(sentQueries("rebasePlan")[0]?.repo).toBe("/work/repo");
+
+    // The plan opens in the interactive rebase editor, for the user to review and start.
+    const plan = {
+      base: "a",
+      head: "d",
+      branch: "main",
+      entries: (["b", "c", "d"] as const).map((hash, index) => ({
+        hash,
+        message: hash,
+        action: index === 0 ? ("pick" as const) : ("squash" as const)
+      }))
+    };
+    reply(lastQuery("rebasePlan"), { data: { kind: "rebasePlan", plan } });
+    const dialog = stores.dialog.value as { kind: string; message: string; content: VNode };
+    expect(dialog.kind).toBe("content");
+    expect(dialog.message).toBe("rebasePlanTitle");
+    expect(dialog.content.props).toMatchObject({ plan, repo: "/work/repo" });
+  });
+
+  it.each([
+    ["the root commit", ["b", "a"], "squashRootSelected"],
+    ["a gap", ["d", "b"], "squashNotConsecutive"]
+  ])("disables the squash for a selection with %s and says why", (_, hashes, reason) => {
+    showRows(["d", "c", "b", "a"]);
+    const rows = chain("d", "c", "b", "a");
+    act(() => {
+      selectedCommits.value = rows.filter((row) => hashes.includes(row.hash));
+    });
+    const squash = buttonNamed("squashSelected");
+    expect(squash?.disabled).toBe(true);
+    expect(squash?.title).toBe(reason);
+    expect(buttonNamed("batchCherryPick")?.disabled).toBe(false);
+  });
+
+  it("disables the squash for commits of another branch", () => {
+    // HEAD is `main`; `y` and `x` sit on a branch off `a`.
+    stores.commitList.value = [
+      entry("y", "x"),
+      entry("main", "a"),
+      entry("x", "a"),
+      entry("a", "root"),
+      entry("root")
+    ];
+    stores.commitHead.value = "main";
+    showGraphView();
+    act(() => {
+      selectedCommits.value = [entry("y", "x"), entry("x", "a")];
+    });
+    expect(buttonNamed("squashSelected")?.title).toBe("squashOtherBranch");
+    expect(buttonNamed("squashSelected")?.disabled).toBe(true);
   });
 });
 

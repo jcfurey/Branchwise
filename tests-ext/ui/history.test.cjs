@@ -1006,6 +1006,50 @@ suite("Branchwise workflow UI", function () {
       );
     } catch {}
   });
+  test("squashes three selected commits through the interactive rebase editor", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "squash base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    commit("a", "squash first", dir);
+    commit("b", "squash second", dir);
+    commit("c", "squash third", dir);
+    commit("later", "squash later", dir);
+    const head = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    await openRepo(dir);
+    await selectCommits(["squash first", "squash second", "squash third"]);
+    await button("Squash 3 Commits…");
+    await until(
+      () => graph.evaluate('document.querySelectorAll("[role=dialog] select").length === 4'),
+      "squash plan"
+    );
+    assert.equal(
+      await graph.evaluate(
+        '[...document.querySelectorAll("[role=dialog] select")].map(s=>s.value).join(",")'
+      ),
+      "pick,squash,squash,pick"
+    );
+    // Opening the editor rewrites nothing; the user starts the rebase.
+    assert.equal(git(["rev-parse", "HEAD"], dir), head);
+    await button("Start Rebase");
+    await finished();
+    assert.equal(
+      git(["log", "--reverse", "--format=%s", base + "..HEAD"], dir),
+      "squash first\nsquash later"
+    );
+    assert.equal(
+      git(["log", "-1", "--format=%B", "HEAD^"], dir),
+      "squash first\n\nsquash second\n\nsquash third"
+    );
+    assert.equal(
+      git(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD^"], dir),
+      "a\nb\nc"
+    );
+    assert.equal(git(["rev-parse", "HEAD^{tree}"], dir), tree);
+    await button("Clear Selection");
+  });
+
   test("searches past the loaded graph and keeps saved filters per repository", async () => {
     const history = directory();
     init(history);
