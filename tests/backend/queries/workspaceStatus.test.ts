@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 
 import { loadWorkspace } from "@/backend/queries/workspace";
 import type { WorkspaceEntry } from "@/backend/types";
@@ -168,33 +168,41 @@ it("leaves every repository untouched while it reads them", async () => {
 });
 
 it("stops when cancelled partway, without starting the next repositories", async () => {
-  const scratch = repo();
-  const log = path.join(scratch, "calls.log");
-  const marker = path.join(scratch, "stash-count-started");
-  // Git, except that counting stashes stalls until the read is cancelled.
-  const binary = path.join(scratch, "slow-git");
-  fs.writeFileSync(
-    binary,
-    `#!/bin/sh\npwd -P >> "${log}"\ncase "$*" in *--walk-reflogs*) : > "${marker}"; exec sleep 30;; esac\nexec git "$@"\n`,
-    { mode: 0o755 }
-  );
   const repos = [repo(), repo(), repo(), repo(), repo()];
   fs.writeFileSync(path.join(repos[0]!, "u"), "untracked");
   git(["stash", "push", "-q", "--include-untracked"], repos[0]!);
   const controller = new AbortController();
-  const read = loadWorkspace(repos, binary, controller.signal);
-  const outcome = read.then(
-    () => "finished",
-    () => "cancelled"
-  );
-  for (let attempt = 0; attempt < 100 && !fs.existsSync(marker); attempt++) {
-    // eslint-disable-next-line no-await-in-loop
-    await new Promise((resolve) => setTimeout(resolve, 50));
+  const visited: string[] = [];
+  // The module afresh, over a client factory that notes each repository it is asked for and
+  // cancels the read the moment the first repository's stashes are counted.
+  vi.resetModules();
+  vi.doMock("@/backend/gitClient", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/backend/gitClient")>();
+    return {
+      ...actual,
+      gitClientFactory: (...args: Parameters<typeof actual.gitClientFactory>) => {
+        visited.push(args[0]);
+        const factory = actual.gitClientFactory(...args);
+        const client = factory.getInstance();
+        const raw = client.raw.bind(client);
+        client.raw = ((command: string[]) => {
+          if (command.includes("--walk-reflogs")) {
+            controller.abort();
+          }
+          return raw(command);
+        }) as typeof client.raw;
+        return { ...factory, getInstance: () => client };
+      }
+    };
+  });
+  try {
+    const { loadWorkspace: cancellable } = await import("@/backend/queries/workspace");
+    await expect(cancellable(repos, "git", controller.signal)).rejects.toThrow();
+  } finally {
+    vi.doUnmock("@/backend/gitClient");
+    vi.resetModules();
   }
-  expect(fs.existsSync(marker)).toBe(true);
-  controller.abort();
-  expect(await outcome).toBe("cancelled");
+  expect(controller.signal.aborted).toBe(true);
   // The first four repositories form one batch; the fifth would have been read after it.
-  const visited = new Set(fs.readFileSync(log, "utf8").trim().split("\n"));
-  expect(visited.has(repos[4]!)).toBe(false);
+  expect(visited).toStrictEqual(repos.slice(0, 4));
 });
