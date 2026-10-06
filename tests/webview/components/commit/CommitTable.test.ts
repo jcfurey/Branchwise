@@ -285,22 +285,75 @@ describe("a commit chosen in Go to", () => {
 
   it("takes the keyboard back for its row when the page regains focus", () => {
     HTMLElement.prototype.scrollIntoView = vi.fn();
-    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
-    try {
+    pendingReveal.value = "b";
+    drawTable({ commits: [entry("c"), entry("b", ["a"]), entry("a")] });
+    // The workbench hands the panel the keyboard with nothing focused in it.
+    row("b").blur();
+    expect(document.activeElement).toBe(document.body);
+    window.dispatchEvent(new FocusEvent("focus"));
+    expect(document.activeElement).toBe(row("b"));
+  });
+
+  describe("while the workbench settles", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      HTMLElement.prototype.scrollIntoView = vi.fn();
       pendingReveal.value = "b";
       drawTable({ commits: [entry("c"), entry("b", ["a"]), entry("a")] });
-      // The workbench hands the panel the keyboard with nothing focused in it.
-      row("b").blur();
-      expect(document.activeElement).toBe(document.body);
+    });
+    afterEach(() => {
+      // Let go of the row, so that later tests start without it held.
+      window.dispatchEvent(new PointerEvent("pointerdown"));
+      vi.useRealTimers();
+    });
+
+    it("takes the keyboard back each time the row loses it to nothing", () => {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        row("b").blur();
+        expect(document.activeElement).toBe(document.body);
+        vi.advanceTimersByTime(0);
+        expect(document.activeElement).toBe(row("b"));
+      }
+    });
+
+    it("never takes the keyboard while the page does not have it", () => {
+      const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+      try {
+        // Another picker opens in the workbench and the panel's document drops its focus.
+        row("b").blur();
+        vi.advanceTimersByTime(0);
+        expect(document.activeElement).toBe(document.body);
+      } finally {
+        hasFocus.mockRestore();
+      }
       window.dispatchEvent(new FocusEvent("focus"));
       expect(document.activeElement).toBe(row("b"));
-      // Only once, and never over a control the user chose.
+    });
+
+    it("never takes it from a control the keyboard moved to", () => {
+      const control = document.createElement("button");
+      document.body.append(control);
+      try {
+        control.focus();
+        vi.advanceTimersByTime(0);
+        window.dispatchEvent(new FocusEvent("focus"));
+        expect(document.activeElement).toBe(control);
+      } finally {
+        control.remove();
+      }
+    });
+
+    it.each([
+      ["a click", () => window.dispatchEvent(new PointerEvent("pointerdown"))],
+      ["a key", () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "x" }))],
+      ["the settling time passing", () => vi.advanceTimersByTime(5000)]
+    ])("lets go after %s", (_, letGo) => {
+      letGo();
       row("b").blur();
+      vi.advanceTimersByTime(0);
       window.dispatchEvent(new FocusEvent("focus"));
       expect(document.activeElement).toBe(document.body);
-    } finally {
-      hasFocus.mockRestore();
-    }
+    });
   });
 });
 

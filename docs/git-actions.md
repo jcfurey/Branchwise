@@ -93,6 +93,22 @@ A local branch that would not merge cleanly into the checked-out branch shows a 
 
 Only branches not yet merged into `HEAD` are tried: the 50 with the newest commits. Each result is remembered for that pair of commits, so a refresh tries again only the branches that moved, or all of them when `HEAD` does. Branches with no history in common with `HEAD`, which `git merge` refuses, get no mark. Nothing is forecast while a merge, rebase, cherry-pick or revert is under way, or with Git older than 2.38, which has no `merge-tree --write-tree`.
 
+### Teammates' branches
+
+Remote branches are forecast too, so a teammate's work that would conflict with yours shows up before either of you opens a pull request. A remote branch's label in the graph, and its row in the Branches pane, carry the same mark; the tooltip names the files and says whose work it is, from its last commit: "Last commit by Alice, 2 days ago". Fetch to see the latest.
+
+While any remote branch would conflict, a line above the graph says how many, such as "2 teammates' branches would conflict with yours". Click it for a list of them, with the author and age of each one's last commit and the files in conflict; choosing one closes the list and focuses that branch in the graph.
+
+Up to 50 remote branches are tried on top of the local ones, newest first, and only those:
+
+- with a commit in the last 30 days;
+- not merged into `HEAD`;
+- other than the checked-out branch's own upstream, which only tells you that you are behind, and `<remote>/HEAD`;
+- shown in the graph: hidden remotes, [hidden-branch patterns](#hiding-branches-by-name) and turning remote branches off all leave branches out;
+- not at the same commit as a local branch, and not the upstream of a local branch that is tried, since the local branch's mark already says it.
+
+The `branchwise.conflictForecast` setting chooses what is tried: `localAndRemote` (the default), `local` for local branches only, or `off`.
+
 ### Rebase, cherry-pick and revert forecast
 
 The confirmations for **Move the current branch onto this (rebase)**, **Cherry-pick…** and **Revert…**, the interactive rebase editor, and the editors for cherry-picking or reverting selected commits say whether the operation would stop with conflicts before you start it. The line reads, for example, "Rebase would stop at 1a2b3c4d Add parser: conflicts in src/parser.ts, README.md", or "Replays 3 commits cleanly"; "Checking for conflicts…" shows while it is worked out. In the editors, the commit where it would stop is also marked, and the forecast is worked out again shortly after you reorder or drop commits. It only informs: every action can still be started.
@@ -126,6 +142,16 @@ Two commit-menu entries change a single commit of the checked-out branch without
 **Add Staged Changes to This Commit…** appears while changes are staged. Its confirmation lists the commit, the staged files and how many later commits will be rewritten. `HEAD` is amended with the staged changes, and unstaged changes are left alone. For an older commit, the staged changes are committed as `fixup! <subject>`, as **Fold staged changes into this commit (fixup)** does, and an autosquash rebase from the commit's parent folds them in at once. Like any autosquash, it also folds in other `fixup!` and `squash!` commits already waiting in that range. Nothing else may be unstaged or untracked, since the rebase needs a clean working tree. If the rebase stops on a conflict, the status strip offers Continue and Abort; Abort leaves the changes in the `fixup!` commit at the top of the branch.
 
 Both are refused on a detached `HEAD`, on the first commit of the history unless it is `HEAD`, when the commit or one after it is a merge (again unless the commit is `HEAD`), and when the branch moved after the dialog opened. An empty message is refused too. When a remote-tracking branch already contains the commit, the dialog warns that sharing the rewritten history needs a force push; see [Remotes and tracking](#remotes-and-tracking) for **Force with lease**.
+
+### Absorbing staged changes into the commits they fix
+
+When staged changes correct lines that earlier commits of the branch introduced, **Absorb Staged Changes…** splits them hunk by hunk into `fixup!` commits, one for each commit they correct. The button sits beside **Staged Changes** in the uncommitted changes' details, and appears while something is staged.
+
+Each hunk of `git diff --cached` goes to the commit that last changed its lines, as `git blame` at `HEAD` tells; for a hunk that only adds lines, the lines just above and below it decide. Only the branch's own commits count: those on `HEAD`'s first-parent line after where it meets its upstream or, without an upstream, after the commits any remote-tracking branch or the local `main` or `master` already has. The search stops at a merge and after 100 commits. A hunk stays staged when its lines were last changed by a commit outside those, or by more than one commit, or when there is no line around it to go by. Added, deleted, renamed and binary files, and files whose mode or type changes, stay staged whole.
+
+The preview lists, for each commit, its short ID and subject and the hunks it receives (file and lines), then what stays staged and why. Working this out changes nothing. **Create Fixup Commits** commits one `fixup! <subject>` per commit, oldest target first, on top of the branch. They are built in a temporary index, so unstaged and untracked changes are not touched, and the hunks that could not be absorbed stay staged. Before the branch moves, the fixups and the changes left staged must add up to exactly what was staged; otherwise, or if `HEAD` or the staged changes changed since the preview, nothing changes. Git's commit hooks do not run for these commits.
+
+**Create and Squash Now** does the same and then opens the [interactive rebase](#rebasing) editor from the parent of the oldest target, with the fixups already arranged by **Arrange Fixup / Squash Commits**. Nothing is rewritten until **Start Rebase**. It is available only when nothing would be left staged, unstaged or untracked, as the rebase needs a clean working tree, and not when a fixup goes into the repository's first commit. When nothing can be absorbed, the preview says so and offers no action.
 
 ## Worktrees
 

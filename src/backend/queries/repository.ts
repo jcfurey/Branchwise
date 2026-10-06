@@ -5,6 +5,7 @@ import path from "node:path";
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
+import { loadAbsorbPlan } from "@/backend/queries/absorb";
 import { loadBisect } from "@/backend/queries/bisect";
 import { loadBranchFocus } from "@/backend/queries/branchFocus";
 import { loadConflictForecast } from "@/backend/queries/conflictForecast";
@@ -310,7 +311,7 @@ export async function repositoryQuery(
       // While a merge, rebase or pick is under way, HEAD is not where the user will merge into.
       return {
         kind: "conflictForecast",
-        conflicts: (await loadOperation(git)) === null ? await loadConflictForecast(git) : []
+        conflicts: (await loadOperation(git)) === null ? await loadConflictForecast(git, query) : []
       };
     case "replayForecast":
       return { kind: "replayForecast", forecast: await loadReplayForecast(git, query) };
@@ -374,6 +375,8 @@ export async function repositoryQuery(
       return { kind: "editPlan", plan: await loadRewordPlan(git, query.target) };
     case "amendPlan":
       return { kind: "amendPlan", plan: await loadAmendPlan(git, query.target) };
+    case "absorbPlan":
+      return { kind: "absorbPlan", plan: await loadAbsorbPlan(git) };
     case "lease": {
       await requireRemote(git, query.remote);
       await requireBranchName(git, query.branch);

@@ -2,7 +2,13 @@ import { useComputed } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { useId, useState } from "preact/hooks";
 
-import type { BranchDetails, GitRef, RefDetails, RemoteDetails } from "@/backend/types";
+import type {
+  BranchDetails,
+  ConflictForecastEntry,
+  GitRef,
+  RefDetails,
+  RemoteDetails
+} from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { abbrevCommit } from "@/backend/utils/string";
 import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
@@ -41,6 +47,7 @@ import {
   setShowRemoteBranch
 } from "@/webview/lib/actions";
 import { branchHealth, orderBranches } from "@/webview/lib/branch-health";
+import { conflictForecastQuery, conflictsByBranch } from "@/webview/lib/conflict-forecast";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
 import { collapsedSections, focusHistory, toggleSection } from "@/webview/lib/navigation";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
@@ -266,10 +273,13 @@ function Section({
 /** The first `limit` items of a list, and a button that shows the next page. */
 function RemoteBranches({
   group,
-  shown
+  shown,
+  conflicts
 }: {
   group: { remote: string; branches: RefDetails[] };
   shown: boolean;
+  /** The conflict forecast by branch, as `conflictsByBranch` keys it. */
+  conflicts: ReadonlyMap<string, ConflictForecastEntry>;
 }) {
   const page = usePage(group.branches);
   return (
@@ -277,6 +287,7 @@ function RemoteBranches({
       {page.shown.map((ref) => {
         const gitRef: GitRef = { type: "remote", name: ref.name, hash: ref.hash };
         const value = "remotes/" + ref.name;
+        const conflicted = conflicts.get(value);
         return (
           <Row
             key={ref.name}
@@ -289,6 +300,7 @@ function RemoteBranches({
             dimmed={!shown || isBranchHidden(value)}
             active={selectedBranch.value === value}
             badge={<BranchFocusBadge branch={value} />}
+            flags={conflicted === undefined ? undefined : <ConflictBadge entry={conflicted} />}
             onSelect={() => selectBranch(value)}
             menu={() => refMenu(gitRef, false)}
             actions={
@@ -339,9 +351,9 @@ export function RefsPane() {
     pinned
   );
   const forecast = useRepositoryQuery<"conflictForecast">(
-    state === null ? null : { kind: "conflictForecast" }
+    state === null ? null : conflictForecastQuery()
   );
-  const conflicts = new Map(forecast.data?.conflicts.map(({ branch, files }) => [branch, files]));
+  const conflicts = conflictsByBranch(forecast.data?.conflicts);
   const now = Date.now() / 1000;
   const groups = groupRemoteBranches(state?.remotes ?? [], state?.remoteBranches ?? []).flatMap(
     (group) => {
@@ -468,7 +480,7 @@ export function RefsPane() {
                   }
                   flags={
                     <>
-                      {conflicted !== undefined && <ConflictBadge files={conflicted} />}
+                      {conflicted !== undefined && <ConflictBadge entry={conflicted} />}
                       {health.merged && (
                         <Flag
                           kind="merged"
@@ -621,7 +633,7 @@ export function RefsPane() {
                     </span>
                   }
                 >
-                  <RemoteBranches group={group} shown={shown} />
+                  <RemoteBranches group={group} shown={shown} conflicts={conflicts} />
                 </Section>
               );
             })}

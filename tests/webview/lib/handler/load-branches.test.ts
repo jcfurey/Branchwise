@@ -16,6 +16,7 @@ let handleLoadBranches: (msg: BranchesAnswer) => void;
 
 const settings: WebviewConfig = {
   autoCenterCommitDetailsView: false,
+  conflictForecast: "localAndRemote",
   dateFormat: "Relative",
   graphColours: [],
   graphStyle: "angular",

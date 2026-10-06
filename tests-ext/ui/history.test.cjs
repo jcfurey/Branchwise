@@ -1694,6 +1694,102 @@ suite("Branchwise workflow UI", function () {
     assert.equal(fs.existsSync(path.join(dir, ".git", "rebase-merge")), false);
   });
 
+  test("warns that a teammate's remote branch would conflict with the checked-out one", async () => {
+    const seed = directory();
+    init(seed);
+    commit("api.ts", "export const total = 1;\n", seed);
+    const bare = directory();
+    git(["clone", "--bare", seed, bare]);
+    const clone = (name) => {
+      const dir = directory();
+      git(["clone", bare, dir]);
+      git(["config", "user.name", name], dir);
+      git(["config", "user.email", "ui@test"], dir);
+      git(["config", "commit.gpgsign", "false"], dir);
+      return dir;
+    };
+    const local = clone("UI Test");
+    const teammate = clone("Alice Teammate");
+    git(["checkout", "-b", "teammate"], teammate);
+    commit("api.ts", "export const total = 2;\n", teammate);
+    git(["push", "origin", "teammate"], teammate);
+    // The same line, changed on this side too and not pushed.
+    commit("api.ts", "export const total = 3;\n", local);
+    await openRepo(local);
+    git(["fetch", "origin"], local);
+    await button("Refresh");
+
+    const badge = (branch) =>
+      graph.evaluate(`(() => {
+        const label = [...document.querySelectorAll("tr[data-commit-hash] span[title]")].find(
+          (span) => span.title.split("\\n")[0] === ${JSON.stringify(branch)}
+        );
+        const badge = label?.querySelector("[data-conflicts]");
+        return badge ? [badge.textContent, badge.title] : null;
+      })()`);
+    await until(async () => (await badge("origin/teammate")) !== null, "badge on origin/teammate");
+    const [count, title] = await badge("origin/teammate");
+    assert.equal(count, "1");
+    const lines = title.split("\n");
+    assert.deepEqual(lines.slice(0, 2), ["Would conflict with your branch main in:", "api.ts"]);
+    assert.match(lines[2], /^Last commit by Alice Teammate, .+ ago$/);
+    // The upstream of main is only behind, and gets no mark.
+    assert.equal(await badge("origin/main"), null);
+
+    const summary = 'document.querySelector("[data-team-overlap]")';
+    await until(
+      () =>
+        graph.evaluate(
+          `${summary}?.innerText.trim() === "1 teammate's branch would conflict with yours"`
+        ),
+      "team overlap summary"
+    );
+    await button("1 teammate's branch would conflict with yours", summary);
+    const dialog = 'document.querySelector("[role=dialog]")';
+    await until(
+      () =>
+        graph.evaluate(
+          `${dialog}?.innerText.includes("Remote branches that would conflict with main")`
+        ),
+      "team overlap dialog"
+    );
+    const listed = await graph.evaluate(
+      `[...${dialog}.querySelectorAll("[data-team-overlap-branch]")].map(b => b.innerText.replace(/\\s+/g, " ").trim())`
+    );
+    assert.equal(listed.length, 1);
+    assert.match(listed[0], /^origin\/teammate ?1 Last commit by Alice Teammate, .+ ago api\.ts$/);
+    await graph.evaluate(
+      `${dialog}.querySelector('[data-team-overlap-branch="origin/teammate"]').click()`
+    );
+    await until(() => graph.evaluate(`!${dialog}`), "dialog closed");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('main > [role=status] span[title]')?.title === "remotes/origin/teammate"`
+        ),
+      "teammate branch focused in the graph"
+    );
+
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    if (!(await graph.evaluate("!!" + nav))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    await until(
+      () =>
+        graph.evaluate(
+          `[...${nav}.querySelectorAll('button[title]')].find(b => b.title === "origin/teammate")?.parentElement.querySelector("[data-conflicts]")?.textContent === "1"`
+        ),
+      "conflict mark on the remote row"
+    );
+    // The forecast and the focus left the work tree, the checkout and the branches alone.
+    assert.equal(git(["status", "--porcelain"], local), "");
+    assert.equal(git(["branch", "--show-current"], local), "main");
+    assert.equal(
+      git(["for-each-ref", "--format=%(refname)", "refs/heads"], local),
+      "refs/heads/main"
+    );
+  });
+
   test("runs ordered selected cherry-picks and reverts, then creates and autosquashes a fixup", async () => {
     const history = directory();
     init(history);
@@ -1875,6 +1971,69 @@ suite("Branchwise workflow UI", function () {
       "edits in Git Activity"
     );
     await button("Close");
+  });
+
+  test("absorbs staged fixes into the commits they fix and squashes them in", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base.txt", "absorb base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const write = (file, text) => fs.writeFileSync(path.join(dir, file), text);
+    write("one.txt", "one a\none b\none c\n");
+    git(["add", "one.txt"], dir);
+    git(["commit", "-m", "absorb first"], dir);
+    write("two.txt", "two a\ntwo b\n");
+    git(["add", "two.txt"], dir);
+    git(["commit", "-m", "absorb second"], dir);
+    write("one.txt", "one a\none b fixed\none c\n");
+    write("two.txt", "two a fixed\ntwo b\n");
+    git(["add", "one.txt", "two.txt"], dir);
+    const staged = git(["write-tree"], dir);
+    await openRepo(dir);
+
+    await until(
+      () => graph.evaluate(`!!document.querySelector('tr[data-commit-hash="*"]')`),
+      "uncommitted changes row"
+    );
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="*"]').click()`);
+    await button("Absorb Staged Changes…", 'document.querySelector("[data-working-tree-details]")');
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelectorAll("[role=dialog] [data-absorb-target]").length === 2'
+        ),
+      "absorb preview"
+    );
+    // Oldest commit first, each with the hunk that fixes its lines; nothing stays staged.
+    assert.deepEqual(
+      await graph.evaluate(
+        '[...document.querySelectorAll("[role=dialog] [data-absorb-target]")].map(s => s.querySelector("h3").textContent.replace(/^\\S+ /, "") + ": " + [...s.querySelectorAll("li")].map(li => li.textContent).join())'
+      ),
+      ["absorb first: one.txt:2 +1 −1", "absorb second: two.txt:1 +1 −1"]
+    );
+    assert.equal(await graph.evaluate('!!document.querySelector("[data-absorb-left]")'), false);
+    assert.equal(git(["write-tree"], dir), staged);
+
+    await button("Create and Squash Now");
+    await until(
+      () =>
+        graph.evaluate(
+          '[...document.querySelectorAll("[role=dialog] select")].map(s => s.value).join() === "pick,fixup,pick,fixup"'
+        ),
+      "rebase plan with the fixups arranged"
+    );
+    assert.equal(
+      git(["log", "--format=%s", base + "..HEAD"], dir),
+      "fixup! absorb second\nfixup! absorb first\nabsorb second\nabsorb first"
+    );
+    await button("Start Rebase");
+    await finished();
+    assert.equal(git(["log", "--format=%s", base + "..HEAD"], dir), "absorb second\nabsorb first");
+    assert.equal(git(["show", "HEAD~1:one.txt"], dir), "one a\none b fixed\none c");
+    assert.equal(git(["diff", "--name-only", "HEAD~1", "HEAD"], dir), "two.txt");
+    assert.equal(git(["show", "HEAD:two.txt"], dir), "two a fixed\ntwo b");
+    assert.equal(git(["rev-parse", "HEAD^{tree}"], dir), staged);
+    assert.equal(git(["status", "--porcelain"], dir), "");
   });
 
   test("shows nested repository status, updates a submodule and switches its graph from the sidebar", async () => {
