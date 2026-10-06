@@ -1,7 +1,7 @@
 import { rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createGit } from "@/backend/gitClient";
 import { repositoryQuery } from "@/backend/queries/repository";
@@ -66,4 +66,48 @@ it("reports nothing on a branch without commits, or while a merge is under way",
 
   git(["checkout", "-q", "--orphan", "empty"], repo);
   expect(await forecast()).toEqual([]);
+});
+
+describe("a request cancelled part way", () => {
+  /**
+   * The module afresh, with nothing remembered from other tests, and the Git client module it
+   * reads cancellation from. `cancelledAt(trigger)` is a client that cancels its own request
+   * when it is about to run Git with `trigger`.
+   */
+  const freshModule = async () => {
+    vi.resetModules();
+    const [{ loadConflictForecast }, { createGit: freshGit }] = await Promise.all([
+      import("@/backend/queries/conflictForecast"),
+      import("@/backend/gitClient")
+    ]);
+    const cancelledAt = (trigger: string) => {
+      const controller = new AbortController();
+      const client = freshGit(repo, "git", controller.signal);
+      const raw = client.raw.bind(client);
+      client.raw = ((args: string[]) => {
+        if (args.includes(trigger)) {
+          controller.abort();
+        }
+        return raw(args);
+      }) as typeof client.raw;
+      return client;
+    };
+    return { loadConflictForecast, cancelledAt, plain: () => freshGit(repo, "git") };
+  };
+
+  beforeEach(() => {
+    git(["checkout", "-q", "-b", "clash"], repo);
+    commitFiles("clash", { f: "clash\n" });
+    git(["checkout", "-q", "main"], repo);
+    commitFiles("main", { f: "main\n" });
+  });
+
+  it.each([
+    ["the Git version check", "--version"],
+    ["a merge", "--show-toplevel"]
+  ])("in %s leaves nothing behind for the next request", async (_, trigger) => {
+    const { loadConflictForecast, cancelledAt, plain } = await freshModule();
+    await expect(loadConflictForecast(cancelledAt(trigger))).rejects.toThrow();
+    expect(await loadConflictForecast(plain())).toEqual([{ branch: "clash", files: ["f"] }]);
+  });
 });

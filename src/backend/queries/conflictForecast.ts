@@ -21,19 +21,27 @@ const cache = new Map<string, string[] | null>();
 /** Whether each Git executable has `merge-tree --write-tree`, which came in Git 2.38. */
 const support = new Map<string, Promise<boolean>>();
 
-function supportsWriteTree(git: SimpleGit) {
+async function supportsWriteTree(git: SimpleGit) {
   const binary = gitProcessOf(git)?.gitPath ?? "git";
-  let supported = support.get(binary);
-  if (supported === undefined) {
-    supported = git.raw(["--version"]).then(
-      (output) => {
-        const [major = 0, minor = 0] = (output.match(/(\d+)\.(\d+)/)?.slice(1) ?? []).map(Number);
-        return major > 2 || (major === 2 && minor >= 38);
-      },
-      () => false
-    );
-    support.set(binary, supported);
+  const pending = support.get(binary);
+  if (pending !== undefined) {
+    try {
+      return await pending;
+    } catch {
+      // Another request's check failed, perhaps because that request was cancelled.
+    }
   }
+  const supported = git.raw(["--version"]).then((output) => {
+    const [major = 0, minor = 0] = (output.match(/(\d+)\.(\d+)/)?.slice(1) ?? []).map(Number);
+    return major > 2 || (major === 2 && minor >= 38);
+  });
+  support.set(binary, supported);
+  // A check that failed is tried again next time.
+  supported.catch(() => {
+    if (support.get(binary) === supported) {
+      support.delete(binary);
+    }
+  });
   return supported;
 }
 
@@ -55,7 +63,11 @@ async function conflictedFiles(git: SimpleGit, head: string, tip: string) {
     );
     // The new tree's ID, then each conflicted path, all ending in NUL.
     files = code === 0 ? [] : stdout.split("\0").slice(1).filter(Boolean);
-  } catch {
+  } catch (error) {
+    // A merge stopped because its request was cancelled says nothing about the commits.
+    if (gitProcessOf(git)?.abort?.aborted === true) {
+      throw error;
+    }
     files = null;
   }
   if (cache.size >= CACHE_SIZE) {
