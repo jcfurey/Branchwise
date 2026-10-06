@@ -26,6 +26,17 @@ Right-click a local or remote branch label in the graph, or a branch in the Bran
 
 Use **Pause focus** to temporarily restore every branch's colours, then **Resume focus** to return to the same target and mode. The badge reads **Paused** while paused. **Dimming → Subtle / Strong** adjusts the graph lines and commit dots; text stays readable at either strength. The target, dimming strength and pause state are remembered per repository. **Clear focus** removes the target and its badges.
 
+Local branches are listed by name. The clock button on the **Local Branches** section lists them by their last commit instead, newest first. Hover over a branch and click its pin to keep it at the top of the list, above the order chosen; pinned branches show a pin in place of the branch icon. The order and the pins are remembered per repository.
+
+Short flags at the end of a local branch's row point out branches worth a look:
+
+- **merged**: the checked-out branch already contains it, so deleting it loses no commits. A branch still at the checked-out commit, such as one just created, is not flagged.
+- **gone**: its upstream was deleted on the remote.
+- **stale**: it has had no commits for 90 days or more; the tooltip gives the number of days.
+- A red collision mark: merging it into the checked-out branch would conflict; see [conflict forecast](#conflict-forecast).
+
+Ahead and behind counts turn amber when a branch has diverged from its upstream, with commits on both sides. **Settings & Tools → Clean Up Merged Branches** deletes merged branches in one step; see [branch cleanup](#synchronization-review-and-branch-cleanup).
+
 Every row carries the same context menu as the matching label in the graph, reached by right-click or its trailing menu button. The most common action is also inline: **Check Out** on a branch, **Fetch** on a remote, **Show in Graph** on a tag, and **Apply** or **Pop** on a stash. The **+** buttons create a branch at HEAD, add a remote, or save a stash.
 
 Each remote has an eye button that hides its graph labels and commits reachable only through that remote. Shared history, local branches and tags remain visible. Hidden remote branches stay listed but dimmed; selecting or focusing one shows that remote again. Individual choices are saved per repository and also apply to history searches. Explicit commit or revision lookups can still open hidden history.

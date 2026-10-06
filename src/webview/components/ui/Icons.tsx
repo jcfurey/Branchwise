@@ -236,6 +236,25 @@ export function ConflictIcon(props: IconProps) {
   );
 }
 
+/** A drawing pin, point down: keep at the top. A caller fills it to show it is pinned. */
+export function PinIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <path d="M5.5 1.75H10.5M6.5 1.75V6.25L4.25 9.25H11.75L9.5 6.25V1.75M8 9.25V14.5" />
+    </Icon>
+  );
+}
+
+/** A clock face: by time. */
+export function ClockIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <circle cx="8" cy="8" r="6.25" />
+      <path d="M8 4.5V8L10.5 9.5" />
+    </Icon>
+  );
+}
+
 /** A diagonal cross: close or dismiss. */
 export function CloseIcon(props: IconProps) {
   return (

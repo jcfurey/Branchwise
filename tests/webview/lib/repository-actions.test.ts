@@ -33,7 +33,16 @@ const state: RepositoryState = {
   remotes: [],
   pushDefault: null,
   branches: [
-    { name: "main", hash: "a".repeat(40), upstream: "", ahead: 0, behind: 0, gone: false }
+    {
+      name: "main",
+      hash: "a".repeat(40),
+      upstream: "",
+      ahead: 0,
+      behind: 0,
+      gone: false,
+      date: 0,
+      merged: false
+    }
   ],
   remoteBranches: [],
   tags: [],

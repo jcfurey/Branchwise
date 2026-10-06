@@ -48,7 +48,14 @@ export type GitRepoState = {
   hiddenRemotes?: string[];
   /** Left out until the page first saves them. */
   graphPreferences?: GraphPreferences;
+  /** Local branches pinned to the top of the Branches pane, in the order pinned. */
+  pinnedBranches?: string[];
+  /** How the Branches pane orders local branches; by name until the user chooses. */
+  branchSort?: BranchSort;
 };
+
+/** By name, or by the date of each branch's last commit, newest first. */
+export type BranchSort = "name" | "recent";
 
 /** The records of every repository, keyed by the repository's root path. */
 export type GitRepoSet = { [repo: string]: GitRepoState };

@@ -59,7 +59,9 @@ describe("repositoryTracker", () => {
     upstream,
     ahead: 0,
     behind: 0,
-    gone: false
+    gone: false,
+    date: 0,
+    merged: false
   });
 
   it("follows the checked-out branch's remote, then origin, then the first remote", () => {

@@ -39,6 +39,7 @@ basics.
 
 - Branch focus dims unrelated history, without a checkout
 - Hide remotes one at a time; [view choices](docs/preferences.md) are kept per repository
+- Pin branches to the top, list them by latest commit, and spot merged, stale and gone ones
 
 ![Branch focus in VS Code's light theme: the focused branch's history in full colour, other history dimmed, and the Branches pane with ahead and behind counts](docs/images/branch-focus-light.png)
 

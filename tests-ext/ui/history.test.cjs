@@ -2868,7 +2868,7 @@ suite("Branchwise workflow UI", function () {
       () => graph.evaluate(`!!document.querySelector('header button[title="*"]')`),
       "graph shows all branches"
     );
-    const eye = `${nav}.querySelector('button[aria-pressed]')`;
+    const eye = `${nav}.querySelector('button[aria-label="Show Remote Branches in Graph"]')`;
     await graph.evaluate(`${eye}.click()`);
     await until(
       () =>
@@ -2893,6 +2893,80 @@ suite("Branchwise workflow UI", function () {
       path.join(artifacts, "branches-pane.png"),
       Buffer.from(screenshot.data, "base64")
     );
+  });
+
+  test("pins and sorts branches in the Branches pane and flags merged, stale and conflicting ones", async () => {
+    const dir = directory();
+    init(dir);
+    // Each commit gets its own committer date, so the newest-first order is certain.
+    const now = Math.floor(Date.now() / 1000);
+    const dated = (args, secondsAgo) =>
+      cp.execFileSync("git", args, {
+        cwd: dir,
+        stdio: "pipe",
+        env: { ...process.env, GIT_COMMITTER_DATE: `@${now - secondsAgo} +0000` }
+      });
+    const change = (file, message, secondsAgo) => {
+      fs.writeFileSync(path.join(dir, file), message);
+      git(["add", "--", file], dir);
+      dated(["commit", "-m", message], secondsAgo);
+    };
+    change("f", "health base", 400 * 86400);
+    git(["checkout", "-b", "aged"], dir);
+    change("aged.txt", "aged change", 200 * 86400);
+    git(["checkout", "-b", "clash", "main"], dir);
+    change("f", "clash change", 400);
+    git(["checkout", "-b", "done", "main"], dir);
+    change("g", "done change", 300);
+    git(["checkout", "main"], dir);
+    dated(["merge", "--no-ff", "-m", "merge done", "done"], 200);
+    change("f", "main change", 100);
+    await openRepo(dir);
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    if (!(await graph.evaluate("!!" + nav))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    const local = `${nav}.querySelector('section')`;
+    const order = () =>
+      graph.evaluate(
+        `[...${local}.querySelectorAll('button[aria-current], button[title]:not([aria-label])')].map(b => b.querySelector('span.truncate')?.textContent).filter(n => n && n !== 'All branches').join()`
+      );
+    const flags = (branch) =>
+      graph.evaluate(`(() => {
+        const label = [...${local}.querySelectorAll('button[title]')].find(b => b.title.split('\\n')[0] === ${JSON.stringify(branch)});
+        const row = label?.parentElement;
+        return row ? [...row.querySelectorAll('[data-branch-flag], [data-conflicts]')].map(f => f.dataset.branchFlag ?? 'conflict').join() : null;
+      })()`);
+    await until(async () => (await order()) === "aged,clash,done,main", "branches by name");
+    await until(async () => (await flags("clash")) === "conflict", "conflict mark on clash");
+    assert.equal(await flags("done"), "merged");
+    assert.equal(await flags("aged"), "stale");
+    assert.equal(await flags("main"), "");
+
+    await graph.evaluate(
+      `${local}.querySelector('button[aria-label="Sort by most recent commit"]').click()`
+    );
+    await until(
+      async () => (await order()) === "main,done,clash,aged",
+      "branches by recent commit"
+    );
+    await button("Pin clash to the top", local);
+    await until(async () => (await order()) === "clash,main,done,aged", "clash pinned first");
+
+    // The pin and the order stay with the repository when the graph is reopened.
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+    await openRepo(dir);
+    if (!(await graph.evaluate("!!" + nav))) {
+      await button("Branches", 'document.querySelector("header")');
+    }
+    await until(async () => (await order()) === "clash,main,done,aged", "pin and order kept");
+    const shot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(path.join(artifacts, "branch-health.png"), Buffer.from(shot.data, "base64"));
+    await button("Unpin clash", local);
+    await graph.evaluate(
+      `${local}.querySelector('button[aria-label="Sort by most recent commit"]').click()`
+    );
+    await until(async () => (await order()) === "aged,clash,done,main", "back to names");
   });
 
   test("keeps dropdowns and the sidebar inside narrow windows", async () => {

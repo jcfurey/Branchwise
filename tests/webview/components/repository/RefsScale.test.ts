@@ -29,7 +29,9 @@ const state = (count: number): RepositoryState => ({
     upstream: "",
     ahead: 0,
     behind: 0,
-    gone: false
+    gone: false,
+    date: 0,
+    merged: false
   })),
   remoteBranches: Array.from({ length: count }, (_, i) => ({ name: `origin/remote-${i}`, hash })),
   tags: Array.from({ length: count }, (_, i) => ({ name: `tag-${i}`, hash })),
@@ -113,7 +115,7 @@ describe(`Branches pane with ${REFS} of each ref`, () => {
       renders("Row", () => {
         stores.contextMenu.value = source === null ? null : { x: 0, y: 0, entries: [], source };
       });
-    expect(open("ref:head:branch-3")).toBe(1);
+    expect(open("ref:head:branch-1")).toBe(1);
     expect(open("ref:tag:tag-7")).toBe(2);
     expect(open(null)).toBe(1);
   });
