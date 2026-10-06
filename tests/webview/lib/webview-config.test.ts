@@ -10,6 +10,7 @@ const first: WebviewConfig = {
   graphColours: ["#1f77b4", "#ff7f0e", "#2ca02c"],
   graphStyle: "angular",
   initialLoadCommits: 250,
+  issueLinks: [],
   loadMoreCommits: 75,
   locale: "de",
   showCurrentBranchByDefault: true

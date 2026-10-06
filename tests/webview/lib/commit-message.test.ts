@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { h, render } from "preact";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { RepositoryState } from "@/backend/types";
 import {
@@ -9,6 +9,8 @@ import {
   issueTracker,
   repositoryTracker
 } from "@/webview/lib/commit-message";
+
+import { setupWebviewTest } from "@tests/webview/test-utils";
 
 describe("issueTracker", () => {
   it.each([
@@ -85,6 +87,8 @@ describe("repositoryTracker", () => {
 
 describe("CommitMessage", () => {
   let container: HTMLDivElement;
+  // The settings, with no custom issue links, so only the built-in forms are made.
+  beforeAll(() => setupWebviewTest());
   beforeEach(() => {
     container = document.createElement("div");
     document.body.append(container);

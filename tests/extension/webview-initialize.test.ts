@@ -33,6 +33,7 @@ const DEFAULT_CONFIG = {
   graphColours: declaredGraphColours,
   graphStyle: "rounded",
   initialLoadCommits: 300,
+  issueLinks: [],
   loadMoreCommits: 100,
   locale: "fr",
   showCurrentBranchByDefault: false

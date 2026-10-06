@@ -56,3 +56,40 @@ VS Code settings, unlike the choices above, apply to every repository; the
 
 The remote branches tried follow the graph's choices for this repository: a hidden remote, a
 hidden-branch pattern or **Show Remote Branches in Graph** turned off leaves branches out.
+
+### Custom issue links
+
+`branchwise.issueLinks` links references to other trackers, such as Jira or Linear issue keys, in
+the commit messages that the [commit details](git-actions.md#commit-details) show. It adds to the
+GitHub and GitLab links, which keep working. Each entry is a JavaScript regular expression,
+`pattern`, and the address it links to, `url`, in which `$0` stands for the whole match and `$1` to
+`$9` for its groups. In `settings.json` a backslash is written twice.
+
+For Jira keys such as `PROJ-123`:
+
+```json
+"branchwise.issueLinks": [
+  { "pattern": "\\b[A-Z][A-Z0-9]+-\\d+\\b", "url": "https://jira.example.com/browse/$0" }
+]
+```
+
+For Linear issues of a team whose key is `ENG`, linking `ENG-42` to the issue's page:
+
+```json
+"branchwise.issueLinks": [
+  { "pattern": "\\bENG-(\\d+)\\b", "url": "https://linear.app/your-workspace/issue/ENG-$1" }
+]
+```
+
+When several forms start at the same place in a message, the built-in ones come first, then the
+entries in their order; where links would overlap, the one that starts first wins, so links never
+nest, and nothing inside inline or fenced code is linked. Matched text is escaped before it goes
+into the address.
+
+Entries are checked when the setting is read, and an entry is skipped, with one warning in the
+**Branchwise** output channel, when its pattern is empty, longer than 200 characters, not a valid
+regular expression or able to match empty text, or when its `url` is not an `http:` or `https:`
+address. A pattern that backtracks badly cannot freeze the graph: patterns run in a separate worker,
+which is stopped when a message takes longer than a quarter of a second, and that message then
+shows only the built-in links. Only the first 10,000 characters of a message are searched, for 100
+custom links at most.

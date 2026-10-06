@@ -1627,6 +1627,61 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await vscode.env.clipboard.readText()) === local, "full ID copied");
   });
 
+  test("links custom issue keys in commit messages, and survives a pattern that never finishes", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "Fix UIL-42 and #7", dir);
+    const linked = git(["rev-parse", "HEAD"], dir);
+    commit("f", `Slow ${"a".repeat(40)}! UIL-43 #8`, dir);
+    const slow = git(["rev-parse", "HEAD"], dir);
+    git(["remote", "add", "origin", "git@github.com:owner/project.git"], dir);
+    const config = vscode.workspace.getConfiguration("branchwise");
+    const original = config.inspect("issueLinks").globalValue;
+    try {
+      await config.update(
+        "issueLinks",
+        [
+          { pattern: "(", url: "https://broken.example.test/$0" },
+          { pattern: "\\bUIL-\\d+\\b", url: "https://jira.example.test/browse/$0" },
+          // Backtracks for ever on a run of a's that does not end the message.
+          { pattern: "(a+)+$", url: "https://slow.example.test/$0" }
+        ],
+        vscode.ConfigurationTarget.Global
+      );
+      await openRepo(dir);
+      const links = () =>
+        graph.evaluate(
+          `[...document.querySelectorAll('[data-details-row] a[href^="https"]')].map(a => a.textContent + ' ' + a.getAttribute('href'))`
+        );
+      await graph.evaluate(`document.querySelector('tr[data-commit-hash="${linked}"]').click()`);
+      await until(
+        async () => (await links()).includes("UIL-42 https://jira.example.test/browse/UIL-42"),
+        "custom issue link"
+      );
+      assert.deepEqual(await links(), [
+        "UIL-42 https://jira.example.test/browse/UIL-42",
+        "#7 https://github.com/owner/project/issues/7"
+      ]);
+
+      // The slow pattern is stopped; the page keeps answering and shows the built-in link.
+      await graph.evaluate(`document.querySelector('tr[data-commit-hash="${slow}"]').click()`);
+      await until(
+        async () => (await links()).includes("#8 https://github.com/owner/project/issues/8"),
+        "built-in link beside the slow pattern"
+      );
+      await delay(500);
+      assert.deepEqual(await links(), ["#8 https://github.com/owner/project/issues/8"]);
+      // Other messages still get their custom links from a new worker.
+      await graph.evaluate(`document.querySelector('tr[data-commit-hash="${linked}"]').click()`);
+      await until(
+        async () => (await links()).includes("UIL-42 https://jira.example.test/browse/UIL-42"),
+        "custom issue link after the slow pattern"
+      );
+    } finally {
+      await config.update("issueLinks", original, vscode.ConfigurationTarget.Global);
+    }
+  });
+
   test("forecasts which branches would conflict if merged into the checked-out branch", async () => {
     const dir = directory();
     init(dir);

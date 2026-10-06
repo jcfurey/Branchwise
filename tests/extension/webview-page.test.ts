@@ -39,7 +39,7 @@ beforeEach(() => {
 });
 
 describe("graph page", () => {
-  test("allows only the extension's own resources and its nonce-bearing script", () => {
+  test("allows only the extension's own resources, its nonce-bearing script and a blob worker", () => {
     const html = page();
     const nonce = scriptNonceOf(html);
     const directives = policyOf(html)
@@ -51,7 +51,9 @@ describe("graph page", () => {
       "style-src csp 'unsafe-inline'",
       `script-src csp 'nonce-${nonce}'`,
       "img-src data:",
-      "connect-src csp"
+      "connect-src csp",
+      // The page builds the worker that matches custom issue links from a blob of its own.
+      "worker-src blob:"
     ]);
     expect(policyOf(html).trimEnd()).toMatch(/;$/);
   });

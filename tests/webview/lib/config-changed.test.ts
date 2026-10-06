@@ -27,6 +27,7 @@ const changed: WebviewConfig = {
   graphColours: ["#ff0000"],
   graphStyle: "angular",
   initialLoadCommits: 500,
+  issueLinks: [],
   loadMoreCommits: 100,
   locale: "en",
   showCurrentBranchByDefault: false

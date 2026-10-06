@@ -10,6 +10,13 @@ export type DateFormat = "Date & Time" | "Date Only" | "Relative";
 export type GraphStyle = "rounded" | "angular";
 
 /**
+ * An entry of `branchwise.issueLinks` that the extension accepted: a regular expression of at
+ * most 200 characters that compiles and cannot match empty text, and an `http:` or `https:`
+ * address in which `$0` stands for the whole match and `$1` to `$9` for its groups.
+ */
+export type IssueLink = Readonly<{ pattern: string; url: string }>;
+
+/**
  * The display settings the page works from. The extension builds a fresh object from the
  * `branchwise.*` settings and the display language, sends it in `webview.initialize`, and sends the
  * whole of it again in `config.changed`; the page replaces its copy rather than editing it.
@@ -31,6 +38,8 @@ export type WebviewConfig = Readonly<{
   graphStyle: GraphStyle;
   /** Rows asked for when a branch is first shown: a whole number from 1 to 1 000 000. */
   initialLoadCommits: number;
+  /** Custom issue links for commit messages, the valid entries only, in the setting's order. */
+  issueLinks: readonly IssueLink[];
   /** Rows added by each "load more", with the same bounds. */
   loadMoreCommits: number;
   /** VS Code's display language (`en`, `fr`, `zh-cn`, ...), used for every `Intl` format. */

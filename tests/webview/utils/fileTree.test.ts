@@ -12,6 +12,7 @@ const config: WebviewConfig = {
   graphColours: [],
   graphStyle: "rounded",
   initialLoadCommits: 300,
+  issueLinks: [],
   loadMoreCommits: 100,
   locale: "en",
   showCurrentBranchByDefault: false

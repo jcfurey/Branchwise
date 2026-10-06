@@ -97,6 +97,7 @@ test("hands the page its strings and settings", async () => {
     graphColours: declaredGraphColours,
     graphStyle: "rounded",
     initialLoadCommits: 300,
+    issueLinks: [],
     loadMoreCommits: 100,
     locale: "en",
     showCurrentBranchByDefault: false
