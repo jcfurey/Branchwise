@@ -28,7 +28,7 @@ const CONFLICTS_LISTED = 10;
  * A warning that merging the branch into HEAD would stop with conflicts in `files`, with the
  * number of them. The tooltip names the files.
  */
-function ConflictBadge({ files }: { files: Array<string> }) {
+export function ConflictBadge({ files }: { files: Array<string> }) {
   const l10n = window.l10n;
   const into = repositoryState.value?.head || "HEAD";
   // Function replacements insert the names as written, even when they contain `$`.
