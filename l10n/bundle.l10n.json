@@ -164,6 +164,8 @@
   "Copied": "Copied",
   "Not pushed: no remote branch has this commit yet": "Not pushed: no remote branch has this commit yet",
   "Not pulled: only the tracked remote branch has this commit": "Not pulled: only the tracked remote branch has this commit",
+  "Merging this branch into {0} would conflict in:": "Merging this branch into {0} would conflict in:",
+  "and {0} more files": "and {0} more files",
   "Copy Tag Name": "Copy Tag Name",
   "Copy Branch Name": "Copy Branch Name",
   "Delete Local Tag": "Delete Local Tag",

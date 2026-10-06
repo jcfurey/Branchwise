@@ -227,6 +227,15 @@ export function RepoIcon(props: IconProps) {
   );
 }
 
+/** Two arrows running into each other at a bar: changes that collide, a conflict. */
+export function ConflictIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <path d="M8 1.75V14.25M1.5 8H5.5M3.75 5.75 6 8 3.75 10.25M14.5 8H10.5M12.25 5.75 10 8 12.25 10.25" />
+    </Icon>
+  );
+}
+
 /** A diagonal cross: close or dismiss. */
 export function CloseIcon(props: IconProps) {
   return (

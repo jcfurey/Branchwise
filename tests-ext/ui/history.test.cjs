@@ -1370,6 +1370,37 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await vscode.env.clipboard.readText()) === local, "full ID copied");
   });
 
+  test("forecasts which branches would conflict if merged into the checked-out branch", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "forecast base", dir);
+    git(["checkout", "-b", "clash"], dir);
+    commit("f", "clash change", dir);
+    git(["checkout", "-b", "clean", "main"], dir);
+    commit("g", "clean change", dir);
+    git(["checkout", "main"], dir);
+    commit("f", "main change", dir);
+    await openRepo(dir);
+    const badge = (branch) =>
+      graph.evaluate(`(() => {
+        const label = [...document.querySelectorAll("tr[data-commit-hash] span[title]")].find(
+          (span) => span.title.split("\\n")[0] === ${JSON.stringify(branch)}
+        );
+        const badge = label?.querySelector("[data-conflicts]");
+        return badge ? [badge.textContent, badge.title] : null;
+      })()`);
+    await until(async () => (await badge("clash")) !== null, "conflict badge on clash");
+    assert.deepEqual(await badge("clash"), [
+      "1",
+      "Merging this branch into main would conflict in:\nf"
+    ]);
+    assert.equal(await badge("clean"), null);
+    assert.equal(await badge("main"), null);
+    // Once the branch is merged, there is nothing left to forecast.
+    git(["merge", "-X", "theirs", "-m", "merge clash", "clash"], dir);
+    await until(async () => (await badge("clash")) === null, "badge gone after the merge");
+  });
+
   test("runs ordered selected cherry-picks and reverts, then creates and autosquashes a fixup", async () => {
     const history = directory();
     init(history);

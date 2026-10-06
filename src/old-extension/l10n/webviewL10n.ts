@@ -143,6 +143,8 @@ export function getWebviewLocalizedStrings() {
     copiedToClipboard: vscode.l10n.t("Copied"),
     commitUnpushed: vscode.l10n.t("Not pushed: no remote branch has this commit yet"),
     commitUnpulled: vscode.l10n.t("Not pulled: only the tracked remote branch has this commit"),
+    conflictForecast: vscode.l10n.t("Merging this branch into {0} would conflict in:"),
+    conflictForecastMore: vscode.l10n.t("and {0} more files"),
     copyTagName: vscode.l10n.t("Copy Tag Name"),
     copyBranchName: vscode.l10n.t("Copy Branch Name"),
     deleteTag: vscode.l10n.t("Delete Local Tag"),
