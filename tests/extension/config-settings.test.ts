@@ -158,6 +158,7 @@ describe("settings passed through", () => {
   test("offers exactly the fourteen getters", () => {
     expect(Object.keys(extConfig).toSorted()).toEqual([
       "autoCenterCommitDetailsView",
+      "conflictForecast",
       "dateFormat",
       "dateType",
       "gitPath",

@@ -23,6 +23,20 @@ export type WorktreeDetails = {
   locked: boolean;
   prunable: boolean;
 };
+/** Values of the `branchwise.conflictForecast` setting: which branches the forecast tries. */
+export type ConflictForecastScope = "local" | "localAndRemote" | "off";
+/**
+ * A branch that would not merge cleanly into HEAD. `branch` is a local branch's name, or a
+ * remote-tracking branch's as `<remote>/<branch>` when `remote` is set. `committer` and `date`
+ * (seconds since 1970) belong to its last commit, so the page can say whose work it is.
+ */
+export type ConflictForecastEntry = {
+  branch: string;
+  remote: boolean;
+  files: string[];
+  committer: string;
+  date: number;
+};
 export type OperationKind = "merge" | "rebase" | "cherry-pick" | "revert";
 export type OperationState = { kind: OperationKind; id: string };
 export type RepositoryState = {
@@ -60,6 +74,44 @@ export type EditPlan = {
 };
 /** An edit that adds the staged changes to the target commit. */
 export type AmendPlan = EditPlan & { staged: StagedPlan };
+/** One hunk of the staged changes: where its lines are in HEAD's version and in the staged one. */
+export type AbsorbHunk = {
+  path: string;
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+};
+/**
+ * Why a staged change stays staged: the file is added, deleted, renamed, binary, or changes its
+ * mode or kind; its lines were last changed by a commit outside the branch's own unpushed ones,
+ * or by more than one commit; or it adds lines with none around them to go by.
+ */
+export type AbsorbReason =
+  | "added"
+  | "deleted"
+  | "renamed"
+  | "binary"
+  | "special"
+  | "outside"
+  | "several"
+  | "noContext";
+/** How the staged changes split into fixup commits, as Absorb Staged Changes shows it first. */
+export type AbsorbPlan = {
+  branch: string;
+  /** HEAD when the plan was made. The absorb is refused once the branch has moved on. */
+  head: string;
+  /** A digest of the staged changes. The absorb is refused once they differ. */
+  staged: string;
+  /** The commits that get a fixup commit, oldest first, each with the hunks it gets. */
+  targets: Array<{ hash: string; subject: string; hunks: AbsorbHunk[] }>;
+  /** What stays staged: one hunk, or a whole file when `hunk` is null. */
+  left: Array<{ path: string; hunk: AbsorbHunk | null; reason: AbsorbReason }>;
+  /** The oldest target's parent, where a rebase squashing the fixups starts; null for a root. */
+  base: string | null;
+  /** Whether nothing else would be staged, unstaged or untracked, as that rebase needs. */
+  clean: boolean;
+};
 
 export type RepositoryQuery =
   | WorkflowQuery
@@ -67,7 +119,14 @@ export type RepositoryQuery =
   | { kind: "workingTree" }
   | { kind: "branchFocus"; branch: string; hashes: string[] }
   | { kind: "pushStatus" }
-  | { kind: "conflictForecast" }
+  | {
+      kind: "conflictForecast";
+      scope: ConflictForecastScope;
+      /** Which remote-tracking branches the graph shows; the forecast leaves out the others. */
+      showRemoteBranches?: boolean;
+      hiddenRemotes?: string[];
+      hiddenBranchPatterns?: string[];
+    }
   | { kind: "state" }
   | { kind: "stashes" }
   | {
@@ -79,6 +138,7 @@ export type RepositoryQuery =
     }
   | { kind: "editPlan"; target: string }
   | { kind: "amendPlan"; target: string }
+  | { kind: "absorbPlan" }
   | { kind: "lease"; remote: string; branch: string }
   /** Check the signature of the commit `hash` names. */
   | { kind: "signature"; hash: string };
@@ -89,12 +149,13 @@ export type RepositoryQueryData =
   | { kind: "workingTree"; files: WorkingTreeFile[] }
   | { kind: "branchFocus"; tip: string; direct: string[]; merged: string[] }
   | { kind: "pushStatus"; unpushed: string[]; unpulled: string[] }
-  | { kind: "conflictForecast"; conflicts: Array<{ branch: string; files: string[] }> }
+  | { kind: "conflictForecast"; conflicts: ConflictForecastEntry[] }
   | { kind: "state"; state: RepositoryState }
   | { kind: "stashes"; stashes: StashDetails[] }
   | { kind: "rebasePlan"; plan: RebasePlan }
   | { kind: "editPlan"; plan: EditPlan }
   | { kind: "amendPlan"; plan: AmendPlan }
+  | { kind: "absorbPlan"; plan: AbsorbPlan }
   | { kind: "lease"; hash: string }
   | { kind: "signature"; hash: string; check: SignatureCheck };
 
@@ -120,6 +181,7 @@ export type RepositoryAction =
   | { kind: "interactiveRebase"; plan: RebasePlan }
   | { kind: "reword"; plan: EditPlan; message: string }
   | { kind: "amendCommit"; plan: AmendPlan }
+  | { kind: "absorb"; plan: AbsorbPlan }
   | { kind: "recover"; operation: OperationState; resolution: "continue" | "abort" | "skip" }
   | { kind: "conflict"; path: string; operation: "open" | "stage" }
   | { kind: "addWorktree"; path: string; branch: string; newBranch: boolean; startPoint: string }

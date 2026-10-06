@@ -178,6 +178,21 @@
           "type": "boolean",
           "default": true
         },
+        "branchwise.conflictForecast": {
+          "description": "%config.conflictForecast%",
+          "type": "string",
+          "default": "localAndRemote",
+          "enum": [
+            "localAndRemote",
+            "local",
+            "off"
+          ],
+          "enumDescriptions": [
+            "%config.conflictForecast.localAndRemote%",
+            "%config.conflictForecast.local%",
+            "%config.conflictForecast.off%"
+          ]
+        },
         "branchwise.dateFormat": {
           "description": "%config.dateFormat%",
           "type": "string",

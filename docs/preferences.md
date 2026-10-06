@@ -40,9 +40,23 @@ Deleting a repository's folder removes its saved preferences the next time the W
 Existing focus choices in an open panel migrate to workspace storage the next time that repository
 loads; previously saved column widths and remote visibility are retained.
 
-## Settings that change what the graph loads
+## Settings
 
-Unlike the choices above, these are VS Code settings, so they apply to every repository.
+VS Code settings, unlike the choices above, apply to every repository; the
+[README](../README.md#settings) lists them all. A change takes effect in the open graph at once.
+
+`branchwise.conflictForecast` chooses which branches the
+[conflict forecast](git-actions.md#conflict-forecast) tries against the checked-out branch:
+
+| Value                      | Branches tried                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------- |
+| `localAndRemote` (default) | Local branches, and remote branches the graph shows with a commit in the last 30 days |
+| `local`                    | Local branches only                                                                   |
+| `off`                      | None: no mark, and no Git process is started for it                                   |
+
+The remote branches tried follow the graph's choices for this repository: a hidden remote, a
+hidden-branch pattern or **Show Remote Branches in Graph** turned off leaves branches out.
+
 `branchwise.showUncommittedChanges` adds the row of uncommitted changes, which scans the working
 tree. `branchwise.showSignatures` (on by default) marks signed commits with a small key, which
 reads the loaded commits once more; turning it off saves about 10 ms for 300 rows and 40 ms for
