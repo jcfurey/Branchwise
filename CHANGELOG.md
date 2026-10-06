@@ -10,9 +10,12 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ### Added
 
+- Pin local branches to the top of the Branches pane, and list local branches by their latest commit instead of by name. Both choices are remembered per repository.
+- Flag local branches in the Branches pane that are already merged into the checked-out branch, whose upstream is gone, that have had no commits for 90 days, or that would conflict if merged. Ahead and behind counts turn amber when a branch has diverged from its upstream.
 - **Go to Branch, Tag or Commit…** (Ctrl+Alt+G, or Cmd+Alt+G on macOS, while the graph has focus; also in the Command Palette and **Settings & Tools**) picks a local branch, remote branch, tag or typed commit ID and selects its commit in the graph, opening the history at a commit the graph has not loaded. See [search](docs/git-actions.md#search-file-history-and-comparison).
 - **Open Commit on GitHub** or **GitLab** in the commit menu, **Open Tag on …** in the tag menu, and **Open Branch on …** for a local branch whose upstream is on one of those hosts, including self-hosted GitLab. See [commit details](docs/git-actions.md#commit-details).
 - Forecast merge conflicts: a local branch that would not merge cleanly into the checked-out branch shows a red mark with the number of conflicted files on its label, and its tooltip names them. Git tries each merge in memory with `git merge-tree`, leaving the work tree, the index and the refs untouched; it needs Git 2.38 or later. See [conflict forecast](docs/git-actions.md#conflict-forecast).
+- Squash selected commits: with consecutive commits of the current branch selected in the graph, **Squash N Commits…** in the selection bar opens the interactive rebase editor with the oldest commit as Pick and the rest as Squash, ready to review before starting. When the selection cannot be squashed, such as commits from another branch, a gap, a merge or the repository's first commit, the button is disabled and its tooltip says why. See [rebasing](docs/git-actions.md#rebasing).
 
 ### Changed
 

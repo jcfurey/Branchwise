@@ -106,13 +106,18 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
   );
 }
 
-export function openInteractiveRebase(base: string, autosquash = false) {
+/**
+ * Load the plan for the commits after `base` and open it in the editor. With `squash`, those
+ * commits arrive marked to squash into the oldest of them; nothing changes until the user starts
+ * the rebase.
+ */
+export function openInteractiveRebase(base: string, autosquash = false, squash?: string[]) {
   const repo = selectedRepo.value;
   if (repo === undefined) {
     return;
   }
   requestRepositoryQuery(
-    { kind: "rebasePlan", base, autosquash },
+    { kind: "rebasePlan", base, autosquash, ...(squash === undefined ? {} : { squash }) },
     (data) => {
       if (data.kind === "rebasePlan") {
         openContentDialog(

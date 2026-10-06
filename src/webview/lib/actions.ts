@@ -3,7 +3,7 @@ import type { ComponentChildren } from "preact";
 
 import type { GitFileChange, GraphQueryCommand } from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
-import type { GitRepoState, ResponseMessage, WebviewConfig } from "@/types";
+import type { BranchSort, GitRepoState, ResponseMessage, WebviewConfig } from "@/types";
 import { SHOW_ALL_BRANCHES, UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { captureFocus, restoreFocus } from "@/webview/lib/focus";
 import {
@@ -42,6 +42,7 @@ import {
   hiddenRemotes,
   maxCommits,
   moreCommitsAvailable,
+  pinnedBranches,
   remoteVisibilityKey,
   repoStates,
   selectedBranch,
@@ -401,6 +402,28 @@ export function receiveRepoState(
 }
 
 /** Show or hide one remote's branches in the selected repository. */
+/** Pin a local branch to the top of the Branches pane, or unpin it. */
+export function setBranchPinned(branch: string, pinned: boolean): void {
+  const repo = selectedRepo.value;
+  if (repo === undefined) {
+    return;
+  }
+  const others = pinnedBranches.value.filter((name) => name !== branch);
+  const names = pinned ? [...others, branch] : others;
+  patchRepoState(repo, { pinnedBranches: names });
+  vscode.postMessage({ command: "saveRepoState", repo, state: { pinnedBranches: names } });
+}
+
+/** Order the Branches pane's local branches by name or by most recent commit. */
+export function setBranchSort(sort: BranchSort): void {
+  const repo = selectedRepo.value;
+  if (repo === undefined) {
+    return;
+  }
+  patchRepoState(repo, { branchSort: sort });
+  vscode.postMessage({ command: "saveRepoState", repo, state: { branchSort: sort } });
+}
+
 export function setRemoteVisible(remote: string, visible: boolean): void {
   const hidden = hiddenRemotes.value;
   const isHidden = hidden.includes(remote);

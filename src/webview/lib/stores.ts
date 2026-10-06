@@ -1,7 +1,7 @@
 import { computed, signal } from "@preact/signals";
 
 import type { GitCommitDetails, GitCommitNode } from "@/backend/types";
-import type { GitRepoSet } from "@/types";
+import type { BranchSort, GitRepoSet } from "@/types";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import type {
   BranchDisplay,
@@ -119,6 +119,18 @@ export const branchFocusTarget = computed<
     return undefined;
   }
   return branch;
+});
+
+/** The local branches pinned in the selected repository, in the order they were pinned. */
+export const pinnedBranches = computed<Array<string>>(() => {
+  const repo = selectedRepo.value;
+  return (repo === undefined ? undefined : repoStates.value[repo]?.pinnedBranches) ?? NO_REMOTES;
+});
+
+/** How the Branches pane orders the selected repository's local branches. */
+export const branchSort = computed<BranchSort>(() => {
+  const repo = selectedRepo.value;
+  return (repo === undefined ? undefined : repoStates.value[repo]?.branchSort) ?? "name";
 });
 
 /** The selected repository's hidden remotes, as stored: neither sorted nor de-duplicated. */

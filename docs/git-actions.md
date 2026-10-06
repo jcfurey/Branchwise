@@ -26,6 +26,17 @@ Right-click a local or remote branch label in the graph, or a branch in the Bran
 
 Use **Pause focus** to temporarily restore every branch's colours, then **Resume focus** to return to the same target and mode. The badge reads **Paused** while paused. **Dimming → Subtle / Strong** adjusts the graph lines and commit dots; text stays readable at either strength. The target, dimming strength and pause state are remembered per repository. **Clear focus** removes the target and its badges.
 
+Local branches are listed by name. The clock button on the **Local Branches** section lists them by their last commit instead, newest first. Hover over a branch and click its pin to keep it at the top of the list, above the order chosen; pinned branches show a pin in place of the branch icon. The order and the pins are remembered per repository.
+
+Short flags at the end of a local branch's row point out branches worth a look:
+
+- **merged**: the checked-out branch already contains it, so deleting it loses no commits. A branch still at the checked-out commit, such as one just created, is not flagged.
+- **gone**: its upstream was deleted on the remote.
+- **stale**: it has had no commits for 90 days or more; the tooltip gives the number of days.
+- A red collision mark: merging it into the checked-out branch would conflict; see [conflict forecast](#conflict-forecast).
+
+Ahead and behind counts turn amber when a branch has diverged from its upstream, with commits on both sides. **Settings & Tools → Clean Up Merged Branches** deletes merged branches in one step; see [branch cleanup](#synchronization-review-and-branch-cleanup).
+
 Every row carries the same context menu as the matching label in the graph, reached by right-click or its trailing menu button. The most common action is also inline: **Check Out** on a branch, **Fetch** on a remote, **Show in Graph** on a tag, and **Apply** or **Pop** on a stash. The **+** buttons create a branch at HEAD, add a remote, or save a stash.
 
 Each remote has an eye button that hides its graph labels and commits reachable only through that remote. Shared history, local branches and tags remain visible. Hidden remote branches stay listed but dimmed; selecting or focusing one shows that remote again. Individual choices are saved per repository and also apply to history searches. Explicit commit or revision lookups can still open hidden history.
@@ -81,6 +92,8 @@ Open **Settings & Tools → Stashes** to save changes, optionally including untr
 Right-click a branch and choose **Move the current branch onto this (rebase)**. Commit or stash changes first. This uses Git's merge-preserving rebase and offers the same recovery controls if it stops.
 
 For interactive editing, right-click an ancestor commit and choose **Edit commits after this (interactive rebase)**. The plan contains the current branch's commits after that ancestor, from oldest to newest. Move commits earlier or later, choose Pick/Reword/Squash/Fixup/Drop, and edit messages for Reword. Squash combines with the preceding retained commit and keeps the combined messages; Fixup discards the fixup's message. At least one commit must remain, and the first retained commit cannot be Squash or Fixup.
+
+To combine several commits into one, select them in the graph (see [multiple commits](#reflog-and-multiple-commits)) and choose **Squash N Commits…** in the selection bar. This opens the same rebase editor, from the parent of the oldest selected commit: the oldest is Pick, the others are Squash, and the commits after them up to `HEAD` stay Pick. Nothing changes until **Start Rebase**, and the same checks apply, so uncommitted changes must be committed or stashed first. The combined commit keeps every selected commit's message. The button is disabled, with the reason in its tooltip, unless the selected commits run without a gap along the current branch's first parents from `HEAD`, and neither they nor the commits after them include a merge. The repository's first commit cannot be squashed: it has no parent to rebase onto.
 
 Stage changes in Source Control, then choose **Fold staged changes into this commit (fixup)** on the commit being corrected. Review the staged file list before submitting. **Arrange Fixup / Squash Commits** in the rebase editor places matching `fixup!` and `squash!` commits after their targets while preserving manual edits. Review the resulting order and actions before starting; ambiguous or unmatched targets remain Pick.
 
@@ -150,7 +163,7 @@ The tab you were on is remembered when the panel reopens. Searching, **Jump to H
 
 The **Statistics** tab counts the commits on every branch the graph shows, or on one local branch, over the last 30 days, 90 days, year, or all time. It shows the number of commits, contributors and days with commits, a grid of commits per day over the last year (point at a day for its date and count), and every contributor with their commits, share and first and last commit. People are named as `.mailmap` names them, so someone who committed under several addresses counts once. **Count lines changed** adds the lines each contributor added and deleted outside merges; it reads every commit's changes, so it is slower on large repositories. Click a contributor to search the graph for their commits. Avatars are initials; Branchwise fetches nothing over the network.
 
-Ctrl/Cmd-click selects individual commits; Shift-click selects a range. Select up to 100 commits for **Cherry-pick Selected** or **Revert Selected**. Review and adjust the execution order before confirming. Cherry-picks default to oldest first; reverts default to newest first. Merge commits require a common mainline parent choice. The native Git sequencer retains remaining commits if a conflict interrupts the batch; use the status strip's Continue, Abort, or Skip controls.
+Ctrl/Cmd-click selects individual commits; Shift-click selects a range. Select up to 100 commits for **Cherry-pick Selected** or **Revert Selected**. Review and adjust the execution order before confirming. Cherry-picks default to oldest first; reverts default to newest first. Merge commits require a common mainline parent choice. The native Git sequencer retains remaining commits if a conflict interrupts the batch; use the status strip's Continue, Abort, or Skip controls. Consecutive commits of the current branch can also be combined with **Squash N Commits…** (see [rebasing](#rebasing)).
 
 ## Keyboard navigation and activity
 
