@@ -57,6 +57,26 @@ VS Code settings, unlike the choices above, apply to every repository; the
 The remote branches tried follow the graph's choices for this repository: a hidden remote, a
 hidden-branch pattern or **Show Remote Branches in Graph** turned off leaves branches out.
 
+`branchwise.showUncommittedChanges` adds the row of uncommitted changes, which scans the working
+tree. `branchwise.showSignatures` (on by default) marks signed commits with a small key, which
+reads the loaded commits once more; turning it off saves about 10 ms for 300 rows and 40 ms for
+3,000 (see [performance](performance.md)). The commit details still check signatures. See [commit signatures](git-actions.md#commit-signatures).
+
+`branchwise.dragAndDrop` (default `true`) lets commit rows and local branches be dragged onto
+branch labels in the graph and the Branches pane to cherry-pick, merge or rebase, each after a
+confirmation. Turn it off if you drag by accident; every action stays in the menus. See
+[drag and drop](git-actions.md#drag-and-drop).
+
+### Single-key shortcuts
+
+`branchwise.singleKeyShortcuts` (default `true`) lets single keys act on the focused commit row,
+such as B for **Create Branch…** or Y to copy the short commit ID, and lets `?` open the list of
+keyboard shortcuts. Turn it off if you use a screen reader that reads the graph with single-letter
+commands, or an extension that sends single keys of its own. With it off, the menus stop showing
+the keys and the shortcut sheet says they are off; arrow keys, Enter, Space, Escape, Shift+F10,
+Ctrl/Cmd+F, `/` and Ctrl+Alt+G keep working. See
+[keyboard navigation](git-actions.md#keyboard-navigation-and-activity).
+
 ## Theme colours
 
 Branchwise contributes these colours, which a colour theme or `workbench.colorCustomizations` in

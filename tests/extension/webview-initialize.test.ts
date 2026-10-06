@@ -32,12 +32,14 @@ const DEFAULT_CONFIG = {
   autoCenterCommitDetailsView: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dragAndDrop: true,
   graphColours: themeGraphColours,
   graphStyle: "rounded",
   initialLoadCommits: 300,
   loadMoreCommits: 100,
   locale: "fr",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 beforeEach(() => {

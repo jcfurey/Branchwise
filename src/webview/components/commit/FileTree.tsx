@@ -18,7 +18,7 @@ type FileTreeProps = {
 type Row = { key: string; depth: number; node: FileTreeNode };
 
 /** Text colour of a file, by the kind of change. Written out in full so Tailwind finds them. */
-const CHANGE_COLOUR: Record<GitFileChange["type"], string> = {
+export const CHANGE_COLOUR: Record<GitFileChange["type"], string> = {
   A: "text-git-added",
   M: "text-git-modified",
   R: "text-git-modified",

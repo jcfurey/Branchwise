@@ -46,6 +46,11 @@
   --color-input-fg: var(--vscode-input-foreground);
   --color-input-border: var(--vscode-input-border, rgba(128, 128, 128, 0.5));
 
+  /* A key drawn as VS Code draws keybindings. */
+  --color-keycap: var(--vscode-keybindingLabel-background, rgba(128, 128, 128, 0.17));
+  --color-keycap-fg: var(--vscode-keybindingLabel-foreground, var(--vscode-foreground));
+  --color-keycap-border: var(--vscode-keybindingLabel-border, rgba(128, 128, 128, 0.5));
+
   --color-checkbox: var(--vscode-checkbox-background);
   --color-checkbox-checked: var(--vscode-button-background);
   --color-checkbox-check: var(--vscode-button-foreground);
@@ -77,10 +82,21 @@
     var(--vscode-gitDecoration-modifiedResourceForeground)
   );
 
+  /* Verdicts on a commit's signature, always shown beside an icon and words of their own. */
+  --color-signature-good: var(
+    --vscode-testing-iconPassed,
+    var(--vscode-gitDecoration-addedResourceForeground)
+  );
+  --color-signature-warning: var(--vscode-editorWarning-foreground);
+  --color-signature-bad: var(--vscode-errorForeground);
+  --color-signature-unknown: var(--vscode-descriptionForeground);
+
   --color-row-head: var(--vscode-list-inactiveSelectionBackground);
   --color-row-hover: var(--vscode-list-hoverBackground);
   --color-row-selected: rgba(128, 128, 128, 0.25);
   --color-row-selected-hover: rgba(128, 128, 128, 0.35);
+  /* A branch that would accept what is being dragged over it. */
+  --color-drop: var(--vscode-list-dropBackground);
 
   /* The branch colour of a commit row. Each row sets its own; see .branch-focus-row. */
   --color-graph: var(--vscode-focusBorder);

@@ -24,13 +24,16 @@ it("falls back to the defaults declared in package.json", () => {
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
     dateType: extConfig.dateType(),
+    dragAndDrop: extConfig.dragAndDrop(),
     graphStyle: extConfig.graphStyle(),
     initialLoadCommits: extConfig.initialLoadCommits(),
     loadMoreCommits: extConfig.loadMoreCommits(),
     maxDepthOfRepoSearch: extConfig.maxDepthOfRepoSearch(),
     nestedRepoSearchDepth: extConfig.nestedRepoSearchDepth(),
     showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
+    showSignatures: extConfig.showSignatures(),
     showUncommittedChanges: extConfig.showUncommittedChanges(),
+    singleKeyShortcuts: extConfig.singleKeyShortcuts(),
     tabIconColourTheme: extConfig.tabIconColourTheme()
   };
   for (const [key, value] of Object.entries(fallbacks)) {

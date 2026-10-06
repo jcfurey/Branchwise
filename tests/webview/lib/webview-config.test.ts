@@ -7,12 +7,14 @@ const first: WebviewConfig = {
   autoCenterCommitDetailsView: false,
   conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
+  dragAndDrop: true,
   graphColours: ["#1f77b4", "#ff7f0e", "#2ca02c"],
   graphStyle: "angular",
   initialLoadCommits: 250,
   loadMoreCommits: 75,
   locale: "de",
-  showCurrentBranchByDefault: true
+  showCurrentBranchByDefault: true,
+  singleKeyShortcuts: true
 };
 
 const later: WebviewConfig = { ...first, dateFormat: "Relative", initialLoadCommits: 1200 };

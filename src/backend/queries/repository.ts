@@ -12,6 +12,10 @@ import { loadConflictForecast } from "@/backend/queries/conflictForecast";
 import { loadAmendPlan, loadRewordPlan } from "@/backend/queries/editCommit";
 import { historyQuery } from "@/backend/queries/history";
 import { loadPushStatus } from "@/backend/queries/pushStatus";
+import { loadReplayForecast } from "@/backend/queries/replayForecast";
+import { loadSafetyNet, loadSafetyUndo } from "@/backend/queries/safetyNet";
+import { verifySignature } from "@/backend/queries/signatures";
+import { loadSplitPlan } from "@/backend/queries/splitCommit";
 import {
   loadBulkSyncPlan,
   loadSyncPlan,
@@ -183,7 +187,8 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
     tagRefs,
     worktrees,
     status,
-    operation
+    operation,
+    undo
   ] = await Promise.all([
     git.getRemotes(),
     git.getConfig("remote.pushDefault"),
@@ -208,7 +213,9 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
     ]),
     loadWorktrees(git),
     git.status(),
-    loadOperation(git)
+    loadOperation(git),
+    // The header's Undo entry is a convenience; an unreadable journal only hides it.
+    loadSafetyUndo(git).catch(() => null)
   ]);
   return {
     remotes: await Promise.all(
@@ -227,7 +234,8 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
     operation,
     conflicts: status.conflicted,
     // The index column is blank for unstaged paths, `?` for untracked and `!` for ignored ones.
-    staged: status.files.filter((file) => !" ?!".includes(file.index)).length
+    staged: status.files.filter((file) => !" ?!".includes(file.index)).length,
+    undo
   };
 }
 
@@ -334,6 +342,8 @@ export async function repositoryQuery(
         kind: "conflictForecast",
         conflicts: (await loadOperation(git)) === null ? await loadConflictForecast(git, query) : []
       };
+    case "replayForecast":
+      return { kind: "replayForecast", forecast: await loadReplayForecast(git, query) };
     case "bisect":
       return {
         kind: "bisect",
@@ -396,6 +406,10 @@ export async function repositoryQuery(
       return { kind: "editPlan", plan: await loadRewordPlan(git, query.target) };
     case "amendPlan":
       return { kind: "amendPlan", plan: await loadAmendPlan(git, query.target) };
+    case "splitPlan":
+      return { kind: "splitPlan", plan: await loadSplitPlan(git, query.target) };
+    case "signature":
+      return { kind: "signature", ...(await verifySignature(git, query.hash)) };
     case "absorbPlan":
       return { kind: "absorbPlan", plan: await loadAbsorbPlan(git) };
     case "lease": {
@@ -404,5 +418,7 @@ export async function repositoryQuery(
       const hash = await resolveCommit(git, `refs/remotes/${query.remote}/${query.branch}`);
       return { kind: "lease", hash };
     }
+    case "safetyNet":
+      return { kind: "safetyNet", entries: await loadSafetyNet(git) };
   }
 }

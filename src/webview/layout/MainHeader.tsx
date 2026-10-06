@@ -7,6 +7,7 @@ import {
   openFileHistory,
   openReflog
 } from "@/webview/components/history/HistoryTools";
+import { openSafetyNet } from "@/webview/components/history/SafetyNetView";
 import {
   openCleanup,
   openFastForward,
@@ -33,6 +34,7 @@ import {
   SearchIcon,
   SidebarIcon
 } from "@/webview/components/ui/Icons";
+import { openShortcutSheet } from "@/webview/components/ui/ShortcutSheet";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import {
   openContextMenu,
@@ -59,6 +61,7 @@ import {
   workspaceVisible
 } from "@/webview/lib/navigation";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
+import { repositoryState, sendRepositoryAction } from "@/webview/lib/repository-actions";
 import { rpcClient } from "@/webview/lib/rpc/rpc-client";
 import {
   branchDisplay,
@@ -183,7 +186,17 @@ function askForFileHistory() {
 function toolsMenu(): Array<ContextMenuEntry> {
   const l10n = window.l10n;
   const remotesShown = showRemoteBranch.value;
+  const undo = repositoryState.value?.undo;
   return [
+    ...(undo
+      ? [
+          {
+            title: l10n.undoAction.replace("{0}", undo.title),
+            onClick: () => sendRepositoryAction({ kind: "undoSafetyNet", id: undo.id })
+          },
+          null
+        ]
+      : []),
     { title: l10n.manageRemotes, onClick: openRemotes },
     { title: l10n.stashes, onClick: openStashes },
     { title: l10n.worktrees, onClick: openWorktrees },
@@ -194,6 +207,7 @@ function toolsMenu(): Array<ContextMenuEntry> {
     null,
     { title: l10n.goTo, onClick: openGoTo },
     { title: l10n.reflog, onClick: openReflog },
+    { title: l10n.safetyNet + "…", onClick: openSafetyNet },
     { title: l10n.fileHistory, onClick: askForFileHistory },
     { title: l10n.operationActivity, onClick: openActivity },
     null,
@@ -206,6 +220,7 @@ function toolsMenu(): Array<ContextMenuEntry> {
       title: l10n.gettingStarted,
       onClick: () => void rpcClient.request("walkthrough.open", null)
     },
+    { title: l10n.keyboardShortcuts, onClick: openShortcutSheet, shortcut: "shortcutSheet" },
     { title: l10n.learnMore, onClick: () => void rpcClient.request("docs.open", null) },
     { title: l10n.openSettings, onClick: () => void rpcClient.request("settings.open", null) }
   ];

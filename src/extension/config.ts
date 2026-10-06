@@ -142,6 +142,7 @@ export const extConfig = {
   conflictForecast: () => setting<ConflictForecastScope>("conflictForecast", "localAndRemote"),
   dateFormat: () => setting<DateFormat>("dateFormat", "Date & Time"),
   dateType: () => setting<DateType>("dateType", "Author Date"),
+  dragAndDrop: () => setting<boolean>("dragAndDrop", true),
   /** The built-in Git extension's executable when known, otherwise the `git.path` setting. */
   gitPath: (): string =>
     builtInGitPath ?? configuredGitPath(vscode.workspace.getConfiguration("git").get("path")),
@@ -152,7 +153,9 @@ export const extConfig = {
   maxDepthOfRepoSearch: () => wholeNumberSetting("maxDepthOfRepoSearch", 0, 0),
   nestedRepoSearchDepth: () => wholeNumberSetting("nestedRepoSearchDepth", 0, 3),
   showCurrentBranchByDefault: () => setting<boolean>("showCurrentBranchByDefault", false),
+  showSignatures: () => setting<boolean>("showSignatures", true),
   showUncommittedChanges: () => setting<boolean>("showUncommittedChanges", true),
+  singleKeyShortcuts: () => setting<boolean>("singleKeyShortcuts", true),
   tabIconColourTheme: () => setting<TabIconColourTheme>("tabIconColourTheme", "colour")
 };
 
