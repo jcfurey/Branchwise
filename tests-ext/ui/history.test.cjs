@@ -1533,8 +1533,17 @@ suite("Branchwise workflow UI", function () {
     await goTo(command, typed.slice(0, 10), typed.slice(0, 10));
     await revealed(typed);
 
-    // The shortcut works while the graph has focus.
-    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${typed}"]').focus()`);
+    // The shortcut works while the graph has focus. A row can be focused while the workbench
+    // still holds the keyboard after the last picker closed, so bring the graph forward first.
+    await until(async () => {
+      if (!(await graph.evaluate("document.hasFocus()"))) {
+        await vscode.commands.executeCommand("branchwise.view");
+      }
+      await graph.evaluate(`document.querySelector('tr[data-commit-hash="${typed}"]').focus()`);
+      return graph.evaluate(
+        `document.hasFocus() && document.activeElement?.dataset?.commitHash === "${typed}"`
+      );
+    }, "the graph has the keyboard");
     const shortcut = () => keypress("g", process.platform === "darwin" ? 1 | 4 : 1 | 2);
     await goTo(shortcut, "goto-target", "goto-target");
     await revealed(target);
