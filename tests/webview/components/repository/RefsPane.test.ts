@@ -290,7 +290,10 @@ describe("RefsPane", () => {
       actions.handleRepositoryQuery({
         repo: "/repo",
         requestId: forecast!.requestId,
-        data: { kind: "conflictForecast", conflicts: [{ branch: "feature", files: ["a.ts"] }] },
+        data: {
+          kind: "conflictForecast",
+          conflicts: [{ branch: "feature", remote: false, files: ["a.ts"], committer: "", date: 0 }]
+        },
         status: null
       })
     );
