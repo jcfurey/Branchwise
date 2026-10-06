@@ -102,6 +102,8 @@ function runsInBackground(action: RepositoryAction) {
     case "previewFileRestore":
     case "viewRangeFile":
     case "viewHistoricalFile":
+    case "viewCommitChanges":
+    case "viewRangeChanges":
       return true;
     default:
       return false;
@@ -112,6 +114,7 @@ function runsInBackground(action: RepositoryAction) {
 function reachesOtherRepo(action: RepositoryAction) {
   switch (action.kind) {
     case "viewRangeFile":
+    case "viewRangeChanges":
     case "viewHistoricalFile":
     case "submodule":
     case "submodulePointer":

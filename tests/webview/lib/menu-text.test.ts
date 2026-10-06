@@ -80,7 +80,7 @@ describe("English titles", () => {
       "Create Tag… | Create Branch… | --- | Check Out… | Cherry-pick… | Revert… | --- | " +
         "Merge into Current Branch… | Reset Current Branch to This Commit… | --- | " +
         "Edit commits after this (interactive rebase)… | " +
-        "Fold staged changes into this commit (fixup)… | Compare with… | " +
+        "Fold staged changes into this commit (fixup)… | Open All Changes | Compare with… | " +
         "Use as Good Bisect Commit | Use as Bad Bisect Commit | Copy Commit ID | Copy Short Commit ID"
     );
   });

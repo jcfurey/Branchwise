@@ -29,6 +29,15 @@ export type RepositoryEffect =
   | { kind: "conflict"; path: string; status: string }
   | { kind: "document"; text: string }
   | { kind: "diff"; left: string | null; right: string | null; before: string; after: string }
+  /**
+   * Several diffs in one editor titled `title`, each as `diff` describes one, except that a side
+   * may also name a commit's first parent as `<commit>^`.
+   */
+  | {
+      kind: "changes";
+      title: string;
+      files: Array<{ left: string | null; right: string | null; before: string; after: string }>;
+    }
   | { kind: "historicalFile"; hash: string; path: string }
   | {
       kind: "workingTreeDiff";
@@ -82,6 +91,8 @@ export async function runRepositoryAction(
     case "recoverBranch":
     case "viewRangeFile":
     case "viewHistoricalFile":
+    case "viewCommitChanges":
+    case "viewRangeChanges":
       return runHistoryAction(git, action, binary);
     case "addRemote":
     case "editRemote":

@@ -139,10 +139,26 @@ export function CompareView({
       {comparison && (
         <>
           <section>
-            <h3 class="mb-2 font-semibold">
-              {window.l10n.comparedFiles}{" "}
-              <span class="text-muted">({comparison.files.length})</span>
-            </h3>
+            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 class="font-semibold">
+                {window.l10n.comparedFiles}{" "}
+                <span class="text-muted">({comparison.files.length})</span>
+              </h3>
+              {comparison.files.length > 0 && (
+                <Button
+                  onClick={() =>
+                    sendRepositoryAction({
+                      kind: "viewRangeChanges",
+                      base: comparison.base,
+                      right: comparison.right,
+                      files: comparison.files
+                    })
+                  }
+                >
+                  {window.l10n.openAllChanges}
+                </Button>
+              )}
+            </div>
             <p class="mb-2 font-mono text-xs text-muted">
               {comparison.base.slice(0, 12)} ↔ {comparison.right.slice(0, 12)}
             </p>
