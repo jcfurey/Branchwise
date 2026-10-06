@@ -98,6 +98,7 @@ describe("the Settings & Tools menu", () => {
       "✓ showRemoteBranches",
       "hiddenBranches…",
       "gettingStarted",
+      "legend",
       "learnMore",
       "openSettings"
     ]);

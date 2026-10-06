@@ -127,6 +127,37 @@
   }
 
   /*
+   * A placeholder while the graph first loads: a slightly lighter band drifts slowly across it.
+   * It holds still for people who prefer less motion.
+   */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-btn) 25%,
+      var(--color-btn-hover) 50%,
+      var(--color-btn) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-shimmer {
+      animation: none;
+    }
+  }
+
+  @keyframes skeleton-shimmer {
+    from {
+      background-position: 100% 0;
+    }
+
+    to {
+      background-position: -100% 0;
+    }
+  }
+
+  /*
    * Fades in over the first pixel the page scrolls. The shorthand resets the timeline, so the
    * timeline and its range come after it.
    */

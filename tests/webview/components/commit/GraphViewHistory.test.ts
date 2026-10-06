@@ -219,6 +219,60 @@ describe("history pages", () => {
     expect(view().querySelectorAll("tr[data-commit-hash]")).toHaveLength(0);
     expect(view().querySelector("[role=note]")).toBeNull();
   });
+
+  it("offers each way to widen the search, and each searches again widened", () => {
+    stores.commitList.value = chain("graph-row");
+    stores.commitHead.value = "graph-row";
+    stores.branchDisplay.value = "filter";
+    stores.selectedBranch.value = "feature";
+    search({ text: "fix.*parser", author: "ann", path: "src", regex: true });
+    showGraphView();
+    expect(lastQuery("history").query.filter.revision).toBe("refs/heads/feature");
+    replyWithPage([]);
+    const offered = () =>
+      [...view().querySelectorAll<HTMLButtonElement>("[data-no-matches] button")].map(
+        (button) => button.textContent
+      );
+    expect(offered()).toEqual([
+      "searchAllBranches",
+      "clearFiltersCount",
+      "turnOffRegex",
+      "searchChangesInstead"
+    ]);
+
+    click("turnOffRegex");
+    expect(historyFilter.value).toMatchObject({ text: "fix.*parser", regex: false });
+    replyWithPage([]);
+
+    click("clearFiltersCount");
+    expect(historyFilter.value).toMatchObject({ text: "fix.*parser", author: "", path: "" });
+    replyWithPage([]);
+    expect(offered()).toEqual(["searchAllBranches", "searchChangesInstead"]);
+
+    click("searchChangesInstead");
+    expect(historyFilter.value).toMatchObject({ text: "", changes: "fix.*parser" });
+    replyWithPage([]);
+    expect(offered()).toEqual(["searchAllBranches", "clearFiltersCount"]);
+
+    click("searchAllBranches");
+    expect(stores.selectedBranch.value).toBe("*");
+    expect(lastQuery("history").query.filter).toMatchObject({
+      revision: "",
+      changes: "fix.*parser"
+    });
+  });
+
+  it("counts the filled-in fields on the Clear filters button", () => {
+    stores.commitList.value = chain("graph-row");
+    stores.commitHead.value = "graph-row";
+    withEnglish({ clearFiltersCount: "Clear filters ({0})" });
+    search({ author: "ann", tag: "v1", since: "2024-01-01" });
+    showGraphView();
+    replyWithPage([]);
+    expect(
+      [...view().querySelectorAll("[data-no-matches] button")].map((button) => button.textContent)
+    ).toEqual(["Clear filters (3)"]);
+  });
 });
 
 describe("branches and tags matching the search", () => {

@@ -145,4 +145,13 @@ describe("styles.css", () => {
     expect(shade.indexOf("animation-timeline: scroll(root block);")).toBeGreaterThan(shorthand);
     expect(shade.indexOf("animation-range: 0 1px;")).toBeGreaterThan(shorthand);
   });
+
+  it("shimmers the graph's placeholders quietly, and not at all for less motion", () => {
+    const shimmer = ruleOf(components, ".skeleton-shimmer");
+    expect(shimmer).toContain("var(--color-btn-hover)");
+    expect(shimmer).toContain("animation: skeleton-shimmer 1.8s ease-in-out infinite;");
+    expect(components).toMatch(/@keyframes skeleton-shimmer \{\s+from \{\s+background-position/);
+    const reduced = components.slice(components.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(ruleOf(reduced, ".skeleton-shimmer")).toContain("animation: none;");
+  });
 });

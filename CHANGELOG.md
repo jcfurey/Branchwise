@@ -10,6 +10,9 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ### Added
 
+- A **Legend** in **Settings & Tools** that explains every symbol of the graph, each drawn by the graph's own components: dots and rings, push marks, the conflict mark, labels, dimmed history and the strips above the graph. See [getting started](docs/git-actions.md#getting-started).
+- **Clone Repository…** and **Open Folder…** beside **Initialize Repository** when the workspace has no Git repository.
+- Buttons that widen a search that found nothing: **Search all branches**, **Clear filters (N)**, **Turn off regular expressions** and **Search changes instead**, each shown when it applies. See [search](docs/git-actions.md#search-file-history-and-comparison).
 - Forecast conflicts with teammates' work: remote branches with commits in the last 30 days that would not merge cleanly into the checked-out branch get the same red mark as local ones, in the graph and the Branches pane, and the tooltip says whose last commit it is and when. A line above the graph counts them and opens a list that focuses the chosen branch. The checked-out branch's upstream, `<remote>/HEAD` and hidden remotes and branches are left out. The new `branchwise.conflictForecast` setting chooses `localAndRemote` (the default), `local` or `off`. See [teammates' branches](docs/git-actions.md#teammates-branches).
 - Pin local branches to the top of the Branches pane, and list local branches by their latest commit instead of by name. Both choices are remembered per repository.
 - Flag local branches in the Branches pane that are already merged into the checked-out branch, whose upstream is gone, that have had no commits for 90 days, or that would conflict if merged. Ahead and behind counts turn amber when a branch has diverged from its upstream.
@@ -27,6 +30,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 ### Changed
 
 - Show screenshots of the graph, branch focus and the Statistics tab in the README, and add search keywords such as `git log`, `git history`, `reflog` and `visualization`. `pnpm run screenshots` regenerates the images from a demo repository (see [testing](docs/testing.md)).
+- Show grey placeholder rows, with a quiet shimmer that stops for reduced motion, instead of a spinner while a repository's graph first loads.
 
 ## [0.9.10] - 2026-10-03
 

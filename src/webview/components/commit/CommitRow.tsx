@@ -134,7 +134,13 @@ const LABELS_SHOWN = 2;
  * The labels that do not fit on a row, as a "+N" button. Its tooltip lists them, and it opens a
  * menu of them; choosing one opens that ref's own menu in the same place.
  */
-function MoreRefs({ hidden, headBranch }: { hidden: Array<ShownRef>; headBranch: string | null }) {
+export function MoreRefs({
+  hidden,
+  headBranch
+}: {
+  hidden: Array<ShownRef>;
+  headBranch: string | null;
+}) {
   const refs = hidden.flatMap((item) => [item.ref, ...item.remotes]);
   const names = refs.map((ref) => ref.name);
   return (
@@ -184,7 +190,7 @@ function useWatch(test: () => boolean, key: string) {
  * A small dot before the description: filled for a commit not pushed yet, a ring for one on a
  * remote that is not pulled yet. Its name says which, so the colour is never the only sign.
  */
-function PushDot({ state }: { state: PushState }) {
+export function PushDot({ state }: { state: PushState }) {
   const label = state === "unpushed" ? window.l10n.commitUnpushed : window.l10n.commitUnpulled;
   return (
     <span

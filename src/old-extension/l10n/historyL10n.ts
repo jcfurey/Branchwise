@@ -30,6 +30,13 @@ export function getHistoryLocalizedStrings() {
     filterName: vscode.l10n.t("Filter Name"),
     deleteSavedFilter: vscode.l10n.t("Delete Saved Filter"),
     noHistoryMatches: vscode.l10n.t("No commits match these filters."),
+    // Buttons after noMatchesTry, each widening a search that found nothing. {0} is how many of
+    // the Filters fields are filled in.
+    noMatchesTry: vscode.l10n.t("Try:"),
+    searchAllBranches: vscode.l10n.t("Search all branches"),
+    clearFiltersCount: vscode.l10n.t("Clear filters ({0})"),
+    turnOffRegex: vscode.l10n.t("Turn off regular expressions"),
+    searchChangesInstead: vscode.l10n.t("Search changes instead"),
     filteredHistory: vscode.l10n.t("Filtered history"),
     filteredHistoryHint: vscode.l10n.t("Commits between matches may be hidden."),
     historyAt: vscode.l10n.t("History at {0}"),

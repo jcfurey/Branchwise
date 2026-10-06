@@ -6,7 +6,9 @@ All controls act on the repository selected in the graph, including initialized 
 
 After installing, VS Code offers the **Get started with Branchwise** walkthrough on the Welcome page, and the command **Branchwise: Open Getting Started Walkthrough** reopens it. Its five steps open the graph, explain how to read it, show where a commit's actions live, open the Branches pane, and cover recovery.
 
-Inside the graph, a hint above the commit list says how to reach a commit's actions until the first menu opens. Every commit row shows a **⋯** button at its end on hover, and the settings cog holds **Getting Started** and **Learn more**, which opens this guide.
+Inside the graph, a hint above the commit list says how to reach a commit's actions until the first menu opens. Every commit row shows a **⋯** button at its end on hover, and the settings cog holds **Getting Started**, **Legend** and **Learn more**, which opens this guide. **Legend** explains every symbol of the graph, each drawn as the graph draws it: commit dots and the checked-out commit's ring, the uncommitted changes, the unpushed dot and unpulled ring, the conflict mark, branch, remote branch and tag labels, the **+N** of labels that do not fit, dimmed history, and the branch focus and hidden-branches strips.
+
+When the workspace holds no Git repository, the graph offers **Initialize Repository**, **Clone Repository…** and **Open Folder…**, which start VS Code's own flows for each. While a repository's graph first loads, grey placeholder rows stand in for its commits.
 
 ## Branches pane
 
@@ -206,6 +208,8 @@ The header's search button opens the search row, and `/` or Ctrl/Cmd+F opens and
 **Text added or removed** answers "when did this string appear, or go?". It finds the commits that change how many times the text occurs in a file (`git log -S`), so a commit that only moves or edits the line around it is left out. With **Regular expressions** ticked it finds instead every commit that adds or removes a line matching the expression (`git log -G`), which includes such edits. For example, `changes:"parseConfig("` finds the commit that introduced a call and the one that removed it, and adding `path:src/app.ts` limits the search to one file. It finds the commits that made a change rather than the merges that brought it in, except while following renames, where a merge counts with what it changed on its first parent. Git reads each commit's changes to answer, so this search is slower than the others in a large repository: each page stops after its 100 results, and starting another search, or leaving the history, stops the one under way.
 
 When the search text appears in the names of branches or tags, they are listed above the results; click one to open the history at the commit it points to. In **Filter to branch** view, a selected branch limits the history to that branch. Filtered results may omit commits between matches. **Return to Graph** clears the filters.
+
+When a search finds nothing, buttons below the message widen it in one step, each shown only when it applies: **Search all branches** while the graph is filtered to one branch, **Clear filters (N)** with the number of Filters fields filled in (the search text stays), **Turn off regular expressions**, and **Search changes instead**, which moves message text into **Text added or removed**.
 
 The **Jump to HEAD** button next to search scrolls to the checked-out commit and puts the keyboard on it. It is highlighted while that commit is out of sight. From a search it returns to the graph first, and when the graph has not loaded that commit, it opens the history at HEAD.
 
