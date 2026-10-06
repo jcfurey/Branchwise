@@ -11,6 +11,7 @@ import { loadConflictForecast } from "@/backend/queries/conflictForecast";
 import { loadAmendPlan, loadRewordPlan } from "@/backend/queries/editCommit";
 import { historyQuery } from "@/backend/queries/history";
 import { loadPushStatus } from "@/backend/queries/pushStatus";
+import { loadSplitPlan } from "@/backend/queries/splitCommit";
 import {
   loadSyncPlan,
   loadUpstreamPlan,
@@ -371,6 +372,8 @@ export async function repositoryQuery(
       return { kind: "editPlan", plan: await loadRewordPlan(git, query.target) };
     case "amendPlan":
       return { kind: "amendPlan", plan: await loadAmendPlan(git, query.target) };
+    case "splitPlan":
+      return { kind: "splitPlan", plan: await loadSplitPlan(git, query.target) };
     case "lease": {
       await requireRemote(git, query.remote);
       await requireBranchName(git, query.branch);

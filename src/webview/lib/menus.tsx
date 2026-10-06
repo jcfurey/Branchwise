@@ -13,6 +13,7 @@ import {
 import { openHiddenBranches } from "@/webview/components/repository/HiddenBranches";
 import { openInteractiveRebase, openRebase } from "@/webview/components/repository/RebaseEditor";
 import { openTracking } from "@/webview/components/repository/RemoteManager";
+import { openSplitCommit } from "@/webview/components/repository/SplitCommit";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
 import { Explain } from "@/webview/components/ui/Explain";
 import { closeDialog, focusBranchInGraph, openFormDialog, runAction } from "@/webview/lib/actions";
@@ -292,6 +293,10 @@ export function commitMenu(
       ...(onCheckedOutLine(hash)
         ? [
             { title: more(l10n.editMessage), onClick: () => openEditMessage(hash) },
+            // A merge's changes are relative to more than one parent, so it has no single split.
+            ...(commit.parentHashes.length < 2
+              ? [{ title: more(l10n.splitCommit), onClick: () => openSplitCommit(hash) }]
+              : []),
             ...(hasStagedChanges()
               ? [{ title: more(l10n.addStagedToCommit), onClick: () => openAddStaged(hash) }]
               : [])

@@ -1824,6 +1824,78 @@ suite("Branchwise workflow UI", function () {
     await button("Close");
   });
 
+  test("splits a commit into two from the commit menu", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "split base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    for (const file of ["alpha", "beta", "gamma"]) {
+      fs.writeFileSync(path.join(dir, file), file + "\n");
+    }
+    git(["add", "alpha", "beta", "gamma"], dir);
+    git(["commit", "-m", "split three files"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    // An unrelated change in the working tree stays where it is.
+    fs.writeFileSync(path.join(dir, "f"), "uncommitted");
+    await openRepo(dir);
+    const setValue = (label, value, event) =>
+      graph.evaluate(
+        `(() => { const input = document.querySelector('[role=dialog] [aria-label=${JSON.stringify(label)}]'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event(${JSON.stringify(event)}, {bubbles: true})); })()`
+      );
+    const preview = () =>
+      graph.evaluate('document.querySelector("[role=dialog] [data-split-preview]")?.textContent');
+
+    await contextCommit("split three files");
+    await menu("Split Commit…");
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('[role=dialog] [aria-label="Message of Part 1"]')?.value === "split three files"`
+        ),
+      "split dialog with the original message"
+    );
+    assert.equal(await preview(), "2 commits: Part 1 (3 files), Part 2 (0 files)");
+    await setValue("Part for gamma", "1", "change");
+    await setValue("Message of Part 1", "split alpha and beta", "input");
+    await setValue("Message of Part 2", "split gamma", "input");
+    await until(
+      async () => (await preview()) === "2 commits: Part 1 (2 files), Part 2 (1 file)",
+      "split preview"
+    );
+    await button("Split Commit");
+    await finished();
+    assert.equal(
+      git(["log", "--format=%s", base + "..HEAD"], dir),
+      "split gamma\nsplit alpha and beta"
+    );
+    assert.equal(git(["rev-parse", "HEAD^{tree}"], dir), tree);
+    assert.equal(git(["status", "--porcelain"], dir), "M f");
+
+    // The graph shows both commits, each with its own files.
+    const filesOf = async (subject) => {
+      await until(
+        () =>
+          graph.evaluate(
+            `(() => { const row = [...document.querySelectorAll('tr[data-commit-hash]')].find(r => r.textContent.includes(${JSON.stringify(subject)})); if (!row) return false; row.click(); return true; })()`
+          ),
+        "commit row " + subject
+      );
+      return until(async () => {
+        const names = await graph.evaluate(
+          `[...document.querySelectorAll('[data-details-row] li button > span.min-w-0')].map(span => span.textContent).join()`
+        );
+        const message = await graph.evaluate(
+          `document.querySelector('[data-details-row]')?.innerText || ""`
+        );
+        return message.includes(subject) && names !== "" ? names : false;
+      }, "details of " + subject);
+    };
+    assert.equal(await filesOf("split alpha and beta"), "alpha,beta");
+    await button("Close", 'document.querySelector("[data-details-row]")');
+    assert.equal(await filesOf("split gamma"), "gamma");
+    await button("Close", 'document.querySelector("[data-details-row]")');
+  });
+
   test("shows nested repository status, updates a submodule and switches its graph from the sidebar", async () => {
     const child = directory();
     init(child);

@@ -96,6 +96,28 @@ export function getRepositoryLocalizedStrings() {
     explainAddStaged: vscode.l10n.t(
       "The changes are committed as a fixup! commit, which an autosquash rebase then folds into this commit. If the rebase stops on a conflict, the status strip offers Continue and Abort, and Abort leaves the changes in the fixup! commit."
     ),
+    splitCommit: vscode.l10n.t("Split Commit"),
+    splitIntro: vscode.l10n.t(
+      "Split {0} into several commits. Choose the part each file or hunk goes to. The parts are committed in order, each with the original author and date."
+    ),
+    explainSplit: vscode.l10n.t(
+      "The parts are built from the commit's parent without touching the working tree or the index, and together they must make exactly the original commit. The commits after it are made again on the last part with the same files, so no rebase runs and uncommitted changes stay as they are."
+    ),
+    splitPart: vscode.l10n.t("Part {0}"),
+    splitPartMessage: vscode.l10n.t("Message of Part {0}"),
+    addSplitPart: vscode.l10n.t("+ Part"),
+    removeSplitPart: vscode.l10n.t("Remove Part {0}"),
+    splitFilePart: vscode.l10n.t("Part for {0}"),
+    splitHunkPart: vscode.l10n.t("Part for {0} at {1}"),
+    splitHunks: vscode.l10n.t("{0} hunks: choose a part for each"),
+    splitByHunk: vscode.l10n.t("By hunk"),
+    splitMoreLines: vscode.l10n.t("{0} more lines"),
+    splitPreview: vscode.l10n.t("{0} commits: {1}"),
+    splitPartFiles: vscode.l10n.t("Part {0} ({1} files)"),
+    splitPartOneFile: vscode.l10n.t("Part {0} (1 file)"),
+    splitPartsJoin: vscode.l10n.t("{0}, {1}"),
+    splitEmptyPart: vscode.l10n.t("Choose at least one file or hunk for Part {0}."),
+    splitNoMessage: vscode.l10n.t("Enter a message for Part {0}."),
     invalidRebasePlan: vscode.l10n.t(
       "Keep at least one commit; the first retained commit cannot be Squash. Reword requires a message."
     ),
