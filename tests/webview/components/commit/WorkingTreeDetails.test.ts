@@ -104,7 +104,9 @@ it("opens grouped changes from the graph and sends the chosen diff without a blo
   expect(container.querySelectorAll("section")).toHaveLength(3);
   act(() =>
     container
-      .querySelector<HTMLButtonElement>('section[aria-label="stagedChanges"] button')!
+      .querySelector<HTMLButtonElement>(
+        'section[aria-label="stagedChanges"] button[data-file-path]'
+      )!
       .click()
   );
   expect(vscodeApi.postMessage).toHaveBeenCalledWith(
@@ -280,4 +282,26 @@ it("shows 200 files of a large group at a time", () => {
   act(() => more.click());
   expect(untracked()).toHaveLength(400);
   expect(fileButton("staged", "staged.txt")).not.toBeNull();
+});
+
+it("offers Absorb Staged Changes beside the staged files only", () => {
+  act(() => row().click());
+  const absorb = () =>
+    [...container.querySelectorAll<HTMLButtonElement>("button")].filter(
+      (button) => button.textContent === "absorbStaged…"
+    );
+  reply([...files("unstaged", ["f"]), ...files("untracked", ["new.txt"])]);
+  expect(absorb()).toHaveLength(0);
+  refreshList();
+  reply([...files("unstaged", ["f"]), ...files("staged", ["f"])]);
+  expect(absorb()).toHaveLength(1);
+  expect(absorb()[0]!.closest("section")!.getAttribute("aria-label")).toBe("stagedChanges");
+  act(() => absorb()[0]!.click());
+  expect(vscodeApi.postMessage).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      command: "repositoryQuery",
+      repo: "/repo",
+      query: { kind: "absorbPlan" }
+    })
+  );
 });
