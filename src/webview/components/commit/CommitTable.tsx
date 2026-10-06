@@ -63,6 +63,61 @@ function indexRows(commits: Array<HistoryEntry>) {
   return { rowOf, messages };
 }
 
+/** How long after Go to the revealed row takes the keyboard back if the workbench drops it. */
+const REVEAL_SETTLE_MS = 5000;
+
+/** Lets go of the row the last Go to revealed, if it is still held. */
+let releaseHeld = () => {};
+
+/**
+ * Keep the keyboard on the row Go to revealed while the workbench settles. Closing the picker and
+ * bringing the panel forward can blur the row, or hand the panel the keyboard with nothing focused
+ * in it, after the row was focused; the row takes it back then. Only for a moment, and never over
+ * a control: once the user clicks or types, or another Go to reveals a row, it lets go.
+ */
+function holdFocus(
+  first: HTMLElement,
+  hash: string,
+  containerRef: { readonly current: HTMLElement | null }
+) {
+  releaseHeld();
+  // The row itself, or the one drawn in its place if the table was redrawn meanwhile.
+  const target = () =>
+    first.isConnected
+      ? first
+      : containerRef.current?.querySelector<HTMLElement>(
+          `tr[data-commit-hash=${JSON.stringify(hash)}]`
+        );
+  const restore = () => {
+    const active = document.activeElement;
+    // Never while the keyboard is elsewhere in the workbench: focusing the row would take it
+    // from there, closing a picker that just opened.
+    if (document.hasFocus() && (active === null || active === document.body)) {
+      target()?.focus({ preventScroll: true });
+    }
+  };
+  // Blurred towards nothing: look again once the focus has landed.
+  const onFocusOut = (event: FocusEvent) => {
+    if (event.relatedTarget === null) {
+      setTimeout(restore);
+    }
+  };
+  const container = containerRef.current;
+  const release = () => {
+    clearTimeout(timer);
+    container?.removeEventListener("focusout", onFocusOut);
+    window.removeEventListener("focus", restore);
+    window.removeEventListener("pointerdown", release, true);
+    window.removeEventListener("keydown", release, true);
+  };
+  const timer = setTimeout(release, REVEAL_SETTLE_MS);
+  releaseHeld = release;
+  container?.addEventListener("focusout", onFocusOut);
+  window.addEventListener("focus", restore);
+  window.addEventListener("pointerdown", release, true);
+  window.addEventListener("keydown", release, true);
+}
+
 /**
  * The graph with the dot of the row whose commit menu is open drawn in full colour. It reads the
  * open menu here rather than in the table, so opening a menu re-renders the graph and that one
@@ -198,20 +253,8 @@ export function CommitTable({
     row?.scrollIntoView({ block: "center" });
     // Focusing the row makes it the focused commit and brings its dot into view.
     row?.focus({ preventScroll: true });
-    if (row && !document.hasFocus()) {
-      // The panel may get the keyboard back after this, from a picker closing in the
-      // workbench, with nothing focused in it; the row should have it then. Clearing the
-      // pending reveal runs this effect again, so the listener is not tied to it.
-      window.addEventListener(
-        "focus",
-        () => {
-          const active = document.activeElement;
-          if (row.isConnected && (active === null || active === document.body)) {
-            row.focus({ preventScroll: true });
-          }
-        },
-        { once: true }
-      );
+    if (row) {
+      holdFocus(row, commit.hash, containerRef);
     }
   }, [revealing, rowOf, commits, containerRef]);
   const toggles = useMemo(
