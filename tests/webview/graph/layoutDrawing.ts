@@ -57,7 +57,7 @@ export function line(notation: string): GraphLine {
   };
 }
 
-/** A dot written `"lane/colour"`, then `current` and `uncommitted` when set. */
+/** A dot written `"lane/colour"`, then `current`, `uncommitted` and `merge` when set. */
 export function dot(notation: string, row: number): GraphVertex {
   const [position = "", ...flags] = notation.split(" ");
   const [lane = "", colour = ""] = position.split("/");
@@ -66,7 +66,8 @@ export function dot(notation: string, row: number): GraphVertex {
     y: row,
     colour: Number(colour),
     isCommitted: !flags.includes("uncommitted"),
-    isCurrent: flags.includes("current")
+    isCurrent: flags.includes("current"),
+    isMerge: flags.includes("merge")
   };
 }
 

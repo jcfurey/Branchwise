@@ -7,6 +7,8 @@ import * as vscode from "vscode";
 
 import { configuredGitPath, extConfig, wholeNumber } from "@/extension/config";
 
+import { themeGraphColours } from "./manifest";
+
 type Manifest = {
   contributes: { configuration: { properties: Record<string, { default: unknown }> } };
 };
@@ -23,7 +25,6 @@ it("falls back to the defaults declared in package.json", () => {
     dateFormat: extConfig.dateFormat(),
     dateType: extConfig.dateType(),
     dragAndDrop: extConfig.dragAndDrop(),
-    graphColours: extConfig.graphColours(),
     graphStyle: extConfig.graphStyle(),
     initialLoadCommits: extConfig.initialLoadCommits(),
     loadMoreCommits: extConfig.loadMoreCommits(),
@@ -38,6 +39,8 @@ it("falls back to the defaults declared in package.json", () => {
   for (const [key, value] of Object.entries(fallbacks)) {
     expect(value, key).toEqual(declared[`branchwise.${key}`]?.default);
   }
+  // Unset, the colours come from the theme, whose defaults are the setting's default colours.
+  expect(extConfig.graphColours()).toEqual(themeGraphColours);
   expect(extConfig.gitPath()).toBe("git");
 });
 

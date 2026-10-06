@@ -2,7 +2,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 
 import { createRpcServer } from "@/extension/rpc/rpc-server";
 
-import { declaredGraphColours } from "./manifest";
+import { themeGraphColours } from "./manifest";
 
 const host = vi.hoisted(() => ({
   executeCommand: vi.fn(),
@@ -15,7 +15,10 @@ vi.mock("vscode", () => ({
   l10n: { t: (key: string) => key },
   workspace: {
     workspaceFolders: undefined,
-    getConfiguration: () => ({ get: (_key: string, fallback?: unknown) => fallback })
+    getConfiguration: () => ({
+      get: (_key: string, fallback?: unknown) => fallback,
+      inspect: () => undefined
+    })
   }
 }));
 
@@ -95,7 +98,7 @@ test("hands the page its strings and settings", async () => {
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
     dragAndDrop: true,
-    graphColours: declaredGraphColours,
+    graphColours: themeGraphColours,
     graphStyle: "rounded",
     initialLoadCommits: 300,
     loadMoreCommits: 100,

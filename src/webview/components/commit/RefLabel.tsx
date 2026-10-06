@@ -119,6 +119,7 @@ export function RefLabel({
       class={`mt-0.5 mr-1.25 box-content inline-flex h-4.5 max-w-full items-center overflow-hidden rounded-md border pr-1.25 align-top text-xs ${
         active ? "border-graph" : "border-line"
       } ${menuOpen ? "bg-btn-hover" : "bg-btn"} ${DROP_TARGET_CLASS}`}
+      data-ref={gitRef.type}
       title={lines.join("\n")}
       {...refDragAttributes(gitRef)}
       onContextMenu={(event) => openContextMenu(event, source, refMenu(gitRef, active))}

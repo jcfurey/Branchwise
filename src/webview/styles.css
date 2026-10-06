@@ -68,7 +68,19 @@
   --color-git-added: var(--vscode-gitDecoration-addedResourceForeground);
   --color-git-modified: var(--vscode-gitDecoration-modifiedResourceForeground);
   --color-git-deleted: var(--vscode-gitDecoration-deletedResourceForeground);
-  --color-git-conflict: var(--vscode-gitDecoration-conflictingResourceForeground);
+  /*
+   * The conflict forecast's mark and the unpushed dot follow the colours Branchwise contributes,
+   * `branchwise.conflict` and `branchwise.unpushed`. Their defaults are the Git colours below, so
+   * a theme that sets neither looks as it did.
+   */
+  --color-git-conflict: var(
+    --vscode-branchwise-conflict,
+    var(--vscode-gitDecoration-conflictingResourceForeground)
+  );
+  --color-unpushed: var(
+    --vscode-branchwise-unpushed,
+    var(--vscode-gitDecoration-modifiedResourceForeground)
+  );
 
   /* Verdicts on a commit's signature, always shown beside an icon and words of their own. */
   --color-signature-good: var(
@@ -160,5 +172,83 @@
     to {
       opacity: 1;
     }
+  }
+
+  /*
+   * High contrast themes mark edges with their contrast colours where other themes shade, and
+   * VS Code sets the body class of the theme kind. Lines and borders take the contrast border;
+   * a selected or open row is outlined in the active border colour, and a hovered one dashed.
+   */
+  .vscode-high-contrast,
+  .vscode-high-contrast-light {
+    --color-line: var(--vscode-contrastBorder, rgba(128, 128, 128, 0.5));
+    --color-line-soft: var(--vscode-contrastBorder, rgba(128, 128, 128, 0.25));
+  }
+
+  .vscode-high-contrast .branch-focus-row:hover,
+  .vscode-high-contrast-light .branch-focus-row:hover {
+    outline: 1px dashed var(--vscode-contrastActiveBorder, transparent);
+    outline-offset: -1px;
+  }
+
+  .vscode-high-contrast .branch-focus-row[aria-selected="true"],
+  .vscode-high-contrast .branch-focus-row[aria-expanded="true"],
+  .vscode-high-contrast-light .branch-focus-row[aria-selected="true"],
+  .vscode-high-contrast-light .branch-focus-row[aria-expanded="true"] {
+    outline: 1px solid var(--vscode-contrastActiveBorder, transparent);
+    outline-offset: -1px;
+  }
+}
+
+/*
+ * The unpushed dot. Outside the layers, so that it wins over the utility its element is written
+ * with: the colour is `branchwise.unpushed`, which defaults to the same modified-file colour.
+ */
+[data-push="unpushed"] {
+  background-color: var(--color-unpushed);
+}
+
+/*
+ * Forced colours, such as a Windows contrast theme, replace every colour with a few system
+ * colours and drop backgrounds, so a mark drawn only as a background would vanish and a
+ * selection shown only by shading could not be seen. These rules keep both in system colours.
+ * They sit outside the layers so that they win over the utilities.
+ */
+@media (forced-colors: active) {
+  :focus-visible,
+  .branch-focus-row:focus {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  .branch-focus-row[aria-selected="true"],
+  .branch-focus-row[aria-expanded="true"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  [data-conflicts] {
+    color: LinkText;
+  }
+
+  [data-push="unpushed"] {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+
+  [data-push="unpulled"] {
+    border-color: CanvasText;
+  }
+
+  [data-ref],
+  [data-more-refs] {
+    border-color: CanvasText;
+  }
+
+  /* The coloured cap that holds a label's branch or tag glyph, drawn inverted. */
+  [data-ref] > svg:first-child {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+    color: Canvas;
   }
 }

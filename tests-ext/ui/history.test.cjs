@@ -2086,6 +2086,81 @@ suite("Branchwise workflow UI", function () {
     );
   });
 
+  test("tells commits and changes apart by shape, letter and spoken summary as well as colour", async () => {
+    const dir = directory();
+    init(dir);
+    commit("kept", "signal base", dir);
+    commit("gone", "signal doomed", dir);
+    commit("moved", "a file long enough to be found again after a rename\n".repeat(4), dir);
+    git(["checkout", "-b", "topic"], dir);
+    commit("side", "signal side", dir);
+    git(["checkout", "main"], dir);
+    fs.writeFileSync(path.join(dir, "kept"), "signal kept, changed");
+    fs.writeFileSync(path.join(dir, "new"), "signal new");
+    git(["rm", "-q", "gone"], dir);
+    git(["mv", "moved", "renamed"], dir);
+    git(["add", "--", "kept", "new"], dir);
+    git(["commit", "-m", "signal changes"], dir);
+    const changes = git(["rev-parse", "HEAD"], dir);
+    git(["merge", "--no-ff", "-m", "signal merge", "topic"], dir);
+    const merge = git(["rev-parse", "HEAD"], dir);
+    fs.writeFileSync(path.join(dir, "kept"), "signal kept, uncommitted");
+    await openRepo(dir);
+
+    const dot = (hash) =>
+      graph.evaluate(`(() => {
+        const rows = [...document.querySelectorAll("tr[data-commit-hash]")];
+        const index = rows.findIndex((row) => row.dataset.commitHash === ${JSON.stringify(hash)});
+        const circle = document.querySelectorAll("[data-graph-viewport] circle")[index];
+        return circle ? [circle.dataset.dot, circle.hasAttribute("stroke-dasharray")] : null;
+      })()`);
+    await until(async () => (await dot("*"))?.[0] === "uncommitted", "uncommitted dot");
+    assert.deepEqual(await dot("*"), ["uncommitted", true]);
+    assert.deepEqual(await dot(merge), ["merge", false]);
+    assert.deepEqual(await dot(changes), ["commit", false]);
+
+    const summary = await graph.evaluate(
+      `document.querySelector('tr[data-commit-hash="${merge}"]').getAttribute("aria-label")`
+    );
+    assert.match(
+      summary,
+      /^signal merge, UI Test, .+, checked out, merge of 2 parents, branch main$/
+    );
+
+    // Unset, the lanes take the theme colours, whose defaults are the colours used before.
+    assert.equal(
+      await graph.evaluate(
+        `getComputedStyle(document.documentElement).getPropertyValue("--vscode-branchwise-graphLane1").trim().toLowerCase()`
+      ),
+      "#0085d9"
+    );
+    assert.equal(
+      await graph.evaluate(`(() => {
+        const line = [...document.querySelectorAll("path[data-branch-relation]")].find((path) =>
+          path.getAttribute("stroke").startsWith("var(--vscode-branchwise-graphLane1,")
+        );
+        return line && getComputedStyle(line).stroke;
+      })()`),
+      "rgb(0, 133, 217)"
+    );
+
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${changes}"]').click()`);
+    const letters = () =>
+      graph.evaluate(
+        `[...document.querySelectorAll("[data-details-row] [data-change]")].map((cell) => [cell.closest("button").querySelector("span").textContent, cell.textContent, cell.getAttribute("aria-label")])`
+      );
+    await until(async () => (await letters()).length === 4, "status letters");
+    assert.deepEqual(
+      (await letters()).toSorted((a, b) => a[0].localeCompare(b[0])),
+      [
+        ["gone", "D", "Deleted"],
+        ["kept", "M", "Modified"],
+        ["new", "A", "Added"],
+        ["renamed", "R", "Renamed"]
+      ]
+    );
+  });
+
   test("runs ordered selected cherry-picks and reverts, then creates and autosquashes a fixup", async () => {
     const history = directory();
     init(history);

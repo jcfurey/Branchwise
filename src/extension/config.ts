@@ -94,14 +94,43 @@ function wholeNumberSetting(key: string, minimum: number, fallback: number): num
   return wholeNumber(setting<unknown>(key, fallback), minimum, fallback);
 }
 
-/** The entries of the colour list that the graph can draw, in their order and as written. */
+/**
+ * The lane colours Branchwise contributes to colour themes, `branchwise.graphLane1` to
+ * `branchwise.graphLane12`, as the CSS variables VS Code gives the page. Each falls back to the
+ * setting's default colour for the lane, which is also its default in every theme, so the graph
+ * looks the same until a theme or `workbench.colorCustomizations` changes one.
+ */
+const THEME_GRAPH_COLOURS: readonly string[] = DEFAULT_GRAPH_COLOURS.map(
+  (colour, index) => `var(--vscode-branchwise-graphLane${index + 1}, ${colour})`
+);
+
+/** Whether the user set `branchwise.graphColours` anywhere, rather than leaving the default. */
+function graphColoursSet(): boolean {
+  const scopes = vscode.workspace.getConfiguration("branchwise").inspect("graphColours");
+  return (
+    scopes?.globalValue !== undefined ||
+    scopes?.workspaceValue !== undefined ||
+    scopes?.workspaceFolderValue !== undefined
+  );
+}
+
+/**
+ * The entries of the colour list that the graph can draw, in their order and as written. Without
+ * a usable list from the user, the theme's lane colours.
+ */
 function graphColours(): string[] {
-  const stored = setting<unknown>("graphColours", DEFAULT_GRAPH_COLOURS);
+  const stored: unknown = graphColoursSet()
+    ? setting<unknown>("graphColours", undefined)
+    : undefined;
   // A list is required; anything else counts as no setting at all.
-  const colours: readonly unknown[] = Array.isArray(stored) ? stored : DEFAULT_GRAPH_COLOURS;
+  if (!Array.isArray(stored)) {
+    return [...THEME_GRAPH_COLOURS];
+  }
   // The test reads each entry's string form, so a non-string entry that reads as a colour (such
   // as ["#000000"]) is kept as it is.
-  return colours.filter((colour) => GRAPH_COLOUR.test(String(colour))) as string[];
+  return (stored as readonly unknown[]).filter((colour) =>
+    GRAPH_COLOUR.test(String(colour))
+  ) as string[];
 }
 
 /**

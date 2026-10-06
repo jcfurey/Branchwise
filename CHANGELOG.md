@@ -31,8 +31,11 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - Edit the message of a squashed commit before starting the rebase. In the interactive rebase editor, including the one **Squash N Commits…** opens, each group that Squash combines gets a message box filled with the messages Git would keep, without its comment lines and Fixup messages. An edited message is kept as typed, including lines that start with `#`; one left alone is combined by Git as before. See [rebasing](docs/git-actions.md#rebasing).
 - **Split Commit…**, in the commit menu and the commit details, breaks a commit of the checked-out branch into two or more, by file or by hunk, each with its own message and the original author and date. The parts are built without touching the working tree or the index and must add up to the original commit exactly; the later commits keep their files and are made again on top, so no rebase runs. See [editing one commit in place](docs/git-actions.md#editing-one-commit-in-place).
 
+- Theme colours for the graph: `branchwise.graphLane1` to `branchwise.graphLane12`, `branchwise.unpushed` and `branchwise.conflict`, which colour themes and `workbench.colorCustomizations` can set. The lanes use them while `branchwise.graphColours` is not set, and every default is the colour used before, so nothing changes until a theme sets one. See [theme colours](docs/preferences.md#theme-colours).
+
 ### Changed
 
+- Never use colour as the only sign: changed files in a commit's details end with their status letter (A, M, D, R…), named in full for tooltips and screen readers; merges and the uncommitted changes have their own dot shapes in the graph; each commit row reads to a screen reader as one summary of its subject, author, age, merge, push and conflict state, and labels; and high contrast themes and forced colours outline selection and keep the graph's marks visible.
 - Show screenshots of the graph, branch focus and the Statistics tab in the README, and add search keywords such as `git log`, `git history`, `reflog` and `visualization`. `pnpm run screenshots` regenerates the images from a demo repository (see [testing](docs/testing.md)).
 
 ## [0.9.10] - 2026-10-03
