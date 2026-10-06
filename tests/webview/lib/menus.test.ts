@@ -85,7 +85,8 @@ const LOCAL_TITLES = [
   "deleteBranch…",
   "merge…",
   null,
-  "copyBranchName"
+  "copyBranchName",
+  "hideBranchesLikeThis…"
 ];
 const CHECKED_OUT_TITLES = [
   "focusThisBranch",
@@ -97,7 +98,8 @@ const CHECKED_OUT_TITLES = [
   "pullBranch…",
   "renameBranch…",
   null,
-  "copyBranchName"
+  "copyBranchName",
+  "hideBranchesLikeThis…"
 ];
 const REMOTE_TITLES = [
   "focusThisBranch",
@@ -109,7 +111,8 @@ const REMOTE_TITLES = [
   "fetch…",
   "checkoutBranch…",
   null,
-  "copyBranchName"
+  "copyBranchName",
+  "hideBranchesLikeThis…"
 ];
 const REMOTE_HEAD_TITLES = [
   "compareWith",
@@ -680,7 +683,11 @@ describe("opening a commit, branch or tag on the repository's host", () => {
       "copyCommitHash",
       "copyShortCommitHash"
     ]);
-    expect(titles(refMenu(LOCAL, false)).slice(-2)).toEqual(["openBranchOnHost", "copyBranchName"]);
+    expect(titles(refMenu(LOCAL, false)).slice(-3)).toEqual([
+      "openBranchOnHost",
+      "copyBranchName",
+      "hideBranchesLikeThis…"
+    ]);
     expect(titles(refMenu(TAG, false)).slice(-2)).toEqual(["openTagOnHost", "copyTagName"]);
   });
 

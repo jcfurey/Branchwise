@@ -45,6 +45,16 @@ Hidden choices are restored when you reopen the graph. Renaming a remote through
 
 The eye button on the **Remotes** section hides all remote branches temporarily. Showing them again preserves the individual hidden choices. Hiding a remote whose branch is selected clears that selection to **All branches** without checking out another branch. The settings cog in the header holds the global toggle and a shortcut to the extension's settings.
 
+### Hiding branches by name
+
+Repositories with many bot branches, such as `dependabot/*`, `renovate/*` or `gh-readonly-queue/*`, can hide them by name. Open **Settings & Tools → Hidden Branches…**, or right-click a branch label or a Branches pane row and choose **Hide Branches Like This…**, which adds a pattern for the branch's first path segment, such as `dependabot/*` for `dependabot/npm/foo`. Write one pattern per line; the dialog shows how many branches each one hides as you type, and nothing changes until you choose **Save**.
+
+Patterns are globs, read as Git's `--exclude` reads them: `*` matches any characters, `/` included, `?` matches any one character, `[abc]` and `[a-z]` match one character of a set (`[!abc]` one outside it), and `\` takes the next character literally. A pattern must match the whole name, and case counts. Local branches are matched by their name and remote branches by their name after the remote, so `dependabot/*` hides both `dependabot/npm/foo` and `origin/dependabot/npm/foo`.
+
+Hidden branches leave the graph with their labels and the commits only they reach; shared history, tags and other branches stay. They also leave the header's branch picker, history searches and the **All branches** count of the Statistics tab. In the Branches pane they stay listed but dimmed. A line above the graph says how many branches are hidden, with **Show all** to clear the patterns and **Edit patterns** to change them.
+
+The checked-out branch is never hidden. Neither is the branch selected in the header: choosing a hidden branch from the Branches pane, or focusing it, shows it while it stays selected, and an eye-closed mark beside the branch picker says a pattern matches it. The pattern is kept, so the branch is hidden again once another one is selected. Patterns are saved per repository and restored when you reopen the graph; hiding branches never changes Git refs.
+
 ## Wide graphs
 
 Branch lines stay within the **Graph** column, including after column resizing. When the lanes do not fit, use the horizontal scrollbar under the Graph heading, a horizontal trackpad gesture, or **Shift+mouse wheel** over the graph. The scrollbar also accepts keyboard arrow keys when focused. Only the lanes move sideways; commit text stays in place, and commit selection and expanded details remain aligned. Drag the boundary beside **Graph** to give the lanes more room.

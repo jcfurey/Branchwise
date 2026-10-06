@@ -9,18 +9,19 @@ import {
   displayedBranch,
   expandedCommit,
   moreCommitsAvailable,
-  remoteVisibilityKey,
   selectedRepo,
   uncommittedChanges
 } from "@/webview/lib/stores";
+import { graphVisibilityKey } from "@/webview/lib/stores/hidden-branches.store";
 
 type CommitsAnswer = Extract<ResponseMessage, { command: "loadCommits" }>;
 
 /** Take a page of graph rows for the branch on display in the selected repository. */
 export function handleLoadCommits(msg: CommitsAnswer): void {
-  // Rows for another repository, branch or remote choice are refused before they can use up the
-  // pending request. An answer that does not echo a key is not checked against it.
-  const staleKey = msg.visibilityKey !== undefined && msg.visibilityKey !== remoteVisibilityKey();
+  // Rows for another repository, branch, remote choice or hidden-branch choice are refused before
+  // they can use up the pending request. An answer that does not echo a key is not checked
+  // against it.
+  const staleKey = msg.visibilityKey !== undefined && msg.visibilityKey !== graphVisibilityKey();
   if (
     msg.repo !== selectedRepo.value ||
     msg.branchName !== displayedBranch() ||

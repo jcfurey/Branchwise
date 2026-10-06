@@ -4,7 +4,8 @@ import type { Contributor, Statistics, StatisticsQuery } from "@/backend/types";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
 import { Select } from "@/webview/components/ui/Select";
 import { emptyFilter, setHistoryFilter } from "@/webview/lib/navigation";
-import { branchList, hiddenRemotes, showRemoteBranch } from "@/webview/lib/stores";
+import { hiddenRemotes, showRemoteBranch } from "@/webview/lib/stores";
+import { branchPatternScope, visibleBranchList } from "@/webview/lib/stores/hidden-branches.store";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 import { getFullDate } from "@/webview/utils/date";
@@ -285,12 +286,15 @@ export function StatisticsView() {
     range,
     lines,
     showRemoteBranches: showRemoteBranch.value,
-    hiddenRemotes: hiddenRemotes.value
+    hiddenRemotes: hiddenRemotes.value,
+    ...branchPatternScope()
   });
   const statistics = query.data?.statistics ?? null;
   const { locale } = getWebviewConfig();
   const number = new Intl.NumberFormat(locale);
-  const localBranches = (branchList.value ?? []).filter((name) => !name.startsWith("remotes/"));
+  const localBranches = (visibleBranchList.value ?? []).filter(
+    (name) => !name.startsWith("remotes/")
+  );
 
   return (
     <main data-statistics-view class="space-y-4 p-3 text-ui">

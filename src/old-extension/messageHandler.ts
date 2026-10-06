@@ -681,6 +681,8 @@ export function registerMessageHandlers(
         branchName: request.branchName,
         maxCommits: request.maxCommits,
         hiddenRemotes: request.hiddenRemotes ?? [],
+        hiddenBranchPatterns: request.hiddenBranchPatterns ?? [],
+        ...(request.shownBranch === undefined ? {} : { shownBranch: request.shownBranch }),
         showRemoteBranches: request.showRemoteBranches,
         hard: request.hard,
         dateType: config.dateType(),

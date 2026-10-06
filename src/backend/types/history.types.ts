@@ -79,6 +79,8 @@ export type StatisticsQuery = {
   lines: boolean;
   showRemoteBranches?: boolean;
   hiddenRemotes?: string[];
+  hiddenBranchPatterns?: string[];
+  shownBranch?: string;
 };
 export type Statistics = {
   commits: number;
@@ -133,6 +135,8 @@ export type HistoryQuery =
       offset: number;
       showRemoteBranches?: boolean;
       hiddenRemotes?: string[];
+      hiddenBranchPatterns?: string[];
+      shownBranch?: string;
     }
   | { kind: "compare"; left: string; right: string; mergeBase: boolean }
   | { kind: "compareCommits"; left: string; right: string; side: "left" | "right"; offset: number }

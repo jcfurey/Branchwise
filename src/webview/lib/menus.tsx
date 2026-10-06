@@ -10,6 +10,7 @@ import {
   openAddStaged,
   openEditMessage
 } from "@/webview/components/repository/EditCommit";
+import { openHiddenBranches } from "@/webview/components/repository/HiddenBranches";
 import { openInteractiveRebase, openRebase } from "@/webview/components/repository/RebaseEditor";
 import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
@@ -20,6 +21,7 @@ import { openUrl } from "@/webview/lib/actions/open-url";
 import { branchPage, commitPage, type HostPage, tagPage } from "@/webview/lib/host-links";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
 import { repositoryState } from "@/webview/lib/repository-actions";
+import { patternLike } from "@/webview/lib/stores/hidden-branches.store";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
 
@@ -107,6 +109,14 @@ function copyBranchEntry(name: string): Entry {
   return {
     title: window.l10n.copyBranchName,
     onClick: () => copyToClipboard(window.l10n.typeBranchName, name)
+  };
+}
+
+/** Open the hidden-branch patterns with one for branches named like this one added. */
+function hideLikeEntry(gitRef: GitRef): Entry {
+  return {
+    title: more(window.l10n.hideBranchesLikeThis),
+    onClick: () => openHiddenBranches(patternLike(gitRef))
   };
 }
 
@@ -401,7 +411,8 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean) {
       ];
   return grouped([focusEntry(name), compareEntry(gitRef.hash)], tools, [
     ...hostEntry(l10n.openBranchOnHost, branchPage(repositoryState.peek(), name)),
-    copyBranchEntry(name)
+    copyBranchEntry(name),
+    hideLikeEntry(gitRef)
   ]);
 }
 
@@ -428,7 +439,7 @@ function remoteBranchMenu(gitRef: GitRef) {
       fetch,
       { title: more(l10n.checkoutBranch), onClick: () => checkoutBranchAction(gitRef) }
     ],
-    [copyBranchEntry(name)]
+    [copyBranchEntry(name), hideLikeEntry(gitRef)]
   );
 }
 

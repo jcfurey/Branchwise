@@ -80,8 +80,17 @@ type Queries = {
   loadRemotes: { branchName: string | null };
   commitDetails: { commitHash: string };
   loadBranches: RefScope;
-  /** `branchName` is `""` for every branch, or an entry of the `loadBranches` list. */
-  loadCommits: RefScope & { branchName: string; maxCommits: number };
+  /**
+   * `branchName` is `""` for every branch, or an entry of the `loadBranches` list. Branches whose
+   * names match `hiddenBranchPatterns` are left out, apart from the checked-out branch and
+   * `shownBranch`, the branch chosen in the header.
+   */
+  loadCommits: RefScope & {
+    branchName: string;
+    maxCommits: number;
+    hiddenBranchPatterns?: string[];
+    shownBranch?: string;
+  };
 };
 
 /** The content of a successful answer to `T`, as the backend query returns it. */

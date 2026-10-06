@@ -55,6 +55,7 @@ import {
   selectedRepo,
   showRemoteBranch
 } from "@/webview/lib/stores";
+import { isBranchHidden } from "@/webview/lib/stores/hidden-branches.store";
 import { PAGE_SIZE, usePage } from "@/webview/lib/use-page";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import type { ContextMenuEntry } from "@/webview/types";
@@ -285,7 +286,7 @@ function RemoteBranches({
             name={`refs/remotes/${ref.name}`}
             title={ref.name}
             icon={<BranchIcon class={ROW_ICON} />}
-            dimmed={!shown}
+            dimmed={!shown || isBranchHidden(value)}
             active={selectedBranch.value === value}
             badge={<BranchFocusBadge branch={value} />}
             onSelect={() => selectBranch(value)}
@@ -435,6 +436,7 @@ export function RefsPane() {
                   key={branch.name}
                   source={refMenuSource(gitRef)}
                   label={branch.name}
+                  dimmed={isBranchHidden(branch.name)}
                   name={`refs/heads/${branch.name}`}
                   bold={isHead}
                   icon={

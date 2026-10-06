@@ -90,14 +90,15 @@ describe("English titles", () => {
       "Focus this branch | Compare with… | --- | Configure Upstream… | Create Worktree… | " +
         "Move the current branch onto this (rebase)… | Check Out Branch | Push Branch… | " +
         "Rename Branch… | Delete Local Branch… | Merge into Current Branch… | --- | " +
-        "Copy Branch Name"
+        "Copy Branch Name | Hide Branches Like This…"
     );
   });
 
   it("lists the menu of the checked-out branch", () => {
     expect(titles(menus.refMenu(main, true))).toBe(
       "Focus this branch | Compare with… | --- | Configure Upstream… | Create Worktree… | " +
-        "Push Branch… | Pull Branch… | Rename Branch… | --- | Copy Branch Name"
+        "Push Branch… | Pull Branch… | Rename Branch… | --- | Copy Branch Name | " +
+        "Hide Branches Like This…"
     );
   });
 
@@ -105,7 +106,7 @@ describe("English titles", () => {
     expect(titles(menus.refMenu(remote, isHead))).toBe(
       "Focus this branch | Compare with… | --- | Move the current branch onto this (rebase)… | " +
         "Create Worktree… | Delete Remote Branch… | Fetch… | Check Out Branch… | --- | " +
-        "Copy Branch Name"
+        "Copy Branch Name | Hide Branches Like This…"
     );
     expect(titles(menus.refMenu({ ...remote, name: "origin/HEAD" }, isHead))).toBe(
       "Compare with… | --- | Move the current branch onto this (rebase)… | Create Worktree… | " +

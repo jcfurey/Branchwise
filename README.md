@@ -39,6 +39,7 @@ basics.
 **Focus**
 
 - Branch focus dims unrelated history, without a checkout
+- Hide bot branches such as `dependabot/*` and `renovate/*` by name pattern
 - Hide remotes one at a time; [view choices](docs/preferences.md) are kept per repository
 - Pin branches to the top, list them by latest commit, and spot merged, stale and gone ones
 

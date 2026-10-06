@@ -22,12 +22,8 @@ async function scope(git: SimpleGit, branch: string, visibility: RemoteVisibilit
     return ["--end-of-options", branch];
   }
   const head = (await git.raw(["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "")).trim();
-  return [
-    "--branches",
-    "--tags",
-    ...(await remoteVisibility(git, visibility)).logArgs,
-    ...(head ? [head] : [])
-  ];
+  const { branchArgs, logArgs } = await remoteVisibility(git, visibility);
+  return [...branchArgs, "--tags", ...logArgs, ...(head ? [head] : [])];
 }
 
 /** Git's error for a repository whose HEAD has no commits yet, which has nothing to count. */

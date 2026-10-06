@@ -106,6 +106,7 @@ describe("graph reads", () => {
       branchName: "main",
       maxCommits: 50,
       hiddenRemotes: [],
+      hiddenBranchPatterns: [],
       showRemoteBranches: true,
       hard: true,
       dateType: "Commit Date",

@@ -6,6 +6,7 @@ import { branchListRef } from "@/backend/utils/refs";
 import { CommitTable } from "@/webview/components/commit/CommitTable";
 import { openBatch, openCompare } from "@/webview/components/history/HistoryTools";
 import { PageControls, QueryStatus } from "@/webview/components/history/QueryControls";
+import { HiddenBranchesHint } from "@/webview/components/repository/HiddenBranches";
 import { openInteractiveRebase } from "@/webview/components/repository/RebaseEditor";
 import { Button } from "@/webview/components/ui/Button";
 import { BranchIcon, CloseIcon, TagIcon } from "@/webview/components/ui/Icons";
@@ -45,6 +46,7 @@ import {
   selectedRepo,
   showRemoteBranch
 } from "@/webview/lib/stores";
+import { branchPatternScope } from "@/webview/lib/stores/hidden-branches.store";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { NoCommitsPage } from "@/webview/pages/NoCommitsPage";
 import type { FocusDimming } from "@/webview/types";
@@ -264,6 +266,7 @@ export function GraphView() {
           kind: "history",
           showRemoteBranches: showRemoteBranch.value,
           hiddenRemotes: hiddenRemotes.value,
+          ...branchPatternScope(),
           filter: historyQueryFilter(filter),
           offset: historyOffset.value
         }
@@ -334,6 +337,7 @@ export function GraphView() {
       {target !== undefined && (
         <FocusBanner target={target} loading={focus.loading} failed={focus.error !== null} />
       )}
+      <HiddenBranchesHint />
       {inHistory && (
         <div class={`${BANNER} justify-between gap-2 py-2 text-muted`}>
           <span class="min-w-0 truncate">{historyScope(filter)}</span>

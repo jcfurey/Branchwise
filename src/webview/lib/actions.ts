@@ -2,6 +2,7 @@ import { batch } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 
 import type { GitFileChange, GraphQueryCommand } from "@/backend/types";
+import { cleanPatterns } from "@/backend/utils/branchPatterns";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import type { BranchSort, GitRepoState, ResponseMessage, WebviewConfig } from "@/types";
 import { SHOW_ALL_BRANCHES, UNCOMMITTED_CHANGES } from "@/webview/constants";
@@ -39,6 +40,7 @@ import {
   focusPaused,
   graphErrors,
   headBranch,
+  hiddenBranchPatterns,
   hiddenRemotes,
   maxCommits,
   moreCommitsAvailable,
@@ -50,6 +52,7 @@ import {
   showRemoteBranch,
   uncommittedChanges
 } from "@/webview/lib/stores";
+import { branchPatternScope, graphVisibilityKey } from "@/webview/lib/stores/hidden-branches.store";
 import { vscode } from "@/webview/lib/vscode";
 import { getWebviewConfig, updateWebviewConfig } from "@/webview/lib/webview-config";
 import type {
@@ -103,7 +106,8 @@ function requestCommits(repo: string) {
     maxCommits: maxCommits.value,
     showRemoteBranches: showRemoteBranch.value,
     hiddenRemotes: hiddenRemotes.value,
-    visibilityKey: remoteVisibilityKey(),
+    ...branchPatternScope(),
+    visibilityKey: graphVisibilityKey(),
     hard: true
   });
 }
@@ -124,9 +128,10 @@ function forgetHistory() {
 
 /**
  * After a selection or mode change: reload what a revealed remote or missing rows call for,
- * then keep the view preferences in step.
+ * and the rows when the change lets a pattern-hidden branch in or out (`graphKey` is the
+ * rows' key before it), then keep the view preferences in step.
  */
-function reloadForChoice(revealed: boolean) {
+function reloadForChoice(revealed: boolean, graphKey: string) {
   const repo = selectedRepo.value;
   if (repo === undefined) {
     return;
@@ -134,7 +139,7 @@ function reloadForChoice(revealed: boolean) {
   if (revealed) {
     requestBranches(repo);
   }
-  if (revealed || commitList.value === undefined) {
+  if (revealed || commitList.value === undefined || graphVisibilityKey() !== graphKey) {
     requestCommits(repo);
   }
   leaveNavigation(repo);
@@ -264,6 +269,7 @@ export function selectRepo(repo: string): void {
 
 /** Choose the branch the graph filters to or emphasises, or `*` for all of them. */
 export function selectBranch(branch: CommitBranchType): void {
+  const graphKey = graphVisibilityKey();
   const revealed = revealBranch(branch);
   if (!revealed && branch === selectedBranch.value) {
     return;
@@ -278,7 +284,7 @@ export function selectBranch(branch: CommitBranchType): void {
       forgetHistory();
     }
   });
-  reloadForChoice(revealed);
+  reloadForChoice(revealed, graphKey);
 }
 
 /** Switch between filtering to the branch and emphasising it in the whole graph. */
@@ -286,6 +292,7 @@ export function setBranchDisplay(value: BranchDisplay): void {
   if (value === branchDisplay.value) {
     return;
   }
+  const graphKey = graphVisibilityKey();
   const shownBefore = displayedBranch();
   batch(() => {
     branchDisplay.value = value;
@@ -299,7 +306,11 @@ export function setBranchDisplay(value: BranchDisplay): void {
     }
   });
   const repo = selectedRepo.value;
-  if (repo !== undefined && selectedBranch.value !== undefined && commitList.value === undefined) {
+  if (
+    repo !== undefined &&
+    selectedBranch.value !== undefined &&
+    (commitList.value === undefined || graphVisibilityKey() !== graphKey)
+  ) {
     requestCommits(repo);
   }
   leaveNavigation(repo);
@@ -307,6 +318,7 @@ export function setBranchDisplay(value: BranchDisplay): void {
 
 /** Emphasise a branch in the full graph. Git is not asked to do anything. */
 export function focusBranchInGraph(branch: string): void {
+  const graphKey = graphVisibilityKey();
   const revealed = revealBranch(branch);
   const shownBefore = displayedBranch();
   batch(() => {
@@ -319,7 +331,7 @@ export function focusBranchInGraph(branch: string): void {
       forgetHistory();
     }
   });
-  reloadForChoice(revealed);
+  reloadForChoice(revealed, graphKey);
 }
 
 /** Pause or resume the emphasis, keeping its target. */
@@ -368,7 +380,8 @@ export function setShowRemoteBranch(value: boolean): void {
 
 /**
  * Take the extension's stored record for a repository. Choices made on the page since it was
- * sent win, apart from the hidden remotes.
+ * sent win, apart from the hidden remotes. Stored hidden-branch patterns apply when the page has
+ * set none of its own.
  */
 export function receiveRepoState(
   message: Extract<ResponseMessage, { command: "repoState" }>
@@ -380,13 +393,15 @@ export function receiveRepoState(
     current?.graphPreferences === undefined && state.graphPreferences !== undefined;
   const hiddenChanged =
     JSON.stringify(asRemoteSet(current?.hiddenRemotes ?? [])) !== JSON.stringify(hidden);
-  const affectsView = repo === selectedRepo.value && (newPreferences || hiddenChanged);
+  const record = { ...state, ...current, hiddenRemotes: hidden };
+  const patternsChanged =
+    JSON.stringify(current?.hiddenBranchPatterns ?? []) !==
+    JSON.stringify(record.hiddenBranchPatterns ?? []);
+  const affectsView =
+    repo === selectedRepo.value && (newPreferences || hiddenChanged || patternsChanged);
 
   batch(() => {
-    repoStates.value = {
-      ...repoStates.value,
-      [repo]: { ...state, ...current, hiddenRemotes: hidden }
-    };
+    repoStates.value = { ...repoStates.value, [repo]: record };
     if (!affectsView) {
       return;
     }
@@ -444,6 +459,27 @@ export function setRemoteVisible(remote: string, visible: boolean): void {
     applyVisibility();
   });
   reloadForVisibility();
+}
+
+/**
+ * Hide the selected repository's branches whose names match `patterns`, one glob each, in place
+ * of those hidden so far. Blank and repeated patterns are dropped; none shows every branch.
+ * The chosen branch stays chosen, and shown.
+ */
+export function setHiddenBranchPatterns(patterns: ReadonlyArray<string>): void {
+  const repo = selectedRepo.value;
+  const clean = cleanPatterns(patterns);
+  if (repo === undefined || JSON.stringify(clean) === JSON.stringify(hiddenBranchPatterns.value)) {
+    return;
+  }
+  batch(() => {
+    patchRepoState(repo, { hiddenBranchPatterns: clean });
+    historyOffset.value = 0;
+  });
+  vscode.postMessage({ command: "saveRepoState", repo, state: { hiddenBranchPatterns: clean } });
+  if (selectedBranch.value !== undefined) {
+    requestCommits(repo);
+  }
 }
 
 /** Ask for one more page of rows. Nothing happens while no rows can be asked for. */

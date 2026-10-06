@@ -8,6 +8,7 @@ does not check out a branch or change Git refs.
 | ---------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------- |
 | View mode, focus target, pause state, dimming              | Restored for each repository                       | Restored                                 |
 | Show Remote Branches in Graph and each remote's eye toggle | Restored for each repository                       | Restored                                 |
+| Hidden-branch patterns                                     | Restored for each repository                       | Restored                                 |
 | Column widths                                              | Restored for each repository                       | Restored                                 |
 | Active search, named search filters, vertical position     | Restored for each repository within the open panel | Reset                                    |
 | Horizontal graph position                                  | Reset to the left edge                             | Reset to the left edge                   |
@@ -30,6 +31,10 @@ silently restore the old target. Renames are not inferred from matching commit h
 Hiding the focused remote clears its target. Selecting a hidden remote branch reveals its remote
 and enables **Show Remote Branches in Graph**; those updated choices are saved. Turning all remotes
 off and back on preserves each remote's individual eye setting.
+
+Hidden-branch patterns never hide the checked-out branch or the selected one. Selecting or focusing
+a branch that a pattern matches shows it without changing the patterns, so it is hidden again once
+another branch is selected. See [hiding branches by name](git-actions.md#hiding-branches-by-name).
 
 Deleting a repository's folder removes its saved preferences the next time the Workspace pane loads.
 Existing focus choices in an open panel migrate to workspace storage the next time that repository

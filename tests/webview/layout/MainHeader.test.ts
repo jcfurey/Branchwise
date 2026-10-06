@@ -151,6 +151,41 @@ describe("the toolbar", () => {
     expect(picker("branch").title).toBe("main");
   });
 
+  it("leaves branches hidden by name patterns out, apart from the checked-out and chosen ones", () => {
+    stores.branchList.value = [
+      "main",
+      "bot/a",
+      "bot/b",
+      "remotes/origin/bot/c",
+      "remotes/origin/x"
+    ];
+    stores.headBranch.value = "main";
+    stores.repoStates.value = {
+      "/r/a": { columnWidths: null, hiddenBranchPatterns: ["bot/*", "main"] }
+    };
+    mount();
+    expect(pickerOptions("branch")).toEqual([
+      ["showAll", "*"],
+      ["main", null],
+      ["origin/x", "remotes/origin/x"]
+    ]);
+    expect(header().querySelector("[data-selection-hidden]")).toBeNull();
+
+    // Choosing closes the picker; a hidden branch can still be chosen from elsewhere.
+    choose("origin/x");
+    act(() => {
+      stores.selectedBranch.value = "bot/b";
+    });
+    expect(pickerOptions("branch").map(([label]) => label)).toEqual([
+      "showAll",
+      "main",
+      "bot/b",
+      "origin/x"
+    ]);
+    const mark = header().querySelector("[data-selection-hidden]");
+    expect(mark?.getAttribute("aria-label")).toBe("selectionMatchesHiddenPattern");
+  });
+
   it("switches the view mode", () => {
     mount();
     expect(pickerOptions("branchDisplay")).toEqual([
