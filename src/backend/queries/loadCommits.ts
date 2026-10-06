@@ -1,6 +1,7 @@
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
+import { signedCommits } from "@/backend/queries/signatures";
 import type { DateType, GitCommitNode, GitLogEntry, GitRef, QueryResult } from "@/backend/types";
 import { branchListRef } from "@/backend/utils/refs";
 import { remoteVisibility } from "@/backend/utils/remoteVisibility";
@@ -16,6 +17,8 @@ type LoadCommitsInput = {
   hard: boolean;
   dateType: DateType;
   showUncommittedChanges: boolean;
+  /** Whether to mark the signed commits, which reads the page's commits once more. On if absent. */
+  showSignatures?: boolean;
 };
 
 /** Hash, parents, author name, author email, timestamp and subject. */
@@ -174,21 +177,27 @@ export async function loadCommits(
     byHash.get(label.hash)?.refs.push(label);
   }
 
-  // Changes are shown on top of HEAD's commit, so they need that commit on the page.
-  let uncommittedChanges = 0;
-  if (input.showUncommittedChanges && head !== null && byHash.has(head)) {
-    uncommittedChanges = await workingTreeChanges(git);
-    if (uncommittedChanges > 0) {
-      commits.unshift({
-        hash: "*",
-        parentHashes: [head],
-        author: "*",
-        email: "",
-        date: Math.floor(Date.now() / 1000),
-        message: "",
-        refs: []
-      });
-    }
+  const [uncommittedChanges, signed] = await Promise.all([
+    // Changes are shown on top of HEAD's commit, so they need that commit on the page.
+    input.showUncommittedChanges && head !== null && byHash.has(head) ? workingTreeChanges(git) : 0,
+    // The marks only decorate the rows, so a failure to find them leaves them out.
+    input.showSignatures === false
+      ? new Set<string>()
+      : signedCommits(git, [...byHash.keys()]).catch(() => new Set<string>())
+  ]);
+  for (const hash of signed) {
+    byHash.get(hash)!.signed = true;
+  }
+  if (head !== null && uncommittedChanges > 0) {
+    commits.unshift({
+      hash: "*",
+      parentHashes: [head],
+      author: "*",
+      email: "",
+      date: Math.floor(Date.now() / 1000),
+      message: "",
+      refs: []
+    });
   }
 
   return {

@@ -240,6 +240,39 @@ export function getWebviewLocalizedStrings() {
     detailAuthor: vscode.l10n.t("Author: {0}"),
     detailDate: vscode.l10n.t("Date: {0}"),
     detailCommitter: vscode.l10n.t("Committer: {0}"),
+    detailSignature: vscode.l10n.t("Signature: {0}"),
+
+    // Commit signatures: the mark on a signed commit's row, then the verdicts in its details.
+    // {0} in signatureGoodBy and signatureSigner is the signer's name, or an SSH principal such
+    // as an email address. "gpg.ssh.allowedSignersFile" is a Git setting and stays as it is.
+    signedCommit: vscode.l10n.t("Signed — open the details to verify"),
+    signatureChecking: vscode.l10n.t("Checking the signature…"),
+    signatureGoodBy: vscode.l10n.t("Good signature by {0}"),
+    signatureGood: vscode.l10n.t("Good signature"),
+    signatureUntrusted: vscode.l10n.t("Good signature from a key that is not trusted"),
+    signatureBad: vscode.l10n.t("Bad signature"),
+    signatureExpired: vscode.l10n.t("Expired signature"),
+    signatureExpiredKey: vscode.l10n.t("Signed with an expired key"),
+    signatureRevoked: vscode.l10n.t("Signed with a revoked key"),
+    signatureUnchecked: vscode.l10n.t("Signature can't be checked"),
+    signatureUnsigned: vscode.l10n.t("Unsigned"),
+    signatureSigner: vscode.l10n.t("Signer: {0}"),
+    // {0} is the start of the key's fingerprint.
+    signatureKey: vscode.l10n.t("Key {0}"),
+    // {0} is one of the trust levels below.
+    signatureTrust: vscode.l10n.t("Trust: {0}"),
+    trustNever: vscode.l10n.t("never"),
+    trustMarginal: vscode.l10n.t("marginal"),
+    trustFully: vscode.l10n.t("full"),
+    trustUltimate: vscode.l10n.t("ultimate"),
+    signatureMissingKey: vscode.l10n.t("The key that made it is not available here."),
+    // {0} is the program's name: gpg, gpgsm or ssh-keygen.
+    signatureNoProgram: vscode.l10n.t("Git could not start {0} to check it."),
+    signatureAllowedSigners: vscode.l10n.t(
+      "Set gpg.ssh.allowedSignersFile to check SSH signatures."
+    ),
+    signatureTimeout: vscode.l10n.t("The check took too long and was stopped."),
+    signatureUnreadable: vscode.l10n.t("Git could not read the signature."),
 
     // Uncommitted changes. {0} is the number of changed paths; the singular is used for 1.
     uncommittedChange: vscode.l10n.t("Uncommitted changes in {0} file"),

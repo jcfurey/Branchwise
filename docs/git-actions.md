@@ -209,6 +209,19 @@ Click a commit to open its details: the commit ID with **Copy Short ID** and **C
 
 The same remote gives the commit menu **Open Commit on GitHub** or **Open Commit on GitLab**, and the tag menu **Open Tag on GitHub** (the tag's release page) or **Open Tag on GitLab**. A local branch that tracks a branch on such a host offers **Open Branch on GitHub** or **Open Branch on GitLab**, which opens the branch the remote has, under its name there. Self-hosted GitLab servers count when their host name contains `gitlab`, and HTTPS and SSH remote addresses both work. The page opens in your browser; the entries are missing when no remote is on a known host, and the branch entry is missing for a branch without an upstream or whose upstream was deleted.
 
+### Commit signatures
+
+A small key after a commit's description in the graph means the commit carries a signature: OpenPGP (gpg), X.509 (gpgsm) or SSH. The graph only reads the commits for it and checks nothing, so its tooltip says to open the details to verify. The details then check the signature with the programs, keys and allowed signers your Git configuration names, as `git log --format=%G?` does, and show the verdict as an icon and words:
+
+- **Good signature by** the signer, with the end of the key's fingerprint (the start of an SSH key's) and Git's trust level
+- **Good signature from a key that is not trusted**: the signature matches, but no one certified the OpenPGP key, or no entry of `gpg.ssh.allowedSignersFile` names the SSH key
+- **Bad signature**: the commit no longer matches its signature
+- **Expired signature**, **Signed with an expired key** or **Signed with a revoked key**
+- **Signature can't be checked**, with the reason: the signing key is not in your keyring; gpg, gpgsm or ssh-keygen could not be started, as on a remote host without gpg; SSH signatures need `gpg.ssh.allowedSignersFile`; or the check took longer than 10 seconds, as when gpg waits for an agent or a key server, and was stopped
+- **Unsigned**
+
+Checking changes nothing in the repository, and an unsigned commit starts no program. Verdicts are kept until VS Code restarts, except those your own setup decides: a key that is not trusted, a missing key or program, or a check that was stopped. Once you import the key or add the signer to your allowed signers, opening the details again checks again. To sign with SSH keys, set `gpg.format` to `ssh` and `user.signingKey` to your key. Turn off `branchwise.showSignatures` to leave out the graph's keys, which saves reading each loaded commit a second time; the details still check signatures.
+
 ## Search, file history, and comparison
 
 The header's search button opens the search row, and `/` or Ctrl/Cmd+F opens and focuses it. The row stays open while a filter is active. It queries repository history beyond the graph's loaded commits, with 100 results per page. Enter words from a commit message, or a resolvable commit ID of at least seven characters. Down Arrow moves from the search box into the results.

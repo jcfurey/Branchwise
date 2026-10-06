@@ -56,3 +56,8 @@ VS Code settings, unlike the choices above, apply to every repository; the
 
 The remote branches tried follow the graph's choices for this repository: a hidden remote, a
 hidden-branch pattern or **Show Remote Branches in Graph** turned off leaves branches out.
+
+`branchwise.showUncommittedChanges` adds the row of uncommitted changes, which scans the working
+tree. `branchwise.showSignatures` (on by default) marks signed commits with a small key, which
+reads the loaded commits once more; turning it off saves about 10 ms for 300 rows and 40 ms for
+3,000 (see [performance](performance.md)). The commit details still check signatures. See [commit signatures](git-actions.md#commit-signatures).

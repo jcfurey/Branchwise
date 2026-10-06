@@ -137,6 +137,61 @@ export async function readGitWithInput(git: SimpleGit, args: string[], input: st
 }
 
 /**
+ * `readGitWithInput` for output that must be read byte for byte, such as `cat-file --batch`.
+ * It runs in `cwd` when the caller knows a folder of the repository already.
+ */
+export async function readBytesWithInput(
+  git: SimpleGit,
+  args: string[],
+  input: string,
+  cwd?: string
+) {
+  const binary = gitProcessOf(git)?.gitPath ?? "git";
+  const { done } = start(binary, args, cwd ?? (await readDirectory(git)), process.env, {
+    input: Buffer.from(input)
+  });
+  return (await done).stdout;
+}
+
+/**
+ * Run a read-only Git command in `cwd` that starts a program of the user's choosing, such as gpg
+ * or ssh-keygen checking a signature, which may wait forever on a passphrase, a missing agent or
+ * a key server. After `timeout` milliseconds the command and everything it started are stopped,
+ * and the answer is `null`. Cancelling the client's abort signal stops them too, and rejects.
+ * Git's own messages are in English, so that callers can recognise them.
+ */
+export async function readGitWithTimeout(
+  git: SimpleGit,
+  args: string[],
+  cwd: string,
+  timeout: number
+): Promise<{ stdout: string; stderr: string } | null> {
+  const { gitPath = "git", abort: signal } = gitProcessOf(git) ?? {};
+  signal?.throwIfAborted();
+  const env = { ...process.env, LC_ALL: "C", LANGUAGE: "" };
+  const { child, done } = start(gitPath, args, cwd, env, { stoppable: true });
+  const { promise: stopped, resolve, reject } = Promise.withResolvers<null>();
+  const timer = setTimeout(() => {
+    killTree(child);
+    resolve(null);
+  }, timeout);
+  const stop = () => {
+    killTree(child);
+    reject(signal?.reason ?? new Error("Aborted"));
+  };
+  signal?.addEventListener("abort", stop, { once: true });
+  try {
+    const result = await Promise.race([done, stopped]);
+    return result && { stdout: result.stdout.toString(), stderr: result.stderr };
+  } finally {
+    clearTimeout(timer);
+    // A stopped process still settles later.
+    done.catch(() => {});
+    signal?.removeEventListener("abort", stop);
+  }
+}
+
+/**
  * Run a read-only Git command whose exit code is part of its answer, such as `merge-tree`, which
  * exits with 1 for a merge with conflicts. Any code outside `codes` rejects, as other failures do.
  * `options.cwd` comes from `readDirectory`; `options.env` replaces the whole environment.

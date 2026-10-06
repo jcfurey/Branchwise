@@ -35,6 +35,7 @@ basics.
 - Go to any branch, tag or commit from the keyboard, or open it on GitHub or GitLab
 - Dots and rings mark unpushed and unpulled commits
 - A mark on each branch that would conflict if merged into yours, naming the files
+- A key on signed commits; their details check the GPG, SSH or X.509 signature
 - Teammates' remote branches that would conflict with yours, flagged before anyone opens a pull request
 
 **Focus**
@@ -90,6 +91,7 @@ All settings start with `branchwise.`.
 | `maxDepthOfRepoSearch`        | `0`                | Folder depth searched for repositories                                   |
 | `nestedRepoSearchDepth`       | `3`                | Folder depth searched inside each repository for nested ones             |
 | `showCurrentBranchByDefault`  | `false`            | Open showing only the checked-out branch                                 |
+| `showSignatures`              | `true`             | Mark signed commits in the graph                                         |
 | `showUncommittedChanges`      | `true`             | Show the uncommitted changes row                                         |
 | `tabIconColourTheme`          | `"colour"`         | Graph tab icon in `"colour"` or `"grey"`                                 |
 

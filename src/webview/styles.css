@@ -65,6 +65,15 @@
   --color-git-deleted: var(--vscode-gitDecoration-deletedResourceForeground);
   --color-git-conflict: var(--vscode-gitDecoration-conflictingResourceForeground);
 
+  /* Verdicts on a commit's signature, always shown beside an icon and words of their own. */
+  --color-signature-good: var(
+    --vscode-testing-iconPassed,
+    var(--vscode-gitDecoration-addedResourceForeground)
+  );
+  --color-signature-warning: var(--vscode-editorWarning-foreground);
+  --color-signature-bad: var(--vscode-errorForeground);
+  --color-signature-unknown: var(--vscode-descriptionForeground);
+
   --color-row-head: var(--vscode-list-inactiveSelectionBackground);
   --color-row-hover: var(--vscode-list-hoverBackground);
   --color-row-selected: rgba(128, 128, 128, 0.25);

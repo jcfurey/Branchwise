@@ -1533,8 +1533,17 @@ suite("Branchwise workflow UI", function () {
     await goTo(command, typed.slice(0, 10), typed.slice(0, 10));
     await revealed(typed);
 
-    // The shortcut works while the graph has focus.
-    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${typed}"]').focus()`);
+    // The shortcut works while the graph has focus. A row can be focused while the workbench
+    // still holds the keyboard after the last picker closed, so bring the graph forward first.
+    await until(async () => {
+      if (!(await graph.evaluate("document.hasFocus()"))) {
+        await vscode.commands.executeCommand("branchwise.view");
+      }
+      await graph.evaluate(`document.querySelector('tr[data-commit-hash="${typed}"]').focus()`);
+      return graph.evaluate(
+        `document.hasFocus() && document.activeElement?.dataset?.commitHash === "${typed}"`
+      );
+    }, "the graph has the keyboard");
     const shortcut = () => keypress("g", process.platform === "darwin" ? 1 | 4 : 1 | 2);
     await goTo(shortcut, "goto-target", "goto-target");
     await revealed(target);
@@ -1749,6 +1758,80 @@ suite("Branchwise workflow UI", function () {
     );
     await button("Copy Full ID", 'document.querySelector("[data-details-row]")');
     await until(async () => (await vscode.env.clipboard.readText()) === local, "full ID copied");
+  });
+
+  test("marks a signed commit and checks its signature when its details open", async function () {
+    const dir = directory();
+    init(dir);
+    const key = path.join(directory(), "signer");
+    const allowed = path.join(dir, ".git", "allowed_signers");
+    const forGit = (file) => file.split(path.sep).join("/");
+    try {
+      // Signing with SSH keys needs ssh-keygen from OpenSSH 8.2 and Git 2.34.
+      cp.execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-C", "", "-f", key], {
+        stdio: "pipe"
+      });
+      git(["config", "gpg.format", "ssh"], dir);
+      git(["config", "user.signingkey", forGit(key)], dir);
+      commit("f", "unsigned change", dir);
+      fs.writeFileSync(path.join(dir, "g"), "signed change");
+      git(["add", "g"], dir);
+      git(["commit", "-S", "-m", "signed change"], dir);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn(`Skipping the signature scenario, as SSH signing is unavailable: ${error}`);
+      this.skip();
+    }
+    const signed = git(["rev-parse", "HEAD"], dir);
+    const unsigned = git(["rev-parse", "HEAD~1"], dir);
+    // The allowed signers name nobody yet.
+    fs.writeFileSync(allowed, "");
+    git(["config", "gpg.ssh.allowedSignersFile", forGit(allowed)], dir);
+    await openRepo(dir);
+
+    const mark = (hash) =>
+      graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${hash}"] [data-signed]')?.title ?? null`
+      );
+    await until(
+      async () => (await mark(signed)) === "Signed — open the details to verify",
+      "signed mark"
+    );
+    assert.equal(await mark(unsigned), null);
+
+    const verdict = () =>
+      graph.evaluate(
+        `document.querySelector('[data-details-row] [data-signature]')?.textContent ?? null`
+      );
+    const open = async (hash) => {
+      if (await graph.evaluate('!!document.querySelector("[data-details-row]")')) {
+        await button("Close", 'document.querySelector("[data-details-row]")');
+        await until(
+          () => graph.evaluate('!document.querySelector("[data-details-row]")'),
+          "details closed"
+        );
+      }
+      await graph.evaluate(`document.querySelector('tr[data-commit-hash="${hash}"]').click()`);
+    };
+    await open(signed);
+    await until(
+      async () => (await verdict()) === "Good signature from a key that is not trusted",
+      "untrusted verdict"
+    );
+
+    // Once the signer is allowed, opening the details again checks the signature again.
+    fs.writeFileSync(allowed, `ui@test ${fs.readFileSync(`${key}.pub`, "utf8").trim()}\n`);
+    await open(signed);
+    await until(async () => (await verdict()) === "Good signature by ui@test", "good verdict");
+    assert.match(
+      await graph.evaluate(
+        `document.querySelector('[data-details-row] [data-signature]').parentElement.innerText`
+      ),
+      /Key SHA256:/
+    );
+
+    await open(unsigned);
+    await until(async () => (await verdict()) === "Unsigned", "unsigned verdict");
   });
 
   test("forecasts which branches would conflict if merged into the checked-out branch", async () => {

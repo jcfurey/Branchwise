@@ -201,7 +201,9 @@ export type RepositoryQuery =
   | { kind: "splitPlan"; target: string }
   | { kind: "absorbPlan" }
   | { kind: "lease"; remote: string; branch: string }
-  | { kind: "safetyNet" };
+  | { kind: "safetyNet" }
+  /** Check the signature of the commit `hash` names. */
+  | { kind: "signature"; hash: string };
 
 export type RepositoryQueryData =
   | WorkflowQueryData
@@ -219,7 +221,8 @@ export type RepositoryQueryData =
   | { kind: "splitPlan"; plan: SplitPlan }
   | { kind: "absorbPlan"; plan: AbsorbPlan }
   | { kind: "lease"; hash: string }
-  | { kind: "safetyNet"; entries: SafetyNetEntry[] };
+  | { kind: "safetyNet"; entries: SafetyNetEntry[] }
+  | { kind: "signature"; hash: string; check: SignatureCheck };
 
 export type RepositoryAction =
   | WorkflowAction
@@ -251,7 +254,7 @@ export type RepositoryAction =
   | { kind: "removeWorktree"; path: string; expectedHead: string }
   | { kind: "openWorktree"; path: string }
   | { kind: "undoSafetyNet"; id: string };
-import type { GitRef } from "./git.types";
+import type { GitRef, SignatureCheck } from "./git.types";
 import type { HistoryAction, HistoryQuery, HistoryQueryData, StagedPlan } from "./history.types";
 import type { SafetyNetEntry, SafetyUndo } from "./safetyNet.types";
 import type { WorkflowAction, WorkflowQuery, WorkflowQueryData } from "./workflow.types";
