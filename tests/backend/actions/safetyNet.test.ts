@@ -487,7 +487,7 @@ describe("Undo's safeguards", () => {
     expect((await loadRepositoryState(git())).undo?.title).toBe("Deletion of Branch first");
     await undo();
     expect(await loadSafetyUndo(git())).toBeNull();
-    expect(read(["branch", "--format=%(refname:short)"]).split("\n")).toEqual([
+    expect(read(["for-each-ref", "--format=%(refname:short)", "refs/heads/"]).split("\n")).toEqual([
       "first",
       "main",
       "second"

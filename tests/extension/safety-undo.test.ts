@@ -30,7 +30,8 @@ beforeEach(() => {
 });
 afterEach(() => fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
-const branches = () => gitOutput(["branch", "--format=%(refname:short)"], repo);
+const branches = () =>
+  gitOutput(["for-each-ref", "--format=%(refname:short)", "refs/heads/"], repo);
 /** Sent with the running test's `repo`. */
 const deleteTopic = {
   command: "deleteBranch",
