@@ -292,7 +292,9 @@ describe("RefsPane", () => {
         requestId: forecast!.requestId,
         data: {
           kind: "conflictForecast",
-          conflicts: [{ branch: "feature", remote: false, files: ["a.ts"], committer: "", date: 0 }]
+          conflicts: [
+            { branch: "feature", remote: false, files: ["a.ts"], committer: "T", date: 0 }
+          ]
         },
         status: null
       })

@@ -39,6 +39,8 @@ const ENGLISH = {
   detailAuthor: "Author: {0}",
   detailDate: "Date: {0}",
   detailCommitter: "Committer: {0}",
+  detailSignature: "Signature: {0}",
+  signatureChecking: "Checking the signature…",
   close: "Close",
   unknownDate: "Unknown date"
 };
@@ -285,7 +287,9 @@ describe("commit facts", () => {
       },
       { label: "Author: ", text: "Author: Ann <x> <ann+tag@ex ample.com>" },
       { label: "Date: ", text: "Date: Tuesday, November 14, 2023 at 10:13:20 PM UTC" },
-      { label: "Committer: ", text: "Committer: Bob" }
+      { label: "Committer: ", text: "Committer: Bob" },
+      // Checked once the details are open; see SignatureBadge.test.ts.
+      { label: "Signature: ", text: "Signature: Checking the signature…" }
     ]);
     const link = detailsRow().querySelector("a")!;
     expect(link.textContent).toBe("ann+tag@ex ample.com");

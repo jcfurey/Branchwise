@@ -2,6 +2,7 @@ import type { SimpleGit } from "simple-git";
 
 import { gitProcessOf } from "@/backend/gitClient";
 import type { ConflictForecastEntry, ConflictForecastScope } from "@/backend/types";
+import { gitVersionAtLeast } from "@/backend/utils/gitVersion";
 import { type RemoteVisibility, remoteVisibility } from "@/backend/utils/remoteVisibility";
 import { readGitCode } from "@/backend/utils/runGit";
 
@@ -28,33 +29,6 @@ const CACHE_SIZE = 1000;
  * as one between unrelated histories. Both commits are fixed, so the answer never goes stale.
  */
 const cache = new Map<string, string[] | null>();
-
-/** Whether each Git executable has `merge-tree --write-tree`, which came in Git 2.38. */
-const support = new Map<string, Promise<boolean>>();
-
-async function supportsWriteTree(git: SimpleGit) {
-  const binary = gitProcessOf(git)?.gitPath ?? "git";
-  const pending = support.get(binary);
-  if (pending !== undefined) {
-    try {
-      return await pending;
-    } catch {
-      // Another request's check failed, perhaps because that request was cancelled.
-    }
-  }
-  const supported = git.raw(["--version"]).then((output) => {
-    const [major = 0, minor = 0] = (output.match(/(\d+)\.(\d+)/)?.slice(1) ?? []).map(Number);
-    return major > 2 || (major === 2 && minor >= 38);
-  });
-  support.set(binary, supported);
-  // A check that failed is tried again next time.
-  supported.catch(() => {
-    if (support.get(binary) === supported) {
-      support.delete(binary);
-    }
-  });
-  return supported;
-}
 
 /**
  * The files that merging `tip` into `head` would leave in conflict, from a merge Git runs
@@ -201,7 +175,8 @@ export async function loadConflictForecast(
   git: SimpleGit,
   options: RemoteVisibility & { scope: ConflictForecastScope } = { scope: "local" }
 ): Promise<ConflictForecastEntry[]> {
-  if (options.scope === "off" || !(await supportsWriteTree(git))) {
+  // `merge-tree --write-tree` came in Git 2.38.
+  if (options.scope === "off" || !(await gitVersionAtLeast(git, 2, 38))) {
     return [];
   }
   const head = (

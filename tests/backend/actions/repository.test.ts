@@ -20,6 +20,7 @@ import {
 } from "@/backend/queries/repository";
 import type { RepositoryAction } from "@/backend/types";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
+import { combinedMessage, squashGroups } from "@/backend/utils/squashGroups";
 
 import { makeRepo } from "@tests/backend/helpers";
 
@@ -490,6 +491,161 @@ describe("squashing selected commits", () => {
     // Branches merged into the current one are refused too: their range is not linear.
     read(["merge", "--no-ff", "-m", "merge", "other"]);
     await expect(squashPlan(base, [a, b])).rejects.toThrow(/merge commits/);
+  });
+
+  describe("with an edited combined message", () => {
+    const helpers = () => path.join(repo, ".git", "branchwise-rebase");
+
+    it("uses the edited message and keeps the combined commit's files and author", async () => {
+      const base = commit("base", "base");
+      read(["-c", "user.name=First Author", "commit", "--allow-empty", "-m", "first"]);
+      const a = read(["rev-parse", "HEAD"]);
+      const b = commit("b", "b");
+      const later = commit("later", "later");
+      const plan = await squashPlan(base, [a, b]);
+      plan.entries[0]!.squashMessage = "Edited subject\n\nEdited body";
+      const tree = read(["rev-parse", "HEAD^{tree}"]);
+
+      await run({ kind: "interactiveRebase", plan });
+
+      expect(read(["log", "--reverse", "--format=%s", `${base}..HEAD`])).toBe(
+        "Edited subject\nlater"
+      );
+      expect(read(["log", "-1", "--format=%B", "HEAD^"])).toBe("Edited subject\n\nEdited body");
+      expect(read(["log", "-1", "--format=%an", "HEAD^"])).toBe("First Author");
+      expect(read(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD^"])).toBe("b");
+      expect(read(["rev-parse", "HEAD^{tree}"])).toBe(tree);
+      expect(read(["log", "-1", "--format=%s"])).toBe("later");
+      expect(read(["rev-parse", "HEAD"])).not.toBe(later);
+      expect(fs.existsSync(helpers())).toBe(false);
+      expect(read(["status", "--porcelain", "--ignored"])).toBe("");
+    });
+
+    it("keeps unicode, quotes and lines starting with comment characters exactly", async () => {
+      read(["config", "core.commentChar", ";"]);
+      const base = read(["rev-parse", "HEAD"]);
+      const a = commit("a", "a");
+      const b = commit("b", "b");
+      const plan = await squashPlan(base, [a, b]);
+      const message = [
+        "# Überschrift: 合并 ✓ 🚀",
+        "",
+        "#123 keeps its hash",
+        "; and its semicolon",
+        `"double" 'single' \`tick\` $(not run) %s \\n \\`,
+        "exec rm -rf nothing",
+        "",
+        "# This is a combination of 2 commits."
+      ].join("\n");
+      plan.entries[0]!.squashMessage = message;
+
+      await run({ kind: "interactiveRebase", plan });
+
+      expect(read(["log", "-1", "--format=%B"])).toBe(message);
+      expect(read(["rev-parse", "HEAD^"])).toBe(base);
+    });
+
+    it("gives each squash group in one plan its own message", async () => {
+      const base = read(["rev-parse", "HEAD"]);
+      const [a, b, c, d, e, f, g, h] = ["a", "b", "c", "d", "e", "f2", "g", "h"].map((name) =>
+        commit(name, name)
+      );
+      const plan = await loadRebasePlan(createGit(repo, "git"), base);
+      const entry = (hash: string | undefined) => plan.entries.find((item) => item.hash === hash)!;
+      plan.entries = [
+        { ...entry(a), squashMessage: "first group" },
+        { ...entry(b), action: "squash" },
+        { ...entry(c), action: "fixup" },
+        // Left alone, as the editor leaves a group whose message was not edited.
+        entry(d),
+        { ...entry(e), action: "squash" },
+        // The edited message replaces the reworded one, and a drop inside a group does not split it.
+        { ...entry(f), action: "reword", message: "reworded", squashMessage: "second group" },
+        { ...entry(g), action: "drop" },
+        { ...entry(h), action: "squash" }
+      ];
+
+      await run({ kind: "interactiveRebase", plan });
+
+      expect(read(["rev-list", "--count", `${base}..HEAD`])).toBe("3");
+      expect(read(["log", "-1", "--format=%B", "HEAD~2"])).toBe("first group");
+      expect(read(["log", "-1", "--format=%B", "HEAD~1"])).toBe("d\n\ne");
+      expect(read(["log", "-1", "--format=%B", "HEAD"])).toBe("second group");
+      expect(read(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"])).toBe("f2\nh");
+      expect(fs.existsSync(helpers())).toBe(false);
+    });
+
+    it("matches Git's own combination when the offered message is sent unchanged", async () => {
+      const base = read(["rev-parse", "HEAD"]);
+      for (const [file, message] of [
+        ["a", "subject a\n\nbody of a\nsecond line"],
+        ["b", "subject b"],
+        ["c", "fixup! subject a"],
+        ["d", "subject d\n\n\n\nspaced body  "]
+      ] as const) {
+        fs.writeFileSync(path.join(repo, file), file);
+        read(["add", "--", file]);
+        read(["commit", "--cleanup=verbatim", "-m", message]);
+      }
+      const head = read(["rev-parse", "HEAD"]);
+      const plan = await loadRebasePlan(createGit(repo, "git"), base);
+      plan.entries[1]!.action = "squash";
+      plan.entries[2]!.action = "fixup";
+      plan.entries[3]!.action = "squash";
+
+      await run({ kind: "interactiveRebase", plan });
+      const git = read(["log", "-1", "--format=%B"]);
+      const tree = read(["rev-parse", "HEAD^{tree}"]);
+
+      read(["reset", "--hard", head]);
+      const [group] = squashGroups(plan.entries);
+      expect(combinedMessage(group!)).toBe(
+        "subject a\n\nbody of a\nsecond line\n\nsubject b\n\nsubject d\n\n\n\nspaced body"
+      );
+      plan.entries[0]!.squashMessage = combinedMessage(group!);
+      await run({ kind: "interactiveRebase", plan });
+
+      expect(read(["log", "-1", "--format=%B"])).toBe(git);
+      expect(read(["rev-parse", "HEAD^{tree}"])).toBe(tree);
+      expect(read(["rev-parse", "HEAD^"])).toBe(base);
+    });
+
+    it("still applies the message after the group stops on a conflict and is continued", async () => {
+      const base = read(["rev-parse", "HEAD"]);
+      const other = commit("other", "other");
+      const first = commit("f", "first");
+      const second = commit("f", "second");
+      const plan = await loadRebasePlan(createGit(repo, "git"), base);
+      plan.entries = [
+        { ...plan.entries.find((entry) => entry.hash === other)!, squashMessage: "recovered" },
+        { ...plan.entries.find((entry) => entry.hash === first)!, action: "drop" },
+        { ...plan.entries.find((entry) => entry.hash === second)!, action: "squash" }
+      ];
+      await expect(run({ kind: "interactiveRebase", plan })).rejects.toThrow();
+      const operation = (await loadOperation(createGit(repo, "git")))!;
+      expect(fs.existsSync(helpers())).toBe(true);
+      fs.writeFileSync(path.join(repo, "f"), "second");
+      await run({ kind: "conflict", path: "f", operation: "stage" });
+      await run({ kind: "recover", operation, resolution: "continue" });
+
+      expect(await loadOperation(createGit(repo, "git"))).toBeNull();
+      expect(read(["log", "--format=%B", `${base}..HEAD`])).toBe("recovered");
+      expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("second");
+      expect(fs.existsSync(helpers())).toBe(false);
+    });
+
+    it("refuses an empty combined message before rewriting anything", async () => {
+      const base = read(["rev-parse", "HEAD"]);
+      const a = commit("a", "a");
+      const b = commit("b", "b");
+      const plan = await squashPlan(base, [a, b]);
+      plan.entries[0]!.squashMessage = " \n ";
+      await expect(run({ kind: "interactiveRebase", plan })).rejects.toThrow(/nonempty message/);
+      plan.entries[0]!.squashMessage = "a\0b";
+      await expect(run({ kind: "interactiveRebase", plan })).rejects.toThrow(/nonempty message/);
+      expect(read(["rev-parse", "HEAD"])).toBe(b);
+      expect(fs.existsSync(helpers())).toBe(false);
+    });
   });
 
   it("needs at least two consecutive commits", async () => {

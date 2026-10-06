@@ -292,6 +292,11 @@
           "type": "boolean",
           "default": false
         },
+        "branchwise.showSignatures": {
+          "description": "%config.showSignatures%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.showUncommittedChanges": {
           "description": "%config.showUncommittedChanges%",
           "type": "boolean",

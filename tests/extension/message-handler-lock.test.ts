@@ -19,6 +19,13 @@ vi.mock("@/backend/gitClient", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/backend/gitClient")>();
   return { ...real, gitClientFactory: vi.fn(real.gitClientFactory) };
 });
+// The folders are not repositories, so actions run without the Safety Net's records.
+vi.mock("@/backend/actions/safetyNet", () => ({
+  recordedAction: async (_git: unknown, _request: unknown, work: () => Promise<unknown>) => ({
+    result: await work(),
+    record: null
+  })
+}));
 vi.mock("@/backend/actions/tag", () => ({ addTag: vi.fn(), deleteTag: vi.fn(), pushTag: vi.fn() }));
 vi.mock("@/backend/actions/remote", () => ({
   fetchRemote: vi.fn(),
@@ -240,9 +247,11 @@ it("keeps actions and remote reads running when the page's handlers are disposed
   });
   page.lifetime.dispose();
   page.lifetime.dispose();
+  // One after the other, so that the answers arrive in a known order.
   deletion.resolve();
+  await deleting;
   remotes.resolve({ remotes: ["origin"], upstream: null, pushRemote: null });
-  await Promise.all([deleting, reading]);
+  await reading;
 
   expect(signal.aborted).toBe(false);
   expect(page.received).toEqual([
