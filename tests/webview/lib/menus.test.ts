@@ -638,8 +638,26 @@ describe("opening a commit, branch or tag on the repository's host", () => {
       remotes: url === null ? [] : [remote("origin", url)],
       pushDefault: null,
       branches: [
-        { name: "wip", hash: H, upstream: "origin/wip", ahead: 0, behind: 0, gone: false },
-        { name: "trunk", hash: H, upstream: "", ahead: 0, behind: 0, gone: false }
+        {
+          name: "wip",
+          hash: H,
+          upstream: "origin/wip",
+          ahead: 0,
+          behind: 0,
+          gone: false,
+          date: 0,
+          merged: false
+        },
+        {
+          name: "trunk",
+          hash: H,
+          upstream: "",
+          ahead: 0,
+          behind: 0,
+          gone: false,
+          date: 0,
+          merged: false
+        }
       ],
       remoteBranches: [],
       tags: [],

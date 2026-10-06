@@ -8,7 +8,7 @@ const HASH = "0123456789abcdef0123456789abcdef01234567";
 const remote = (name: string, url: string) => ({ name, fetchUrls: [url], pushUrls: [] });
 
 function branch(name: string, upstream: string, gone = false): BranchDetails {
-  return { name, hash: HASH, upstream, ahead: 0, behind: 0, gone };
+  return { name, hash: HASH, upstream, ahead: 0, behind: 0, gone, date: 0, merged: false };
 }
 
 /** A repository with `main` checked out, tracking `origin/main` when `origin` is given. */
