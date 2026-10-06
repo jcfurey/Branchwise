@@ -7,6 +7,7 @@ import {
   openFileHistory,
   openReflog
 } from "@/webview/components/history/HistoryTools";
+import { openSafetyNet } from "@/webview/components/history/SafetyNetView";
 import {
   openCleanup,
   openFastForward,
@@ -59,6 +60,7 @@ import {
   workspaceVisible
 } from "@/webview/lib/navigation";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
+import { repositoryState, sendRepositoryAction } from "@/webview/lib/repository-actions";
 import { rpcClient } from "@/webview/lib/rpc/rpc-client";
 import {
   branchDisplay,
@@ -183,7 +185,17 @@ function askForFileHistory() {
 function toolsMenu(): Array<ContextMenuEntry> {
   const l10n = window.l10n;
   const remotesShown = showRemoteBranch.value;
+  const undo = repositoryState.value?.undo;
   return [
+    ...(undo
+      ? [
+          {
+            title: l10n.undoAction.replace("{0}", undo.title),
+            onClick: () => sendRepositoryAction({ kind: "undoSafetyNet", id: undo.id })
+          },
+          null
+        ]
+      : []),
     { title: l10n.manageRemotes, onClick: openRemotes },
     { title: l10n.stashes, onClick: openStashes },
     { title: l10n.worktrees, onClick: openWorktrees },
@@ -194,6 +206,7 @@ function toolsMenu(): Array<ContextMenuEntry> {
     null,
     { title: l10n.goTo, onClick: openGoTo },
     { title: l10n.reflog, onClick: openReflog },
+    { title: l10n.safetyNet + "…", onClick: openSafetyNet },
     { title: l10n.fileHistory, onClick: askForFileHistory },
     { title: l10n.operationActivity, onClick: openActivity },
     null,

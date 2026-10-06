@@ -59,6 +59,7 @@ basics.
 **Recover and investigate**
 
 - Reflog tab that recovers commits no branch reaches; compare refs; restore earlier file contents
+- Undo the last reset, rebase, merge, amend or deletion in one click; a Safety Net lists what each destructive action replaced
 - Guided bisect, merged-branch cleanup, and a Statistics tab of commits and contributors
 
 ![The Statistics tab: commit, contributor and active-day counts, a year of daily activity, and each contributor's share of the commits](docs/images/statistics-dark.png)

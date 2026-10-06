@@ -13,6 +13,7 @@ import {
   withRecoveryEditor
 } from "@/backend/actions/rebase";
 import { manageRemote } from "@/backend/actions/remotes";
+import { undoSafetyRecord } from "@/backend/actions/safetyNet";
 import { runWorkflowAction } from "@/backend/actions/workflows";
 import { viewWorkingTreeFile } from "@/backend/actions/workingTree";
 import { loadOperation, loadStashes, loadWorktrees } from "@/backend/queries/repository";
@@ -190,6 +191,8 @@ export async function runRepositoryAction(
       ]);
       return;
     }
+    case "undoSafetyNet":
+      return undoSafetyRecord(git, action.id);
     case "openWorktree":
     case "removeWorktree": {
       const worktrees = await loadWorktrees(git);

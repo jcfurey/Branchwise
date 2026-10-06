@@ -125,8 +125,9 @@ export async function writeBlob(git: SimpleGit, content: Buffer) {
 }
 
 /**
- * Run a read-only Git command that takes its revisions on standard input (`--stdin`). Any number
- * of them fits there, where the command line is limited to 32,767 characters on Windows.
+ * Run a Git command that takes its revisions or instructions on standard input (`--stdin`), such
+ * as `rev-list` or `update-ref`. Any number of them fits there, where the command line is limited
+ * to 32,767 characters on Windows.
  */
 export async function readGitWithInput(git: SimpleGit, args: string[], input: string) {
   const binary = gitProcessOf(git)?.gitPath ?? "git";
