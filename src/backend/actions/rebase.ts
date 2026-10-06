@@ -11,8 +11,9 @@ import {
   loadRebasePlan,
   readOptional
 } from "@/backend/queries/repository";
-import type { RebasePlan } from "@/backend/types";
+import type { RebaseEntry, RebasePlan } from "@/backend/types";
 import { runGit } from "@/backend/utils/runGit";
+import { squashGroups } from "@/backend/utils/squashGroups";
 import { requireCurrentBranch, resolveCommit } from "@/backend/utils/validation";
 
 export async function requireIdle(git: SimpleGit) {
@@ -32,17 +33,56 @@ function shellQuote(value: string) {
 
 const EDITOR = `const fs = require("node:fs");
 const path = require("node:path");
-const [directory, mode, filename] = process.argv.slice(2);
+const [directory, mode, argument] = process.argv.slice(2);
 const plan = JSON.parse(fs.readFileSync(path.join(directory, "plan.json"), "utf8"));
 if (mode === "sequence") {
-  fs.writeFileSync(filename, plan.entries.map(e => e.action + " " + e.hash).join("\\n") + "\\n");
+  fs.copyFileSync(path.join(directory, "todo"), argument);
+} else if (mode === "amend") {
+  const entry = plan.entries.find(e => e.hash === argument);
+  const result = require("node:child_process").spawnSync(
+    "git",
+    ["commit", "--amend", "--only", "--allow-empty", "--no-verify", "--cleanup=whitespace", "--file=-"],
+    { input: entry.squashMessage + "\\n", stdio: ["pipe", "inherit", "inherit"], windowsHide: true }
+  );
+  process.exit(result.status ?? 1);
 } else {
   const done = fs.readFileSync(path.join(directory, "..", "rebase-merge", "done"), "utf8").trim().split("\\n").at(-1);
   const [action, hash] = (done || "").split(" ");
   const entry = plan.entries.find(e => e.hash === hash);
-  if (action === "reword" && entry) fs.writeFileSync(filename, entry.message + "\\n");
+  if (action === "reword" && entry) fs.writeFileSync(argument, entry.message + "\\n");
 }
 `;
+
+/**
+ * The todo list for `entries`. For a squash group Git asks for the message in an editor and then
+ * strips every line that starts with its comment character, so a message the user edited is
+ * applied another way: the group is folded with Fixup, which keeps the first commit's message
+ * without asking, and an exec line then amends that commit with the edited message, trimming only
+ * whitespace. The amend skips the commit hooks, as Git does for a squash. The exec line holds no
+ * user text, and it asks Git for the helper directory, whose path may contain characters a todo
+ * line cannot. Git puts its own directory first on `PATH` for exec lines, so the helper's `git` is
+ * the one running the rebase. Groups whose message was not edited are left for Git to combine.
+ */
+function todoList(entries: RebaseEntry[]) {
+  const edited = squashGroups(entries).filter((group) => group[0]!.squashMessage !== undefined);
+  const first = new Set(edited.map((group) => group[0]!.hash));
+  const folded = new Set(edited.flatMap((group) => group.slice(1).map((entry) => entry.hash)));
+  const last = new Map(edited.map((group) => [group.at(-1)!.hash, group[0]!.hash]));
+  const amend = `d="$(git rev-parse --git-path branchwise-rebase)" && ELECTRON_RUN_AS_NODE=1 ${shellQuote(process.execPath)} "$d/editor.cjs" "$d" amend`;
+  return entries
+    .map((entry) => {
+      const action = first.has(entry.hash)
+        ? "pick"
+        : folded.has(entry.hash)
+          ? "fixup"
+          : entry.action;
+      const target = last.get(entry.hash);
+      return (
+        `${action} ${entry.hash}\n` + (target === undefined ? "" : `exec ${amend} ${target}\n`)
+      );
+    })
+    .join("");
+}
 
 async function helperDirectory(git: SimpleGit) {
   return path.join(await gitDirectory(git), "branchwise-rebase");
@@ -102,7 +142,8 @@ export async function rebaseBranch(
 /**
  * Run `plan`. Git strips lines that start with its comment character from reworded messages, as
  * after an editor, unless `verbatim` asks it to trim only surrounding whitespace. That suits only
- * a plan without squashes, since Git explains a squashed message in comment lines.
+ * a plan without squashes, since Git explains a squashed message in comment lines. A squash
+ * group's `squashMessage` is kept as typed apart from surrounding whitespace either way.
  */
 export async function interactiveRebase(
   git: SimpleGit,
@@ -143,12 +184,21 @@ export async function interactiveRebase(
   ) {
     throw new Error(l10n.t("Each reworded commit needs a nonempty message."));
   }
+  if (
+    squashGroups(plan.entries).some(([entry]) => {
+      const message = entry!.squashMessage;
+      return message !== undefined && (!message.trim() || message.includes("\0"));
+    })
+  ) {
+    throw new Error(l10n.t("Each combined commit needs a nonempty message."));
+  }
   if (!(await git.status()).isClean()) {
     throw new Error(l10n.t("Commit or stash your changes before rebasing."));
   }
   const directory = await helperDirectory(git);
   await mkdir(directory, { recursive: true });
   await writeFile(path.join(directory, "plan.json"), JSON.stringify(plan), { mode: 0o600 });
+  await writeFile(path.join(directory, "todo"), todoList(plan.entries), { mode: 0o600 });
   await writeFile(path.join(directory, "editor.cjs"), EDITOR, { mode: 0o600 });
   try {
     await runGit(

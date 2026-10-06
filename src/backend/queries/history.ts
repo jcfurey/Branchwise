@@ -279,6 +279,15 @@ async function reflogRefs(git: SimpleGit) {
 }
 
 /**
+ * Revision arguments that leave out every commit a branch, tag, remote branch or HEAD reaches.
+ * Other namespaces, such as the Safety Net's backups, do not count as reaching a commit.
+ */
+export async function notReachedArgs(git: SimpleGit) {
+  const head = (await git.raw(["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "")).trim();
+  return ["--not", "--branches", "--tags", "--remotes", ...(head ? [head] : [])];
+}
+
+/**
  * The commits among `hashes` that no branch, tag, remote branch or HEAD reaches: work that only
  * the reflog still remembers.
  */
@@ -286,10 +295,9 @@ async function unreachableCommits(git: SimpleGit, hashes: string[]) {
   if (hashes.length === 0) {
     return new Set<string>();
   }
-  const head = (await git.raw(["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "")).trim();
   const output = await readGitWithInput(
     git,
-    ["rev-list", "--stdin", "--not", "--branches", "--tags", "--remotes", ...(head ? [head] : [])],
+    ["rev-list", "--stdin", ...(await notReachedArgs(git))],
     [...new Set(hashes)].join("\n") + "\n"
   ).catch(() => "");
   return new Set(output.split("\n").filter(Boolean));

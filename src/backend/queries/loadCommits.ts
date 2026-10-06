@@ -147,6 +147,8 @@ export async function loadCommits(
   );
 
   // HEAD is named by its hash, so a detached checkout is included and an unborn one is skipped.
+  // Branches, tags and remote branches are named rather than `--all`, which keeps other
+  // namespaces, such as the Safety Net's backups under `refs/branchwise/`, out of the graph.
   const revisions = branchName
     ? [branchListRef(branchName)]
     : [...visibility.branchArgs, "--tags", ...visibility.logArgs, ...(head === null ? [] : [head])];

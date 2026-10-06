@@ -46,23 +46,24 @@ function description(entry: ReflogEntry) {
   return colon < 0 ? entry.message : entry.message.slice(colon + 2);
 }
 
-function recover(entry: ReflogEntry) {
+/** Ask for a branch name, then create a branch at `hash` without checking it out. */
+export function recoverCommit(hash: string) {
   openFormDialog({
     message: (
       <>
-        {window.l10n.recoverBranch}: <code>{entry.hash.slice(0, 12)}</code>
+        {window.l10n.recoverBranch}: <code>{hash.slice(0, 12)}</code>
       </>
     ),
     inputs: [
       {
         kind: "ref",
         label: window.l10n.recoveryBranchName,
-        value: "recovered/" + entry.hash.slice(0, 8)
+        value: "recovered/" + hash.slice(0, 8)
       }
     ],
     action: window.l10n.recoverBranch,
     source: null,
-    onSubmit: ([name]) => sendRepositoryAction({ kind: "recoverBranch", name, hash: entry.hash })
+    onSubmit: ([name]) => sendRepositoryAction({ kind: "recoverBranch", name, hash })
   });
 }
 
@@ -111,7 +112,7 @@ function Row({ entry, index }: { entry: ReflogEntry; index: number }) {
             aria-haspopup="menu"
             onClick={(event) =>
               openContextMenu(event, source, [
-                { title: l10n.recoverBranch + "…", onClick: () => recover(entry) },
+                { title: l10n.recoverBranch + "…", onClick: () => recoverCommit(entry.hash) },
                 null,
                 { title: l10n.checkout + "…", onClick: () => checkoutCommit(entry.hash) },
                 { title: l10n.reset + "…", onClick: () => resetToCommit(entry.hash) }
