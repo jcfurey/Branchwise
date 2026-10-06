@@ -234,6 +234,34 @@ export async function loadRebasePlan(git: SimpleGit, baseRef: string): Promise<R
   };
 }
 
+/**
+ * Turn a plan into a squash of `hashes`: the oldest of them stays Pick and the rest become
+ * Squash, so Git offers every message for the combined commit. The commits must sit next to each
+ * other in the plan, since squashing across an unselected commit would also move that commit.
+ */
+export function squashRebasePlan(plan: RebasePlan, hashes: string[]): RebasePlan {
+  const chosen = new Set(hashes);
+  if (chosen.size < 2) {
+    throw new Error(l10n.t("Select at least two commits to squash."));
+  }
+  const positions = plan.entries.flatMap((entry, index) => (chosen.has(entry.hash) ? [index] : []));
+  if (positions.length !== chosen.size) {
+    throw new Error(l10n.t("Only commits on the current branch can be squashed."));
+  }
+  const first = positions[0]!;
+  if (positions.at(-1)! - first + 1 !== positions.length) {
+    throw new Error(l10n.t("Select consecutive commits to squash."));
+  }
+  return {
+    ...plan,
+    entries: plan.entries.map((entry, index) =>
+      chosen.has(entry.hash)
+        ? { ...entry, action: index === first ? ("pick" as const) : ("squash" as const) }
+        : entry
+    )
+  };
+}
+
 export async function repositoryQuery(
   git: SimpleGit,
   query: RepositoryQuery,
@@ -300,8 +328,14 @@ export async function repositoryQuery(
     case "stashes":
       return { kind: "stashes", stashes: await loadStashes(git) };
     case "rebasePlan": {
-      const plan = await loadRebasePlan(git, query.base);
-      return { kind: "rebasePlan", plan: query.autosquash ? autosquashPlan(plan) : plan };
+      let plan = await loadRebasePlan(git, query.base);
+      if (query.autosquash) {
+        plan = autosquashPlan(plan);
+      }
+      if (query.squash !== undefined) {
+        plan = squashRebasePlan(plan, query.squash);
+      }
+      return { kind: "rebasePlan", plan };
     }
     case "lease": {
       await requireRemote(git, query.remote);

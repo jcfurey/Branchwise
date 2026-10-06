@@ -11,6 +11,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 ### Added
 
 - Forecast merge conflicts: a local branch that would not merge cleanly into the checked-out branch shows a red mark with the number of conflicted files on its label, and its tooltip names them. Git tries each merge in memory with `git merge-tree`, leaving the work tree, the index and the refs untouched; it needs Git 2.38 or later. See [conflict forecast](docs/git-actions.md#conflict-forecast).
+- Squash selected commits: with consecutive commits of the current branch selected in the graph, **Squash N Commits…** in the selection bar opens the interactive rebase editor with the oldest commit as Pick and the rest as Squash, ready to review before starting. When the selection cannot be squashed, such as commits from another branch, a gap, a merge or the repository's first commit, the button is disabled and its tooltip says why. See [rebasing](docs/git-actions.md#rebasing).
 
 ### Changed
 
