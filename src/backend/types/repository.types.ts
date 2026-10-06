@@ -35,6 +35,8 @@ export type RepositoryState = {
   head: string;
   operation: OperationState | null;
   conflicts: string[];
+  /** How many paths have staged changes. */
+  staged: number;
 };
 export type StashDetails = { ref: string; hash: string; message: string };
 export type RebaseEntry = {
@@ -43,6 +45,21 @@ export type RebaseEntry = {
   action: "pick" | "reword" | "squash" | "fixup" | "drop";
 };
 export type RebasePlan = { base: string; head: string; branch: string; entries: RebaseEntry[] };
+/** A commit on the checked-out branch's first-parent line, as an edit of it finds it. */
+export type EditPlan = {
+  branch: string;
+  /** HEAD when the plan was made. The edit is refused once the branch has moved on. */
+  head: string;
+  target: string;
+  /** The target's whole message, without trailing newlines. */
+  message: string;
+  /** How many commits follow the target on the branch. Each of them gets a new ID. */
+  later: number;
+  /** A remote-tracking branch already contains the target, so sharing the edit needs a force push. */
+  pushed: boolean;
+};
+/** An edit that adds the staged changes to the target commit. */
+export type AmendPlan = EditPlan & { staged: StagedPlan };
 
 export type RepositoryQuery =
   | WorkflowQuery
@@ -60,6 +77,8 @@ export type RepositoryQuery =
       /** Commits to squash into the oldest of them; they must be consecutive in the plan. */
       squash?: string[];
     }
+  | { kind: "editPlan"; target: string }
+  | { kind: "amendPlan"; target: string }
   | { kind: "lease"; remote: string; branch: string };
 
 export type RepositoryQueryData =
@@ -72,6 +91,8 @@ export type RepositoryQueryData =
   | { kind: "state"; state: RepositoryState }
   | { kind: "stashes"; stashes: StashDetails[] }
   | { kind: "rebasePlan"; plan: RebasePlan }
+  | { kind: "editPlan"; plan: EditPlan }
+  | { kind: "amendPlan"; plan: AmendPlan }
   | { kind: "lease"; hash: string };
 
 export type RepositoryAction =
@@ -94,12 +115,14 @@ export type RepositoryAction =
     }
   | { kind: "rebase"; branch: string; onto: string; expectedHead: string }
   | { kind: "interactiveRebase"; plan: RebasePlan }
+  | { kind: "reword"; plan: EditPlan; message: string }
+  | { kind: "amendCommit"; plan: AmendPlan }
   | { kind: "recover"; operation: OperationState; resolution: "continue" | "abort" | "skip" }
   | { kind: "conflict"; path: string; operation: "open" | "stage" }
   | { kind: "addWorktree"; path: string; branch: string; newBranch: boolean; startPoint: string }
   | { kind: "removeWorktree"; path: string; expectedHead: string }
   | { kind: "openWorktree"; path: string };
 import type { GitRef } from "./git.types";
-import type { HistoryAction, HistoryQuery, HistoryQueryData } from "./history.types";
+import type { HistoryAction, HistoryQuery, HistoryQueryData, StagedPlan } from "./history.types";
 import type { WorkflowAction, WorkflowQuery, WorkflowQueryData } from "./workflow.types";
 import type { WorkingTreeFile, WorkingTreeGroup } from "./workingTree.types";

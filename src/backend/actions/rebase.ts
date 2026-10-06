@@ -99,7 +99,17 @@ export async function rebaseBranch(
   await withRecoveryEditor(git, ["rebase", "--rebase-merges", "--no-autostash", target], binary);
 }
 
-export async function interactiveRebase(git: SimpleGit, plan: RebasePlan, binary: string) {
+/**
+ * Run `plan`. Git strips lines that start with its comment character from reworded messages, as
+ * after an editor, unless `verbatim` asks it to trim only surrounding whitespace. That suits only
+ * a plan without squashes, since Git explains a squashed message in comment lines.
+ */
+export async function interactiveRebase(
+  git: SimpleGit,
+  plan: RebasePlan,
+  binary: string,
+  verbatim = false
+) {
   await requireIdle(git);
   await requireCurrentBranch(git, plan.branch, plan.head);
   const original = await loadRebasePlan(git, plan.base);
@@ -146,6 +156,7 @@ export async function interactiveRebase(git: SimpleGit, plan: RebasePlan, binary
       [
         "-c",
         "rebase.abbreviateCommands=false",
+        ...(verbatim ? ["-c", "commit.cleanup=whitespace"] : []),
         "rebase",
         "--interactive",
         "--no-autostash",

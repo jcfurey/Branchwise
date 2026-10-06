@@ -49,7 +49,8 @@ const state: RepositoryState = {
   worktrees: [],
   head: "main",
   operation: null,
-  conflicts: []
+  conflicts: [],
+  staged: 0
 };
 
 /** Every message the page posted, by command. */

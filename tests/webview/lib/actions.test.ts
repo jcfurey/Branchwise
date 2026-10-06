@@ -68,7 +68,8 @@ function withRemotes(...names: string[]): RepositoryState {
     worktrees: [],
     head: "main",
     operation: null,
-    conflicts: []
+    conflicts: [],
+    staged: 0
   };
 }
 let startConfig: WebviewConfig;

@@ -23,6 +23,7 @@ function state(origin: string | null, patch: Partial<RepositoryState> = {}): Rep
     head: "main",
     operation: null,
     conflicts: [],
+    staged: 0,
     ...patch
   };
 }

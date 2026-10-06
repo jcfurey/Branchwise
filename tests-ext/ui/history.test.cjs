@@ -1340,16 +1340,37 @@ suite("Branchwise workflow UI", function () {
       await keypress("Enter");
       await until(async () => (await pickerText()) === null, "Go to closes");
     };
-    /** The commit's row has the keyboard, is selected and is on screen. */
+    /**
+     * The commit's row has the keyboard, is selected and is on screen. Until it is, each check
+     * throws what it saw, so a timeout reports which of the three was missing.
+     */
     const revealed = (hash) =>
       until(
-        () =>
-          graph.evaluate(`(() => {
-            const row = document.activeElement;
-            if (row?.dataset.commitHash !== ${JSON.stringify(hash)}) return false;
-            const box = row.getBoundingClientRect();
-            return row.getAttribute('aria-selected') === 'true' && box.top >= 0 && box.bottom <= innerHeight;
-          })()`),
+        async () => {
+          const state = await graph.evaluate(`(() => {
+          const row = document.querySelector('tr[data-commit-hash="${hash}"]');
+          const active = document.activeElement;
+          const box = row?.getBoundingClientRect();
+          return {
+            focused: active === row,
+            active: active === document.body ? "body" : active?.dataset?.commitHash ?? active?.getAttribute?.("aria-label") ?? active?.tagName ?? null,
+            pageHasFocus: document.hasFocus(),
+            selected: row?.getAttribute("aria-selected") ?? null,
+            top: box ? Math.round(box.top) : null,
+            bottom: box ? Math.round(box.bottom) : null,
+            height: innerHeight
+          };
+        })()`);
+          if (
+            state.focused &&
+            state.selected === "true" &&
+            state.top >= 0 &&
+            state.bottom <= state.height
+          ) {
+            return true;
+          }
+          throw new Error("Row state: " + JSON.stringify(state));
+        },
         "revealed and selected " + hash.slice(0, 8)
       );
 
@@ -1705,6 +1726,100 @@ suite("Branchwise workflow UI", function () {
         'document.querySelector("[role=dialog]").innerText.includes("Create Fixup Commit")'
       ),
       true
+    );
+    await button("Close");
+  });
+
+  test("edits commit messages and adds staged changes to an older commit in place", async () => {
+    const edit = directory();
+    init(edit);
+    commit("f", "edit base", edit);
+    const base = git(["rev-parse", "HEAD"], edit);
+    commit("a", "edit target", edit);
+    git(["update-ref", "refs/remotes/origin/main", "HEAD"], edit);
+    commit("b", "edit later", edit);
+    const trees = () => git(["log", "--format=%T"], edit);
+    const before = trees();
+    await openRepo(edit);
+    const typeMessage = (value) =>
+      graph.evaluate(
+        `(() => { const input = document.querySelector('[role=dialog] textarea'); input.value = ${JSON.stringify(value)}; input.dispatchEvent(new Event('input', {bubbles: true})); })()`
+      );
+
+    // An older commit, already on a remote, is reworded by a rebase.
+    await contextCommit("edit target");
+    await menu("Edit Message…");
+    await until(
+      () =>
+        graph.evaluate('document.querySelector("[role=dialog] textarea")?.value === "edit target"'),
+      "prefilled message"
+    );
+    assert.match(
+      await graph.evaluate('document.querySelector("[role=dialog] [role=alert]")?.textContent'),
+      /already on a remote/
+    );
+    await typeMessage("edit target reworded\n\n#7 stays");
+    await button("Save Message");
+    await finished();
+    assert.equal(
+      git(["log", "--format=%s", base + "..HEAD"], edit),
+      "edit later\nedit target reworded"
+    );
+    assert.equal(
+      git(["log", "-1", "--format=%B", "HEAD^"], edit),
+      "edit target reworded\n\n#7 stays"
+    );
+    assert.equal(trees(), before);
+
+    // HEAD is amended from its details, keeping what is staged.
+    fs.writeFileSync(path.join(edit, "a"), "corrected");
+    git(["add", "a"], edit);
+    const head = git(["rev-parse", "HEAD"], edit);
+    await until(() => graph.evaluate(visible(head)), "rewritten history");
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${head}"]').click()`);
+    await button("Edit Message…", 'document.querySelector("[data-details-row]")');
+    await until(
+      () =>
+        graph.evaluate('document.querySelector("[role=dialog] textarea")?.value === "edit later"'),
+      "HEAD message"
+    );
+    await typeMessage("edit head reworded");
+    await button("Save Message");
+    await finished();
+    assert.equal(git(["log", "-1", "--format=%B"], edit), "edit head reworded");
+    assert.equal(git(["diff", "--cached", "--name-only"], edit), "a");
+
+    // The staged change goes into the older commit; the later one is kept.
+    await until(async () => {
+      await contextCommit("edit target reworded");
+      return graph.evaluate(
+        `[...document.querySelectorAll('[role="menuitem"]')].some(e => e.textContent.trim() === "Add Staged Changes to This Commit…")`
+      );
+    }, "menu entry for staged changes");
+    await menu("Add Staged Changes to This Commit…");
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => { const text = document.querySelector("[role=dialog]")?.innerText || ""; return [...document.querySelectorAll("[role=dialog] li")].map(li => li.textContent).join() === "a" && text.includes("The commit after it is rewritten too"); })()`
+        ),
+      "staged change confirmation"
+    );
+    await button("Add Staged Changes");
+    await finished();
+    assert.equal(
+      git(["log", "--format=%s", base + "..HEAD"], edit),
+      "edit head reworded\nedit target reworded"
+    );
+    assert.equal(git(["show", "HEAD^:a"], edit), "corrected");
+    assert.equal(git(["status", "--porcelain"], edit), "");
+    await button("Settings & Tools");
+    await menu("Git Activity");
+    await until(
+      () =>
+        graph.evaluate(
+          `(() => { const text = document.querySelector("[role=dialog]").innerText; return text.includes("Edit Message") && text.includes("Add Staged Changes to This Commit"); })()`
+        ),
+      "edits in Git Activity"
     );
     await button("Close");
   });

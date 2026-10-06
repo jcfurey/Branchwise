@@ -53,7 +53,8 @@ const state: RepositoryState = {
   worktrees: [],
   head: "main",
   operation: null,
-  conflicts: []
+  conflicts: [],
+  staged: 0
 };
 
 /** The label button of a row, by its tooltip. Tooltips hold newlines, so no CSS selector. */
