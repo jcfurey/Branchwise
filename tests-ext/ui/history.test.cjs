@@ -1679,8 +1679,10 @@ suite("Branchwise workflow UI", function () {
       '[...document.querySelectorAll("[role=dialog] [data-shortcut-id]")].map(row => row.innerText.replace(/\\s+/g, " ").trim())'
     );
     assert.ok(listed.includes("B Create Branch…"), listed.join("\n"));
-    assert.ok(listed.includes("Shift+Y Copy Commit ID"), listed.join("\n"));
-    assert.ok(listed.includes("Shift+F10 Menu Open the commit's menu"), listed.join("\n"));
+    // Keys are drawn as VS Code draws them: with symbols on macOS.
+    const shift = process.platform === "darwin" ? "⇧" : "Shift+";
+    assert.ok(listed.includes(`${shift}Y Copy Commit ID`), listed.join("\n"));
+    assert.ok(listed.includes(`${shift}F10 Menu Open the commit's menu`), listed.join("\n"));
     await keypress("Escape");
     await until(() => graph.evaluate('!document.querySelector("[role=dialog]")'), "sheet closed");
 
