@@ -67,6 +67,7 @@ export async function runRepositoryAction(
     case "fetch":
     case "sync":
     case "cleanup":
+    case "fastForward":
     case "bisectStart":
     case "bisectMark":
       return runWorkflowAction(git, action, binary);
