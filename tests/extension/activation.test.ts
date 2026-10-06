@@ -79,6 +79,7 @@ const COMMANDS = [
   "branchwise.view",
   "branchwise.fileHistory",
   "branchwise.showBranches",
+  "branchwise.goTo",
   "branchwise.openDocumentation",
   "branchwise.openWalkthrough"
 ];
@@ -116,6 +117,20 @@ it("removes the avatar cache that earlier versions kept", async () => {
   run({ ...context({}), globalState } as unknown as import("vscode").ExtensionContext);
   await vi.waitFor(() => expect(existsSync(avatars)).toBe(false));
   expect(globalState.update).toHaveBeenCalledWith("avatarCache", undefined);
+});
+
+it("binds Go to only while the graph is the active editor and nothing else has focus", () => {
+  const manifest = JSON.parse(
+    readFileSync(new URL("../../package.json", import.meta.url), "utf8")
+  ) as { contributes: { keybindings: Array<Record<string, string>> } };
+  expect(manifest.contributes.keybindings).toEqual([
+    {
+      command: "branchwise.goTo",
+      key: "ctrl+alt+g",
+      mac: "cmd+alt+g",
+      when: "activeWebviewPanelId == 'branchwise' && !sideBarFocus && !panelFocus && !auxiliaryBarFocus"
+    }
+  ]);
 });
 
 it("declares that virtual and untrusted workspaces are unsupported", () => {

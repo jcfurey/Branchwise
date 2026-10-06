@@ -6,6 +6,7 @@ import {
   focusHistory,
   focusedCommit,
   historyActive,
+  pendingReveal,
   setHistoryFilter,
   showTab
 } from "@/webview/lib/navigation";
@@ -40,6 +41,24 @@ export function jumpToHead() {
     row?.scrollIntoView({ block: "center" });
     row?.focus({ preventScroll: true });
   });
+}
+
+/**
+ * Bring the commit chosen in Go to into view, put the keyboard on it and select its row. A search
+ * gives way to the graph first. A commit the graph has not loaded opens as the history at that
+ * commit, whose first row it is; the table selects it once the rows arrive.
+ */
+export function revealCommit(hash: string) {
+  showTab("graph");
+  if (!(commitList.peek() ?? []).some((commit) => commit.hash === hash)) {
+    focusHistory(hash);
+  } else {
+    if (historyActive.peek()) {
+      setHistoryFilter(emptyFilter());
+    }
+    focusedCommit.value = hash;
+  }
+  pendingReveal.value = hash;
 }
 
 /**
