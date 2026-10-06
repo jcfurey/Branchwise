@@ -24,16 +24,20 @@ function shaped<Shape>(sample: Shape): Shape {
 
 /** What a request carries, read after asking which method it is for. */
 function carried(request: RpcRequest): string | null {
-  if (request.method === "clipboard.copy") {
+  if (request.method === "clipboard.copy" || request.method === "url.open") {
     const text: string = request.params;
     return text;
+  }
+  if (request.method === "goTo.show") {
+    const repo: string = request.params.repo;
+    return repo;
   }
   return request.params;
 }
 
 /** The same read without asking first. Compiled, never called. */
 function uncheckedText(request: RpcRequest) {
-  // @ts-expect-error: only the clipboard method takes a string.
+  // @ts-expect-error: only the clipboard and browser methods take a string.
   const text: string = request.params;
   return text;
 }
@@ -109,9 +113,17 @@ describe("names", () => {
       | "settings.open"
       | "docs.open"
       | "walkthrough.open"
+      | "goTo.show"
+      | "url.open"
     >();
     expectTypeOf<RpcNotificationName>().toEqualTypeOf<
-      "view.showPane" | "repo.select" | "repo.rescan" | "config.changed" | "repo.updated"
+      | "view.showPane"
+      | "view.goTo"
+      | "view.reveal"
+      | "repo.select"
+      | "repo.rescan"
+      | "config.changed"
+      | "repo.updated"
     >();
     expectTypeOf<SidebarPane>().toEqualTypeOf<"refs" | "workspace">();
   });

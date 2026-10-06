@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { GitCommitNode, GitRef } from "@/backend/types";
+import type { GitCommitNode, GitRef, RepositoryState } from "@/backend/types";
 import {
   checkoutBranchAction,
   commitMenu,
@@ -11,6 +11,7 @@ import {
   type CommitMessages
 } from "@/webview/lib/menus";
 import { handleLoadRemotes } from "@/webview/lib/remote-actions";
+import { repositoryState } from "@/webview/lib/repository-actions";
 import { contextMenu, dialog, selectedRepo } from "@/webview/lib/stores";
 import type { ContextMenuEntry, DialogInput, DialogState } from "@/webview/types";
 
@@ -625,5 +626,105 @@ describe("checking out a branch", () => {
   it("the fetch entry of a remote's HEAD asks for the remotes", () => {
     choose(refMenu(remoteRef("upstream/HEAD"), false), "fetch…");
     expect(lastPosted()).toMatchObject({ command: "loadRemotes", branchName: null });
+  });
+});
+
+describe("opening a commit, branch or tag on the repository's host", () => {
+  const remote = (name: string, url: string) => ({ name, fetchUrls: [url], pushUrls: [] });
+
+  /** The repository state the menus read, with `wip` tracking `origin/wip` at `url`. */
+  function hostedAt(url: string | null): RepositoryState {
+    return {
+      remotes: url === null ? [] : [remote("origin", url)],
+      pushDefault: null,
+      branches: [
+        { name: "wip", hash: H, upstream: "origin/wip", ahead: 0, behind: 0, gone: false },
+        { name: "trunk", hash: H, upstream: "", ahead: 0, behind: 0, gone: false }
+      ],
+      remoteBranches: [],
+      tags: [],
+      worktrees: [],
+      head: "trunk",
+      operation: null,
+      conflicts: []
+    };
+  }
+
+  afterEach(() => {
+    repositoryState.value = null;
+  });
+
+  it("offers each beside the copy entries", () => {
+    repositoryState.value = hostedAt("git@github.com:owner/repo.git");
+    expect(titles(commitMenu(N, NO_MESSAGES)).slice(-3)).toEqual([
+      "openCommitOnHost",
+      "copyCommitHash",
+      "copyShortCommitHash"
+    ]);
+    expect(titles(refMenu(LOCAL, false)).slice(-2)).toEqual(["openBranchOnHost", "copyBranchName"]);
+    expect(titles(refMenu(TAG, false)).slice(-2)).toEqual(["openTagOnHost", "copyTagName"]);
+  });
+
+  it("puts the host's name in the title", () => {
+    const strings = window.l10n;
+    Object.defineProperty(window, "l10n", {
+      configurable: true,
+      value: { ...strings, openCommitOnHost: "Open Commit on {0}" }
+    });
+    try {
+      repositoryState.value = hostedAt("https://gitlab.example.com/team/project.git");
+      expect(titles(commitMenu(N, NO_MESSAGES))).toContain("Open Commit on GitLab");
+      repositoryState.value = hostedAt("https://github.com/owner/repo.git");
+      expect(titles(commitMenu(N, NO_MESSAGES))).toContain("Open Commit on GitHub");
+    } finally {
+      Object.defineProperty(window, "l10n", { configurable: true, value: strings });
+    }
+  });
+
+  it.each([
+    [
+      () => commitMenu(N, NO_MESSAGES),
+      "openCommitOnHost",
+      `https://github.com/owner/repo/commit/${H}`
+    ],
+    [() => refMenu(LOCAL, false), "openBranchOnHost", "https://github.com/owner/repo/tree/wip"],
+    [() => refMenu(TAG, false), "openTagOnHost", "https://github.com/owner/repo/releases/tag/v2.0"]
+  ])("asks the extension to open the page: %#", (entries, title, url) => {
+    repositoryState.value = hostedAt("https://github.com/owner/repo.git");
+    choose(entries(), title);
+    expect(lastPosted()).toEqual({
+      kind: "rpc.request",
+      id: expect.any(String),
+      method: "url.open",
+      params: url
+    });
+  });
+
+  it("reports a request the extension could not carry out", async () => {
+    repositoryState.value = hostedAt("https://github.com/owner/repo.git");
+    choose(commitMenu(N, NO_MESSAGES), "openCommitOnHost");
+    const request = lastPosted() as { id: string };
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: { kind: "rpc.response", id: request.id, success: false, error: "No browser" }
+      })
+    );
+    await vi.waitFor(() => expect(dialog.value?.kind).toBe("error"));
+    expect(dialog.value).toMatchObject({ message: "unableToOpenUrl", reason: "No browser" });
+  });
+
+  it("hides the entries when no remote is on a known host", () => {
+    for (const url of [null, "https://bitbucket.org/owner/repo.git", "/srv/git/repo.git"]) {
+      repositoryState.value = hostedAt(url);
+      expect(titles(commitMenu(N, NO_MESSAGES))).toEqual(COMMIT_TITLES);
+      expect(titles(refMenu(LOCAL, false))).toEqual(LOCAL_TITLES);
+      expect(titles(refMenu(TAG, false))).toEqual(TAG_TITLES);
+    }
+  });
+
+  it("hides the branch entry for a branch without an upstream, and for remote branches", () => {
+    repositoryState.value = hostedAt("https://github.com/owner/repo.git");
+    expect(titles(refMenu(CURRENT, true))).toEqual(CHECKED_OUT_TITLES);
+    expect(titles(refMenu(REMOTE, false))).toEqual(REMOTE_TITLES);
   });
 });

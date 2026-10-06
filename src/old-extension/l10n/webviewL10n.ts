@@ -98,6 +98,8 @@ export function getWebviewLocalizedStrings() {
     unableToRenameBranch: vscode.l10n.t("Unable to rename the branch"),
     unableToReset: vscode.l10n.t("Unable to reset the current branch"),
     unableToRevert: vscode.l10n.t("Unable to revert the commit"),
+    // {0} is the web address.
+    unableToOpenUrl: vscode.l10n.t("Unable to open {0}"),
     // The tooltip of a disabled submit button; {0} is that button's label.
     invalidCharacters: vscode.l10n.t("Git does not accept this name, so {0} is unavailable."),
 
@@ -152,6 +154,10 @@ export function getWebviewLocalizedStrings() {
     checkoutBranch: vscode.l10n.t("Check Out Branch"),
     renameBranch: vscode.l10n.t("Rename Branch"),
     deleteBranch: vscode.l10n.t("Delete Local Branch"),
+    // {0} is the name of the repository's host, GitHub or GitLab.
+    openCommitOnHost: vscode.l10n.t("Open Commit on {0}"),
+    openBranchOnHost: vscode.l10n.t("Open Branch on {0}"),
+    openTagOnHost: vscode.l10n.t("Open Tag on {0}"),
 
     // What a failed copy was copying, inserted mid-sentence into unableToCopyToClipboard
     typeCommitHash: vscode.l10n.t("commit ID"),

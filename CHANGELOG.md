@@ -10,6 +10,8 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ### Added
 
+- **Go to Branch, Tag or Commit…** (Ctrl+Alt+G, or Cmd+Alt+G on macOS, while the graph has focus; also in the Command Palette and **Settings & Tools**) picks a local branch, remote branch, tag or typed commit ID and selects its commit in the graph, opening the history at a commit the graph has not loaded. See [search](docs/git-actions.md#search-file-history-and-comparison).
+- **Open Commit on GitHub** or **GitLab** in the commit menu, **Open Tag on …** in the tag menu, and **Open Branch on …** for a local branch whose upstream is on one of those hosts, including self-hosted GitLab. See [commit details](docs/git-actions.md#commit-details).
 - Forecast merge conflicts: a local branch that would not merge cleanly into the checked-out branch shows a red mark with the number of conflicted files on its label, and its tooltip names them. Git tries each merge in memory with `git merge-tree`, leaving the work tree, the index and the refs untouched; it needs Git 2.38 or later. See [conflict forecast](docs/git-actions.md#conflict-forecast).
 
 ### Changed

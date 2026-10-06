@@ -1,6 +1,8 @@
 export type RemoteDetails = { name: string; fetchUrls: string[]; pushUrls: string[] };
 /** A ref and the commit it points to. An annotated tag reports the commit, not the tag object. */
 export type RefDetails = { name: string; hash: string };
+/** A branch, remote branch or tag offered by Go to, with the subject of its commit. */
+export type RefTarget = GitRef & { subject: string };
 export type BranchDetails = {
   name: string;
   hash: string;
@@ -87,6 +89,7 @@ export type RepositoryAction =
   | { kind: "addWorktree"; path: string; branch: string; newBranch: boolean; startPoint: string }
   | { kind: "removeWorktree"; path: string; expectedHead: string }
   | { kind: "openWorktree"; path: string };
+import type { GitRef } from "./git.types";
 import type { HistoryAction, HistoryQuery, HistoryQueryData } from "./history.types";
 import type { WorkflowAction, WorkflowQuery, WorkflowQueryData } from "./workflow.types";
 import type { WorkingTreeFile, WorkingTreeGroup } from "./workingTree.types";

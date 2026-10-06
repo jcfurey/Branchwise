@@ -74,10 +74,50 @@ describe("Jump to HEAD", () => {
     expect(navigation.historyFilter.value.revision).toBe("head");
   });
 
+  it("leaves no commit for the table to select", () => {
+    jump.jumpToHead();
+    expect(navigation.pendingReveal.value).toBeNull();
+  });
+
   it("does nothing without a HEAD", () => {
     stores.commitHead.value = null;
     jump.jumpToHead();
     expect(navigation.focusedCommit.value).toBeNull();
     expect(navigation.historyActive.value).toBe(false);
+  });
+});
+
+describe("revealing a commit chosen in Go to", () => {
+  it("hands a loaded commit to the graph table", () => {
+    jump.revealCommit("old");
+    expect(navigation.focusedCommit.value).toBe("old");
+    expect(navigation.pendingReveal.value).toBe("old");
+    expect(navigation.historyActive.value).toBe(false);
+  });
+
+  it("leaves a search and another view for the graph first", () => {
+    navigation.showTab("statistics");
+    navigation.setHistoryFilter({ ...navigation.emptyFilter(), text: "needle" });
+    navigation.showTab("statistics");
+    jump.revealCommit("old");
+    expect(navigation.activeTab.value).toBe("graph");
+    expect(navigation.historyActive.value).toBe(false);
+    expect(navigation.pendingReveal.value).toBe("old");
+  });
+
+  it("opens the history at a commit past the loaded rows, where the table finds it", () => {
+    jump.revealCommit("ancient");
+    expect(navigation.historyFilter.value).toEqual({
+      ...navigation.emptyFilter(),
+      revision: "ancient"
+    });
+    expect(navigation.focusedCommit.value).toBe("ancient");
+    expect(navigation.pendingReveal.value).toBe("ancient");
+  });
+
+  it("is forgotten when a new search starts", () => {
+    jump.revealCommit("ancient");
+    navigation.setHistoryFilter({ ...navigation.emptyFilter(), text: "other" });
+    expect(navigation.pendingReveal.value).toBeNull();
   });
 });
