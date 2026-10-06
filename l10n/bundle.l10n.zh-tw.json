@@ -580,5 +580,18 @@
   "gone": "已消失",
   "stale": "陳舊",
   "No commits for {0} days": "已有 {0} 天沒有提交",
-  "Diverged: {0} ahead of and {1} behind its upstream": "已分岔：領先上游 {0} 個提交，落後 {1} 個"
+  "Diverged: {0} ahead of and {1} behind its upstream": "已分岔：領先上游 {0} 個提交，落後 {1} 個",
+  "Fast-forward Branches": "快轉分支",
+  "Move local branches up to their upstream when they have no commits of their own. Nothing is checked out, and the checked-out branch moves only when it has no uncommitted changes.": "將沒有自身提交的本機分支前移到其上游。不會簽出任何分支，已簽出的分支僅在沒有未提交的變更時才會移動。",
+  "Fetch All & Refresh": "全部擷取並重新整理",
+  "No branch can move: each one with an upstream is up to date or has commits of its own.": "沒有可移動的分支：每個有上游的分支都已是最新，或有自己的提交。",
+  "{0} → {1}, {2} new commits": "{0} → {1}，{2} 個新提交",
+  "Not moved": "未移動",
+  "{0} has commits of its own; pull or rebase it instead": "{0} 有自己的提交；請改為拉取或重定基底",
+  "{0} is checked out in another worktree": "{0} 已在另一個工作樹中簽出",
+  "{0} is checked out here with uncommitted changes": "{0} 已在此處簽出且有未提交的變更",
+  "Fast-forward {0} Branches": "快轉 {0} 個分支",
+  "Fast-forwarded {0} branches.": "已快轉 {0} 個分支。",
+  "The branches or their upstreams changed. Review the fast-forwards again.": "分支或其上游已變更。請重新檢查快轉。",
+  "Fast-forwarded {0} branches before stopping: {1}": "已快轉 {0} 個分支後停止：{1}"
 }

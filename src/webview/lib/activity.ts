@@ -63,6 +63,7 @@ const titles: Record<string, keyof LocalizedStrings> = {
   fetch: "fetch",
   sync: "syncPreview",
   cleanup: "cleanupBranches",
+  fastForward: "fastForwardTitle",
   bisectStart: "bisectStart",
   bisectMark: "bisectTitle"
 };
