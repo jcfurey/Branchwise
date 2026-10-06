@@ -5,6 +5,7 @@ import type { WebviewConfig } from "@/types";
 
 const first: WebviewConfig = {
   autoCenterCommitDetailsView: false,
+  conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
   graphColours: ["#1f77b4", "#ff7f0e", "#2ca02c"],
   graphStyle: "angular",

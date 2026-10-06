@@ -263,3 +263,33 @@ export function CloseIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** A ring round two upright bars: work stopped partway, waiting to be continued. */
+export function PausedIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <circle cx="8" cy="8" r="6.25" />
+      <path d="M6.25 5.5V10.5M9.75 5.5V10.5" />
+    </Icon>
+  );
+}
+
+/** A cloud with an arrow rising into it from below: not yet published. */
+export function PublishIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <path d="M5.25 11.5H4.5A2.9 2.9 0 0 1 4.1 5.75 4.1 4.1 0 0 1 11.9 6.4 2.55 2.55 0 0 1 11.5 11.5H10.75" />
+      <path d="M8 14.75V8.25M5.75 10.5 8 8.25 10.25 10.5" />
+    </Icon>
+  );
+}
+
+/** A commit on a line that breaks off above it: HEAD on a commit, not on a branch. */
+export function DetachedIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <circle cx="8" cy="9.75" r="2.25" />
+      <path d="M8 12V14.75M8 1.25V3.25M8 5.25V7.5" />
+    </Icon>
+  );
+}

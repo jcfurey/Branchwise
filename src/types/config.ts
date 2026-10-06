@@ -1,3 +1,5 @@
+import type { ConflictForecastScope } from "@/backend/types";
+
 /**
  * Values of the `branchwise.dateFormat` setting. The extension passes a hand-edited value on
  * unchecked, so readers show anything they do not recognise as `"Date & Time"`.
@@ -15,6 +17,11 @@ export type GraphStyle = "rounded" | "angular";
 export type WebviewConfig = Readonly<{
   /** Centre the opened commit details in the window, rather than scroll only as far as needed. */
   autoCenterCommitDetailsView: boolean;
+  /**
+   * Which branches the conflict forecast tries. The page reads anything but `local` and `off` as
+   * `localAndRemote`, the default.
+   */
+  conflictForecast: ConflictForecastScope;
   dateFormat: DateFormat;
   /**
    * The branch palette, in the order the graph hands colours out. Entries are kept exactly as

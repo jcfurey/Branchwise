@@ -40,12 +40,29 @@ Deleting a repository's folder removes its saved preferences the next time the W
 Existing focus choices in an open panel migrate to workspace storage the next time that repository
 loads; previously saved column widths and remote visibility are retained.
 
-## Single-key shortcuts
+## Settings
+
+VS Code settings, unlike the choices above, apply to every repository; the
+[README](../README.md#settings) lists them all. A change takes effect in the open graph at once.
+
+`branchwise.conflictForecast` chooses which branches the
+[conflict forecast](git-actions.md#conflict-forecast) tries against the checked-out branch:
+
+| Value                      | Branches tried                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------- |
+| `localAndRemote` (default) | Local branches, and remote branches the graph shows with a commit in the last 30 days |
+| `local`                    | Local branches only                                                                   |
+| `off`                      | None: no mark, and no Git process is started for it                                   |
+
+The remote branches tried follow the graph's choices for this repository: a hidden remote, a
+hidden-branch pattern or **Show Remote Branches in Graph** turned off leaves branches out.
+
+### Single-key shortcuts
 
 `branchwise.singleKeyShortcuts` (default `true`) lets single keys act on the focused commit row,
 such as B for **Create Branch…** or Y to copy the short commit ID, and lets `?` open the list of
 keyboard shortcuts. Turn it off if you use a screen reader that reads the graph with single-letter
 commands, or an extension that sends single keys of its own. With it off, the menus stop showing
 the keys and the shortcut sheet says they are off; arrow keys, Enter, Space, Escape, Shift+F10,
-Ctrl/Cmd+F, `/` and Ctrl+Alt+G keep working. The change applies to an open graph at once. See
+Ctrl/Cmd+F, `/` and Ctrl+Alt+G keep working. See
 [keyboard navigation](git-actions.md#keyboard-navigation-and-activity).

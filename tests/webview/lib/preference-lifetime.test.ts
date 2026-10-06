@@ -42,6 +42,7 @@ async function freshPanel() {
   const { initializeWebviewConfig } = await import("@/webview/lib/webview-config");
   initializeWebviewConfig({
     autoCenterCommitDetailsView: true,
+    conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
     graphColours: [],
     graphStyle: "rounded",

@@ -18,8 +18,7 @@ const mocks = vi.hoisted(() => {
     initialLoadCommits: 300,
     lastActiveRepo: null,
     repos: {},
-    showCurrentBranchByDefault: false,
-    singleKeyShortcuts: true
+    showCurrentBranchByDefault: false
   });
   return { postMessage: vi.fn() };
 });

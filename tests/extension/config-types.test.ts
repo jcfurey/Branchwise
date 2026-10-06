@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, expectTypeOf, it } from "vitest";
 
+import type { ConflictForecastScope } from "@/backend/types";
 import type { DateFormat, GraphStyle, WebviewConfig } from "@/types";
 
 /** The `enum` that package.json declares for the setting `branchwise.<key>`. */
@@ -14,6 +15,7 @@ function manifestChoices(key: string): Array<string> {
 
 const settings: WebviewConfig = {
   autoCenterCommitDetailsView: false,
+  conflictForecast: "localAndRemote",
   dateFormat: "Relative",
   graphColours: ["#123456"],
   graphStyle: "angular",
@@ -41,9 +43,10 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the nine display settings", () => {
+  it("holds exactly the ten display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
+      | "conflictForecast"
       | "dateFormat"
       | "graphColours"
       | "graphStyle"
@@ -53,7 +56,7 @@ describe("WebviewConfig", () => {
       | "showCurrentBranchByDefault"
       | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(9);
+    expect(Object.keys(settings)).toHaveLength(10);
   });
 });
 
@@ -65,6 +68,11 @@ describe("setting choices", () => {
     Relative: true
   };
   const graphStyles: Record<GraphStyle, true> = { rounded: true, angular: true };
+  const forecastScopes: Record<ConflictForecastScope, true> = {
+    localAndRemote: true,
+    local: true,
+    off: true
+  };
 
   it("match the date formats package.json offers", () => {
     const offered = manifestChoices("dateFormat").toSorted();
@@ -78,5 +86,12 @@ describe("setting choices", () => {
 
     expect(offered).toEqual(["angular", "rounded"]);
     expect(Object.keys(graphStyles).toSorted()).toEqual(offered);
+  });
+
+  it("match the conflict forecast scopes package.json offers", () => {
+    const offered = manifestChoices("conflictForecast").toSorted();
+
+    expect(offered).toEqual(["local", "localAndRemote", "off"]);
+    expect(Object.keys(forecastScopes).toSorted()).toEqual(offered);
   });
 });

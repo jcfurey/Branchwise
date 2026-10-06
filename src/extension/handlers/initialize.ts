@@ -8,6 +8,7 @@ import type { WebviewConfig, WebviewInitialize } from "@/types";
 export function webviewConfig(): WebviewConfig {
   return {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
+    conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
     graphColours: extConfig.graphColours(),
     graphStyle: extConfig.graphStyle(),

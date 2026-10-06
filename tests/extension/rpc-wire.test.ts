@@ -92,6 +92,7 @@ test("hands the page its strings and settings", async () => {
   expect(Object.keys(response.result.l10n).length).toBeGreaterThan(100);
   expect(response.result.config).toEqual({
     autoCenterCommitDetailsView: true,
+    conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
     graphColours: declaredGraphColours,
     graphStyle: "rounded",

@@ -22,6 +22,7 @@ beforeAll(async () => {
 
 const changed: WebviewConfig = {
   autoCenterCommitDetailsView: true,
+  conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
   graphColours: ["#ff0000"],
   graphStyle: "angular",

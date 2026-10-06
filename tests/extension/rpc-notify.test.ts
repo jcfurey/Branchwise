@@ -434,6 +434,7 @@ it("logs the notification's name but not its payload", async () => {
 it("delivers every notification in the form the webview accepts", async () => {
   const config: WebviewConfig = {
     autoCenterCommitDetailsView: true,
+    conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
     graphColours: ["#0085d9"],
     graphStyle: "rounded",

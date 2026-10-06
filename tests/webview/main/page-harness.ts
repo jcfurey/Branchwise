@@ -26,6 +26,7 @@ export const PAGE_CONFIG: WebviewConfig = {
   initialLoadCommits: 123,
   loadMoreCommits: 50,
   autoCenterCommitDetailsView: false,
+  conflictForecast: "localAndRemote",
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true
 };
