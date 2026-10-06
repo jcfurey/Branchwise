@@ -287,11 +287,13 @@ describe("absorbing", () => {
     expect(subjects()).toBe("fixup! second\nfixup! first\nmore\nsecond\nfirst\npushed\ninit");
     expect(read(["diff", "--name-only", "HEAD~2", "HEAD"]).split("\n")).toEqual(["x"]);
     expect(read(["write-tree"])).toBe(staged);
-    // `y` keeps its staged fix with its mode change; only the index has the new mode.
+    // `y` keeps its staged fix with its mode change; only the index has the new mode, which the
+    // work tree shows as a change only where Git tracks file modes (not on Windows).
+    const fileMode = read(["config", "--bool", "core.fileMode"]) === "true";
     expect(read(["status", "--porcelain"]).split("\n")).toEqual([
       "M  bin",
       "D  w",
-      "MM y",
+      fileMode ? "MM y" : "M  y",
       "R  z -> z-renamed"
     ]);
   });
