@@ -2302,6 +2302,143 @@ suite("Branchwise workflow UI", function () {
     await openRepo(repo);
   });
 
+  test("hides branches by name pattern, keeps the patterns and shows the branches again", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "pattern-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    const only = (message) => git(["commit-tree", tree, "-p", base, "-m", message], dir);
+    const botOne = only("bot-one-only");
+    const botTwo = only("bot-two-only");
+    const botRemote = only("bot-remote-only");
+    const feature = only("feature-only");
+    git(["update-ref", "refs/heads/bot/one", botOne], dir);
+    git(["update-ref", "refs/heads/bot/two", botTwo], dir);
+    git(["update-ref", "refs/heads/feature", feature], dir);
+    git(["branch", "bot/shared", base], dir);
+    git(["remote", "add", "origin", dir], dir);
+    git(["update-ref", "refs/remotes/origin/bot/remote", botRemote], dir);
+    const refsBefore = git(["show-ref"], dir);
+    const nav = `document.querySelector('nav[aria-label="Branches"]')`;
+    const openPane = async () => {
+      if (!(await graph.evaluate("!!" + nav))) {
+        await button("Branches", 'document.querySelector("header")');
+      }
+    };
+    const botsHidden = `!${visible(botOne)} && !${visible(botTwo)} && !${visible(botRemote)}`;
+    const botsShown = `${visible(botOne)} && ${visible(botTwo)} && ${visible(botRemote)}`;
+    const others = `${visible(feature)} && ${visible(base)}`;
+    // A branch label's tooltip starts with its name.
+    const botLabels = `[...document.querySelectorAll('tbody span[title]')].some(e => /^(origin\\/)?bot\\//.test(e.title))`;
+    const paneRow = (title) =>
+      `[...${nav}.querySelectorAll('button[title]')].find(b => b.title === ${JSON.stringify(title)})?.parentElement`;
+    const editPatterns = async (text) => {
+      await button("Settings & Tools", 'document.querySelector("header")');
+      await menu("Hidden Branches…");
+      await until(
+        () => graph.evaluate('!!document.querySelector("[role=dialog] textarea")'),
+        "hidden branches dialog"
+      );
+      await graph.evaluate(`(() => {
+        const area = document.querySelector('[role="dialog"] textarea');
+        area.value = ${JSON.stringify(text)}; area.dispatchEvent(new Event('input', { bubbles: true }));
+      })()`);
+    };
+
+    await openRepo(dir);
+    await openPane();
+    await until(() => graph.evaluate(`${botsShown} && ${others}`), "every branch's history");
+
+    await editPatterns("bot/*");
+    // bot/one, bot/two, bot/shared and origin/bot/remote.
+    await until(
+      () =>
+        graph.evaluate(
+          `[...document.querySelectorAll('[data-hidden-branch-preview] li')].map(li => li.querySelector('code').textContent + '=' + li.querySelector('[data-hidden-count]').textContent).join('|') === 'bot/*=4'`
+        ),
+      "pattern preview"
+    );
+    await button("Save");
+    await until(
+      () => graph.evaluate(`${botsHidden} && ${others} && !${botLabels}`),
+      "bot branches hidden"
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          `(document.querySelector('main [data-hidden-branches]')?.innerText || '').includes('4')`
+        ),
+      "hidden branch count"
+    );
+    assert.ok(await graph.evaluate(`${paneRow("bot/one")}.className.includes('text-muted')`));
+    assert.ok(
+      await graph.evaluate(`${paneRow("origin/bot/remote")}.className.includes('text-muted')`)
+    );
+    assert.equal(
+      await graph.evaluate(`${paneRow("feature")}.className.includes('text-muted')`),
+      false
+    );
+    await headerChoice("Branch", "All branches");
+    await graph.evaluate(`document.querySelector('header button[title="*"]').click()`);
+    assert.deepEqual(
+      await graph.evaluate(
+        `[...document.querySelectorAll('[role=option]')].map(option => option.title).filter(title => title.includes('bot/'))`
+      ),
+      []
+    );
+    await graph.evaluate(`document.querySelector('header button[title="*"]').click()`);
+
+    // Reopening the graph restores the patterns.
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+    await openRepo(dir);
+    await openPane();
+    await until(
+      () => graph.evaluate(`${botsHidden} && ${others} && !${botLabels}`),
+      "saved patterns"
+    );
+
+    // Choosing a hidden branch shows it, and marks it, without dropping the pattern. A page that
+    // has only just opened can miss a click on the Branches pane, whatever the branch, so the
+    // click is repeated until the header follows it; choosing the chosen branch does nothing.
+    const chosen = `[...document.querySelectorAll('header button[aria-haspopup="listbox"]')].some(b => b.title === 'bot/one')`;
+    await until(async () => {
+      if (!(await graph.evaluate(chosen))) {
+        await graph.evaluate(`${paneRow("bot/one")}.querySelector('button').click()`);
+      }
+      return graph.evaluate(chosen);
+    }, "hidden branch chosen");
+    await until(
+      () =>
+        graph.evaluate(
+          `${visible(botOne)} && !!document.querySelector('header [data-selection-hidden]')`
+        ),
+      "chosen hidden branch shown"
+    );
+    assert.ok(await graph.evaluate(`!!document.querySelector('main [data-hidden-branches]')`));
+    await headerChoice("Branch", "All branches");
+    await until(
+      () =>
+        graph.evaluate(
+          `${botsHidden} && !document.querySelector('header [data-selection-hidden]')`
+        ),
+      "hidden again once another branch is chosen"
+    );
+
+    await editPatterns("");
+    await button("Save");
+    await until(
+      () =>
+        graph.evaluate(
+          `${botsShown} && ${others} && ${botLabels} && !document.querySelector('[data-hidden-branches]')`
+        ),
+      "patterns cleared"
+    );
+    assert.equal(git(["show-ref"], dir), refsBefore);
+    assert.equal(git(["branch", "--show-current"], dir), "main");
+    await openRepo(repo);
+  });
+
   for (const style of ["rounded", "angular"]) {
     test(`clips wide graphs after scrolling, resizing, zoom and details (${style})`, async () => {
       const config = vscode.workspace.getConfiguration("branchwise");

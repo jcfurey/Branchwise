@@ -9,6 +9,7 @@ import {
 } from "@/webview/components/history/HistoryTools";
 import { openCleanup, openWorkspaceSync } from "@/webview/components/history/WorkflowTools";
 import { openBisect } from "@/webview/components/repository/BisectView";
+import { openHiddenBranches } from "@/webview/components/repository/HiddenBranches";
 import { openRemotes } from "@/webview/components/repository/RemoteManager";
 import { openStashes } from "@/webview/components/repository/StashManager";
 import { openWorktrees } from "@/webview/components/repository/WorktreeManager";
@@ -17,6 +18,7 @@ import { Dropdown } from "@/webview/components/ui/Dropdown";
 import {
   BranchIcon,
   CompareIcon,
+  EyeClosedIcon,
   EyeIcon,
   FetchIcon,
   GearIcon,
@@ -55,13 +57,16 @@ import { openRemoteAction } from "@/webview/lib/remote-actions";
 import { rpcClient } from "@/webview/lib/rpc/rpc-client";
 import {
   branchDisplay,
-  branchList,
   commitHead,
   contextMenu,
   selectedBranch,
   selectedRepo,
   showRemoteBranch
 } from "@/webview/lib/stores";
+import {
+  selectionOverridesPatterns,
+  visibleBranchList
+} from "@/webview/lib/stores/hidden-branches.store";
 import type { BranchDisplay, ContextMenuEntry } from "@/webview/types";
 
 /** The context menu key of the Settings & Tools button. */
@@ -189,6 +194,7 @@ function toolsMenu(): Array<ContextMenuEntry> {
       title: (remotesShown ? "✓ " : "") + l10n.showRemoteBranches,
       onClick: () => setShowRemoteBranch(!remotesShown)
     },
+    { title: l10n.hiddenBranches + "…", onClick: () => openHiddenBranches() },
     {
       title: l10n.gettingStarted,
       onClick: () => void rpcClient.request("walkthrough.open", null)
@@ -235,7 +241,8 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
 
   const l10n = window.l10n;
   const repo = selectedRepo.value;
-  const branches = branchList.value;
+  // Branches hidden by name patterns leave the picker, apart from the chosen one.
+  const branches = visibleBranchList.value;
   const noRepo = repo === undefined;
   const refsOpen = refsVisible.value;
   const workspaceOpen = workspaceVisible.value;
@@ -274,6 +281,17 @@ export function MainHeader({ repos }: { repos: Array<GitRepo> }) {
         value={selectedBranch.value}
         onChange={selectBranch}
       />
+      {selectionOverridesPatterns.value && (
+        <span
+          role="img"
+          data-selection-hidden
+          class="flex shrink-0 text-muted"
+          aria-label={l10n.selectionMatchesHiddenPattern}
+          title={l10n.selectionMatchesHiddenPattern}
+        >
+          <EyeClosedIcon class={ICON} />
+        </span>
+      )}
       <Dropdown
         label={l10n.branchDisplay}
         icon={<EyeIcon class={ICON} />}

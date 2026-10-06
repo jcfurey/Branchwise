@@ -87,6 +87,9 @@ export const showRemoteBranch = signal(true);
 /** Stands for "no hidden remotes", so that readers are not told of a change each time. */
 const NO_REMOTES: Array<string> = [];
 
+/** Stands for "no hidden-branch patterns", for the same reason. */
+const NO_PATTERNS: Array<string> = [];
+
 /**
  * The key of the element the open menu belongs to, or else of the open form dialog, so that
  * element can draw itself as active. `null` when neither names one.
@@ -137,6 +140,14 @@ export const branchSort = computed<BranchSort>(() => {
 export const hiddenRemotes = computed<Array<string>>(() => {
   const repo = selectedRepo.value;
   return (repo === undefined ? undefined : repoStates.value[repo]?.hiddenRemotes) ?? NO_REMOTES;
+});
+
+/** The selected repository's hidden-branch patterns, as stored, blank ones included. */
+export const hiddenBranchPatterns = computed<Array<string>>(() => {
+  const repo = selectedRepo.value;
+  return (
+    (repo === undefined ? undefined : repoStates.value[repo]?.hiddenBranchPatterns) ?? NO_PATTERNS
+  );
 });
 
 /**

@@ -93,6 +93,7 @@ describe("the Settings & Tools menu", () => {
       "operationActivity",
       null,
       "✓ showRemoteBranches",
+      "hiddenBranches…",
       "gettingStarted",
       "learnMore",
       "openSettings"

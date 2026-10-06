@@ -8,6 +8,7 @@ import { loadCommits } from "@/backend/queries/loadCommits";
 
 import {
   defaults,
+  git,
   type GraphInput,
   recordingGit,
   repoA,
@@ -83,6 +84,29 @@ describe.runIf(posix)("Git processes", () => {
       showUncommittedChanges: false
     });
     expect(off.runs).toHaveLength(2);
+  });
+
+  it("hands branch patterns to Git as exclusions, once per remote for remote branches", async () => {
+    const { repo, S } = repoA(tempDir());
+    git(repo, ["remote", "add", "origin", "."]);
+    const recorder = recordingGit(tempDir());
+    await loadCommits(createGit(repo, recorder.gitPath), {
+      ...defaults,
+      hiddenBranchPatterns: [" bot/* ", "", "wip"],
+      showUncommittedChanges: false
+    });
+    const runs = recorder.runs();
+    expect(runs.slice(0, 3).toSorted()).toEqual(
+      [
+        "for-each-ref --format=%(HEAD)%(refname) refs/heads/ refs/remotes/",
+        "remote",
+        "show-ref -d --head"
+      ].toSorted()
+    );
+    expect(runs.slice(3)).toEqual([
+      `log -z --max-count=301 ${FORMAT} --date-order --exclude=bot/* --exclude=wip --branches ` +
+        `--tags --exclude=origin/bot/* --exclude=origin/wip --remotes ${S} --`
+    ]);
   });
 });
 

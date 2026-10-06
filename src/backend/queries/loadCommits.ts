@@ -10,6 +10,9 @@ type LoadCommitsInput = {
   maxCommits: number;
   showRemoteBranches: boolean;
   hiddenRemotes?: string[];
+  hiddenBranchPatterns?: string[];
+  /** The branch the user chose, which stays in the graph whatever the patterns say. */
+  shownBranch?: string;
   hard: boolean;
   dateType: DateType;
   showUncommittedChanges: boolean;
@@ -64,9 +67,15 @@ export function parseLog(stdout: string): GitLogEntry[] {
 /**
  * HEAD's commit and the labels in `git show-ref -d --head` output. A tag object's own line never
  * matches a commit; the `^{}` line after it names the commit the tag chain ends at, so each tag
- * labels one commit at most. Other namespaces, such as `refs/stash`, give no labels.
+ * labels one commit at most. Other namespaces, such as `refs/stash`, give no labels. `hidden`
+ * names the remote-tracking branches, and `hiddenBranches` the local ones, that give none either.
  */
-function parseRefs(stdout: string, showRemoteBranches: boolean, hidden: ReadonlySet<string>) {
+function parseRefs(
+  stdout: string,
+  showRemoteBranches: boolean,
+  hidden: ReadonlySet<string>,
+  hiddenBranches: ReadonlySet<string>
+) {
   let head: string | null = null;
   const labels: GitRef[] = [];
   for (const line of stdout.split(/\r\n|\r|\n/)) {
@@ -82,7 +91,10 @@ function parseRefs(stdout: string, showRemoteBranches: boolean, hidden: Readonly
     }
     const full = ref.endsWith("^{}") ? ref.slice(0, -"^{}".length) : ref;
     if (full.startsWith("refs/heads/")) {
-      labels.push({ hash, name: full.slice("refs/heads/".length), type: "head" });
+      const name = full.slice("refs/heads/".length);
+      if (!hiddenBranches.has(name)) {
+        labels.push({ hash, name, type: "head" });
+      }
     } else if (full.startsWith("refs/tags/")) {
       labels.push({ hash, name: full.slice("refs/tags/".length), type: "tag" });
     } else if (showRemoteBranches && full.startsWith("refs/remotes/")) {
@@ -124,15 +136,20 @@ export async function loadCommits(
   const pageSize = Math.max(1, Math.floor(input.maxCommits) || 1);
   const [refs, visibility] = await Promise.all([
     git.raw(["show-ref", ...(showRemoteBranches ? [] : ["--heads", "--tags"]), "-d", "--head"]),
-    // Even with a branch filter, hidden remotes lose their labels.
+    // Even with a branch filter, hidden remotes and branches lose their labels.
     remoteVisibility(git, input)
   ]);
-  const { head, labels } = parseRefs(refs, showRemoteBranches, visibility.excluded);
+  const { head, labels } = parseRefs(
+    refs,
+    showRemoteBranches,
+    visibility.excluded,
+    visibility.hiddenBranches
+  );
 
   // HEAD is named by its hash, so a detached checkout is included and an unborn one is skipped.
   const revisions = branchName
     ? [branchListRef(branchName)]
-    : ["--branches", "--tags", ...visibility.logArgs, ...(head === null ? [] : [head])];
+    : [...visibility.branchArgs, "--tags", ...visibility.logArgs, ...(head === null ? [] : [head])];
   const timestamp = input.dateType === "Author Date" ? "%at" : "%ct";
   // One commit more than the page tells whether more history exists.
   const entries = parseLog(

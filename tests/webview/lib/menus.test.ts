@@ -84,7 +84,8 @@ const LOCAL_TITLES = [
   "deleteBranch…",
   "merge…",
   null,
-  "copyBranchName"
+  "copyBranchName",
+  "hideBranchesLikeThis…"
 ];
 const CHECKED_OUT_TITLES = [
   "focusThisBranch",
@@ -96,7 +97,8 @@ const CHECKED_OUT_TITLES = [
   "pullBranch…",
   "renameBranch…",
   null,
-  "copyBranchName"
+  "copyBranchName",
+  "hideBranchesLikeThis…"
 ];
 const REMOTE_TITLES = [
   "focusThisBranch",
@@ -108,7 +110,8 @@ const REMOTE_TITLES = [
   "fetch…",
   "checkoutBranch…",
   null,
-  "copyBranchName"
+  "copyBranchName",
+  "hideBranchesLikeThis…"
 ];
 const REMOTE_HEAD_TITLES = [
   "compareWith",

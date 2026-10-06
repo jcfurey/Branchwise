@@ -46,6 +46,12 @@ export type GitRepoState = {
   columnWidths: number[] | null;
   /** Remotes whose branches the user hid, sorted and without repeats. Left out when there are none. */
   hiddenRemotes?: string[];
+  /**
+   * Globs naming branches to hide from the graph and the branch lists, one per entry, in the
+   * order the user wrote them. Local branches are matched by name and remote-tracking ones by
+   * their name after the remote. Left out until the user first sets some.
+   */
+  hiddenBranchPatterns?: string[];
   /** Left out until the page first saves them. */
   graphPreferences?: GraphPreferences;
   /** Local branches pinned to the top of the Branches pane, in the order pinned. */

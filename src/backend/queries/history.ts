@@ -45,10 +45,10 @@ type RefTip = { ref: string; name: string; tag: boolean; commit: string };
 
 /**
  * Every visible branch, remote branch and tag that points to a commit, directly or through
- * annotated tags. Remote branches follow the graph's remote visibility.
+ * annotated tags. Branches follow the graph's remote visibility and hidden-branch patterns.
  */
 async function refTips(git: SimpleGit, visibility: RemoteVisibility): Promise<RefTip[]> {
-  const [output, { excluded }] = await Promise.all([
+  const [output, { excluded, hiddenBranches }] = await Promise.all([
     git.raw([
       "for-each-ref",
       "--format=%(refname)%00%(objecttype)%00%(objectname)%00%(*objecttype)%00%(*objectname)",
@@ -74,6 +74,9 @@ async function refTips(git: SimpleGit, visibility: RemoteVisibility): Promise<Re
       kind === "remotes" &&
       (visibility.showRemoteBranches === false || excluded.has(name) || name.endsWith("/HEAD"))
     ) {
+      continue;
+    }
+    if (kind === "heads" && hiddenBranches.has(name)) {
       continue;
     }
     tips.push({ ref, name, tag: kind === "tags", commit: commit! });
@@ -175,7 +178,8 @@ export async function loadHistory(
   } else if (filter.revision) {
     args.push(await resolveCommit(git, filter.revision));
   } else {
-    args.push("--branches", "--tags", ...(await remoteVisibility(git, visibility)).logArgs);
+    const { branchArgs, logArgs: refArgs } = await remoteVisibility(git, visibility);
+    args.push(...branchArgs, "--tags", ...refArgs);
     const head = await git.raw(["rev-parse", "--verify", "--quiet", "HEAD"]);
     if (head.trim()) {
       args.push(head.trim());

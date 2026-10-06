@@ -4,6 +4,7 @@ import type { GitCommitNode, GitRef, GitResetMode } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { openCompare, openFixup } from "@/webview/components/history/HistoryTools";
 import { chooseBisectCommit } from "@/webview/components/repository/BisectView";
+import { openHiddenBranches } from "@/webview/components/repository/HiddenBranches";
 import { openInteractiveRebase, openRebase } from "@/webview/components/repository/RebaseEditor";
 import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
@@ -11,6 +12,7 @@ import { Explain } from "@/webview/components/ui/Explain";
 import { closeDialog, focusBranchInGraph, openFormDialog, runAction } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
+import { patternLike } from "@/webview/lib/stores/hidden-branches.store";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
 
@@ -88,6 +90,14 @@ function copyBranchEntry(name: string): Entry {
   return {
     title: window.l10n.copyBranchName,
     onClick: () => copyToClipboard(window.l10n.typeBranchName, name)
+  };
+}
+
+/** Open the hidden-branch patterns with one for branches named like this one added. */
+function hideLikeEntry(gitRef: GitRef): Entry {
+  return {
+    title: more(window.l10n.hideBranchesLikeThis),
+    onClick: () => openHiddenBranches(patternLike(gitRef))
   };
 }
 
@@ -370,7 +380,10 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean) {
         { title: more(l10n.deleteBranch), onClick: () => deleteBranch(gitRef) },
         { title: more(l10n.merge), onClick: () => mergeBranch(gitRef) }
       ];
-  return grouped([focusEntry(name), compareEntry(gitRef.hash)], tools, [copyBranchEntry(name)]);
+  return grouped([focusEntry(name), compareEntry(gitRef.hash)], tools, [
+    copyBranchEntry(name),
+    hideLikeEntry(gitRef)
+  ]);
 }
 
 function remoteBranchMenu(gitRef: GitRef) {
@@ -396,7 +409,7 @@ function remoteBranchMenu(gitRef: GitRef) {
       fetch,
       { title: more(l10n.checkoutBranch), onClick: () => checkoutBranchAction(gitRef) }
     ],
-    [copyBranchEntry(name)]
+    [copyBranchEntry(name), hideLikeEntry(gitRef)]
   );
 }
 

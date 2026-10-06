@@ -143,6 +143,21 @@ export function getRepositoryLocalizedStrings() {
     gettingStarted: vscode.l10n.t("Getting Started"),
     learnMore: vscode.l10n.t("Learn more"),
 
+    // Hidden branches
+    hiddenBranches: vscode.l10n.t("Hidden Branches"),
+    hideBranchesLikeThis: vscode.l10n.t("Hide Branches Like This"),
+    hiddenBranchesExplain: vscode.l10n.t(
+      "Branches whose names match these patterns are left out of the graph and the branch lists. Write one pattern per line: * matches any characters, / included, and ? any one character. Remote branches are matched without their remote's name, so dependabot/* also hides origin/dependabot/npm/foo. The checked-out branch and the selected branch always stay shown."
+    ),
+    hiddenBranchPatterns: vscode.l10n.t("Patterns, one per line"),
+    hiddenBranchesPreview: vscode.l10n.t("Branches each pattern hides"),
+    branchesHiddenByPatterns: vscode.l10n.t("Branches hidden by name patterns: {0}"),
+    showHiddenBranches: vscode.l10n.t("Show all"),
+    editHiddenBranches: vscode.l10n.t("Edit patterns"),
+    selectionMatchesHiddenPattern: vscode.l10n.t(
+      "This branch matches a hidden-branch pattern. It stays shown while selected."
+    ),
+
     // Guidance
     commitMenuHint: vscode.l10n.t(
       "Right-click a commit, or use its ⋯ button, for actions. On the keyboard, press Shift+F10."
