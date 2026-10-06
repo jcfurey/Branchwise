@@ -8,6 +8,7 @@ import { openBatch, openCompare } from "@/webview/components/history/HistoryTool
 import { PageControls, QueryStatus } from "@/webview/components/history/QueryControls";
 import { HiddenBranchesHint } from "@/webview/components/repository/HiddenBranches";
 import { openInteractiveRebase } from "@/webview/components/repository/RebaseEditor";
+import { TeamOverlapSummary } from "@/webview/components/repository/TeamOverlap";
 import { Button } from "@/webview/components/ui/Button";
 import { BranchIcon, CloseIcon, TagIcon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
@@ -19,6 +20,7 @@ import {
   setFocusDimming,
   toggleBranchFocus
 } from "@/webview/lib/actions";
+import { conflictForecastQuery } from "@/webview/lib/conflict-forecast";
 import { commitMenuHintDismissed, dismissCommitMenuHint } from "@/webview/lib/hints";
 import {
   emptyFilter,
@@ -286,7 +288,7 @@ export function GraphView() {
     rows !== undefined && rows.length > 0 ? { kind: "pushStatus" } : null
   );
   const conflictForecast = useRepositoryQuery<"conflictForecast">(
-    rows !== undefined && rows.length > 0 ? { kind: "conflictForecast" } : null
+    rows !== undefined && rows.length > 0 ? conflictForecastQuery() : null
   );
 
   useScrollRestore(rows, selectedRepo.value);
@@ -338,6 +340,7 @@ export function GraphView() {
         <FocusBanner target={target} loading={focus.loading} failed={focus.error !== null} />
       )}
       <HiddenBranchesHint />
+      <TeamOverlapSummary conflicts={conflictForecast.data?.conflicts} />
       {inHistory && (
         <div class={`${BANNER} justify-between gap-2 py-2 text-muted`}>
           <span class="min-w-0 truncate">{historyScope(filter)}</span>

@@ -259,8 +259,15 @@ export function handleRepositoryQuery(message: Answer): void {
   }
 }
 
-/** Run a Git action through Git Activity, in the selected repository unless `repo` says. */
-export function sendRepositoryAction(action: RepositoryAction, repo = selectedRepo.value): void {
+/**
+ * Run a Git action through Git Activity, in the selected repository unless `repo` says.
+ * `onComplete` hears how it ended before the running dialog closes; a dialog it opens stays.
+ */
+export function sendRepositoryAction(
+  action: RepositoryAction,
+  repo = selectedRepo.value,
+  onComplete?: (error: string | null) => void
+): void {
   if (repo === undefined) {
     return;
   }
@@ -268,7 +275,11 @@ export function sendRepositoryAction(action: RepositoryAction, repo = selectedRe
     { command: "repositoryAction", requestId: newRequestId("action"), action },
     repo,
     window.l10n.runningGitAction,
-    { background: runsInBackground(action), otherRepo: reachesOtherRepo(action) }
+    {
+      background: runsInBackground(action),
+      otherRepo: reachesOtherRepo(action),
+      ...(onComplete === undefined ? {} : { onComplete })
+    }
   );
 }
 

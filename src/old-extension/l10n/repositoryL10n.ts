@@ -101,6 +101,35 @@ export function getRepositoryLocalizedStrings() {
     explainAddStaged: vscode.l10n.t(
       "The changes are committed as a fixup! commit, which an autosquash rebase then folds into this commit. If the rebase stops on a conflict, the status strip offers Continue and Abort, and Abort leaves the changes in the fixup! commit."
     ),
+    absorbStaged: vscode.l10n.t("Absorb Staged Changes"),
+    absorbIntro: vscode.l10n.t(
+      "Each staged hunk becomes part of a fixup! commit for the commit of this branch that last changed its lines. Unstaged and untracked changes stay as they are."
+    ),
+    absorbLeft: vscode.l10n.t("Left staged"),
+    absorbNothing: vscode.l10n.t(
+      "None of the staged changes can be absorbed, so nothing would change."
+    ),
+    createFixupCommits: vscode.l10n.t("Create Fixup Commits"),
+    createAndSquash: vscode.l10n.t("Create and Squash Now"),
+    explainCreateAndSquash: vscode.l10n.t(
+      "Create and Squash Now then opens the interactive rebase editor with each fixup arranged after its commit. Nothing is rewritten until you start the rebase there."
+    ),
+    absorbNeedsClean: vscode.l10n.t(
+      "To squash now, nothing else may be staged, unstaged or untracked, since the rebase needs a clean working tree. The fixup commits can still be created and squashed later."
+    ),
+    absorbRootTarget: vscode.l10n.t(
+      "A fixup goes into the first commit of the history, which the rebase editor cannot rewrite, so it cannot be squashed from here."
+    ),
+    absorbAdded: vscode.l10n.t("added file"),
+    absorbDeleted: vscode.l10n.t("deleted file"),
+    absorbRenamed: vscode.l10n.t("renamed or copied file"),
+    absorbBinary: vscode.l10n.t("binary file"),
+    absorbSpecial: vscode.l10n.t("mode or file type changed"),
+    absorbOutside: vscode.l10n.t(
+      "lines last changed by a commit already pushed or older than the branch"
+    ),
+    absorbSeveral: vscode.l10n.t("lines last changed by more than one commit"),
+    absorbNoContext: vscode.l10n.t("no surrounding lines to tell which commit it belongs to"),
     invalidRebasePlan: vscode.l10n.t(
       "Keep at least one commit; the first retained commit cannot be Squash. Reword requires a message."
     ),

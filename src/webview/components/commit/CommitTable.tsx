@@ -2,7 +2,7 @@ import { useComputed, useSignal } from "@preact/signals";
 import { type ComponentProps, Fragment } from "preact";
 import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 
-import type { HistoryEntry } from "@/backend/types";
+import type { ConflictForecastEntry, HistoryEntry } from "@/backend/types";
 import { CommitDetails } from "@/webview/components/commit/CommitDetails";
 import { CommitGraph } from "@/webview/components/commit/CommitGraph";
 import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
@@ -22,6 +22,7 @@ import { branchColour } from "@/webview/graph/palette";
 import type { GraphExpansion, GraphLine } from "@/webview/graph/types";
 import { graphWidth, laneX } from "@/webview/graph/utils";
 import { toggleCommitDetails } from "@/webview/lib/actions";
+import { conflictsByBranch } from "@/webview/lib/conflict-forecast";
 import { commitMenuSource } from "@/webview/lib/menus";
 import {
   focusedCommit,
@@ -41,8 +42,8 @@ type CommitTableProps = {
   focus?: { direct: Array<string>; merged: Array<string> } | null;
   /** Commits only on this computer and commits only on a remote, or `null` when not known. */
   pushStatus?: { unpushed: Array<string>; unpulled: Array<string> } | null;
-  /** Local branches that would not merge cleanly into HEAD, with the files in conflict. */
-  conflicts?: Array<{ branch: string; files: Array<string> }> | undefined;
+  /** Branches that would not merge cleanly into HEAD, with the files in conflict. */
+  conflicts?: Array<ConflictForecastEntry> | undefined;
   keepMergedBright?: boolean;
   dimming?: FocusDimming;
 };
@@ -188,10 +189,7 @@ export function CommitTable({
     pushStatus?.unpulled.forEach((hash) => status.set(hash, "unpulled"));
     return status;
   }, [pushStatus]);
-  const conflictsOf = useMemo(
-    () => new Map(conflicts?.map(({ branch, files }) => [branch, files])),
-    [conflicts]
-  );
+  const conflictsOf = useMemo(() => conflictsByBranch(conflicts), [conflicts]);
   const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);
   const relations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
   const { rowOf, messages } = useMemo(() => indexRows(commits), [commits]);
