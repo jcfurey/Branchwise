@@ -1641,6 +1641,59 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await badge("clash")) === null, "badge gone after the merge");
   });
 
+  test("forecasts the commit a rebase would stop at, and the real rebase stops there", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "replay base", dir);
+    git(["checkout", "-b", "replay-topic"], dir);
+    commit("a", "first replayed item", dir);
+    commit("f", "second replayed item", dir);
+    const second = git(["rev-parse", "HEAD"], dir);
+    commit("c", "third replayed item", dir);
+    const tip = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    commit("f", "main replay change", dir);
+    git(["checkout", "replay-topic"], dir);
+    await openRepo(dir);
+
+    await contextRef("main");
+    await menu("Move the current branch onto this (rebase)…");
+    const forecast = () =>
+      graph.evaluate(`(() => {
+        const line = document.querySelector("[role=dialog] [data-replay-forecast]");
+        return line ? [line.dataset.replayForecast, line.textContent] : null;
+      })()`);
+    await until(async () => (await forecast())?.[0] === "stop", "rebase forecast");
+    assert.deepEqual(await forecast(), [
+      "stop",
+      `Rebase would stop at ${second.slice(0, 8)} second replayed item: conflicts in f`
+    ]);
+    // Working out the forecast changed nothing.
+    assert.equal(git(["rev-parse", "HEAD"], dir), tip);
+    assert.equal(git(["status", "--porcelain"], dir), "");
+
+    await button("Start Rebase");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]")?.innerText.startsWith("Unable") === true'
+        ),
+      "rebase stopped on a conflict"
+    );
+    await button("Dismiss");
+    assert.equal(git(["rev-parse", "REBASE_HEAD"], dir), second);
+    assert.equal(git(["diff", "--name-only", "--diff-filter=U"], dir), "f");
+    await until(
+      () => graph.evaluate('document.body.innerText.includes("Rebase in progress")'),
+      "operation status"
+    );
+    await button("Abort");
+    await button("Abort");
+    await finished();
+    assert.equal(git(["rev-parse", "HEAD"], dir), tip);
+    assert.equal(fs.existsSync(path.join(dir, ".git", "rebase-merge")), false);
+  });
+
   test("runs ordered selected cherry-picks and reverts, then creates and autosquashes a fixup", async () => {
     const history = directory();
     init(history);

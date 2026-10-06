@@ -60,6 +60,28 @@ export type EditPlan = {
 };
 /** An edit that adds the staged changes to the target commit. */
 export type AmendPlan = EditPlan & { staged: StagedPlan };
+/** What replaying commits would do, worked out without touching the work tree, index or refs. */
+export type ReplayForecast = {
+  /** The first commit that would stop with conflicts, and its conflicted files. */
+  stop: { hash: string; subject: string; files: string[] } | null;
+  /** How many commits would apply cleanly: all of them, or those before the stop. */
+  replayed: number;
+  /** Why nothing was tried: too many commits, or a Git older than 2.40. */
+  skipped?: "limit" | "unsupported";
+};
+/**
+ * Commits to replay onto `onto`. A rebase replays what `git rebase onto` would, merges included;
+ * a pick or revert replays `commits` in order, using parent `mainline` (1-based) of a merge.
+ */
+export type ReplayForecastQuery =
+  | { kind: "replayForecast"; mode: "rebase"; onto: string }
+  | {
+      kind: "replayForecast";
+      mode: "pick" | "revert";
+      onto: string;
+      commits: string[];
+      mainline?: number;
+    };
 
 export type RepositoryQuery =
   | WorkflowQuery
@@ -68,6 +90,7 @@ export type RepositoryQuery =
   | { kind: "branchFocus"; branch: string; hashes: string[] }
   | { kind: "pushStatus" }
   | { kind: "conflictForecast" }
+  | ReplayForecastQuery
   | { kind: "state" }
   | { kind: "stashes" }
   | {
@@ -88,6 +111,7 @@ export type RepositoryQueryData =
   | { kind: "branchFocus"; tip: string; direct: string[]; merged: string[] }
   | { kind: "pushStatus"; unpushed: string[]; unpulled: string[] }
   | { kind: "conflictForecast"; conflicts: Array<{ branch: string; files: string[] }> }
+  | { kind: "replayForecast"; forecast: ReplayForecast }
   | { kind: "state"; state: RepositoryState }
   | { kind: "stashes"; stashes: StashDetails[] }
   | { kind: "rebasePlan"; plan: RebasePlan }

@@ -2,6 +2,13 @@ import { useState } from "preact/hooks";
 
 import type { RebaseEntry, RebasePlan } from "@/backend/types";
 import { autosquashPlan } from "@/backend/utils/autosquash";
+import {
+  FORECAST_DELAY,
+  ForecastStopMark,
+  ReplayForecastFor,
+  ReplayForecastLine,
+  useReplayForecast
+} from "@/webview/components/repository/ReplayForecast";
 import { Button } from "@/webview/components/ui/Button";
 import { Select } from "@/webview/components/ui/Select";
 import { openContentDialog, openErrorDialog } from "@/webview/lib/actions";
@@ -28,6 +35,21 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
     );
   }
   const { root, move, status } = useListMove(entries, setEntries);
+  // Squash and fixup leave the same trees as pick, so the order of the kept commits is all the
+  // forecast needs.
+  const forecast = useReplayForecast(
+    retained.length === 0
+      ? null
+      : {
+          kind: "replayForecast",
+          mode: "pick",
+          onto: plan.base,
+          commits: retained.map((entry) => entry.hash)
+        },
+    FORECAST_DELAY,
+    repo
+  );
+  const stop = forecast.forecast?.stop ?? null;
   return (
     <form
       ref={root}
@@ -53,11 +75,12 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
         <div
           key={entry.hash}
           data-entry={entry.hash}
-          class="space-y-2 rounded border border-line p-2"
+          class={`space-y-2 rounded border p-2 ${stop?.hash === entry.hash ? "border-git-conflict" : "border-line"}`}
         >
           <p class="break-words">
             <code>{entry.hash.slice(0, 8)}</code> {entry.message.split("\n")[0]}
           </p>
+          {stop?.hash === entry.hash && <ForecastStopMark files={stop.files} />}
           <div class="flex flex-wrap items-center gap-2">
             <Select
               aria-label={`${entry.hash.slice(0, 8)} ${window.l10n.rebasePlanTitle}`}
@@ -98,6 +121,7 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
         </div>
       ))}
       {status}
+      <ReplayForecastLine state={forecast} operation="rebase" />
       {invalid && <p role="alert">{window.l10n.firstCannotCombine}</p>}
       <Button type="submit" disabled={invalid}>
         {window.l10n.startRebase}
@@ -142,7 +166,13 @@ export function openRebase(onto: string) {
     return;
   }
   confirmRepositoryAction(
-    format(window.l10n.rebaseConfirm, <b>{branch}</b>, <b>{onto}</b>),
+    <>
+      {format(window.l10n.rebaseConfirm, <b>{branch}</b>, <b>{onto}</b>)}
+      <ReplayForecastFor
+        query={{ kind: "replayForecast", mode: "rebase", onto }}
+        operation="rebase"
+      />
+    </>,
     window.l10n.startRebase,
     { kind: "rebase", branch, onto, expectedHead },
     repo

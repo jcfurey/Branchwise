@@ -93,13 +93,21 @@ A local branch that would not merge cleanly into the checked-out branch shows a 
 
 Only branches not yet merged into `HEAD` are tried: the 50 with the newest commits. Each result is remembered for that pair of commits, so a refresh tries again only the branches that moved, or all of them when `HEAD` does. Branches with no history in common with `HEAD`, which `git merge` refuses, get no mark. Nothing is forecast while a merge, rebase, cherry-pick or revert is under way, or with Git older than 2.38, which has no `merge-tree --write-tree`.
 
+### Rebase, cherry-pick and revert forecast
+
+The confirmations for **Move the current branch onto this (rebase)**, **Cherry-pick…** and **Revert…**, the interactive rebase editor, and the editors for cherry-picking or reverting selected commits say whether the operation would stop with conflicts before you start it. The line reads, for example, "Rebase would stop at 1a2b3c4d Add parser: conflicts in src/parser.ts, README.md", or "Replays 3 commits cleanly"; "Checking for conflicts…" shows while it is worked out. In the editors, the commit where it would stop is also marked, and the forecast is worked out again shortly after you reorder or drop commits. It only informs: every action can still be started.
+
+Git replays the commits in memory, one at a time, with `git merge-tree --merge-base`, as the real operation would apply them: each commit onto the result of the one before. A rebase replays what `git rebase --rebase-merges` would: commits the target already has are left out, and merges are merged again from their replayed parents. A revert merges each commit's parent into the result, from the commit itself. The first commit that would conflict is reported with its files, and the forecast stops there, since what follows depends on how you resolve it. The merged trees and the throwaway commits between steps are written to a temporary folder that is deleted afterwards: the work tree, the index, the refs and the repository's objects are left as they are.
+
+A merge picked or reverted from the commit menu has no forecast, as the result depends on the parent you choose; in the selection editors it is forecast against the parent chosen there. More than 200 commits are not forecast, and the line says so. The forecast needs Git 2.40 or later; with an older Git the line says that instead. Each answer is remembered for its exact commits, so asking again costs nothing.
+
 ## Stashes
 
 Open **Settings & Tools → Stashes** to save changes, optionally including untracked files. Each stash can be inspected as a diff in VS Code, applied, popped or dropped. Apply and pop can restore staged changes as staged. A conflicting pop keeps the stash and displays the conflicts. Drop requires confirmation. Stash selections include the commit ID so a newer stash does not silently redirect a pending action.
 
 ## Rebasing
 
-Right-click a branch and choose **Move the current branch onto this (rebase)**. Commit or stash changes first. This uses Git's merge-preserving rebase and offers the same recovery controls if it stops.
+Right-click a branch and choose **Move the current branch onto this (rebase)**. Commit or stash changes first. This uses Git's merge-preserving rebase and offers the same recovery controls if it stops. The confirmation, like the interactive rebase editor, [forecasts](#rebase-cherry-pick-and-revert-forecast) the commit where it would stop with conflicts.
 
 For interactive editing, right-click an ancestor commit and choose **Edit commits after this (interactive rebase)**. The plan contains the current branch's commits after that ancestor, from oldest to newest. Move commits earlier or later, choose Pick/Reword/Squash/Fixup/Drop, and edit messages for Reword. Squash combines with the preceding retained commit and keeps the combined messages; Fixup discards the fixup's message. At least one commit must remain, and the first retained commit cannot be Squash or Fixup.
 

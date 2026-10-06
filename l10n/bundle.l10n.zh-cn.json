@@ -623,5 +623,17 @@
   "Stage the changes to add to this commit first.": "请先暂存要添加到此提交的更改。",
   "Stage or stash the unstaged and untracked changes first. The rebase that adds the staged changes needs a clean working tree.": "请先将未暂存和未跟踪的更改暂存或存入暂存记录。添加已暂存更改的变基需要干净的工作区。",
   "Enter a commit message.": "请输入提交消息。",
-  "The staged changes changed. Review them again.": "已暂存的更改已改变。请重新查看。"
+  "The staged changes changed. Review them again.": "已暂存的更改已改变。请重新查看。",
+  "Checking for conflicts…": "正在检查冲突…",
+  "Rebase would stop at {0}: conflicts in {1}": "变基将停在 {0}：{1} 中有冲突",
+  "Cherry-pick would stop at {0}: conflicts in {1}": "拣选将停在 {0}：{1} 中有冲突",
+  "Revert would stop at {0}: conflicts in {1}": "还原将停在 {0}：{1} 中有冲突",
+  "Would stop here: conflicts in {0}": "将停在此处：{0} 中有冲突",
+  "Replays 1 commit cleanly": "可顺利重放 1 个提交",
+  "Replays {0} commits cleanly": "可顺利重放 {0} 个提交",
+  "Reverts 1 commit cleanly": "可顺利还原 1 个提交",
+  "Reverts {0} commits cleanly": "可顺利还原 {0} 个提交",
+  "Conflict forecast skipped: too many commits": "已跳过冲突预测：提交过多",
+  "Conflict forecast needs Git 2.40 or later": "冲突预测需要 Git 2.40 或更高版本",
+  "Git could not forecast this replay.": "Git 无法预测此次重放。"
 }
