@@ -54,7 +54,8 @@ const loaded: RepositoryState = {
   tags: [],
   worktrees: [],
   operation: null,
-  conflicts: []
+  conflicts: [],
+  staged: 0
 };
 const stateOf = (state: RepositoryState): RepositoryQueryData => ({ kind: "state", state });
 const noStashes: RepositoryQueryData = { kind: "stashes", stashes: [] };

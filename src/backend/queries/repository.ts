@@ -8,6 +8,7 @@ import type { SimpleGit } from "simple-git";
 import { loadBisect } from "@/backend/queries/bisect";
 import { loadBranchFocus } from "@/backend/queries/branchFocus";
 import { loadConflictForecast } from "@/backend/queries/conflictForecast";
+import { loadAmendPlan, loadRewordPlan } from "@/backend/queries/editCommit";
 import { historyQuery } from "@/backend/queries/history";
 import { loadPushStatus } from "@/backend/queries/pushStatus";
 import {
@@ -200,7 +201,9 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
     worktrees,
     head: status.detached ? "" : (status.current ?? ""),
     operation,
-    conflicts: status.conflicted
+    conflicts: status.conflicted,
+    // The index column is blank for unstaged paths, `?` for untracked and `!` for ignored ones.
+    staged: status.files.filter((file) => !" ?!".includes(file.index)).length
   };
 }
 
@@ -361,6 +364,10 @@ export async function repositoryQuery(
       }
       return { kind: "rebasePlan", plan };
     }
+    case "editPlan":
+      return { kind: "editPlan", plan: await loadRewordPlan(git, query.target) };
+    case "amendPlan":
+      return { kind: "amendPlan", plan: await loadAmendPlan(git, query.target) };
     case "lease": {
       await requireRemote(git, query.remote);
       await requireBranchName(git, query.branch);

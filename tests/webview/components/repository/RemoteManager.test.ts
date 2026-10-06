@@ -58,6 +58,7 @@ function repository(extra: Partial<RepositoryState> = {}): RepositoryState {
     head: "main",
     operation: null,
     conflicts: [],
+    staged: 0,
     tags: [],
     worktrees: [],
     remotes: [],

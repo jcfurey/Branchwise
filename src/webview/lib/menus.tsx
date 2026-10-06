@@ -4,6 +4,12 @@ import type { GitCommitNode, GitRef, GitResetMode } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { openCompare, openFixup } from "@/webview/components/history/HistoryTools";
 import { chooseBisectCommit } from "@/webview/components/repository/BisectView";
+import {
+  hasStagedChanges,
+  onCheckedOutLine,
+  openAddStaged,
+  openEditMessage
+} from "@/webview/components/repository/EditCommit";
 import { openInteractiveRebase, openRebase } from "@/webview/components/repository/RebaseEditor";
 import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
@@ -259,6 +265,15 @@ export function commitMenu(
       { title: more(l10n.reset), onClick: () => resetToCommit(hash) }
     ],
     [
+      // Editing in place rewrites the checked-out branch, so only its own commits offer it.
+      ...(onCheckedOutLine(hash)
+        ? [
+            { title: more(l10n.editMessage), onClick: () => openEditMessage(hash) },
+            ...(hasStagedChanges()
+              ? [{ title: more(l10n.addStagedToCommit), onClick: () => openAddStaged(hash) }]
+              : [])
+          ]
+        : []),
       { title: more(l10n.interactiveRebase), onClick: () => openInteractiveRebase(hash) },
       { title: more(l10n.createFixupMenu), onClick: () => openFixup(hash) },
       compareEntry(hash),

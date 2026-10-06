@@ -39,7 +39,8 @@ function state(count: number): RepositoryState {
     worktrees: [],
     head: "branch-0",
     operation: null,
-    conflicts: []
+    conflicts: [],
+    staged: 0
   };
 }
 
