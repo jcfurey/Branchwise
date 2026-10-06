@@ -11,6 +11,7 @@ import { UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { focusColour } from "@/webview/graph/focus";
 import type { BranchRelation } from "@/webview/graph/types";
 import { closeCommitDetails, openContextMenu } from "@/webview/lib/actions";
+import { runRowShortcut } from "@/webview/lib/commit-shortcuts";
 import {
   commitMenu,
   commitMenuSource,
@@ -203,7 +204,8 @@ const CELL = `${LINE} px-1`;
 /**
  * One commit of the history table: its graph cell, description, date, author and short hash.
  * The row is also a keyboard stop: arrows move between rows, Enter opens the details, Space
- * toggles the selection, and the menu key opens the commit's actions.
+ * toggles the selection, and the menu key opens the commit's actions. Other single keys run the
+ * actions of `lib/shortcuts`.
  */
 export function CommitRow({
   commit,
@@ -321,6 +323,8 @@ export function CommitRow({
         clientY: box.bottom
       });
       openContextMenu(at, source, menuEntries());
+    } else {
+      runRowShortcut(event, { commit, headBranch, messages, toggleDetails: activate });
     }
   }
 

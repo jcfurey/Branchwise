@@ -15,7 +15,8 @@ export function webviewConfig(): WebviewConfig {
     loadMoreCommits: extConfig.loadMoreCommits(),
     // Dates are formatted for VS Code's display language.
     locale: vscode.env.language,
-    showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault()
+    showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
+    singleKeyShortcuts: extConfig.singleKeyShortcuts()
   };
 }
 

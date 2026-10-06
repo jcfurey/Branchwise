@@ -22,6 +22,7 @@
   "config.nestedRepoSearchDepth": "How many levels of subfolders inside each repository found are searched for repositories cloned there, which the Workspace pane lists under it. Hidden folders and node_modules are skipped. With 0, repositories inside other repositories are only found as submodules.",
   "config.showCurrentBranchByDefault": "Show the current branch by default when Branchwise is opened. Default: false (show all branches)",
   "config.showUncommittedChanges": "Show a row at the top of the graph for uncommitted changes. Turning this off skips the scan of the working tree, which makes loading faster in large repositories.",
+  "config.singleKeyShortcuts": "Let single keys act on the focused commit row of the graph, such as B for Create Branch or Y to copy the short commit ID. Press ? in the graph for the full list. Turn this off if you use a screen reader or an extension that sends single keys of its own.",
   "config.tabIconColourTheme": "Specifies the colour theme of the icon displayed on the Branchwise tab.",
   "config.tabIconColourTheme.colour": "Show the icon in colour, which suits most Visual Studio Code colour themes",
   "config.tabIconColourTheme.grey": "Show a grey icon which suits Visual Studio Code colour themes that are predominantly grayscale",

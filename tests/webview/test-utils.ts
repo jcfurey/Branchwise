@@ -19,7 +19,8 @@ const settings: WebviewConfig = {
   initialLoadCommits: 300,
   loadMoreCommits: 100,
   locale: "en",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 /** Strings that read as their own keys, so that a test can find a text by the name it has. */

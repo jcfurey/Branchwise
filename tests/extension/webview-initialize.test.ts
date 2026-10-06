@@ -34,7 +34,8 @@ const DEFAULT_CONFIG = {
   initialLoadCommits: 300,
   loadMoreCommits: 100,
   locale: "fr",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 beforeEach(() => {

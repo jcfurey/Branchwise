@@ -1610,6 +1610,76 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await vscode.env.clipboard.readText()) === local, "full ID copied");
   });
 
+  test("acts on the focused commit with single keys and lists them on the shortcut sheet", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "keys base", dir);
+    commit("f", "keys target", dir);
+    const target = git(["rev-parse", "HEAD"], dir);
+    commit("f", "keys head", dir);
+    await openRepo(dir);
+    const row = `document.querySelector('tr[data-commit-hash="${target}"]')`;
+    const focusRow = async () => {
+      await graph.evaluate(`${row}.focus()`);
+      await until(() => graph.evaluate(`document.activeElement === ${row}`), "focused row");
+    };
+
+    // B opens Create Branch; the letters of the name go into its field, not to more shortcuts.
+    await focusRow();
+    await keypress("b");
+    const field = 'document.querySelector("[role=dialog] input[type=text]")';
+    await until(() => graph.evaluate(`document.activeElement === ${field}`), "branch name field");
+    for (const letter of "byctrim") {
+      await keypress(letter);
+    }
+    assert.equal(await graph.evaluate(`${field}.value`), "byctrim");
+    assert.equal(await graph.evaluate('document.querySelectorAll("[role=dialog]").length'), 1);
+    await button("Create Branch");
+    await finished();
+    await until(
+      () =>
+        graph.evaluate(
+          `[...${row}.querySelectorAll('span[title]')].some(label => label.title.split(String.fromCharCode(10))[0] === "byctrim")`
+        ),
+      "branch label on the row"
+    );
+    assert.equal(
+      git(["for-each-ref", "--format=%(objectname)", "refs/heads/byctrim"], dir),
+      target
+    );
+
+    // ? opens the sheet, and Escape closes it again.
+    await focusRow();
+    await keypress("?", 8);
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog] h2")?.textContent === "Keyboard Shortcuts"'
+        ),
+      "shortcut sheet"
+    );
+    const listed = await graph.evaluate(
+      '[...document.querySelectorAll("[role=dialog] [data-shortcut-id]")].map(row => row.innerText.replace(/\\s+/g, " ").trim())'
+    );
+    assert.ok(listed.includes("B Create Branch…"), listed.join("\n"));
+    assert.ok(listed.includes("Shift+Y Copy Commit ID"), listed.join("\n"));
+    assert.ok(listed.includes("Shift+F10 Menu Open the commit's menu"), listed.join("\n"));
+    await keypress("Escape");
+    await until(() => graph.evaluate('!document.querySelector("[role=dialog]")'), "sheet closed");
+
+    // Y copies the short ID, Shift+Y the full one.
+    await vscode.env.clipboard.writeText("");
+    await focusRow();
+    await keypress("y");
+    await until(
+      async () => (await vscode.env.clipboard.readText()) === target.slice(0, 8),
+      "short ID copied"
+    );
+    await keypress("Y", 8);
+    await until(async () => (await vscode.env.clipboard.readText()) === target, "full ID copied");
+    assert.equal(git(["rev-parse", "HEAD"], dir), git(["rev-parse", "main"], dir));
+  });
+
   test("forecasts which branches would conflict if merged into the checked-out branch", async () => {
     const dir = directory();
     init(dir);

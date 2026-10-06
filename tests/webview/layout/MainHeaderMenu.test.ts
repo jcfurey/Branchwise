@@ -98,6 +98,7 @@ describe("the Settings & Tools menu", () => {
       "✓ showRemoteBranches",
       "hiddenBranches…",
       "gettingStarted",
+      "keyboardShortcuts",
       "learnMore",
       "openSettings"
     ]);
@@ -187,6 +188,16 @@ describe("Go to", () => {
       params: { repo: stores.selectedRepo.value },
       id: expect.any(String)
     });
+  });
+});
+
+describe("Keyboard Shortcuts", () => {
+  it("opens the shortcut sheet, and shows its own key", () => {
+    mount();
+    const entry = openTools().entries.find((candidate) => candidate?.title === "keyboardShortcuts");
+    expect(entry?.shortcut).toBe("shortcutSheet");
+    runEntry("keyboardShortcuts");
+    expect(stores.dialog.value).toMatchObject({ kind: "content", message: "keyboardShortcuts" });
   });
 });
 

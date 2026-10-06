@@ -440,7 +440,8 @@ it("delivers every notification in the form the webview accepts", async () => {
     initialLoadCommits: 300,
     loadMoreCommits: 100,
     locale: "en",
-    showCurrentBranchByDefault: false
+    showCurrentBranchByDefault: false,
+    singleKeyShortcuts: true
   };
   const repo: GitRepo = { name: "app", path: "/work/app" };
   const cases: { [N in RpcNotificationName]: RpcNotificationMap[N] } = {

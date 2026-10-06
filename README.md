@@ -52,6 +52,7 @@ basics.
 - Plain and interactive rebase; push and pull previews; force-push only with a lease
 - Fast-forward every branch that is only behind its upstream, without a checkout
 - Stashes, conflict resolution, and continue, skip or abort for interrupted operations
+- Single keys on the focused commit, such as B to create a branch; `?` lists every shortcut
 
 **Recover and investigate**
 
@@ -84,6 +85,7 @@ All settings start with `branchwise.`.
 | `nestedRepoSearchDepth`       | `3`             | Folder depth searched inside each repository for nested ones |
 | `showCurrentBranchByDefault`  | `false`         | Open showing only the checked-out branch                     |
 | `showUncommittedChanges`      | `true`          | Show the uncommitted changes row                             |
+| `singleKeyShortcuts`          | `true`          | Let single keys act on the focused commit row                |
 | `tabIconColourTheme`          | `"colour"`      | Graph tab icon in `"colour"` or `"grey"`                     |
 
 ## Upgrading from (neo) Git Graph

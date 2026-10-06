@@ -46,6 +46,11 @@
   --color-input-fg: var(--vscode-input-foreground);
   --color-input-border: var(--vscode-input-border, rgba(128, 128, 128, 0.5));
 
+  /* A key drawn as VS Code draws keybindings. */
+  --color-keycap: var(--vscode-keybindingLabel-background, rgba(128, 128, 128, 0.17));
+  --color-keycap-fg: var(--vscode-keybindingLabel-foreground, var(--vscode-foreground));
+  --color-keycap-border: var(--vscode-keybindingLabel-border, rgba(128, 128, 128, 0.5));
+
   --color-checkbox: var(--vscode-checkbox-background);
   --color-checkbox-checked: var(--vscode-button-background);
   --color-checkbox-check: var(--vscode-button-foreground);

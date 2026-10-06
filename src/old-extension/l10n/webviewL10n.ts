@@ -159,6 +159,29 @@ export function getWebviewLocalizedStrings() {
     openBranchOnHost: vscode.l10n.t("Open Branch on {0}"),
     openTagOnHost: vscode.l10n.t("Open Tag on {0}"),
 
+    // Keyboard shortcuts: the sheet's title, groups and descriptions. Menu titles name the rest.
+    keyboardShortcuts: vscode.l10n.t("Keyboard Shortcuts"),
+    shortcutGroupNavigation: vscode.l10n.t("Navigation"),
+    shortcutGroupCommit: vscode.l10n.t("Commit actions"),
+    shortcutGroupPanels: vscode.l10n.t("Panels"),
+    shortcutKeysColumn: vscode.l10n.t("Keys"),
+    shortcutActionColumn: vscode.l10n.t("Action"),
+    shortcutMove: vscode.l10n.t("Move to the previous or next commit"),
+    shortcutFirstLast: vscode.l10n.t("Move to the first or last loaded commit"),
+    shortcutExtendSelection: vscode.l10n.t("Move and add the commits passed to the selection"),
+    shortcutSelect: vscode.l10n.t("Select or deselect the commit; with Shift, select a range"),
+    shortcutDetails: vscode.l10n.t("Open or close the commit's details"),
+    shortcutClose: vscode.l10n.t("Close the details, a dialog or a menu"),
+    shortcutMenu: vscode.l10n.t("Open the commit's menu"),
+    shortcutSheet: vscode.l10n.t("Show keyboard shortcuts"),
+    shortcutOpenOnHost: vscode.l10n.t("Open Commit on GitHub or GitLab"),
+    shortcutRowHint: vscode.l10n.t("These keys act on the commit row that has focus."),
+    shortcutsOff: vscode.l10n.t(
+      "Single keys are turned off. Turn on the branchwise.singleKeyShortcuts setting to use them."
+    ),
+    // Announced, not shown, when a key's action does not apply to the focused row.
+    shortcutUnavailable: vscode.l10n.t("Not available here: {0}"),
+
     // What a failed copy was copying, inserted mid-sentence into unableToCopyToClipboard
     typeCommitHash: vscode.l10n.t("commit ID"),
     typeTagName: vscode.l10n.t("tag name"),

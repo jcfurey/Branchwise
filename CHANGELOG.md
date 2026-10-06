@@ -10,6 +10,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ### Added
 
+- Single-key actions on the focused commit row: C check out, B create branch, T create tag, P cherry-pick (the whole selection when several commits are selected), V revert, R rebase onto the branch on the row, I interactive rebase, M merge, X reset, E edit message, Y and Shift+Y copy the short and full ID, O open on GitHub or GitLab, and D open or close the details. Each opens the same dialog or confirmation as its menu entry, and menus show the keys beside their entries. `?`, or **Settings & Tools → Keyboard Shortcuts**, lists every shortcut. Turn the single keys off with `branchwise.singleKeyShortcuts`. See [keyboard navigation](docs/git-actions.md#keyboard-navigation-and-activity).
 - Pin local branches to the top of the Branches pane, and list local branches by their latest commit instead of by name. Both choices are remembered per repository.
 - Flag local branches in the Branches pane that are already merged into the checked-out branch, whose upstream is gone, that have had no commits for 90 days, or that would conflict if merged. Ahead and behind counts turn amber when a branch has diverged from its upstream.
 - Fast-forward every local branch that is only behind its upstream in one step, from **Settings & Tools → Fast-forward Branches**, without checking any of them out. The review lists the branches that stay and why: diverged, checked out in another worktree, or checked out here with uncommitted changes.

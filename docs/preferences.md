@@ -39,3 +39,13 @@ another branch is selected. See [hiding branches by name](git-actions.md#hiding-
 Deleting a repository's folder removes its saved preferences the next time the Workspace pane loads.
 Existing focus choices in an open panel migrate to workspace storage the next time that repository
 loads; previously saved column widths and remote visibility are retained.
+
+## Single-key shortcuts
+
+`branchwise.singleKeyShortcuts` (default `true`) lets single keys act on the focused commit row,
+such as B for **Create Branch…** or Y to copy the short commit ID, and lets `?` open the list of
+keyboard shortcuts. Turn it off if you use a screen reader that reads the graph with single-letter
+commands, or an extension that sends single keys of its own. With it off, the menus stop showing
+the keys and the shortcut sheet says they are off; arrow keys, Enter, Space, Escape, Shift+F10,
+Ctrl/Cmd+F, `/` and Ctrl+Alt+G keep working. The change applies to an open graph at once. See
+[keyboard navigation](git-actions.md#keyboard-navigation-and-activity).

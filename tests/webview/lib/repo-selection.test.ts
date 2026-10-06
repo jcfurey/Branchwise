@@ -17,7 +17,8 @@ beforeAll(() => {
     initialLoadCommits: 300,
     loadMoreCommits: 100,
     locale: "en",
-    showCurrentBranchByDefault: false
+    showCurrentBranchByDefault: false,
+    singleKeyShortcuts: true
   });
   initRpcHandler(new Map());
 });
