@@ -13,6 +13,7 @@
   "config.dateType": "指定在 Branchwise 各處顯示的日期類型。",
   "config.dateType.authorDate": "在日期欄和詳細資料面板中顯示每個提交的作者日期，即其變更最初被記錄的時間",
   "config.dateType.commitDate": "改為顯示每個提交的提交者日期，即該提交本身最後一次產生的時間；重定基底、修訂或揀選提交都會改變它",
+  "config.dragAndDrop": "允許在分支圖和分支窗格中拖曳提交和分支：將提交拖放到已簽出的分支上即可揀選它，將分支拖放到另一個分支上即可合併或重定基底。每次拖放都會先要求確認，所有操作仍可在選單中找到。",
   "config.fetchAvatars": "無效。早期版本會擷取提交作者頭像；此功能已移除。",
   "config.fetchAvatars.deprecation": "自 0.6.0 版起已淘汰。此設定無效，可能會在之後的版本中移除。",
   "config.graphColours": "分支圖各軌道的色彩，依此順序使用，用完後從頭循環。預設有 12 種色彩。",

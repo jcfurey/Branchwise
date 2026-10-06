@@ -55,6 +55,18 @@ Hidden branches leave the graph with their labels and the commits only they reac
 
 The checked-out branch is never hidden. Neither is the branch selected in the header: choosing a hidden branch from the Branches pane, or focusing it, shows it while it stays selected, and an eye-closed mark beside the branch picker says a pattern matches it. The pattern is kept, so the branch is hidden again once another one is selected. Patterns are saved per repository and restored when you reopen the graph; hiding branches never changes Git refs.
 
+### Drag and drop
+
+Drag and drop is a shortcut to three menu actions; each stays in its menu, for the keyboard too. A drop never acts on its own: it opens the confirmation of the matching menu entry, and nothing changes until you confirm it. Press Escape while dragging to cancel.
+
+- Drag a commit row onto the label of the checked-out branch, in the graph or the Branches pane, to **Cherry-pick** it, as the commit's menu does. A merge commit asks which parent to cherry-pick against.
+- Drag a local branch label, or a local branch in the Branches pane, onto the checked-out branch to merge it in, as the dragged branch's **Merge into Current Branch** does.
+- Drag the checked-out branch onto another local or remote branch to rebase it onto that branch, as that branch's **Move the current branch onto this (rebase)** does.
+
+While you drag, the note beside the pointer names what the drop will do. Git cherry-picks, merges and rebases on the checked-out branch only, so a branch that is not checked out refuses a commit, and two branches that are both not checked out refuse each other; the pointer shows that the drop is not allowed, and a note beside it says which branch to check out first. While you drag, a pill shows what is carried, such as `3a4b5c6d Fix parser` or a branch's name, and a branch that would take the drop is outlined. Dragging a tag or remote branch label drags its commit. A commit dropped on another commit does nothing.
+
+Set `branchwise.dragAndDrop` to `false` to turn dragging off; clicking, selecting and the menus work the same either way.
+
 ## Wide graphs
 
 Branch lines stay within the **Graph** column, including after column resizing. When the lanes do not fit, use the horizontal scrollbar under the Graph heading, a horizontal trackpad gesture, or **Shift+mouse wheel** over the graph. The scrollbar also accepts keyboard arrow keys when focused. Only the lanes move sideways; commit text stays in place, and commit selection and expanded details remain aligned. Drag the boundary beside **Graph** to give the lanes more room.

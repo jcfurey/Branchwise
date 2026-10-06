@@ -13,6 +13,7 @@
   "config.dateType": "Specifies the date type to be displayed throughout Branchwise.",
   "config.dateType.authorDate": "Show each commit's author date, when its changes were first recorded, in the date column and the details panel",
   "config.dateType.commitDate": "Show each commit's committer date instead, when the commit itself was last made; rebasing, amending or cherry-picking a commit changes it",
+  "config.dragAndDrop": "Let commits and branches be dragged in the graph and the Branches pane: drop a commit on the checked-out branch to cherry-pick it, or a branch on another to merge or rebase. Every drop asks for confirmation first, and every action stays in the menus.",
   "config.fetchAvatars": "No effect. Earlier versions fetched commit author avatars; that feature has been removed.",
   "config.fetchAvatars.deprecation": "Deprecated since version 0.6.0. This setting has no effect and may be removed in a later release.",
   "config.graphColours": "The colours of the graph's lanes, used in this order and repeated from the start when they run out. The default has 12 colours.",

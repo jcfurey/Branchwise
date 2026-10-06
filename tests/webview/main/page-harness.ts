@@ -21,6 +21,7 @@ export const PAGE_STRINGS = new Proxy({} as LocalizedStrings, {
 export const PAGE_CONFIG: WebviewConfig = {
   locale: "en",
   dateFormat: "Relative",
+  dragAndDrop: true,
   graphStyle: "angular",
   graphColours: ["#0085d9"],
   initialLoadCommits: 123,

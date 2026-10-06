@@ -62,6 +62,11 @@ tree. `branchwise.showSignatures` (on by default) marks signed commits with a sm
 reads the loaded commits once more; turning it off saves about 10 ms for 300 rows and 40 ms for
 3,000 (see [performance](performance.md)). The commit details still check signatures. See [commit signatures](git-actions.md#commit-signatures).
 
+`branchwise.dragAndDrop` (default `true`) lets commit rows and local branches be dragged onto
+branch labels in the graph and the Branches pane to cherry-pick, merge or rebase, each after a
+confirmation. Turn it off if you drag by accident; every action stays in the menus. See
+[drag and drop](git-actions.md#drag-and-drop).
+
 ### Single-key shortcuts
 
 `branchwise.singleKeyShortcuts` (default `true`) lets single keys act on the focused commit row,

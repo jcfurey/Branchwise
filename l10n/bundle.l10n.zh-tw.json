@@ -835,5 +835,11 @@
   "Each part needs at least one change.": "每個部分至少需要一處變更。",
   "Each part needs a message.": "每個部分都需要訊息。",
   "The parts would not add up to the original commit, so nothing was changed.": "各部分合起來與原提交不一致，因此未做任何變更。",
-  "Commit Split on {0}": "{0} 上的提交拆分"
+  "Commit Split on {0}": "{0} 上的提交拆分",
+  "Cherry-pick {0} onto {1}": "將 {0} 揀選到 {1}",
+  "Merge {0} into {1}": "將 {0} 合併到 {1}",
+  "Rebase {0} onto {1}": "將 {0} 重定基底至 {1}",
+  "Check out {0} first: a cherry-pick applies to the checked-out branch": "請先簽出 {0}：揀選只作用於已簽出的分支",
+  "Check out {0} to merge {1} into it, or check out {1} to rebase it onto {0}": "簽出 {0} 即可將 {1} 合併到其中，或簽出 {1} 即可將其重定基底至 {0}",
+  "Check out {0} to rebase it onto {1}": "簽出 {0} 即可將其重定基底至 {1}"
 }

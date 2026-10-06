@@ -161,6 +161,7 @@ describe("settings passed through", () => {
       "conflictForecast",
       "dateFormat",
       "dateType",
+      "dragAndDrop",
       "gitPath",
       "graphColours",
       "graphStyle",

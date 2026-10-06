@@ -53,6 +53,7 @@ describe("styles.css", () => {
       "--radius-md: 5px;",
       "--color-line: rgba(128, 128, 128, 0.5);",
       "--color-focus: var(--vscode-focusBorder);",
+      "--color-drop: var(--vscode-list-dropBackground);",
       "--color-graph: var(--vscode-focusBorder);",
       "--color-git-deleted: var(--vscode-gitDecoration-deletedResourceForeground);",
       "--default-font-family: var(--vscode-font-family);"

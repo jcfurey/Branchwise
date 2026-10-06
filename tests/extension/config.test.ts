@@ -22,6 +22,7 @@ it("falls back to the defaults declared in package.json", () => {
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
     dateType: extConfig.dateType(),
+    dragAndDrop: extConfig.dragAndDrop(),
     graphColours: extConfig.graphColours(),
     graphStyle: extConfig.graphStyle(),
     initialLoadCommits: extConfig.initialLoadCommits(),

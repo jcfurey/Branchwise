@@ -13,6 +13,7 @@ import { focusColour } from "@/webview/graph/focus";
 import type { BranchRelation } from "@/webview/graph/types";
 import { closeCommitDetails, openContextMenu } from "@/webview/lib/actions";
 import { runRowShortcut } from "@/webview/lib/commit-shortcuts";
+import { dragAndDropOn } from "@/webview/lib/drag-drop";
 import {
   commitMenu,
   commitMenuSource,
@@ -345,6 +346,7 @@ export function CommitRow({
       data-branch-relation={relation === "merged" && keepMergedBright ? "direct" : relation}
       data-emphasized={String(emphasized)}
       tabIndex={tabStop ? 0 : -1}
+      draggable={uncommitted || !dragAndDropOn() ? undefined : true}
       aria-selected={uncommitted ? expanded : selected}
       aria-expanded={expanded}
       title={uncommitted ? l10n.viewWorkingTreeChanges : l10n.selectCommitsHint}

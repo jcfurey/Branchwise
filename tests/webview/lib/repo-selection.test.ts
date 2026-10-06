@@ -13,6 +13,7 @@ beforeAll(() => {
     autoCenterCommitDetailsView: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dragAndDrop: true,
     graphColours: [],
     graphStyle: "rounded",
     initialLoadCommits: 300,

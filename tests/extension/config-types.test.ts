@@ -17,6 +17,7 @@ const settings: WebviewConfig = {
   autoCenterCommitDetailsView: false,
   conflictForecast: "localAndRemote",
   dateFormat: "Relative",
+  dragAndDrop: true,
   graphColours: ["#123456"],
   graphStyle: "angular",
   initialLoadCommits: 50,
@@ -43,11 +44,12 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the ten display settings", () => {
+  it("holds exactly the eleven display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
       | "conflictForecast"
       | "dateFormat"
+      | "dragAndDrop"
       | "graphColours"
       | "graphStyle"
       | "initialLoadCommits"
@@ -56,7 +58,7 @@ describe("WebviewConfig", () => {
       | "showCurrentBranchByDefault"
       | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(10);
+    expect(Object.keys(settings)).toHaveLength(11);
   });
 });
 

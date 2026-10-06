@@ -56,6 +56,7 @@ basics.
 - Before a rebase, cherry-pick or revert, see which commit would stop with conflicts, and in which files
 - Split a commit into several, by file or by hunk, without touching the working tree
 - Fast-forward every branch that is only behind its upstream, without a checkout
+- Drag a commit onto your branch to cherry-pick it, or a branch onto another to merge or rebase, always confirmed first
 - Stashes, conflict resolution, and continue, skip or abort for interrupted operations
 - Single keys on the focused commit, such as B to create a branch; `?` lists every shortcut
 
@@ -85,6 +86,7 @@ All settings start with `branchwise.`.
 | `conflictForecast`            | `"localAndRemote"` | Branches checked for conflicts: `"localAndRemote"`, `"local"` or `"off"` |
 | `dateFormat`                  | `"Date & Time"`    | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"`             |
 | `dateType`                    | `"Author Date"`    | Show each commit's `"Author Date"` or `"Commit Date"`                    |
+| `dragAndDrop`                 | `true`             | Drag commits and branches onto branch labels                             |
 | `graphColours`                | 12 colours         | Colours of the graph's lanes, in order                                   |
 | `graphStyle`                  | `"rounded"`        | Lines that change lanes: `"rounded"` or `"angular"`                      |
 | `initialLoadCommits`          | `300`              | Commits first loaded for a repository or branch                          |
