@@ -39,3 +39,11 @@ another branch is selected. See [hiding branches by name](git-actions.md#hiding-
 Deleting a repository's folder removes its saved preferences the next time the Workspace pane loads.
 Existing focus choices in an open panel migrate to workspace storage the next time that repository
 loads; previously saved column widths and remote visibility are retained.
+
+## Settings that change what the graph loads
+
+Unlike the choices above, these are VS Code settings, so they apply to every repository.
+`branchwise.showUncommittedChanges` adds the row of uncommitted changes, which scans the working
+tree. `branchwise.showSignatures` (on by default) marks signed commits with a small key, which
+reads the loaded commits once more; turning it off saves about 10 ms for 300 rows and 40 ms for
+3,000 (see [performance](performance.md)). The commit details still check signatures. See [commit signatures](git-actions.md#commit-signatures).

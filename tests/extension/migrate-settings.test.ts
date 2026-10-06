@@ -125,8 +125,10 @@ it("copies every declared setting except the one without an effect and the new o
   const declared = Object.keys(manifest.contributes.configuration.properties).map((key) =>
     key.replace(/^branchwise\./, "")
   );
-  // The old extension never had `nestedRepoSearchDepth`.
+  // The old extension never had `nestedRepoSearchDepth` or `showSignatures`.
   expect(MIGRATED_SETTINGS).toEqual(
-    declared.filter((key) => key !== "fetchAvatars" && key !== "nestedRepoSearchDepth")
+    declared.filter(
+      (key) => !["fetchAvatars", "nestedRepoSearchDepth", "showSignatures"].includes(key)
+    )
   );
 });

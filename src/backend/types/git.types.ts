@@ -41,7 +41,58 @@ export type GitLogEntry = {
  * A row of the graph: a log entry and the labels pointing at it. A row with `hash` `"*"` stands
  * for the uncommitted changes.
  */
-export type GitCommitNode = GitLogEntry & { refs: GitRef[] };
+export type GitCommitNode = GitLogEntry & {
+  refs: GitRef[];
+  /**
+   * Present, and true, when the graph found a signature in the commit. Whether the signature is
+   * valid is only known once `SignatureCheck` has checked it.
+   */
+  signed?: true;
+};
+
+/** The kinds of signature Git makes and checks: by gpg, by gpgsm, and by ssh-keygen. */
+export type SignatureFormat = "openpgp" | "x509" | "ssh";
+
+/** What checking a commit's signature found. `signatureState` maps Git's letters to these. */
+export type SignatureState =
+  | "good"
+  | "untrusted"
+  | "bad"
+  | "expiredSignature"
+  | "expiredKey"
+  | "revoked"
+  | "unchecked"
+  | "unsigned";
+
+/** Why a signature could not be checked. */
+export type UncheckedReason =
+  /** Git reported that the signing key is not available, as for a key not in the keyring. */
+  | "missingKey"
+  /** The checking program, gpg, gpgsm or ssh-keygen, could not be started. */
+  | "noProgram"
+  /** SSH signatures are only checked against `gpg.ssh.allowedSignersFile`, which is not set. */
+  | "allowedSigners"
+  /** The check took too long and was stopped. */
+  | "timeout"
+  /** Git gave no verdict on the signature, as for one it cannot read. */
+  | "unreadable";
+
+/** The verdict on one commit's signature, and what Git told about the signer. */
+export type SignatureCheck = {
+  state: SignatureState;
+  /** The kind of signature the commit carries; `null` for an unsigned commit. */
+  format: SignatureFormat | null;
+  /** The signer's name, or the SSH principal; empty when Git names none. */
+  signer: string;
+  /** The key Git names: an OpenPGP key ID or fingerprint, or an SSH key's fingerprint. */
+  key: string;
+  /** The signing key's whole fingerprint, when Git knows it. */
+  fingerprint: string;
+  /** Git's trust level for the key: `undefined`, `never`, `marginal`, `fully` or `ultimate`. */
+  trust: string;
+  /** Set exactly when `state` is `"unchecked"`. */
+  reason: UncheckedReason | null;
+};
 
 /** One changed path, compared with the commit's first parent or the empty tree. */
 export type GitFileChange = {

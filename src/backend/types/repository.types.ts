@@ -79,7 +79,9 @@ export type RepositoryQuery =
     }
   | { kind: "editPlan"; target: string }
   | { kind: "amendPlan"; target: string }
-  | { kind: "lease"; remote: string; branch: string };
+  | { kind: "lease"; remote: string; branch: string }
+  /** Check the signature of the commit `hash` names. */
+  | { kind: "signature"; hash: string };
 
 export type RepositoryQueryData =
   | WorkflowQueryData
@@ -93,7 +95,8 @@ export type RepositoryQueryData =
   | { kind: "rebasePlan"; plan: RebasePlan }
   | { kind: "editPlan"; plan: EditPlan }
   | { kind: "amendPlan"; plan: AmendPlan }
-  | { kind: "lease"; hash: string };
+  | { kind: "lease"; hash: string }
+  | { kind: "signature"; hash: string; check: SignatureCheck };
 
 export type RepositoryAction =
   | WorkflowAction
@@ -122,7 +125,7 @@ export type RepositoryAction =
   | { kind: "addWorktree"; path: string; branch: string; newBranch: boolean; startPoint: string }
   | { kind: "removeWorktree"; path: string; expectedHead: string }
   | { kind: "openWorktree"; path: string };
-import type { GitRef } from "./git.types";
+import type { GitRef, SignatureCheck } from "./git.types";
 import type { HistoryAction, HistoryQuery, HistoryQueryData, StagedPlan } from "./history.types";
 import type { WorkflowAction, WorkflowQuery, WorkflowQueryData } from "./workflow.types";
 import type { WorkingTreeFile, WorkingTreeGroup } from "./workingTree.types";

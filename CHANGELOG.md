@@ -10,6 +10,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ### Added
 
+- Commit signatures: a small key marks each signed commit in the graph, which Branchwise finds by reading the commits, without checking anything. Opening a commit's details checks its OpenPGP, X.509 or SSH signature as your Git configuration says, and shows **Good signature by** the signer with the key and trust level; a key that is not trusted; a bad, expired or revoked signature; or why the signature can't be checked, such as a missing key, gpg not installed, no `gpg.ssh.allowedSignersFile`, or a check stopped after 10 seconds. The new `branchwise.showSignatures` setting leaves the keys out of the graph. See [commit signatures](docs/git-actions.md#commit-signatures).
 - Pin local branches to the top of the Branches pane, and list local branches by their latest commit instead of by name. Both choices are remembered per repository.
 - Flag local branches in the Branches pane that are already merged into the checked-out branch, whose upstream is gone, that have had no commits for 90 days, or that would conflict if merged. Ahead and behind counts turn amber when a branch has diverged from its upstream.
 - Fast-forward every local branch that is only behind its upstream in one step, from **Settings & Tools → Fast-forward Branches**, without checking any of them out. The review lists the branches that stay and why: diverged, checked out in another worktree, or checked out here with uncommitted changes.

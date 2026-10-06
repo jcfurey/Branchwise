@@ -5,6 +5,7 @@ import { useMemo } from "preact/hooks";
 import type { GitRef, HistoryEntry } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
+import { SignedMark } from "@/webview/components/commit/SignatureBadge";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
 import { KebabIcon } from "@/webview/components/ui/Icons";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
@@ -389,6 +390,7 @@ export function CommitRow({
           <span class="min-w-0 flex-1 truncate" title={message}>
             {isHead || uncommitted ? <b>{message}</b> : message}
           </span>
+          {commit.signed === true && <SignedMark />}
           {!uncommitted && (
             <button
               type="button"

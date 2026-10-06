@@ -686,6 +686,7 @@ export function registerMessageHandlers(
         showRemoteBranches: request.showRemoteBranches,
         hard: request.hard,
         dateType: config.dateType(),
+        showSignatures: config.showSignatures(),
         showUncommittedChanges: config.showUncommittedChanges()
       });
       return {
