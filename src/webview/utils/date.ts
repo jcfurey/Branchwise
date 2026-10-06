@@ -149,12 +149,6 @@ export function formatSeconds(started: number, finished: number): string {
   ).format(count);
 }
 
-/** How long ago a Git timestamp in seconds was, such as "2 days ago", whatever `dateFormat` says. */
-export function getRelativeDate(seconds: number): string {
-  const date = toDate(seconds);
-  return date === null ? window.l10n.unknownDate : relativeTo(date, getWebviewConfig().locale);
-}
-
 /** A Git timestamp in seconds as a long date and time in the display language. */
 export function getFullDate(seconds: number): string {
   const date = toDate(seconds);
