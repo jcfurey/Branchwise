@@ -132,6 +132,11 @@ export function SearchBar() {
               change={(file) => update({ path: file })}
             />
             <TextField
+              label={window.l10n.historyChanges}
+              value={draft.changes ?? ""}
+              change={(changes) => update({ changes })}
+            />
+            <TextField
               label={window.l10n.historySince}
               type="date"
               value={draft.since}

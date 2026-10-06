@@ -25,6 +25,7 @@ export const emptyFilter = (): HistoryFilter => ({
   committer: "",
   branch: "",
   tag: "",
+  changes: "",
   regex: false
 });
 type SavedFilter = { name: string; filter: HistoryFilter };
