@@ -224,6 +224,17 @@ export function getRepositoryLocalizedStrings() {
     ),
     explainDropStash: vscode.l10n.t(
       "Branchwise keeps a dropped stash in the Safety Net for 30 days, so Undo can bring it back."
-    )
+    ),
+    forecastChecking: vscode.l10n.t("Checking for conflicts…"),
+    forecastRebaseStop: vscode.l10n.t("Rebase would stop at {0}: conflicts in {1}"),
+    forecastCherryPickStop: vscode.l10n.t("Cherry-pick would stop at {0}: conflicts in {1}"),
+    forecastRevertStop: vscode.l10n.t("Revert would stop at {0}: conflicts in {1}"),
+    forecastStopsHere: vscode.l10n.t("Would stop here: conflicts in {0}"),
+    forecastReplaysOne: vscode.l10n.t("Replays 1 commit cleanly"),
+    forecastReplays: vscode.l10n.t("Replays {0} commits cleanly"),
+    forecastRevertsOne: vscode.l10n.t("Reverts 1 commit cleanly"),
+    forecastReverts: vscode.l10n.t("Reverts {0} commits cleanly"),
+    forecastSkippedLimit: vscode.l10n.t("Conflict forecast skipped: too many commits"),
+    forecastNeedsGit: vscode.l10n.t("Conflict forecast needs Git 2.40 or later")
   };
 }
