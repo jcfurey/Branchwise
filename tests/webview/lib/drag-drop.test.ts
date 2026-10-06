@@ -379,13 +379,9 @@ describe("what a drop opens", () => {
     expect(dialog.value?.kind === "form" && dialog.value.inputs[0]?.kind).toBe("select");
   });
 
-  it("offers to merge a branch dropped on the checked-out one, then confirms the merge", () => {
+  it("opens the merge confirmation for a branch dropped on the checked-out one", () => {
     dragAndDrop(label("topic"), label("main"));
-    expect(dialog.value).toBeNull();
-    const chooser = contextMenu.value!;
-    expect(chooser.source).toBe(refMenuSource(main));
-    expect(chooser.entries.map((item) => item?.title)).toEqual(["Merge topic into main"]);
-    act(() => chooser.entries[0]!.onClick());
+    expect(contextMenu.value).toBeNull();
     expect(dialog.value).toMatchObject({
       kind: "form",
       action: "dialogYesMerge",
@@ -394,11 +390,9 @@ describe("what a drop opens", () => {
     expect(vscodeApi.postMessage).not.toHaveBeenCalled();
   });
 
-  it("offers to rebase the checked-out branch dropped on another, then confirms the rebase", () => {
+  it("opens the rebase confirmation for the checked-out branch dropped on another", () => {
     dragAndDrop(paneRow("main"), label("origin/dev"));
-    const chooser = contextMenu.value!;
-    expect(chooser.entries.map((item) => item?.title)).toEqual(["Rebase main onto origin/dev"]);
-    act(() => chooser.entries[0]!.onClick());
+    expect(contextMenu.value).toBeNull();
     expect(dialog.value).toMatchObject({ kind: "form", action: "startRebase", inputs: [] });
     expect(vscodeApi.postMessage).not.toHaveBeenCalled();
   });

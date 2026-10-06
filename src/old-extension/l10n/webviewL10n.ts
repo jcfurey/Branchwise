@@ -242,7 +242,7 @@ export function getWebviewLocalizedStrings() {
     detailCommitter: vscode.l10n.t("Committer: {0}"),
 
     // Drag and drop onto branch labels. Each action names what the drop offers, beside the
-    // pointer and in the chooser; each hint says why a branch refuses the drop.
+    // pointer; each hint says why a branch refuses the drop.
     // {0} is a short commit ID, {1} the checked-out branch.
     dropCherryPick: vscode.l10n.t("Cherry-pick {0} onto {1}"),
     // {0} is the dragged branch, {1} the branch it was dropped on.

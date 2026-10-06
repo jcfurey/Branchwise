@@ -1878,7 +1878,6 @@ suite("Branchwise workflow UI", function () {
     await until(() => graph.evaluate(visible(cherryPicked)), "cherry-picked commit in the graph");
 
     assert.equal(await dragOnto(label("head:side"), label("head:main")), "Merge side into main");
-    await menu("Merge side into main");
     await until(
       () => graph.evaluate('document.querySelector("[role=dialog]")?.innerText.includes("side")'),
       "merge confirmation"

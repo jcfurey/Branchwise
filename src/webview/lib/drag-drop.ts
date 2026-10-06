@@ -341,10 +341,10 @@ export function dragHandlers(lookup: () => CommitLookup | null) {
         return;
       }
       const { actions } = target.offer;
-      if (what.kind === "commit") {
+      if (actions.length === 1) {
+        // The hint named the one thing the drop does; its own confirmation follows.
         actions[0]!.onClick();
       } else {
-        // A branch could be merged or rebased, so the user chooses, then confirms.
         openContextMenu(event, refMenuSource(ref), actions);
       }
     },
