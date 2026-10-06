@@ -28,12 +28,12 @@ import { remoteVisibility, type RemoteVisibility } from "@/backend/utils/remoteV
 import { readGitWithInput } from "@/backend/utils/runGit";
 import { resolveCommit } from "@/backend/utils/validation";
 
-const logArgs = (offset: number) => [
+const logArgs = (offset: number, count = HISTORY_PAGE_SIZE + 1) => [
   "log",
   "-z",
   "--format=" + HISTORY_FORMAT,
   "--date-order",
-  "--max-count=" + (HISTORY_PAGE_SIZE + 1),
+  "--max-count=" + count,
   "--skip=" + pageOffset(offset)
 ];
 
@@ -102,7 +102,13 @@ export async function loadHistory(
   offset: number,
   visibility: RemoteVisibility = {}
 ): Promise<HistoryPage> {
-  const args = logArgs(offset);
+  // Git applies `--skip` while it walks the commits, before `-S` or `-G` drops those whose
+  // changes do not match, so it would skip commits rather than matches. A search of changes
+  // reads the matches before this page and leaves them out instead: each page still stops at
+  // its last match, and the client's abort signal stops Git whenever the search is replaced.
+  const changes = filter.changes ?? "";
+  const skip = changes ? pageOffset(offset) : 0;
+  const args = changes ? logArgs(0, skip + HISTORY_PAGE_SIZE + 1) : logArgs(offset);
   for (const [name, value] of [
     ["since", filter.since],
     ["until", filter.until]
@@ -136,6 +142,12 @@ export async function loadHistory(
     : null;
   if (filter.text && !hashSearch) {
     args.push("--grep=" + filter.text);
+  }
+  if (changes) {
+    // `-S` counts the text's occurrences before and after each commit, as literal text: there
+    // is no `--pickaxe-regex`. `-G` matches each added or removed line against the expression.
+    // Attached to its option, the text cannot be read as an option, even when it starts with `-`.
+    args.push((regex ? "-G" : "-S") + changes);
   }
   if (filter.path && filter.follow) {
     args.push("--follow", "--name-status", "--diff-merges=first-parent");
@@ -188,7 +200,7 @@ export async function loadHistory(
   const output = commits
     ? await readGitWithInput(git, args, commits.join("\n") + "\n")
     : await git.raw(args);
-  return { ...historyPage(parseHistory(output)), ...(refs ? { refs } : {}) };
+  return { ...historyPage(parseHistory(output).slice(skip)), ...(refs ? { refs } : {}) };
 }
 
 export async function compareCommits(

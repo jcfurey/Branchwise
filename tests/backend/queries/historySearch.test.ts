@@ -245,3 +245,152 @@ describe("a tag search in a bare repository", () => {
     expect(subjects(await loadHistory(client, { ...ANY, tag: "v1" }, 0))).toStrictEqual(["init"]);
   });
 });
+
+/**
+ * Only read. After `init`, each commit by T unless named:
+ * - `add parser` adds `export function parseConfig() {}` to `src/a.ts`;
+ * - `use parser`, by Bob, adds `parseConfig();` to `src/b.ts`;
+ * - `tidy` adds a comment to `src/a.ts`;
+ * - `rename parameter` changes the line in `src/a.ts` to `parseConfig(text)`, which keeps the
+ *   number of `parseConfig` in the file;
+ * - `remove parser` takes that line out of `src/a.ts`;
+ * - `dash text` adds `notes.txt` holding `--output=x`.
+ */
+describe("searching the content of changes", () => {
+  let repo = "";
+
+  function commit(subject: string, files: Record<string, string>, author = "T") {
+    for (const [file, contents] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+      fs.writeFileSync(path.join(repo, file), contents);
+      git(["add", "--", file], repo);
+    }
+    git(
+      ["commit", "-q", `--author=${author} <${author.toLowerCase()}@example.com>`, "-m", subject],
+      repo
+    );
+  }
+
+  beforeAll(() => {
+    repo = makeRepo();
+    commit("add parser", { "src/a.ts": "export function parseConfig() {}\n" });
+    commit("use parser", { "src/b.ts": "parseConfig();\n" }, "Bob");
+    commit("tidy", { "src/a.ts": "export function parseConfig() {}\n// tidy\n" });
+    commit("rename parameter", { "src/a.ts": "export function parseConfig(text) {}\n// tidy\n" });
+    commit("remove parser", { "src/a.ts": "// tidy\n" });
+    commit("dash text", { "notes.txt": "--output=x\n" });
+  });
+
+  afterAll(() => {
+    fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+
+  it("finds the commits that add or remove the text, ignoring case", async () => {
+    const client = createGit(repo, "git");
+    expect(
+      subjects(await loadHistory(client, { ...ANY, changes: "parseConfig" }, 0))
+    ).toStrictEqual(["remove parser", "use parser", "add parser"]);
+    expect(
+      subjects(await loadHistory(client, { ...ANY, changes: "PARSECONFIG" }, 0))
+    ).toStrictEqual(["remove parser", "use parser", "add parser"]);
+  });
+
+  it("reads the text literally unless regular expressions are asked for", async () => {
+    const client = createGit(repo, "git");
+    expect(
+      subjects(await loadHistory(client, { ...ANY, changes: "parseConfig(text" }, 0))
+    ).toStrictEqual(["remove parser", "rename parameter"]);
+    expect(subjects(await loadHistory(client, { ...ANY, changes: "parse.*\\(\\)" }, 0))).toEqual(
+      []
+    );
+  });
+
+  it("with regular expressions, finds the commits that add or remove matching lines", async () => {
+    const client = createGit(repo, "git");
+    // Unlike the literal search, the line changed by `rename parameter` matches.
+    expect(
+      subjects(await loadHistory(client, { ...ANY, changes: "parseConfig", regex: true }, 0))
+    ).toStrictEqual(["remove parser", "rename parameter", "use parser", "add parser"]);
+    expect(
+      subjects(await loadHistory(client, { ...ANY, changes: "^// ti[a-z]+$", regex: true }, 0))
+    ).toStrictEqual(["tidy"]);
+  });
+
+  it("narrows the results with the other fields", async () => {
+    const client = createGit(repo, "git");
+    expect(
+      subjects(await loadHistory(client, { ...ANY, changes: "parseConfig", path: "src/b.ts" }, 0))
+    ).toStrictEqual(["use parser"]);
+    expect(
+      subjects(await loadHistory(client, { ...ANY, changes: "parseConfig", path: "src" }, 0))
+    ).toStrictEqual(["remove parser", "use parser", "add parser"]);
+    expect(
+      subjects(await loadHistory(client, { ...ANY, changes: "parseConfig", author: "bob" }, 0))
+    ).toStrictEqual(["use parser"]);
+    expect(
+      subjects(await loadHistory(client, { ...ANY, changes: "parseConfig", text: "add" }, 0))
+    ).toStrictEqual(["add parser"]);
+    const followed = await loadHistory(
+      client,
+      { ...ANY, changes: "parseConfig", path: "src/a.ts", follow: true },
+      0
+    );
+    expect(subjects(followed)).toStrictEqual(["remove parser", "add parser"]);
+    expect(followed.entries.map((entry) => entry.filePath)).toStrictEqual(["src/a.ts", "src/a.ts"]);
+  });
+
+  it("treats text that looks like an option as text", async () => {
+    const client = createGit(repo, "git");
+    for (const regex of [false, true]) {
+      expect(
+        // eslint-disable-next-line no-await-in-loop
+        subjects(await loadHistory(client, { ...ANY, changes: "--output=x", regex }, 0))
+      ).toStrictEqual(["dash text"]);
+    }
+    expect(fs.existsSync(path.join(repo, "x"))).toBe(false);
+  });
+});
+
+describe("a search of changes over many commits", () => {
+  /** Every third commit adds the text, so the matches fill more than a page. */
+  const COUNT = 330;
+  let repo = "";
+
+  beforeAll(() => {
+    repo = makeRepo();
+    const data = (text: string) => `data ${Buffer.byteLength(text)}\n${text}`;
+    const parent = gitOutput(["rev-parse", "HEAD"], repo);
+    const stream = Array.from({ length: COUNT }, (_, index) =>
+      [
+        "commit refs/heads/main",
+        `mark :${index + 1}`,
+        `committer T <t@t.com> ${1_700_000_000 + index} +0000`,
+        data(`c${index}`),
+        index === 0 ? `from ${parent}` : `from :${index}`,
+        "M 100644 inline count",
+        data(`${index}\n`),
+        ...(index % 3 === 0 ? [`M 100644 inline found-${index}`, data("needle\n")] : []),
+        ""
+      ].join("\n")
+    ).join("\n");
+    execFileSync("git", ["fast-import", "--quiet"], { cwd: repo, input: stream + "\n" });
+  });
+
+  afterAll(() => {
+    fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+
+  it("pages through the matches, not through the commits Git walked", async () => {
+    const client = createGit(repo, "git");
+    const pages = await Promise.all(
+      [0, 100].map((offset) => loadHistory(client, { ...ANY, changes: "needle" }, offset))
+    );
+    expect(pages.map((page) => [page.entries.length, page.more])).toStrictEqual([
+      [100, true],
+      [10, false]
+    ]);
+    expect(pages.flatMap((page) => subjects(page))).toStrictEqual(
+      Array.from({ length: COUNT / 3 }, (_, index) => `c${COUNT - 3 - index * 3}`)
+    );
+  });
+});

@@ -14,6 +14,7 @@ const EMPTY: HistoryFilter = {
   committer: "",
   branch: "",
   tag: "",
+  changes: "",
   regex: false
 };
 
@@ -47,6 +48,22 @@ describe("search text prefixes", () => {
     expect(typed("tag:v1 tag:v2").tag).toBe("v2");
   });
 
+  it("searches changes with changes: or diff:, keeping text that looks like an option", () => {
+    expect(typed("changes:parseConfig")).toStrictEqual({ ...EMPTY, changes: "parseConfig" });
+    expect(typed('fix Diff:"return null;" path:src')).toStrictEqual({
+      ...EMPTY,
+      text: "fix",
+      changes: "return null;",
+      path: "src"
+    });
+    expect(typed("changes:--output=x").changes).toBe("--output=x");
+  });
+
+  it("keeps the last value of a field named twice under either of its names", () => {
+    expect(typed("changes:a diff:b changes:c").changes).toBe("c");
+    expect(typed("diff:a changes:b diff:c").changes).toBe("c");
+  });
+
   it("leaves words that only look like prefixes in the text", () => {
     const filter = { ...EMPTY, text: "fix: typo in docs:readme" };
     expect(applySearchPrefixes(filter)).toBe(filter);
@@ -67,6 +84,7 @@ describe("whether the Filters button marks set fields", () => {
     [{ follow: true }, false],
     [{ committer: "cid" }, true],
     [{ tag: "v1" }, true],
+    [{ changes: "parseConfig" }, true],
     [{ branch: "main" }, true],
     [{ regex: true }, true],
     [{ since: "2026-01-01" }, true]
