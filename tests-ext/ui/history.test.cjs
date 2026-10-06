@@ -1196,18 +1196,31 @@ suite("Branchwise workflow UI", function () {
       ),
       "pick,squash,squash,pick"
     );
+    // The combined commit's message is offered as Git would combine it, after the group.
+    const combined = "[role=dialog] [data-combined] textarea";
+    assert.equal(
+      await graph.evaluate(`document.querySelector(${JSON.stringify(combined)}).value`),
+      "squash first\n\nsquash second\n\nsquash third"
+    );
+    assert.equal(
+      await graph.evaluate(
+        `[...document.querySelectorAll("[role=dialog] [data-entry], [role=dialog] [data-combined]")].map(e => e.dataset.combined ? "message" : "commit").join(",")`
+      ),
+      "commit,commit,commit,message,commit"
+    );
+    const edited = "Squashed in the UI ✓\n\n# kept heading\n'quoted' $(not run)";
+    await graph.evaluate(
+      `(() => { const input = document.querySelector(${JSON.stringify(combined)}); input.focus(); input.value = ${JSON.stringify(edited)}; input.dispatchEvent(new Event('input', {bubbles: true})); })()`
+    );
     // Opening the editor rewrites nothing; the user starts the rebase.
     assert.equal(git(["rev-parse", "HEAD"], dir), head);
     await button("Start Rebase");
     await finished();
     assert.equal(
       git(["log", "--reverse", "--format=%s", base + "..HEAD"], dir),
-      "squash first\nsquash later"
+      "Squashed in the UI ✓\nsquash later"
     );
-    assert.equal(
-      git(["log", "-1", "--format=%B", "HEAD^"], dir),
-      "squash first\n\nsquash second\n\nsquash third"
-    );
+    assert.equal(git(["log", "-1", "--format=%B", "HEAD^"], dir), edited);
     assert.equal(
       git(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD^"], dir),
       "a\nb\nc"

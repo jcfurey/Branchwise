@@ -762,5 +762,9 @@
   "The {0} did not finish in Branchwise, so Undo cannot tell what it changed. Its previous commits stay listed in the Safety Net.": "{0}未在 Branchwise 中完成，因此復原無法確定它變更了什麼。其先前的提交仍列在安全網中。",
   "This stash is already in the stash list.": "此暫存紀錄已在暫存清單中。",
   "The refs are back, but the discarded changes could not be applied. They are kept as commit {0}: {1}": "參照已恢復，但無法套用被捨棄的變更。它們保存為提交 {0}：{1}",
-  "Absorb into {0}": "吸收到 {0}"
+  "Absorb into {0}": "吸收到 {0}",
+  "Message of the combined commit {0}": "合併後提交 {0} 的提交訊息",
+  "Squash keeps these messages in one commit; Fixup messages are left out. Edit the result here.": "壓縮會將這些提交訊息保留在同一個提交中；修正的提交訊息會被捨棄。可在此編輯最終結果。",
+  "The combined commit needs a message.": "合併後的提交需要提交訊息。",
+  "Each combined commit needs a nonempty message.": "每個合併後的提交都需要非空的提交訊息。"
 }
