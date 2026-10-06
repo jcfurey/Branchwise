@@ -12,6 +12,7 @@ import { loadConflictForecast } from "@/backend/queries/conflictForecast";
 import { loadAmendPlan, loadRewordPlan } from "@/backend/queries/editCommit";
 import { historyQuery } from "@/backend/queries/history";
 import { loadPushStatus } from "@/backend/queries/pushStatus";
+import { loadReplayForecast } from "@/backend/queries/replayForecast";
 import {
   loadBulkSyncPlan,
   loadSyncPlan,
@@ -334,6 +335,8 @@ export async function repositoryQuery(
         kind: "conflictForecast",
         conflicts: (await loadOperation(git)) === null ? await loadConflictForecast(git, query) : []
       };
+    case "replayForecast":
+      return { kind: "replayForecast", forecast: await loadReplayForecast(git, query) };
     case "bisect":
       return {
         kind: "bisect",

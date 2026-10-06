@@ -72,6 +72,16 @@ async function topLevel(git: SimpleGit) {
 }
 
 /**
+ * Where read-only commands run: the work tree's top level or, since a bare repository has no work
+ * tree to run in, the Git directory itself. A caller that runs many commands asks once.
+ */
+export async function readDirectory(git: SimpleGit) {
+  return topLevel(git).catch(async () =>
+    (await git.raw(["rev-parse", "--absolute-git-dir"])).replace(/\n$/, "")
+  );
+}
+
+/**
  * Run Git with exact exit-code handling, for commands with editors or stdout-only failures, and
  * for network commands. Git never prompts on a terminal, which nobody can answer here; it fails
  * instead. Cancelling the client's abort signal stops the process and those it started.
@@ -120,10 +130,7 @@ export async function writeBlob(git: SimpleGit, content: Buffer) {
  */
 export async function readGitWithInput(git: SimpleGit, args: string[], input: string) {
   const binary = gitProcessOf(git)?.gitPath ?? "git";
-  // A bare repository has no work tree to run in, so it runs in the Git directory itself.
-  const cwd = await topLevel(git).catch(async () =>
-    (await git.raw(["rev-parse", "--absolute-git-dir"])).replace(/\n$/, "")
-  );
+  const cwd = await readDirectory(git);
   const { done } = start(binary, args, cwd, process.env, { input: Buffer.from(input) });
   return (await done).stdout.toString();
 }
@@ -131,14 +138,17 @@ export async function readGitWithInput(git: SimpleGit, args: string[], input: st
 /**
  * Run a read-only Git command whose exit code is part of its answer, such as `merge-tree`, which
  * exits with 1 for a merge with conflicts. Any code outside `codes` rejects, as other failures do.
+ * `options.cwd` comes from `readDirectory`; `options.env` replaces the whole environment.
  */
-export async function readGitCode(git: SimpleGit, args: string[], codes: number[]) {
+export async function readGitCode(
+  git: SimpleGit,
+  args: string[],
+  codes: number[],
+  options: { env?: NodeJS.ProcessEnv; cwd?: string } = {}
+) {
   const binary = gitProcessOf(git)?.gitPath ?? "git";
-  // A bare repository has no work tree to run in, so it runs in the Git directory itself.
-  const cwd = await topLevel(git).catch(async () =>
-    (await git.raw(["rev-parse", "--absolute-git-dir"])).replace(/\n$/, "")
-  );
-  const { done } = start(binary, args, cwd, process.env, { codes });
+  const cwd = options.cwd ?? (await readDirectory(git));
+  const { done } = start(binary, args, cwd, options.env ?? process.env, { codes });
   const { stdout, code } = await done;
   return { stdout: stdout.toString(), code };
 }

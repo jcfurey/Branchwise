@@ -52,6 +52,7 @@ basics.
 - Commits: check out, cherry-pick, revert, reset, fixup; cherry-pick or revert several in order
 - Absorb staged changes: each hunk becomes a fixup for the commit that last changed its lines
 - Plain and interactive rebase; push and pull previews; force-push only with a lease
+- Before a rebase, cherry-pick or revert, see which commit would stop with conflicts, and in which files
 - Fast-forward every branch that is only behind its upstream, without a checkout
 - Stashes, conflict resolution, and continue, skip or abort for interrupted operations
 
