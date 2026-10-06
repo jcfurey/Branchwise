@@ -27,7 +27,9 @@ function state(count: number): RepositoryState {
       upstream: "",
       ahead: 0,
       behind: 0,
-      gone: false
+      gone: false,
+      date: 0,
+      merged: false
     })),
     remoteBranches: Array.from({ length: count }, (_, i) => ({
       name: `origin/remote-${i}`,

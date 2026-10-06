@@ -25,10 +25,46 @@ const STATE: RepositoryState = {
   remotes: [],
   pushDefault: null,
   branches: [
-    { name: "main", hash: "1", upstream: "origin/main", ahead: 2, behind: 0, gone: false },
-    { name: "feat", hash: "2", upstream: "origin/feat", ahead: 0, behind: 0, gone: false },
-    { name: "gone", hash: "3", upstream: "origin/gone", ahead: 1, behind: 3, gone: true },
-    { name: "wt", hash: "4", upstream: "", ahead: 5, behind: 0, gone: false }
+    {
+      name: "main",
+      hash: "1",
+      upstream: "origin/main",
+      ahead: 2,
+      behind: 0,
+      gone: false,
+      date: 0,
+      merged: false
+    },
+    {
+      name: "feat",
+      hash: "2",
+      upstream: "origin/feat",
+      ahead: 0,
+      behind: 0,
+      gone: false,
+      date: 0,
+      merged: false
+    },
+    {
+      name: "gone",
+      hash: "3",
+      upstream: "origin/gone",
+      ahead: 1,
+      behind: 3,
+      gone: true,
+      date: 0,
+      merged: false
+    },
+    {
+      name: "wt",
+      hash: "4",
+      upstream: "",
+      ahead: 5,
+      behind: 0,
+      gone: false,
+      date: 0,
+      merged: false
+    }
   ],
   remoteBranches: [],
   tags: [],

@@ -19,6 +19,7 @@ import {
 import { loadWorkingTree } from "@/backend/queries/workingTree";
 import { loadWorkspace } from "@/backend/queries/workspace";
 import type {
+  BranchDetails,
   OperationKind,
   OperationState,
   RebasePlan,
@@ -123,30 +124,67 @@ function parseRefs(text: string, extra: "symref" | "peeled"): RefDetails[] {
     });
 }
 
+/**
+ * Parses `name NUL upstream NUL tracking NUL hash NUL date` lines of local branches. `merged`
+ * names the branches HEAD already contains.
+ */
+function parseBranches(text: string, merged: ReadonlySet<string>): BranchDetails[] {
+  return text
+    .trimEnd()
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      const [name = "", upstream = "", tracking = "", hash = "", date = ""] = line.split("\0");
+      return {
+        name,
+        hash,
+        upstream: upstream.replace(/^refs\/(heads|remotes)\//, ""),
+        ahead: Number(tracking.match(/ahead (\d+)/)?.[1] ?? 0),
+        behind: Number(tracking.match(/behind (\d+)/)?.[1] ?? 0),
+        gone: tracking === "[gone]",
+        date: Number(date) || 0,
+        merged: merged.has(name)
+      };
+    });
+}
+
 export async function loadRepositoryState(git: SimpleGit): Promise<RepositoryState> {
-  const [remotes, pushDefault, branches, remoteRefs, tagRefs, worktrees, status, operation] =
-    await Promise.all([
-      git.getRemotes(),
-      git.getConfig("remote.pushDefault"),
-      git.raw([
-        "for-each-ref",
-        "--format=%(refname:lstrip=2)%00%(upstream)%00%(upstream:track)%00%(objectname)",
-        "refs/heads/"
-      ]),
-      git.raw([
-        "for-each-ref",
-        "--format=%(refname:lstrip=2)%00%(objectname)%00%(symref)",
-        "refs/remotes/"
-      ]),
-      git.raw([
-        "for-each-ref",
-        "--format=%(refname:lstrip=2)%00%(objectname)%00%(*objectname)",
-        "refs/tags/"
-      ]),
-      loadWorktrees(git),
-      git.status(),
-      loadOperation(git)
-    ]);
+  const [
+    remotes,
+    pushDefault,
+    branches,
+    mergedBranches,
+    remoteRefs,
+    tagRefs,
+    worktrees,
+    status,
+    operation
+  ] = await Promise.all([
+    git.getRemotes(),
+    git.getConfig("remote.pushDefault"),
+    git.raw([
+      "for-each-ref",
+      "--format=%(refname:lstrip=2)%00%(upstream)%00%(upstream:track)%00%(objectname)%00%(committerdate:unix)",
+      "refs/heads/"
+    ]),
+    // Before the first commit there is no HEAD to contain anything.
+    git
+      .raw(["for-each-ref", "--merged=HEAD", "--format=%(refname:lstrip=2)", "refs/heads/"])
+      .catch(() => ""),
+    git.raw([
+      "for-each-ref",
+      "--format=%(refname:lstrip=2)%00%(objectname)%00%(symref)",
+      "refs/remotes/"
+    ]),
+    git.raw([
+      "for-each-ref",
+      "--format=%(refname:lstrip=2)%00%(objectname)%00%(*objectname)",
+      "refs/tags/"
+    ]),
+    loadWorktrees(git),
+    git.status(),
+    loadOperation(git)
+  ]);
   return {
     remotes: await Promise.all(
       remotes.map(async ({ name }) => ({
@@ -156,21 +194,7 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
       }))
     ),
     pushDefault: pushDefault.value,
-    branches: branches
-      .trimEnd()
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        const [name = "", upstream = "", tracking = "", hash = ""] = line.split("\0");
-        return {
-          name,
-          hash,
-          upstream: upstream.replace(/^refs\/(heads|remotes)\//, ""),
-          ahead: Number(tracking.match(/ahead (\d+)/)?.[1] ?? 0),
-          behind: Number(tracking.match(/behind (\d+)/)?.[1] ?? 0),
-          gone: tracking === "[gone]"
-        };
-      }),
+    branches: parseBranches(branches, new Set(mergedBranches.split("\n").filter(Boolean))),
     remoteBranches: parseRefs(remoteRefs, "symref"),
     tags: parseRefs(tagRefs, "peeled"),
     worktrees,

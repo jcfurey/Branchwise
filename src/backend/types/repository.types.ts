@@ -8,6 +8,10 @@ export type BranchDetails = {
   ahead: number;
   behind: number;
   gone: boolean;
+  /** When the branch's last commit was committed, in seconds since 1970; 0 when unknown. */
+  date: number;
+  /** Whether HEAD already contains the branch's last commit, as for HEAD's own branch. */
+  merged: boolean;
 };
 export type WorktreeDetails = {
   path: string;

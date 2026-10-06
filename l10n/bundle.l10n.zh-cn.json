@@ -551,5 +551,17 @@
   "Not pulled: only the tracked remote branch has this commit": "未拉取：仅跟踪的远程分支包含此提交",
   "Merging this branch into {0} would conflict in:": "将此分支合并到 {0} 时会在以下文件中冲突：",
   "and {0} more files": "以及另外 {0} 个文件",
-  "More branches and tags: {0}": "更多分支和标签：{0}"
+  "More branches and tags: {0}": "更多分支和标签：{0}",
+  "Pin {0} to the top": "将 {0} 固定到顶部",
+  "Unpin {0}": "取消固定 {0}",
+  "Pinned": "已固定",
+  "Sort by most recent commit": "按最近提交排序",
+  "Sorted by most recent commit. Click to sort by name.": "已按最近提交排序。点击可按名称排序。",
+  "Sorted by name. Click to sort by most recent commit.": "已按名称排序。点击可按最近提交排序。",
+  "merged": "已合并",
+  "Already merged into {0}: deleting it loses no commits": "已合并到 {0}：删除它不会丢失任何提交",
+  "gone": "已消失",
+  "stale": "陈旧",
+  "No commits for {0} days": "已有 {0} 天没有提交",
+  "Diverged: {0} ahead of and {1} behind its upstream": "已分叉：领先上游 {0} 个提交，落后 {1} 个"
 }
