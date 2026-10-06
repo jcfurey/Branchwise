@@ -25,6 +25,35 @@ const CHANGE_COLOUR: Record<GitFileChange["type"], string> = {
   D: "text-git-deleted"
 };
 
+/** A status letter Git prints for a change, whether or not the details report it today. */
+type StatusLetter = GitFileChange["type"] | "C" | "T" | "U";
+
+/**
+ * What each status letter stands for, for its tooltip and for screen readers, so the colour is
+ * never the only sign of the kind of change. The details report A, M, D and R, counting a type
+ * change as M and never detecting copies; the other letters are named so that a wider report
+ * needs no change here.
+ */
+function statusName(letter: StatusLetter): string {
+  const l10n = window.l10n;
+  switch (letter) {
+    case "A":
+      return l10n.changeAdded;
+    case "M":
+      return l10n.changeModified;
+    case "D":
+      return l10n.changeDeleted;
+    case "R":
+      return l10n.changeRenamed;
+    case "C":
+      return l10n.changeCopied;
+    case "T":
+      return l10n.changeTypeChanged;
+    case "U":
+      return l10n.changeUnmerged;
+  }
+}
+
 const ENTRY_CLASS = "flex w-full items-center overflow-hidden text-left whitespace-nowrap";
 const GLYPH_CLASS = "mr-2 size-3.25 shrink-0 text-fg/60";
 
@@ -252,18 +281,37 @@ function FileEntry({ entry, commitHash }: { entry: FileTreeFile; commitHash: str
     >
       {PAGE}
       <span class="min-w-0 truncate">{entry.name}</span>
-      {type === "R" && (
-        <span
-          class="ml-2 shrink-0 cursor-help text-fg"
-          title={format(window.l10n.tooltipRenamedTo, oldFilePath, newFilePath).join("")}
-        >
-          {type}
-        </span>
-      )}
       {!binary && (type === "M" || type === "R") && (
         <LineCounts added={additions} removed={deletions} />
       )}
+      <StatusCell
+        letter={type}
+        title={
+          type === "R"
+            ? format(window.l10n.tooltipRenamedTo, oldFilePath, newFilePath).join("")
+            : undefined
+        }
+      />
     </button>
+  );
+}
+
+/**
+ * The change's status letter at the end of the entry, in a cell of fixed width so the letters
+ * line up down the tree. Its name is read out in place of the letter.
+ */
+function StatusCell({ letter, title }: { letter: StatusLetter; title?: string | undefined }) {
+  const name = statusName(letter);
+  return (
+    <span
+      role="img"
+      aria-label={name}
+      data-change={letter}
+      class="ml-auto w-6 shrink-0 cursor-help text-right font-mono text-muted"
+      title={title ?? name}
+    >
+      {letter}
+    </span>
   );
 }
 

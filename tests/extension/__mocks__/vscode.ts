@@ -6,9 +6,11 @@
 const inertSubscription = () => ({ dispose: () => {} });
 
 export const workspace = {
-  // Every setting reads as the fallback the caller passes, so settings keep their defaults.
+  // Every setting reads as the fallback the caller passes, so settings keep their defaults, and
+  // no setting is stored at any scope.
   getConfiguration: () => ({
-    get: <T>(_key: string, defaultValue?: T) => defaultValue
+    get: <T>(_key: string, defaultValue?: T) => defaultValue,
+    inspect: () => undefined
   }),
   workspaceFolders: undefined,
   createFileSystemWatcher: () => ({ onDidCreate: inertSubscription, dispose: () => {} }),

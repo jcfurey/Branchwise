@@ -25,7 +25,8 @@ export type WebviewConfig = Readonly<{
   dateFormat: DateFormat;
   /**
    * The branch palette, in the order the graph hands colours out. Entries are kept exactly as
-   * written in the setting, and the list may be empty.
+   * written in the setting, and the list may be empty. While the user has not set it, the entries
+   * are CSS `var()` references to the theme colours `branchwise.graphLane1` and on.
    */
   graphColours: readonly string[];
   graphStyle: GraphStyle;

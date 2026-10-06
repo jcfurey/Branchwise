@@ -29,6 +29,7 @@ import type { FocusDimming } from "@/webview/types";
 import { getCommitDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
 import { initials } from "@/webview/utils/initials";
+import { commitRowLabel } from "@/webview/utils/rowDescription";
 
 /** A commit that no remote-tracking branch has yet, or that no local branch has yet. */
 export type PushState = "unpushed" | "unpulled";
@@ -342,6 +343,7 @@ export function CommitRow({
       tabIndex={tabStop ? 0 : -1}
       aria-selected={uncommitted ? expanded : selected}
       aria-expanded={expanded}
+      aria-label={commitRowLabel({ commit, message, isHead, headBranch, push, conflicts })}
       title={uncommitted ? l10n.viewWorkingTreeChanges : l10n.selectCommitsHint}
       onFocus={(event) => {
         if (event.target === event.currentTarget) {

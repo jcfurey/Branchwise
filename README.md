@@ -36,6 +36,7 @@ basics.
 - Dots and rings mark unpushed and unpulled commits
 - A mark on each branch that would conflict if merged into yours, naming the files
 - Teammates' remote branches that would conflict with yours, flagged before anyone opens a pull request
+- Shapes, status letters and screen-reader summaries, so colour is never the only sign, and [theme colours](docs/preferences.md#theme-colours) for the lanes
 
 **Focus**
 

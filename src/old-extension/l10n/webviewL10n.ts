@@ -157,6 +157,16 @@ export function getWebviewLocalizedStrings() {
     teamOverlapHint: vscode.l10n.t(
       "Recent work on the remote that would not merge cleanly into your branch. Choose a branch to show it in the graph."
     ),
+    // Parts of the summary a screen reader reads for a commit row, after its subject, author and
+    // age, joined with commas: "…, merge of 2 parents, unpushed, branch main, tag v1.0".
+    rowHead: vscode.l10n.t("checked out"),
+    rowMergeOf: vscode.l10n.t("merge of {0} parents"),
+    rowUnpushed: vscode.l10n.t("unpushed"),
+    rowUnpulled: vscode.l10n.t("unpulled"),
+    rowConflictsWith: vscode.l10n.t("has conflicts with {0}"),
+    rowBranch: vscode.l10n.t("branch {0}"),
+    rowRemote: vscode.l10n.t("remote branch {0}"),
+    rowTag: vscode.l10n.t("tag {0}"),
     copyTagName: vscode.l10n.t("Copy Tag Name"),
     copyBranchName: vscode.l10n.t("Copy Branch Name"),
     deleteTag: vscode.l10n.t("Delete Local Tag"),
@@ -263,7 +273,15 @@ export function getWebviewLocalizedStrings() {
     tooltipAddition: vscode.l10n.t("{0} line added"),
     tooltipAdditions: vscode.l10n.t("{0} lines added"),
     tooltipDeletion: vscode.l10n.t("{0} line deleted"),
-    tooltipDeletions: vscode.l10n.t("{0} lines deleted")
+    tooltipDeletions: vscode.l10n.t("{0} lines deleted"),
+    // What each status letter in a commit's file tree stands for: A, M, D, R, C, T and U.
+    changeAdded: vscode.l10n.t("Added"),
+    changeModified: vscode.l10n.t("Modified"),
+    changeDeleted: vscode.l10n.t("Deleted"),
+    changeRenamed: vscode.l10n.t("Renamed"),
+    changeCopied: vscode.l10n.t("Copied"),
+    changeTypeChanged: vscode.l10n.t("Type changed"),
+    changeUnmerged: vscode.l10n.t("Unmerged")
   };
 }
 

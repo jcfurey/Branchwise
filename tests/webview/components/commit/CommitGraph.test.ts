@@ -126,7 +126,8 @@ describe("CommitGraph", () => {
     expect(dots()).toHaveLength(ROWS.length);
     expect(dots().map((_circle, index) => dot(index))).toEqual([
       { at: "8,12", relation: "normal", fill: null, stroke: "#808080" },
-      { at: "8,36", relation: "direct", fill: "#ff0000", stroke: null },
+      // The merge's ring takes the colour; its centre dot is not a circle.
+      { at: "8,36", relation: "direct", fill: null, stroke: "#ff0000" },
       { at: "40,60", relation: "unrelated", fill: GREY, stroke: null },
       {
         at: "24,84",
@@ -220,6 +221,50 @@ describe("CommitGraph", () => {
     expect(head.getAttribute("stroke")).toBe(
       ["#ff0000", "#00ff00", "#0000ff"][layout.vertices[0]!.colour % 3]
     );
+  });
+
+  it("tells merges, HEAD and the uncommitted changes apart by shape as well as colour", () => {
+    drawGraph({ focus: null });
+    const shape = (index: number) => {
+      const circle = dots()[index]!;
+      return {
+        kind: circle.getAttribute("data-dot"),
+        r: circle.getAttribute("r"),
+        filled: circle.hasAttribute("fill"),
+        dashed: circle.hasAttribute("stroke-dasharray")
+      };
+    };
+
+    expect([0, 1, 2].map(shape)).toEqual([
+      { kind: "uncommitted", r: "4", filled: false, dashed: true },
+      { kind: "merge", r: "5", filled: false, dashed: false },
+      { kind: "commit", r: "4", filled: true, dashed: false }
+    ]);
+    // Twelve dashes and gaps go exactly round the ring.
+    const dashes = Number(dots()[0]!.getAttribute("stroke-dasharray"));
+    expect(dashes * 12).toBeCloseTo(2 * Math.PI * 4);
+    // The merge's centre dot, in the ring's colour and well inside the row.
+    const centres = [...svg().querySelectorAll("rect")];
+    expect(centres).toHaveLength(1);
+    expect(centres[0]!.previousElementSibling).toBe(dots()[1]);
+    expect(
+      ["x", "y", "width", "height", "rx", "fill"].map((name) => centres[0]!.getAttribute(name))
+    ).toEqual(["6", "34", "4", "4", "2", "#ff0000"]);
+
+    // Without the uncommitted row, the merge is HEAD, which keeps HEAD's ring.
+    drawGraph({ rows: ROWS.slice(1), focus: null });
+    expect(shape(0)).toEqual({ kind: "head", r: "4", filled: false, dashed: false });
+    expect(svg().querySelector("rect")).toBeNull();
+
+    // Every row still has exactly one circle, in row order.
+    drawGraph({ rows: ROWS.slice(1), head: "s", focus: null });
+    expect(dots().map((circle) => circle.getAttribute("data-dot"))).toEqual([
+      "merge",
+      "head",
+      "commit",
+      "commit",
+      "commit"
+    ]);
   });
 
   it("shows revealed and hovered dots in full colour, and only while they are", () => {

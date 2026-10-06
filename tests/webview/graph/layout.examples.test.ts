@@ -37,7 +37,7 @@ const examples: Array<Example> = [
     head: "m",
     drawing: {
       lanes: 2,
-      dots: ["0/0 current", "0/0", "1/1", "0/0"],
+      dots: ["0/0 current merge", "0/0", "1/1", "0/0"],
       tracks: [
         [0, "0>1 0,0>0,1", "1>3 0,1>0,2", "1>3 0,2>0,3"],
         [1, "0>2 0,0>1,1 early", "0>2 1,1>1,2", "2>3 1,2>0,3"]
@@ -50,7 +50,7 @@ const examples: Array<Example> = [
     head: null,
     drawing: {
       lanes: 2,
-      dots: ["0/0", "0/0", "1/1", "0/0", "0/0", "0/0", "1/1", "0/0"],
+      dots: ["0/0 merge", "0/0", "1/1", "0/0", "0/0 merge", "0/0", "1/1", "0/0"],
       tracks: [
         [
           0,
@@ -73,7 +73,7 @@ const examples: Array<Example> = [
     head: null,
     drawing: {
       lanes: 4,
-      dots: ["0/0", "0/0", "1/1", "2/2", "3/3", "0/0"],
+      dots: ["0/0 merge", "0/0", "1/1", "2/2", "3/3", "0/0"],
       tracks: [
         [0, "0>1 0,0>0,1", "1>5 0,1>0,2", "1>5 0,2>0,3", "1>5 0,3>0,4", "1>5 0,4>0,5"],
         [1, "0>2 0,0>1,1 early", "0>2 1,1>1,2", "2>5 1,2>1,3", "2>5 1,3>1,4", "2>5 1,4>0,5"],
@@ -88,7 +88,7 @@ const examples: Array<Example> = [
     head: null,
     drawing: {
       lanes: 3,
-      dots: ["0/0", "0/0", "1/1", "0/0", "1/1", "0/0"],
+      dots: ["0/0 merge", "0/0 merge", "1/1 merge", "0/0", "1/1", "0/0"],
       tracks: [
         [
           0,
@@ -118,7 +118,7 @@ const examples: Array<Example> = [
     head: "tip",
     drawing: {
       lanes: 3,
-      dots: ["0/0 current", "0/0", "1/1", "0/0", "0/0"],
+      dots: ["0/0 current merge", "0/0 merge", "1/1", "0/0", "0/0"],
       tracks: [
         [
           0,
@@ -140,7 +140,7 @@ const examples: Array<Example> = [
     head: null,
     drawing: {
       lanes: 2,
-      dots: ["0/0", "0/0", "1/1", "0/0"],
+      dots: ["0/0 merge", "0/0", "1/1", "0/0"],
       tracks: [
         [0, "0>1 0,0>0,1", "1>3 0,1>0,2", "1>3 0,2>0,3"],
         [1, "0>2 0,0>1,1 early", "0>2 1,1>1,2", "2>none 1,2>1,3"]
@@ -153,7 +153,7 @@ const examples: Array<Example> = [
     head: null,
     drawing: {
       lanes: 2,
-      dots: ["0/0", "1/1", "0/0"],
+      dots: ["0/0 merge", "1/1", "0/0"],
       tracks: [
         [0, "0>2 0,0>0,1", "0>2 0,1>0,2"],
         [1, "1>none 1,1>1,2"]
@@ -169,7 +169,7 @@ const examples: Array<Example> = [
     head: null,
     drawing: {
       lanes: 3,
-      dots: ["0/0", "2/2", "1/1", "0/0", "2/2", "1/1", "0/0"],
+      dots: ["0/0 merge", "2/2", "1/1", "0/0", "2/2", "1/1", "0/0"],
       tracks: [
         [
           0,
@@ -199,7 +199,7 @@ const examples: Array<Example> = [
     head: null,
     drawing: {
       lanes: 2,
-      dots: ["0/0", "0/0", "0/0", "0/0"],
+      dots: ["0/0 merge", "0/0 merge", "0/0", "0/0"],
       tracks: [
         [
           0,
@@ -220,7 +220,7 @@ const examples: Array<Example> = [
     head: null,
     drawing: {
       lanes: 3,
-      dots: ["0/0", "0/0", "1/1", "0/0", "0/0"],
+      dots: ["0/0 merge", "0/0", "1/1", "0/0", "0/0"],
       tracks: [
         [
           0,
@@ -241,7 +241,7 @@ const examples: Array<Example> = [
     head: null,
     drawing: {
       lanes: 3,
-      dots: ["0/0", "0/0", "1/1", "0/0", "0/0"],
+      dots: ["0/0 merge", "0/0", "1/1", "0/0", "0/0"],
       tracks: [
         [
           0,
@@ -262,7 +262,7 @@ const examples: Array<Example> = [
     head: null,
     drawing: {
       lanes: 2,
-      dots: ["0/0", "0/0", "1/1", "0/0", "0/0", "1/2", "0/0"],
+      dots: ["0/0 merge", "0/0", "1/1", "0/0 merge", "0/0", "1/2", "0/0"],
       tracks: [
         [
           0,
@@ -284,7 +284,7 @@ const examples: Array<Example> = [
     head: null,
     drawing: {
       lanes: 2,
-      dots: ["0/0", "0/0", "1/1", "0/0", "1/1", "0/0", "1/2", "0/0"],
+      dots: ["0/0 merge", "0/0", "1/1", "0/0", "1/1 merge", "0/0", "1/2", "0/0"],
       tracks: [
         [
           0,
@@ -380,7 +380,7 @@ const examples: Array<Example> = [
     head: "h",
     drawing: {
       lanes: 2,
-      dots: ["0/0 current uncommitted", "1/1", "1/1", "0/0"],
+      dots: ["0/0 current uncommitted", "1/1 merge", "1/1", "0/0"],
       tracks: [
         [
           0,
@@ -400,7 +400,7 @@ const examples: Array<Example> = [
     head: "h",
     drawing: {
       lanes: 4,
-      dots: ["0/0 current uncommitted", "1/1", "2/2", "1/1", "2/2", "0/0", "0/0"],
+      dots: ["0/0 current uncommitted", "1/1", "2/2 merge", "1/1", "2/2", "0/0", "0/0"],
       tracks: [
         [
           0,
@@ -460,7 +460,7 @@ const examples: Array<Example> = [
     head: "zzz",
     drawing: {
       lanes: 1,
-      dots: ["0/0", "0/0", "0/0"],
+      dots: ["0/0 merge", "0/0", "0/0"],
       tracks: [[0, "0>1 0,0>0,1", "1>2 0,1>0,2"]]
     }
   },
@@ -470,7 +470,7 @@ const examples: Array<Example> = [
     head: "merge",
     drawing: {
       lanes: 3,
-      dots: ["0/0", "1/1 current", "2/2", "1/1", "0/0"],
+      dots: ["0/0", "1/1 current merge", "2/2", "1/1", "0/0"],
       tracks: [
         [0, "0>4 0,0>0,1", "0>4 0,1>0,2", "0>4 0,2>0,3", "0>4 0,3>0,4"],
         [1, "1>3 1,1>1,2", "1>3 1,2>1,3", "3>4 1,3>0,4"],
@@ -503,7 +503,7 @@ describe("worked examples of the graph layout", () => {
   it("E2 lays out one commit as one dot and a track without lines", () => {
     const single: GraphLayout = {
       branches: [{ colour: 0, lines: [] }],
-      vertices: [{ x: 0, y: 0, colour: 0, isCommitted: true, isCurrent: true }],
+      vertices: [{ x: 0, y: 0, colour: 0, isCommitted: true, isCurrent: true, isMerge: false }],
       lanes: 1
     };
     expect(computeGraphLayout(history("a"), "a")).toStrictEqual(single);

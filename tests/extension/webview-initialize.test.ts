@@ -2,7 +2,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 
 import { webviewConfig, webviewInitialize } from "@/extension/handlers/initialize";
 
-import { declaredGraphColours } from "./manifest";
+import { themeGraphColours } from "./manifest";
 
 const settings = vi.hoisted(() => ({
   language: "fr",
@@ -18,7 +18,9 @@ vi.mock("vscode", () => ({
   workspace: {
     getConfiguration: () => ({
       get: (key: string, fallback?: unknown) =>
-        settings.values.has(key) ? settings.values.get(key) : fallback
+        settings.values.has(key) ? settings.values.get(key) : fallback,
+      inspect: (key: string) =>
+        settings.values.has(key) ? { globalValue: settings.values.get(key) } : undefined
     })
   }
 }));
@@ -30,7 +32,7 @@ const DEFAULT_CONFIG = {
   autoCenterCommitDetailsView: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
-  graphColours: declaredGraphColours,
+  graphColours: themeGraphColours,
   graphStyle: "rounded",
   initialLoadCommits: 300,
   loadMoreCommits: 100,

@@ -50,6 +50,8 @@ export type GraphVertex = {
   isCommitted: boolean;
   /** The checked-out commit, or the uncommitted row when shown. Drawn hollow. */
   isCurrent: boolean;
+  /** The commit has more than one parent, whether or not they are loaded. */
+  isMerge: boolean;
 };
 
 /**

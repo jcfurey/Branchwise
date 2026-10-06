@@ -56,3 +56,30 @@ VS Code settings, unlike the choices above, apply to every repository; the
 
 The remote branches tried follow the graph's choices for this repository: a hidden remote, a
 hidden-branch pattern or **Show Remote Branches in Graph** turned off leaves branches out.
+
+## Theme colours
+
+Branchwise contributes these colours, which a colour theme or `workbench.colorCustomizations` in
+your settings can change:
+
+| Colour                                             | Used for                                                      | Default in every theme kind                   |
+| -------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------- |
+| `branchwise.graphLane1` … `branchwise.graphLane12` | The graph's lanes, in order, while `graphColours` is not set  | The 12 colours of `graphColours`              |
+| `branchwise.unpushed`                              | The dot before a commit that no remote branch has yet         | `gitDecoration.modifiedResourceForeground`    |
+| `branchwise.conflict`                              | The mark on a branch that would conflict if merged into yours | `gitDecoration.conflictingResourceForeground` |
+
+The defaults are the colours the graph has always used, in dark, light and both high contrast
+themes, so nothing changes until a theme or you set one. Setting `branchwise.graphColours` in the
+user, workspace or folder settings replaces the lane colours with that list, whatever the theme
+says. For example, to make the first lane orange in the Default Dark Modern theme only:
+
+```json
+"workbench.colorCustomizations": {
+  "[Default Dark Modern]": { "branchwise.graphLane1": "#ff8800" }
+}
+```
+
+High contrast themes outline a selected or hovered commit row, and draw lines and borders in the
+theme's contrast border colour. With forced colours, such as a Windows contrast theme, focus and
+selection are outlined in the system highlight colour, and the unpushed dot, the conflict mark and
+branch and tag labels keep system colours.
