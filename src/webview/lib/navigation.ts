@@ -12,6 +12,7 @@ import {
   showRemoteBranch
 } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
+import type { WorkspaceFilter, WorkspaceOrder } from "@/webview/lib/workspace-status";
 import type { BranchDisplay, FocusDimming } from "@/webview/types";
 
 export const emptyFilter = (): HistoryFilter => ({
@@ -49,6 +50,9 @@ type NavigationState = {
   search?: boolean;
   /** The view shown below the header. Absent in state saved before the tabs existed. */
   tab?: ViewTab;
+  /** The total the Workspace tree is narrowed to, and how it orders repositories. */
+  workspaceFilter?: WorkspaceFilter | null;
+  workspaceOrder?: WorkspaceOrder;
 };
 /** The views the header switches between. */
 export type ViewTab = "graph" | "reflog" | "statistics";
@@ -66,6 +70,8 @@ export const refsVisible = signal(saved.refs ?? true);
 export const collapsedSections = signal<ReadonlySet<string>>(new Set(saved.collapsed ?? []));
 export const searchVisible = signal(saved.search ?? false);
 export const activeTab = signal<ViewTab>(saved.tab ?? "graph");
+export const workspaceFilter = signal<WorkspaceFilter | null>(saved.workspaceFilter ?? null);
+export const workspaceOrder = signal<WorkspaceOrder>(saved.workspaceOrder ?? "name");
 export const focusedCommit = signal<string | null>(null);
 /**
  * A commit to scroll to, focus and select once the rows on screen include it, or `null`. The
@@ -207,6 +213,19 @@ export function deleteHistoryFilter(name: string) {
 export function toggleWorkspace() {
   workspaceVisible.value = !workspaceVisible.value;
   saved.workspace = workspaceVisible.value;
+  persist();
+}
+
+/** Narrow the Workspace tree to one total of its overview, or show every repository again. */
+export function setWorkspaceFilter(filter: WorkspaceFilter | null) {
+  workspaceFilter.value = filter;
+  saved.workspaceFilter = filter;
+  persist();
+}
+
+export function setWorkspaceOrder(order: WorkspaceOrder) {
+  workspaceOrder.value = order;
+  saved.workspaceOrder = order;
   persist();
 }
 

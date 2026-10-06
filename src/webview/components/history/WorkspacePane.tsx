@@ -1,16 +1,45 @@
-import type { VNode } from "preact";
+import type { ComponentChildren, VNode } from "preact";
 import { useState } from "preact/hooks";
 
 import type { RepositoryAction, WorkspaceEntry } from "@/backend/types";
 import { openSubmodule, openWorkspaceSync } from "@/webview/components/history/WorkflowTools";
+import { openBulkAction } from "@/webview/components/history/WorkspaceBulk";
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
-import { ChevronDownIcon, KebabIcon } from "@/webview/components/ui/Icons";
+import {
+  BranchIcon,
+  ChevronDownIcon,
+  ConflictIcon,
+  DetachedIcon,
+  FetchIcon,
+  KebabIcon,
+  PausedIcon,
+  PublishIcon,
+  StashIcon
+} from "@/webview/components/ui/Icons";
 import { INPUT_CLASS } from "@/webview/components/ui/Input";
+import { Select } from "@/webview/components/ui/Select";
 import { openContextMenu, selectRepo } from "@/webview/lib/actions";
+import {
+  setWorkspaceFilter,
+  setWorkspaceOrder,
+  workspaceFilter,
+  workspaceOrder
+} from "@/webview/lib/navigation";
 import { confirmRepositoryAction, repositoryRevision } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
+import { workspaceBusy } from "@/webview/lib/workspace-actions";
+import {
+  isUnpublished,
+  matchesFilter,
+  sortSiblings,
+  STALE_FETCH_SECONDS,
+  WORKSPACE_FILTERS,
+  workspaceTotals,
+  type WorkspaceFilter
+} from "@/webview/lib/workspace-status";
+import { getFullDate, getRelativeDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
 
 import { QueryStatus } from "./QueryControls";
@@ -57,6 +86,94 @@ function submoduleAction(entry: WorkspaceEntry, operation: "initialize" | "sync"
     label,
     action,
     entry.parent
+  );
+}
+
+/** A short fact about a repository: an icon and a few words, in the row's small text. */
+function Badge({
+  icon,
+  title,
+  class: tone = "",
+  children
+}: {
+  icon: ComponentChildren;
+  title?: string;
+  class?: string;
+  children: ComponentChildren;
+}) {
+  return (
+    <span class={`inline-flex items-center gap-1 ${tone}`} title={title}>
+      {icon}
+      {children}
+    </span>
+  );
+}
+
+const BADGE_ICON = "size-3 shrink-0";
+
+function operationText(entry: WorkspaceEntry) {
+  switch (entry.operation) {
+    case null:
+      return null;
+    case "bisect":
+      return window.l10n.bisectActive;
+    default:
+      return window.l10n.operationInProgress.replace(
+        "{0}",
+        {
+          merge: window.l10n.mergeOperation,
+          rebase: window.l10n.rebaseOperation,
+          "cherry-pick": window.l10n.cherryPickOperation,
+          revert: window.l10n.revertOperation
+        }[entry.operation]
+      );
+  }
+}
+
+/** What needs attention besides changed files and the upstream counts, most urgent first. */
+function AttentionBadges({ entry }: { entry: WorkspaceEntry }) {
+  const operation = operationText(entry);
+  const stale = entry.fetched !== null && Date.now() / 1000 - entry.fetched > STALE_FETCH_SECONDS;
+  return (
+    <>
+      {operation !== null && (
+        <Badge class="text-git-conflict" icon={<PausedIcon class={BADGE_ICON} />}>
+          {operation}
+        </Badge>
+      )}
+      {entry.conflicts > 0 && (
+        <Badge class="text-git-conflict" icon={<ConflictIcon class={BADGE_ICON} />}>
+          {window.l10n.conflictedFiles.replace("{0}", String(entry.conflicts))}
+        </Badge>
+      )}
+      {isUnpublished(entry) && (
+        <Badge
+          icon={<PublishIcon class={BADGE_ICON} />}
+          title={window.l10n.unpublishedBranchHint.replace("{0}", entry.branch)}
+        >
+          {window.l10n.unpublishedBranch}
+        </Badge>
+      )}
+      {entry.aheadBranches > 0 && (
+        <Badge icon={<BranchIcon class={BADGE_ICON} />} title={window.l10n.otherBranchesAheadHint}>
+          {window.l10n.otherBranchesAhead.replace("{0}", String(entry.aheadBranches))}
+        </Badge>
+      )}
+      {entry.stashes > 0 && (
+        <Badge icon={<StashIcon class={BADGE_ICON} />}>
+          {window.l10n.stashCount.replace("{0}", String(entry.stashes))}
+        </Badge>
+      )}
+      {stale && (
+        <Badge
+          class="text-muted"
+          icon={<FetchIcon class={BADGE_ICON} />}
+          title={window.l10n.lastFetched.replace("{0}", getFullDate(entry.fetched!))}
+        >
+          {window.l10n.fetchedAgo.replace("{0}", getRelativeDate(entry.fetched!))}
+        </Badge>
+      )}
+    </>
   );
 }
 
@@ -154,13 +271,14 @@ function RepoRow({
           </button>
         )}
       </div>
-      <p class="mt-1 truncate pl-6 text-xs text-muted">
+      <p class="mt-1 flex items-center gap-1 truncate pl-6 text-xs text-muted">
+        {entry.detached && <DetachedIcon class={BADGE_ICON} />}
         {entry.initialized
           ? entry.branch || `${window.l10n.detachedHead} ${entry.head?.slice(0, 8) ?? ""}`
           : window.l10n.submoduleUninitialized}
       </p>
       {entry.initialized && (
-        <div class="mt-1 flex flex-wrap gap-x-2 pl-6 text-xs">
+        <div class="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 pl-6 text-xs">
           <span class={entry.dirty ? "text-git-modified" : "text-muted"}>
             {window.l10n.dirtyFiles.replace("{0}", String(entry.dirty))}
           </span>
@@ -174,6 +292,7 @@ function RepoRow({
               ↑{entry.ahead} ↓{entry.behind}
             </span>
           )}
+          <AttentionBadges entry={entry} />
         </div>
       )}
       {mismatch && (
@@ -201,6 +320,48 @@ function RepoRow({
   );
 }
 
+const TOTAL_LABELS = {
+  attention: "workspaceNeedAttention",
+  unpushed: "workspaceUnpushed",
+  behind: "workspaceBehind",
+  conflicted: "workspaceConflicted",
+  changes: "workspaceWithChanges"
+} as const;
+
+/**
+ * The totals of the repositories the text filter matches. Each one narrows the tree to its
+ * repositories, and pressing it again shows them all; a total of none is left out unless chosen.
+ */
+function OverviewStrip({ totals }: { totals: Record<WorkspaceFilter, number> }) {
+  const chosen = workspaceFilter.value;
+  const shown = WORKSPACE_FILTERS.filter((filter) => totals[filter] > 0 || filter === chosen);
+  return (
+    <div role="group" aria-label={window.l10n.workspaceTotals} class="flex flex-wrap gap-1">
+      {shown.length === 0 && <p class="text-xs text-muted">{window.l10n.workspaceAllClear}</p>}
+      {shown.map((filter) => (
+        <button
+          key={filter}
+          type="button"
+          data-total={filter}
+          aria-pressed={filter === chosen}
+          class={
+            "cursor-pointer rounded-full border px-2 py-0.5 text-xs focus:outline-1 focus:outline-focus " +
+            (filter === chosen
+              ? "border-focus bg-row-head font-medium"
+              : "border-line-soft hover:bg-btn-hover")
+          }
+          onClick={() => setWorkspaceFilter(filter === chosen ? null : filter)}
+        >
+          {(filter === "attention" && totals.attention === 1
+            ? window.l10n.workspaceNeedsAttentionOne
+            : window.l10n[TOTAL_LABELS[filter]]
+          ).replace("{0}", String(totals[filter]))}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function WorkspacePane() {
   const [filter, setFilter] = useState("");
   const [onlyChanged, setOnlyChanged] = useState(false);
@@ -208,17 +369,20 @@ export function WorkspacePane() {
   const query = useRepositoryQuery<"workspace">({ kind: "workspace" });
   const entries = query.data?.entries ?? [];
   const byPath = new Map(entries.map((entry) => [entry.path, entry]));
+  const status = workspaceFilter.value;
+  // The totals count what the text filter matches; the bulk actions act on what every filter does.
+  const named = entries.filter((entry) =>
+    (entry.path + " " + entry.branch).toLowerCase().includes(filter.toLowerCase())
+  );
+  const matches = named.filter(
+    (entry) => (!onlyChanged || changed(entry)) && (status === null || matchesFilter(entry, status))
+  );
   const visible = new Set<string>();
-  for (const entry of entries) {
-    if (
-      (!onlyChanged || changed(entry)) &&
-      (entry.path + " " + entry.branch).toLowerCase().includes(filter.toLowerCase())
-    ) {
-      let cursor: WorkspaceEntry | undefined = entry;
-      while (cursor && !visible.has(cursor.path)) {
-        visible.add(cursor.path);
-        cursor = cursor.parent ? byPath.get(cursor.parent) : undefined;
-      }
+  for (const entry of matches) {
+    let cursor: WorkspaceEntry | undefined = entry;
+    while (cursor && !visible.has(cursor.path)) {
+      visible.add(cursor.path);
+      cursor = cursor.parent ? byPath.get(cursor.parent) : undefined;
     }
   }
   // Each listed repository goes under its listed parent; the others start the tree.
@@ -227,8 +391,9 @@ export function WorkspacePane() {
     const parent = entry.parent !== null && byPath.has(entry.parent) ? entry.parent : null;
     children.set(parent, [...(children.get(parent) ?? []), entry]);
   }
+  const below = (entry: WorkspaceEntry) => children.get(entry.path) ?? [];
   // While filtering, every match shows, whatever was collapsed.
-  const filtering = onlyChanged || filter !== "";
+  const filtering = onlyChanged || filter !== "" || status !== null;
   const toggle = (repo: string) => {
     const next = new Set(collapsed);
     if (!next.delete(repo)) {
@@ -238,9 +403,9 @@ export function WorkspacePane() {
   };
   const rows: VNode[] = [];
   const addRows = (parent: string | null, depth: number) => {
-    for (const entry of children.get(parent) ?? []) {
-      const below = children.get(entry.path) ?? [];
-      const expanded = below.length === 0 ? undefined : filtering || !collapsed.has(entry.path);
+    for (const entry of sortSiblings(children.get(parent) ?? [], workspaceOrder.value, below)) {
+      const expanded =
+        below(entry).length === 0 ? undefined : filtering || !collapsed.has(entry.path);
       rows.push(
         <RepoRow
           key={entry.path}
@@ -257,6 +422,18 @@ export function WorkspacePane() {
     }
   };
   addRows(null, 0);
+  const bulk = (operation: "fetch" | "pull" | "push") => (
+    <Button
+      disabled={workspaceBusy.value || matches.length === 0}
+      onClick={() => openBulkAction(operation, matches)}
+    >
+      {
+        window.l10n[
+          operation === "fetch" ? "bulkFetch" : operation === "pull" ? "bulkPull" : "bulkPush"
+        ]
+      }
+    </Button>
+  );
   return (
     <aside
       aria-label={window.l10n.workspaceOverview}
@@ -275,6 +452,7 @@ export function WorkspacePane() {
             {window.l10n.refresh}
           </Button>
         </div>
+        {query.data && <OverviewStrip totals={workspaceTotals(named)} />}
         <input
           class={INPUT_CLASS}
           aria-label={window.l10n.overviewFilter}
@@ -287,6 +465,20 @@ export function WorkspacePane() {
           checked={onlyChanged}
           onInput={(event) => setOnlyChanged(event.currentTarget.checked)}
         />
+        <Select
+          aria-label={window.l10n.workspaceOrder}
+          value={workspaceOrder.value}
+          onChange={(value) => setWorkspaceOrder(value === "attention" ? "attention" : "name")}
+          options={[
+            { value: "name", label: window.l10n.workspaceOrderName },
+            { value: "attention", label: window.l10n.workspaceOrderAttention }
+          ]}
+        />
+        <div role="group" aria-label={window.l10n.bulkActions} class="flex flex-wrap gap-2">
+          {bulk("fetch")}
+          {bulk("pull")}
+          {bulk("push")}
+        </div>
         <Button onClick={openWorkspaceSync}>{window.l10n.workspaceSync}</Button>
       </div>
       <QueryStatus {...query} />
