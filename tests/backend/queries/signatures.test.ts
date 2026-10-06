@@ -397,8 +397,13 @@ describe.skipIf(noSigning !== null)("checking SSH signatures", () => {
     const signed = commit(repo, "signed", true);
     const plain = commit(repo, "unsigned", false);
     const started = path.join(tempFolder(), "started");
+    // The script reads what Git sends it: Git dies of SIGPIPE if it exits first.
     git(
-      ["config", "gpg.ssh.program", script(tempFolder(), "ssh-keygen", `touch '${started}'`)],
+      [
+        "config",
+        "gpg.ssh.program",
+        script(tempFolder(), "ssh-keygen", `cat > /dev/null\ntouch '${started}'`)
+      ],
       repo
     );
     const client = createGit(repo, "git");
