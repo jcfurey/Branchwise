@@ -396,6 +396,41 @@ describe("a pending file history", () => {
   });
 });
 
+describe("the Go to picker", () => {
+  const goTo = ["notify", "view.goTo", null];
+
+  test("is asked for once the page is ready, after any pane", () => {
+    const view = createViewCommand(ctx);
+    view.goTo();
+    view.showPane("refs");
+    view.goTo();
+    expect(world.createPanel).toHaveBeenCalledOnce();
+    expect(world.sent).toEqual([]);
+    newest().pageReady();
+    newest().pageReady();
+    expect(world.sent).toEqual([pane("refs"), goTo]);
+  });
+
+  test("is asked for at once from a ready page, which comes forward", () => {
+    const view = createViewCommand(ctx);
+    view();
+    newest().pageReady();
+    world.log.length = 0;
+    view.goTo();
+    expect(world.log).toEqual(["reveal 2"]);
+    expect(world.sent).toEqual([goTo]);
+  });
+
+  test("is forgotten when the panel closes before its page was ready", () => {
+    const view = createViewCommand(ctx);
+    view.goTo();
+    newest().close();
+    view();
+    newest().pageReady();
+    expect(world.sent).toEqual([]);
+  });
+});
+
 describe("side panes", () => {
   test("open only the last pane asked for before the page is ready", () => {
     world.iconTheme = "grey";

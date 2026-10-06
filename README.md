@@ -32,6 +32,7 @@ basics.
 - One graph of branches, tags, remotes, stashes and uncommitted changes
 - Commit details with formatted messages, linked issues, a file tree and per-file diffs
 - Search by message, ID, author, committer, branch, tag, date or path, or for the commits that added or removed a piece of text
+- Go to any branch, tag or commit from the keyboard, or open it on GitHub or GitLab
 - Dots and rings mark unpushed and unpulled commits
 - A mark on each branch that would conflict if merged into yours, naming the files
 

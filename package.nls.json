@@ -27,6 +27,7 @@
   "config.tabIconColourTheme.grey": "Show a grey icon which suits Visual Studio Code colour themes that are predominantly grayscale",
   "command.fileHistory": "View File History",
   "command.showBranches": "Show the Branches Pane",
+  "command.goTo": "Go to Branch, Tag or Commit…",
   "command.openDocumentation": "Open Documentation",
   "command.openWalkthrough": "Open Getting Started Walkthrough",
   "walkthrough.title": "Get started with Branchwise",

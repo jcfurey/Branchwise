@@ -90,6 +90,7 @@ describe("the Settings & Tools menu", () => {
       "cleanupBranches",
       "bisectTitle",
       null,
+      "goTo",
       "reflog",
       "fileHistory",
       "operationActivity",
@@ -154,7 +155,7 @@ describe("the Settings & Tools menu", () => {
     const sent = vscodeApi.postMessage.mock.calls.map(([message]) => message.command);
     expect(sent).toEqual(expect.arrayContaining(["loadBranches", "saveRepoState"]));
 
-    expect(openTools().entries[12]?.title).toBe("showRemoteBranches");
+    expect(openTools().entries.map((entry) => entry?.title)).toContain("showRemoteBranches");
     runEntry("showRemoteBranches");
     expect(stores.showRemoteBranch.value).toBe(true);
   });
@@ -170,6 +171,19 @@ describe("the Settings & Tools menu", () => {
       kind: "rpc.request",
       method,
       params: null,
+      id: expect.any(String)
+    });
+  });
+});
+
+describe("Go to", () => {
+  it("asks the extension for the picker of the selected repository", () => {
+    mount();
+    runEntry("goTo");
+    expect(vscodeApi.postMessage).toHaveBeenLastCalledWith({
+      kind: "rpc.request",
+      method: "goTo.show",
+      params: { repo: stores.selectedRepo.value },
       id: expect.any(String)
     });
   });

@@ -9,7 +9,9 @@ const delegates = vi.hoisted(() => ({
   initializeRepo: vi.fn(),
   scanRepos: vi.fn(),
   openExtensionSettings: vi.fn(),
-  runCommand: vi.fn()
+  runCommand: vi.fn(),
+  showGoTo: vi.fn(),
+  openUrl: vi.fn()
 }));
 
 vi.mock("@/extension/handlers/clipboard", () => ({ copyToClipboard: delegates.copyToClipboard }));
@@ -24,6 +26,8 @@ vi.mock("@/extension/handlers/open-settings", () => ({
   openExtensionSettings: delegates.openExtensionSettings
 }));
 vi.mock("@/extension/handlers/onboarding", () => ({ runCommand: delegates.runCommand }));
+vi.mock("@/extension/handlers/go-to", () => ({ showGoTo: delegates.showGoTo }));
+vi.mock("@/extension/handlers/open-url", () => ({ openUrl: delegates.openUrl }));
 
 beforeEach(() => {
   for (const [name, delegate] of Object.entries(delegates)) {
@@ -45,8 +49,10 @@ describe("the RPC handler table", () => {
       "clipboard.copy",
       "docs.open",
       "git.init",
+      "goTo.show",
       "repo.scan",
       "settings.open",
+      "url.open",
       "walkthrough.open",
       "webview.initialize"
     ]);
@@ -70,7 +76,9 @@ describe("the RPC handler table", () => {
     ["repo.scan", delegates.scanRepos, []],
     ["settings.open", delegates.openExtensionSettings, []],
     ["docs.open", delegates.runCommand, ["branchwise.openDocumentation"]],
-    ["walkthrough.open", delegates.runCommand, ["branchwise.openWalkthrough"]]
+    ["walkthrough.open", delegates.runCommand, ["branchwise.openWalkthrough"]],
+    ["goTo.show", delegates.showGoTo, ["p"]],
+    ["url.open", delegates.openUrl, ["p"]]
   ])("answers %s through its delegate", async (method, delegate, args) => {
     const answer = call(method, "p");
     expect(delegate).toHaveBeenCalledExactlyOnceWith(...args);
@@ -91,7 +99,7 @@ describe("the RPC handler table", () => {
     expect(() => call("clipboard.copy", "text")).toThrow(failure);
   });
 
-  test("ignores params for every method but clipboard.copy", () => {
+  test("ignores params for every method that takes none", () => {
     call("git.init", { x: 1 });
     call("settings.open", [1, 2]);
     expect(delegates.initializeRepo).toHaveBeenCalledExactlyOnceWith();

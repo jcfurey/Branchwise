@@ -38,6 +38,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
     // Source Control passes itself as the first argument, which selects its repository.
     vscode.commands.registerCommand("branchwise.view", view),
     vscode.commands.registerCommand("branchwise.showBranches", () => view.showPane("refs")),
+    vscode.commands.registerCommand("branchwise.goTo", () => view.goTo()),
     // Returning the promises lets `executeCommand` settle once the page has opened.
     vscode.commands.registerCommand("branchwise.openDocumentation", () => openDocumentation(ctx)),
     vscode.commands.registerCommand("branchwise.openWalkthrough", () => openWalkthrough(ctx))

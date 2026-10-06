@@ -1295,6 +1295,101 @@ suite("Branchwise workflow UI", function () {
     );
   });
 
+  test("goes to a branch, tag or typed commit ID from the quick switcher", async () => {
+    const named = directory();
+    init(named);
+    commit("goto.txt", "goto branch target", named);
+    git(["branch", "goto-target"], named);
+    const target = git(["rev-parse", "HEAD"], named);
+    git(["checkout", "-q", "-b", "goto-side"], named);
+    commit("side.txt", "goto side work", named);
+    const side = git(["rev-parse", "HEAD"], named);
+    git(["checkout", "-q", "main"], named);
+    for (let i = 0; i < 80; i++) {
+      git(["commit", "--allow-empty", "-m", "goto filler " + i], named);
+      if (i === 20) {
+        git(["tag", "goto-release"], named);
+      }
+    }
+    const tagged = git(["rev-parse", "goto-release"], named);
+    const typed = git(["rev-parse", "HEAD~5"], named);
+    await openRepo(named);
+    const workbench = connections[0];
+    // The quick input belongs to the workbench, outside the graph's frame.
+    const pickerText = () =>
+      workbench.evaluate(`(() => {
+        const widget = document.querySelector('.quick-input-widget');
+        return widget && widget.style.display !== 'none' && widget.offsetParent !== null
+          ? widget.innerText : null;
+      })()`);
+    /** Run Go to, type `text`, wait for `expected` to be the active entry, and choose it. */
+    const goTo = async (open, text, expected) => {
+      await open();
+      await until(
+        async () => (await pickerText())?.includes("goto-target"),
+        "Go to lists the refs"
+      );
+      await workbench.call("Input.insertText", { text });
+      await until(
+        () =>
+          workbench.evaluate(
+            `document.querySelector('.quick-input-list .monaco-list-row.focused')?.innerText.includes(${JSON.stringify(expected)})`
+          ),
+        "Go to entry " + expected
+      );
+      await keypress("Enter");
+      await until(async () => (await pickerText()) === null, "Go to closes");
+    };
+    /** The commit's row has the keyboard, is selected and is on screen. */
+    const revealed = (hash) =>
+      until(
+        () =>
+          graph.evaluate(`(() => {
+            const row = document.activeElement;
+            if (row?.dataset.commitHash !== ${JSON.stringify(hash)}) return false;
+            const box = row.getBoundingClientRect();
+            return row.getAttribute('aria-selected') === 'true' && box.top >= 0 && box.bottom <= innerHeight;
+          })()`),
+        "revealed and selected " + hash.slice(0, 8)
+      );
+
+    assert.equal(
+      await graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${target}"]').getBoundingClientRect().top > innerHeight`
+      ),
+      true,
+      "the branch's commit starts out of sight"
+    );
+    const command = () => vscode.commands.executeCommand("branchwise.goTo");
+    await goTo(command, "goto-target", "goto-target");
+    await revealed(target);
+    assert.equal(git(["rev-parse", "--abbrev-ref", "HEAD"], named), "main");
+
+    await goTo(command, "release", "goto-release");
+    await revealed(tagged);
+
+    await goTo(command, typed.slice(0, 10), typed.slice(0, 10));
+    await revealed(typed);
+
+    // The shortcut works while the graph has focus.
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${typed}"]').focus()`);
+    const shortcut = () => keypress("g", process.platform === "darwin" ? 1 | 4 : 1 | 2);
+    await goTo(shortcut, "goto-target", "goto-target");
+    await revealed(target);
+
+    // A commit the graph has not loaded opens as the history at it, with its row selected.
+    await headerChoice("Branch", "main");
+    await until(() => graph.evaluate(`!(${visible(side)})`), "graph filtered to main");
+    await goTo(command, "goto-side", "goto-side");
+    await until(
+      () => graph.evaluate('document.querySelector("main").innerText.includes("History at")'),
+      "history at the side branch"
+    );
+    await revealed(side);
+    await button("Return to Graph");
+    await headerChoice("Branch", "All branches");
+  });
+
   test("compares branch contributions, opens native diffs and recovers a reflog commit", async () => {
     const history = directory();
     init(history);
