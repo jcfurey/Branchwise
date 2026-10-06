@@ -2308,14 +2308,17 @@ suite("Branchwise workflow UI", function () {
           code: "ArrowLeft",
           windowsVirtualKeyCode: 37
         });
-        // Native scrolling and its scroll event can arrive in separate frames.
+        // Native scrolling and its scroll event can arrive in separate frames, and the keyboard
+        // scrolls smoothly over several frames, so wait until two readings in a row agree.
+        let previous = null;
         const keyboard = await until(async () => {
           const state = await measure();
-          return (
+          const settled =
             state.scrollLeft < before.scrollLeft &&
             state.viewportScroll === state.scrollLeft &&
-            state
-          );
+            state.scrollLeft === previous?.scrollLeft;
+          previous = state;
+          return settled && state;
         }, "keyboard graph scrolling");
         assert.equal(keyboard.viewportScroll, keyboard.scrollLeft);
         await graph.evaluate(
