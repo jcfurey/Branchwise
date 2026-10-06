@@ -14,6 +14,11 @@ export type HistoryFilter = {
   branch?: string;
   /** Only the commits that tags whose names contain this point to. */
   tag?: string;
+  /**
+   * Only the commits whose changes add or remove this text, or with `regex`, add or remove lines
+   * that match it. Optional: filters saved before it existed lack it.
+   */
+  changes?: string;
   /** Read the text fields as regular expressions instead of literal text. */
   regex?: boolean;
 };
