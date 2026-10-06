@@ -1340,16 +1340,37 @@ suite("Branchwise workflow UI", function () {
       await keypress("Enter");
       await until(async () => (await pickerText()) === null, "Go to closes");
     };
-    /** The commit's row has the keyboard, is selected and is on screen. */
+    /**
+     * The commit's row has the keyboard, is selected and is on screen. Until it is, each check
+     * throws what it saw, so a timeout reports which of the three was missing.
+     */
     const revealed = (hash) =>
       until(
-        () =>
-          graph.evaluate(`(() => {
-            const row = document.activeElement;
-            if (row?.dataset.commitHash !== ${JSON.stringify(hash)}) return false;
-            const box = row.getBoundingClientRect();
-            return row.getAttribute('aria-selected') === 'true' && box.top >= 0 && box.bottom <= innerHeight;
-          })()`),
+        async () => {
+          const state = await graph.evaluate(`(() => {
+          const row = document.querySelector('tr[data-commit-hash="${hash}"]');
+          const active = document.activeElement;
+          const box = row?.getBoundingClientRect();
+          return {
+            focused: active === row,
+            active: active === document.body ? "body" : active?.dataset?.commitHash ?? active?.getAttribute?.("aria-label") ?? active?.tagName ?? null,
+            pageHasFocus: document.hasFocus(),
+            selected: row?.getAttribute("aria-selected") ?? null,
+            top: box ? Math.round(box.top) : null,
+            bottom: box ? Math.round(box.bottom) : null,
+            height: innerHeight
+          };
+        })()`);
+          if (
+            state.focused &&
+            state.selected === "true" &&
+            state.top >= 0 &&
+            state.bottom <= state.height
+          ) {
+            return true;
+          }
+          throw new Error("Row state: " + JSON.stringify(state));
+        },
         "revealed and selected " + hash.slice(0, 8)
       );
 
