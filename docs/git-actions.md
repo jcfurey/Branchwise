@@ -93,6 +93,22 @@ A local branch that would not merge cleanly into the checked-out branch shows a 
 
 Only branches not yet merged into `HEAD` are tried: the 50 with the newest commits. Each result is remembered for that pair of commits, so a refresh tries again only the branches that moved, or all of them when `HEAD` does. Branches with no history in common with `HEAD`, which `git merge` refuses, get no mark. Nothing is forecast while a merge, rebase, cherry-pick or revert is under way, or with Git older than 2.38, which has no `merge-tree --write-tree`.
 
+### Teammates' branches
+
+Remote branches are forecast too, so a teammate's work that would conflict with yours shows up before either of you opens a pull request. A remote branch's label in the graph, and its row in the Branches pane, carry the same mark; the tooltip names the files and says whose work it is, from its last commit: "Last commit by Alice, 2 days ago". Fetch to see the latest.
+
+While any remote branch would conflict, a line above the graph says how many, such as "2 teammates' branches would conflict with yours". Click it for a list of them, with the author and age of each one's last commit and the files in conflict; choosing one closes the list and focuses that branch in the graph.
+
+Up to 50 remote branches are tried on top of the local ones, newest first, and only those:
+
+- with a commit in the last 30 days;
+- not merged into `HEAD`;
+- other than the checked-out branch's own upstream, which only tells you that you are behind, and `<remote>/HEAD`;
+- shown in the graph: hidden remotes, [hidden-branch patterns](#hiding-branches-by-name) and turning remote branches off all leave branches out;
+- not at the same commit as a local branch, and not the upstream of a local branch that is tried, since the local branch's mark already says it.
+
+The `branchwise.conflictForecast` setting chooses what is tried: `localAndRemote` (the default), `local` for local branches only, or `off`.
+
 ## Stashes
 
 Open **Settings & Tools → Stashes** to save changes, optionally including untracked files. Each stash can be inspected as a diff in VS Code, applied, popped or dropped. Apply and pop can restore staged changes as staged. A conflicting pop keeps the stash and displays the conflicts. Drop requires confirmation. Stash selections include the commit ID so a newer stash does not silently redirect a pending action.
@@ -119,6 +135,16 @@ Two commit-menu entries change a single commit of the checked-out branch without
 
 Both are refused on a detached `HEAD`, on the first commit of the history unless it is `HEAD`, when the commit or one after it is a merge (again unless the commit is `HEAD`), and when the branch moved after the dialog opened. An empty message is refused too. When a remote-tracking branch already contains the commit, the dialog warns that sharing the rewritten history needs a force push; see [Remotes and tracking](#remotes-and-tracking) for **Force with lease**.
 
+### Absorbing staged changes into the commits they fix
+
+When staged changes correct lines that earlier commits of the branch introduced, **Absorb Staged Changes…** splits them hunk by hunk into `fixup!` commits, one for each commit they correct. The button sits beside **Staged Changes** in the uncommitted changes' details, and appears while something is staged.
+
+Each hunk of `git diff --cached` goes to the commit that last changed its lines, as `git blame` at `HEAD` tells; for a hunk that only adds lines, the lines just above and below it decide. Only the branch's own commits count: those on `HEAD`'s first-parent line after where it meets its upstream or, without an upstream, after the commits any remote-tracking branch or the local `main` or `master` already has. The search stops at a merge and after 100 commits. A hunk stays staged when its lines were last changed by a commit outside those, or by more than one commit, or when there is no line around it to go by. Added, deleted, renamed and binary files, and files whose mode or type changes, stay staged whole.
+
+The preview lists, for each commit, its short ID and subject and the hunks it receives (file and lines), then what stays staged and why. Working this out changes nothing. **Create Fixup Commits** commits one `fixup! <subject>` per commit, oldest target first, on top of the branch. They are built in a temporary index, so unstaged and untracked changes are not touched, and the hunks that could not be absorbed stay staged. Before the branch moves, the fixups and the changes left staged must add up to exactly what was staged; otherwise, or if `HEAD` or the staged changes changed since the preview, nothing changes. Git's commit hooks do not run for these commits.
+
+**Create and Squash Now** does the same and then opens the [interactive rebase](#rebasing) editor from the parent of the oldest target, with the fixups already arranged by **Arrange Fixup / Squash Commits**. Nothing is rewritten until **Start Rebase**. It is available only when nothing would be left staged, unstaged or untracked, as the rebase needs a clean working tree, and not when a fixup goes into the repository's first commit. When nothing can be absorbed, the preview says so and offers no action.
+
 ## Worktrees
 
 Open **Settings & Tools → Worktrees** to inspect locations and checked-out branches, create a worktree, open one in a new VS Code window, or remove one. Creation accepts an absolute folder path and either a new branch with a start point or an existing branch. A branch already checked out elsewhere cannot be reused.
@@ -128,6 +154,20 @@ Removal preserves the branch. The main/current worktree cannot be removed from t
 ## Workspace and submodules
 
 **Workspace** (the stacked boxes icon in the header) toggles a repository sidebar. It lists the same repositories as the picker: those found in the workspace folders within `maxDepthOfRepoSearch`, with their initialized submodules, plus any repository opened this session from Source Control or File History. Repositories cloned inside another repository, rather than added as its submodules, are found too, up to `nestedRepoSearchDepth` folders deep (3 by default, 0 to turn this off); that search skips hidden folders, `node_modules` and `bower_components`, and does not follow symlinks. A workspace folder inside a repository, or a symlink to one, lists that repository once under its real path, and the list follows added or removed folders and repositories. Each row shows the checked-out branch (or detached HEAD), changed file count, and ahead/behind counts from the last fetch. Click an initialized repository to switch its graph. The list is a tree: submodules and nested repositories sit under the repository that holds them, labelled by their path inside it and tagged **submodule** or **nested**, and the arrow beside a repository hides or shows the ones under it. Filter by name/path or show only repositories with changes; parent rows remain visible for context, and every match shows while a filter is on.
+
+### Workspace status
+
+The top of the Workspace pane totals what needs attention across the repositories the name filter matches, such as **3 repositories need attention**, **2 unpushed**, **1 behind**, **1 conflicted** and **4 with changes**. A repository needs attention when a merge, rebase, cherry-pick, revert or bisect is stopped partway or files are unmerged (**conflicted**), when it is behind its upstream, when it has commits no remote has (**unpushed**: ahead of its upstream, other local branches ahead of theirs, or a checked-out branch without an upstream in a repository with a remote), when it has uncommitted changes, or when it could not be read. Each total narrows the tree to its repositories, keeping their parents for context; click it again to show them all. The chosen total is remembered with the pane.
+
+Rows add small badges for an operation in progress, conflicted files, an unpublished branch, other branches ahead of their upstream and stashes, and a muted **fetched 3 days ago** once the last fetch (when `FETCH_HEAD` was written) is more than a day old. A detached HEAD shows its own icon beside the commit. **Needs attention first**, in the ordering list, sorts repositories that are conflicted or mid-operation first, then those behind, unpushed, with changes, and clean ones last. It keeps the tree: siblings are sorted among themselves, and a repository sorts by the most urgent of itself and the repositories under it. All of this is read in the same bounded pass as the rest of the row and never changes a repository.
+
+**Fetch All**, **Pull All** and **Push All** act on the repositories the filters match, not on parents shown for context. Each first lists what will happen in every repository and why anything is skipped, then runs after you confirm, two repositories at a time, with each repository's progress and a summary of completed, skipped and failed ones at the end:
+
+- **Fetch All** fetches every remote, as **Workspace Fetch & Update** does. Repositories without a remote, uninitialized submodules and repositories that could not be read are skipped.
+- **Pull All** only fast-forwards the checked-out branch to its fetched upstream, as the reviewed pull of one branch does. It skips repositories with uncommitted changes, a detached HEAD, no upstream (or one that was deleted), a branch that has diverged from its upstream, one already up to date, and any repository with an operation in progress. It does not fetch first; use **Fetch All** for that.
+- **Push All** pushes every local branch that is strictly ahead of its upstream branch to that branch, never forced and never setting a new upstream. Branches without an upstream, with a deleted upstream, or with commits to pull first are skipped, and so is any repository with an operation in progress.
+
+Each pull and push checks its branch and upstream again just before it runs, and refuses, changing nothing, when they moved or the work tree changed since the confirmation.
 
 Submodule rows distinguish the actual HEAD, the revision recorded in the parent index, and the revision recorded in the parent commit. Their action menu offers **Initialize Submodule**, **Sync Submodule URLs**, and **Update to Recorded Revision**. Sync copies URLs from `.gitmodules`. Initialize/update use recursive Git checkout of the parent's recorded index revision, including nested submodules. Git checks for conflicting local changes; the extension rejects updates while an initialized child has an interrupted operation. No force checkout or `--remote` advancement is used.
 
@@ -189,6 +229,7 @@ Before Branchwise runs an action that moves or deletes refs, it writes down whic
 
 - reset (soft, mixed and hard); a hard reset also keeps the uncommitted changes it discards, as `git stash create` does, and a mixed reset keeps what was staged
 - rebase and interactive rebase, including squash, **Edit Message…** and **Add Staged Changes to This Commit…**
+- **Absorb Staged Changes…**, whose Undo removes the fixup commits and leaves the changes staged again
 - merge, cherry-pick and revert, of one commit or a selection
 - **Fast-forward Branches**
 - deleting and force-deleting a branch, and **Clean Up Merged Branches**; the branch's settings, such as its upstream, are kept too
@@ -196,7 +237,7 @@ Before Branchwise runs an action that moves or deletes refs, it writes down whic
 - dropping a stash
 - a force push with lease and deleting a remote branch, which are only recorded: the remote branch's previous commit is kept, but Undo cannot push it back
 
-Once an action is done, a notification offers **Undo**, and **Settings & Tools** starts with **Undo** and the action's name, such as **Undo Hard Reset of main**, while there is something to undo. Undo puts every ref back with a compare-and-swap (`git update-ref <ref> <old> <new>`), so it refuses, and changes nothing, when any of them has moved since, such as after a new commit. The checked-out branch moves with `git reset --keep`, which refuses to overwrite uncommitted changes, or with `--soft` after a message edit or an amend, which leaves the folded-in changes staged again. A deleted branch or tag is created again, a renamed branch is renamed back, a dropped stash goes back on the stash list, and a hard reset's discarded changes are applied again. Undo also refuses while a merge, rebase, cherry-pick or revert is stopped, and for a branch checked out in another worktree. What Undo replaces is kept as well. After one Undo, the menu offers the action before it.
+Once an action is done, a notification offers **Undo**, and **Settings & Tools** starts with **Undo** and the action's name, such as **Undo Hard Reset of main**, while there is something to undo. Undo puts every ref back with a compare-and-swap (`git update-ref <ref> <old> <new>`), so it refuses, and changes nothing, when any of them has moved since, such as after a new commit. The checked-out branch moves with `git reset --keep`, which refuses to overwrite uncommitted changes, or with `--soft` after a message edit, an amend or an absorb, which leaves the folded-in changes staged again. A deleted branch or tag is created again, a renamed branch is renamed back, a dropped stash goes back on the stash list, and a hard reset's discarded changes are applied again. Undo also refuses while a merge, rebase, cherry-pick or revert is stopped, and for a branch checked out in another worktree. What Undo replaces is kept as well. After one Undo, the menu offers the action before it.
 
 An action that stops on a conflict is completed in the record when **Continue** or **Abort** in the status strip ends it; one finished outside Branchwise stays listed, but cannot be undone in one step.
 

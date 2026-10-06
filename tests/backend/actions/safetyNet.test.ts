@@ -12,6 +12,7 @@ import { runRepositoryAction } from "@/backend/actions/repository";
 import { recordedAction } from "@/backend/actions/safetyNet";
 import { deleteTag } from "@/backend/actions/tag";
 import { createGit } from "@/backend/gitClient";
+import { loadAbsorbPlan } from "@/backend/queries/absorb";
 import { loadAmendPlan, loadRewordPlan } from "@/backend/queries/editCommit";
 import { loadBatchPlan, loadReflog } from "@/backend/queries/history";
 import { loadBranches } from "@/backend/queries/loadBranches";
@@ -191,6 +192,17 @@ describe("recording and undoing each destructive action", () => {
     ]);
     const record = await roundTrip(() => repositoryAction({ kind: "interactiveRebase", plan }));
     expect(record.kind).toBe("interactiveRebase");
+  });
+
+  it("undoes an absorb, leaving the absorbed changes staged again", async () => {
+    commit("a", "one\ntwo\n");
+    commit("a", "one\ntwo\nthree\n", "three");
+    write("a", "one\ntwo\nthree fixed\n");
+    read(["add", "--", "a"]);
+    const record = await roundTrip(async () =>
+      repositoryAction({ kind: "absorb", plan: await loadAbsorbPlan(git()) })
+    );
+    expect(record).toMatchObject({ kind: "absorb", subject: "main" });
   });
 
   it("undoes message edits and amends, leaving the folded-in changes staged again", async () => {

@@ -9,6 +9,7 @@ export type SafetyActionKind =
   | "interactiveRebase"
   | "reword"
   | "amend"
+  | "absorb"
   | "merge"
   | "cherryPick"
   | "revert"

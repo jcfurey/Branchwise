@@ -248,6 +248,9 @@ function safetyPlan(request: ActionRequest): SafetyPlan | null {
     case "amendCommit":
       // The staged changes went into the commit; moving the branch back leaves them staged.
       return { ...onHead("amend", "rebase"), mode: "soft" };
+    case "absorb":
+      // The fixups hold what was staged, and the index still does; moving back leaves it staged.
+      return { ...onHead("absorb"), mode: "soft" };
     case "batch":
       return action.operation === "cherry-pick"
         ? onHead("cherryPick", "cherry-pick")

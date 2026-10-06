@@ -7,6 +7,7 @@ let holder: typeof import("@/webview/lib/webview-config");
 
 const settings = (overrides: Partial<WebviewConfig> = {}): WebviewConfig => ({
   autoCenterCommitDetailsView: false,
+  conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
   graphColours: ["#123456"],
   graphStyle: "angular",

@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 
 import * as vscode from "vscode";
 
-import type { DateType } from "@/backend/types";
+import type { ConflictForecastScope, DateType } from "@/backend/types";
 import type { DateFormat, GraphStyle } from "@/types";
 
 type TabIconColourTheme = "colour" | "grey";
@@ -110,6 +110,7 @@ function graphColours(): string[] {
  */
 export const extConfig = {
   autoCenterCommitDetailsView: () => setting<boolean>("autoCenterCommitDetailsView", true),
+  conflictForecast: () => setting<ConflictForecastScope>("conflictForecast", "localAndRemote"),
   dateFormat: () => setting<DateFormat>("dateFormat", "Date & Time"),
   dateType: () => setting<DateType>("dateType", "Author Date"),
   /** The built-in Git extension's executable when known, otherwise the `git.path` setting. */

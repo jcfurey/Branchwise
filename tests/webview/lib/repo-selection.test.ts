@@ -11,6 +11,7 @@ import { vscodeApi } from "@tests/webview/setup";
 beforeAll(() => {
   initializeWebviewConfig({
     autoCenterCommitDetailsView: true,
+    conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
     graphColours: [],
     graphStyle: "rounded",

@@ -28,6 +28,7 @@ vi.mock("@/old-extension/l10n/webviewL10n", () => ({
 
 const DEFAULT_CONFIG = {
   autoCenterCommitDetailsView: true,
+  conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   graphColours: declaredGraphColours,
   graphStyle: "rounded",

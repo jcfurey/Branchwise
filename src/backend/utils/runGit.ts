@@ -144,9 +144,29 @@ export async function readGitCode(git: SimpleGit, args: string[], codes: number[
   return { stdout: stdout.toString(), code };
 }
 
+/** Git's exact output bytes, such as a patch of a file in any encoding, which a string would corrupt. */
+export async function readGitBytes(git: SimpleGit, args: string[]): Promise<Buffer> {
+  const binary = gitProcessOf(git)?.gitPath ?? "git";
+  const { done } = start(binary, args, await topLevel(git), process.env);
+  return (await done).stdout;
+}
+
 /** A blob's exact bytes, which a string result would corrupt for binary files. */
 export async function readBlob(git: SimpleGit, blob: string): Promise<Buffer> {
+  return readGitBytes(git, ["cat-file", "blob", blob]);
+}
+
+/**
+ * Run Git with `input` on standard input and `env` as its environment, as when a patch is applied
+ * to a private index that `GIT_INDEX_FILE` names.
+ */
+export async function runGitWithInput(
+  git: SimpleGit,
+  args: string[],
+  input: Buffer,
+  env: NodeJS.ProcessEnv
+) {
   const binary = gitProcessOf(git)?.gitPath ?? "git";
-  const { done } = start(binary, ["cat-file", "blob", blob], await topLevel(git), process.env);
-  return (await done).stdout;
+  const { done } = start(binary, args, await topLevel(git), env, { input });
+  return (await done).stdout.toString();
 }
