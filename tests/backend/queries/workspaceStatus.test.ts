@@ -6,6 +6,7 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import { loadWorkspace } from "@/backend/queries/workspace";
 import type { WorkspaceEntry } from "@/backend/types";
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
 
 import { git, gitOutput, makeRepo } from "@tests/backend/helpers";
 
@@ -204,5 +205,5 @@ it("stops when cancelled partway, without starting the next repositories", async
   }
   expect(controller.signal.aborted).toBe(true);
   // The first four repositories form one batch; the fifth would have been read after it.
-  expect(visited).toStrictEqual(repos.slice(0, 4));
+  expect(visited).toStrictEqual(repos.slice(0, 4).map(normalizeRepoPath));
 });
