@@ -18,6 +18,7 @@ export function getHistoryLocalizedStrings() {
     matchingRefs: vscode.l10n.t("Branches and tags:"),
     jumpToHead: vscode.l10n.t("Jump to HEAD"),
     jumpToHeadOutOfSight: vscode.l10n.t("Jump to HEAD, which is out of sight"),
+    goTo: vscode.l10n.t("Go to Branch, Tag or Commit"),
     historyPath: vscode.l10n.t("File or folder path"),
     historySince: vscode.l10n.t("From date"),
     historyUntil: vscode.l10n.t("Through date"),

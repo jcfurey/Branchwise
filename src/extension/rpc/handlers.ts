@@ -1,8 +1,10 @@
 import { copyToClipboard } from "@/extension/handlers/clipboard";
+import { showGoTo } from "@/extension/handlers/go-to";
 import { webviewInitialize } from "@/extension/handlers/initialize";
 import { initializeRepo } from "@/extension/handlers/initialize-repo";
 import { runCommand } from "@/extension/handlers/onboarding";
 import { openExtensionSettings } from "@/extension/handlers/open-settings";
+import { openUrl } from "@/extension/handlers/open-url";
 import { scanRepos } from "@/extension/handlers/scan-repo";
 import type { RpcMethod, RpcMethodMap } from "@/types";
 
@@ -27,5 +29,7 @@ export const rpcHandlers = {
   "repo.scan": () => scanRepos(),
   "settings.open": () => openExtensionSettings(),
   "docs.open": () => runCommand("branchwise.openDocumentation"),
-  "walkthrough.open": () => runCommand("branchwise.openWalkthrough")
+  "walkthrough.open": () => runCommand("branchwise.openWalkthrough"),
+  "goTo.show": (params) => showGoTo(params),
+  "url.open": (url) => openUrl(url)
 } satisfies RpcHandlerTable;

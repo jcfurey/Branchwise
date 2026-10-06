@@ -1,5 +1,6 @@
 import type { GitRepo, RpcNotificationName, SidebarPane, WebviewConfig } from "@/types";
 import { applyWebviewConfig, refresh, selectRepo } from "@/webview/lib/actions";
+import { openGoTo, revealChoice } from "@/webview/lib/go-to";
 import { loadRepoList } from "@/webview/lib/load-repos";
 import { showPane } from "@/webview/lib/navigation";
 import { selectedRepo } from "@/webview/lib/stores";
@@ -29,6 +30,14 @@ const notifications: Record<RpcNotificationName, (message: unknown) => void> = {
   "view.showPane": (message) => {
     if (isFields(message) && isPane(message.pane)) {
       showPane(message.pane);
+    }
+  },
+  "view.goTo": () => {
+    openGoTo();
+  },
+  "view.reveal": (message) => {
+    if (isFields(message) && typeof message.repo === "string" && typeof message.hash === "string") {
+      revealChoice(message.repo, message.hash);
     }
   },
   "repo.select": (message) => {

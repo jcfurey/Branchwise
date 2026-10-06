@@ -19,6 +19,7 @@ import type { ResponseMessage, SidebarPane } from "@/types";
 type ViewCommand = {
   (sourceControl?: Pick<vscode.SourceControl, "rootUri">, file?: string): void;
   showPane(pane: SidebarPane): void;
+  goTo(): void;
 };
 
 /** A file whose history the page should show once it has selected `repo`. */
@@ -35,7 +36,8 @@ type OpenGraph = {
 
 /**
  * The `branchwise.view` command. It opens the one graph panel or brings it forward, selects the
- * repository of a Source Control or File History click, and opens side panes on request.
+ * repository of a Source Control or File History click, and opens side panes and the Go to
+ * picker on request.
  */
 export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
   // Both serve every panel of the session.
@@ -45,6 +47,8 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
   let graph: OpenGraph | undefined;
   let pendingFile: FileHistoryRequest | undefined;
   let pendingPane: SidebarPane | undefined;
+  /** The Go to picker was asked for before the page could hear of it. */
+  let pendingGoTo = false;
   /** Counts clicks with a folder; only the latest one may select its repository. */
   let clicks = 0;
 
@@ -56,10 +60,19 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
     }
   }
 
+  function showPendingGoTo() {
+    if (graph?.ready && pendingGoTo) {
+      pendingGoTo = false;
+      void rpcNotify.notify("view.goTo", null);
+    }
+  }
+
   function onPageReady(opened: OpenGraph) {
     opened.ready = true;
-    // The pane goes first; the selection sends its pending repository after this returns.
+    // The pane goes first; the selection sends its pending repository after this returns. The
+    // page waits for that repository before it asks for the picker.
     showPendingPane();
+    showPendingGoTo();
   }
 
   function onRepoSent(webview: vscode.Webview, repo: string) {
@@ -136,6 +149,7 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
       graph = undefined;
       pendingFile = undefined;
       pendingPane = undefined;
+      pendingGoTo = false;
       for (const attachment of opened.attachments) {
         attachment.dispose();
       }
@@ -167,5 +181,11 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
     showPendingPane();
   }
 
-  return Object.assign(view, { showPane });
+  function goTo(): void {
+    pendingGoTo = true;
+    view();
+    showPendingGoTo();
+  }
+
+  return Object.assign(view, { showPane, goTo });
 }

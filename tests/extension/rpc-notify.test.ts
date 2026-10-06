@@ -445,6 +445,8 @@ it("delivers every notification in the form the webview accepts", async () => {
   const repo: GitRepo = { name: "app", path: "/work/app" };
   const cases: { [N in RpcNotificationName]: RpcNotificationMap[N] } = {
     "view.showPane": { pane: "workspace" },
+    "view.goTo": null,
+    "view.reveal": { repo: "/work/app", hash: "a".repeat(40) },
     "repo.select": repo,
     "repo.rescan": null,
     "config.changed": config,

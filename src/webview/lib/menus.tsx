@@ -16,7 +16,10 @@ import { openAddWorktree } from "@/webview/components/repository/WorktreeManager
 import { Explain } from "@/webview/components/ui/Explain";
 import { closeDialog, focusBranchInGraph, openFormDialog, runAction } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
+import { openUrl } from "@/webview/lib/actions/open-url";
+import { branchPage, commitPage, type HostPage, tagPage } from "@/webview/lib/host-links";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
+import { repositoryState } from "@/webview/lib/repository-actions";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
 
@@ -88,6 +91,16 @@ function compareEntry(hash: string): Entry {
 
 function focusEntry(branch: string): Entry {
   return { title: window.l10n.focusThisBranch, onClick: () => focusBranchInGraph(branch) };
+}
+
+/**
+ * The entry that opens `page` on its host, titled from `title` with the host's name. None when
+ * the repository's host is not known.
+ */
+function hostEntry(title: string, page: HostPage | null): Array<Entry> {
+  return page === null
+    ? []
+    : [{ title: title.replaceAll("{0}", () => page.host), onClick: () => void openUrl(page.url) }];
 }
 
 function copyBranchEntry(name: string): Entry {
@@ -279,6 +292,7 @@ export function commitMenu(
       compareEntry(hash),
       { title: l10n.bisectChooseGood, onClick: () => chooseBisectCommit("good", hash) },
       { title: l10n.bisectChooseBad, onClick: () => chooseBisectCommit("bad", hash) },
+      ...hostEntry(l10n.openCommitOnHost, commitPage(repositoryState.peek(), hash)),
       {
         title: l10n.copyCommitHash,
         onClick: () => copyToClipboard(window.l10n.typeCommitHash, hash)
@@ -385,7 +399,10 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean) {
         { title: more(l10n.deleteBranch), onClick: () => deleteBranch(gitRef) },
         { title: more(l10n.merge), onClick: () => mergeBranch(gitRef) }
       ];
-  return grouped([focusEntry(name), compareEntry(gitRef.hash)], tools, [copyBranchEntry(name)]);
+  return grouped([focusEntry(name), compareEntry(gitRef.hash)], tools, [
+    ...hostEntry(l10n.openBranchOnHost, branchPage(repositoryState.peek(), name)),
+    copyBranchEntry(name)
+  ]);
 }
 
 function remoteBranchMenu(gitRef: GitRef) {
@@ -425,7 +442,10 @@ function tagMenu(gitRef: GitRef) {
       { title: more(l10n.pushTag), onClick: () => openRemoteAction("tagPush", name) },
       { title: more(l10n.deleteRemoteTag), onClick: () => openRemoteAction("tagDelete", name) }
     ],
-    [{ title: l10n.copyTagName, onClick: () => copyToClipboard(window.l10n.typeTagName, name) }]
+    [
+      ...hostEntry(l10n.openTagOnHost, tagPage(repositoryState.peek(), name)),
+      { title: l10n.copyTagName, onClick: () => copyToClipboard(window.l10n.typeTagName, name) }
+    ]
   );
 }
 
