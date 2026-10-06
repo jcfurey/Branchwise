@@ -4,7 +4,7 @@ import type { SimpleGit } from "simple-git";
 
 import { gitProcessOf, PARSED_OUTPUT_ARGS } from "@/backend/gitClient";
 
-type GitResult = { stdout: Buffer; stderr: string };
+type GitResult = { stdout: Buffer; stderr: string; code: number };
 
 /**
  * Start Git in `cwd` and collect its output. On POSIX, a process that can be stopped gets its
@@ -15,8 +15,9 @@ function start(
   args: string[],
   cwd: string,
   env: NodeJS.ProcessEnv,
-  options: { input?: Buffer; stoppable?: boolean } = {}
+  options: { input?: Buffer; stoppable?: boolean; codes?: number[] } = {}
 ) {
+  const codes = options.codes ?? [0];
   const child = spawn(binary, [...PARSED_OUTPUT_ARGS, ...args], {
     cwd,
     env: { ...env, GIT_TERMINAL_PROMPT: "0" },
@@ -30,8 +31,12 @@ function start(
     child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
     child.on("error", reject);
     child.on("close", (code) => {
-      const result = { stdout: Buffer.concat(stdout), stderr: Buffer.concat(stderr).toString() };
-      if (code === 0) {
+      const result = {
+        stdout: Buffer.concat(stdout),
+        stderr: Buffer.concat(stderr).toString(),
+        code: code ?? -1
+      };
+      if (code !== null && codes.includes(code)) {
         resolve(result);
       } else {
         const message = [result.stdout.toString(), result.stderr].filter(Boolean).join("\n");
@@ -121,6 +126,21 @@ export async function readGitWithInput(git: SimpleGit, args: string[], input: st
   );
   const { done } = start(binary, args, cwd, process.env, { input: Buffer.from(input) });
   return (await done).stdout.toString();
+}
+
+/**
+ * Run a read-only Git command whose exit code is part of its answer, such as `merge-tree`, which
+ * exits with 1 for a merge with conflicts. Any code outside `codes` rejects, as other failures do.
+ */
+export async function readGitCode(git: SimpleGit, args: string[], codes: number[]) {
+  const binary = gitProcessOf(git)?.gitPath ?? "git";
+  // A bare repository has no work tree to run in, so it runs in the Git directory itself.
+  const cwd = await topLevel(git).catch(async () =>
+    (await git.raw(["rev-parse", "--absolute-git-dir"])).replace(/\n$/, "")
+  );
+  const { done } = start(binary, args, cwd, process.env, { codes });
+  const { stdout, code } = await done;
+  return { stdout: stdout.toString(), code };
 }
 
 /** A blob's exact bytes, which a string result would corrupt for binary files. */

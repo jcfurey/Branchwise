@@ -8,6 +8,10 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+### Added
+
+- Forecast merge conflicts: a local branch that would not merge cleanly into the checked-out branch shows a red mark with the number of conflicted files on its label, and its tooltip names them. Git tries each merge in memory with `git merge-tree`, leaving the work tree, the index and the refs untouched; it needs Git 2.38 or later. See [conflict forecast](docs/git-actions.md#conflict-forecast).
+
 ## [0.9.10] - 2026-10-03
 
 ### Changed

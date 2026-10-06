@@ -262,6 +262,9 @@ export function GraphView() {
   const pushStatus = useRepositoryQuery<"pushStatus">(
     rows !== undefined && rows.length > 0 ? { kind: "pushStatus" } : null
   );
+  const conflictForecast = useRepositoryQuery<"conflictForecast">(
+    rows !== undefined && rows.length > 0 ? { kind: "conflictForecast" } : null
+  );
 
   useScrollRestore(rows, selectedRepo.value);
 
@@ -329,6 +332,7 @@ export function GraphView() {
         headBranch={headBranch.value}
         focus={focusData}
         pushStatus={pushStatus.data}
+        conflicts={conflictForecast.data?.conflicts}
         keepMergedBright={branchDisplay.value === "ancestors"}
         dimming={focusDimming.value}
       />

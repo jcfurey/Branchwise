@@ -66,6 +66,12 @@ The status strip identifies merges, rebases, cherry-picks and reverts in progres
 
 After resolving and staging conflicts, use **Continue**. **Abort** restores the operation's starting state. **Skip Commit** is available for rebase, cherry-pick and revert. Git's own checks still apply. Changes to the operation between displaying and submitting a confirmation require a fresh status.
 
+## Conflict forecast
+
+A local branch that would not merge cleanly into the checked-out branch shows a red collision mark and a count on its label in the graph. The tooltip names the files that would be in conflict, up to ten, and counts the rest. The forecast comes from `git merge-tree`, which tries each merge in memory: the work tree, the index and the refs are left as they are.
+
+Only branches not yet merged into `HEAD` are tried: the 50 with the newest commits. Each result is remembered for that pair of commits, so a refresh tries again only the branches that moved, or all of them when `HEAD` does. Branches with no history in common with `HEAD`, which `git merge` refuses, get no mark. Nothing is forecast while a merge, rebase, cherry-pick or revert is under way, or with Git older than 2.38, which has no `merge-tree --write-tree`.
+
 ## Stashes
 
 Open **Settings & Tools → Stashes** to save changes, optionally including untracked files. Each stash can be inspected as a diff in VS Code, applied, popped or dropped. Apply and pop can restore staged changes as staged. A conflicting pop keeps the stash and displays the conflicts. Drop requires confirmation. Stash selections include the commit ID so a newer stash does not silently redirect a pending action.
