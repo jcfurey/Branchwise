@@ -6,7 +6,7 @@
   "config.conflictForecast.localAndRemote": "检查本地分支，以及最近 30 天内有提交的远程分支，这样在你或队友打开拉取请求之前，就能标出会与你的分支冲突的队友分支",
   "config.conflictForecast.local": "仅检查本地分支",
   "config.conflictForecast.off": "不检查任何分支",
-  "config.dateFormat":"指定分支图日期列中使用的日期格式。",
+  "config.dateFormat": "指定分支图日期列中使用的日期格式。",
   "config.dateFormat.dateTime": "显示日期和 24 小时制时间（例如：2024年3月15日 14:30）",
   "config.dateFormat.dateOnly": "仅显示日期（例如：2024年3月15日）",
   "config.dateFormat.relative": "显示每个提交距今多久（例如：5分钟前）；工具提示中保留确切的日期和时间",

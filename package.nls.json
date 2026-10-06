@@ -6,7 +6,7 @@
   "config.conflictForecast.localAndRemote": "Check local branches, and remote branches with commits from the last 30 days, so that a teammate's branch that would conflict with yours is marked before either of you opens a pull request",
   "config.conflictForecast.local": "Check local branches only",
   "config.conflictForecast.off": "Check no branch",
-  "config.dateFormat":"Specifies the date format to be used in the date column of the graph.",
+  "config.dateFormat": "Specifies the date format to be used in the date column of the graph.",
   "config.dateFormat.dateTime": "Show the day and a 24-hour time (for example: Mar 15, 2024 14:30)",
   "config.dateFormat.dateOnly": "Show the day only (for example: Mar 15, 2024)",
   "config.dateFormat.relative": "Show how long ago each commit was made (for example: 5 minutes ago); the tooltip keeps the exact day and time",
