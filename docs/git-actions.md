@@ -109,13 +109,21 @@ Up to 50 remote branches are tried on top of the local ones, newest first, and o
 
 The `branchwise.conflictForecast` setting chooses what is tried: `localAndRemote` (the default), `local` for local branches only, or `off`.
 
+### Rebase, cherry-pick and revert forecast
+
+The confirmations for **Move the current branch onto this (rebase)**, **Cherry-pick…** and **Revert…**, the interactive rebase editor, and the editors for cherry-picking or reverting selected commits say whether the operation would stop with conflicts before you start it. The line reads, for example, "Rebase would stop at 1a2b3c4d Add parser: conflicts in src/parser.ts, README.md", or "Replays 3 commits cleanly"; "Checking for conflicts…" shows while it is worked out. In the editors, the commit where it would stop is also marked, and the forecast is worked out again shortly after you reorder or drop commits. It only informs: every action can still be started.
+
+Git replays the commits in memory, one at a time, with `git merge-tree --merge-base`, as the real operation would apply them: each commit onto the result of the one before. A rebase replays what `git rebase --rebase-merges` would: commits the target already has are left out, and merges are merged again from their replayed parents. A revert merges each commit's parent into the result, from the commit itself. The first commit that would conflict is reported with its files, and the forecast stops there, since what follows depends on how you resolve it. The merged trees and the throwaway commits between steps are written to a temporary folder that is deleted afterwards: the work tree, the index, the refs and the repository's objects are left as they are.
+
+A merge picked or reverted from the commit menu has no forecast, as the result depends on the parent you choose; in the selection editors it is forecast against the parent chosen there. More than 200 commits are not forecast, and the line says so. The forecast needs Git 2.40 or later; with an older Git the line says that instead. Each answer is remembered for its exact commits, so asking again costs nothing.
+
 ## Stashes
 
 Open **Settings & Tools → Stashes** to save changes, optionally including untracked files. Each stash can be inspected as a diff in VS Code, applied, popped or dropped. Apply and pop can restore staged changes as staged. A conflicting pop keeps the stash and displays the conflicts. Drop requires confirmation. Stash selections include the commit ID so a newer stash does not silently redirect a pending action.
 
 ## Rebasing
 
-Right-click a branch and choose **Move the current branch onto this (rebase)**. Commit or stash changes first. This uses Git's merge-preserving rebase and offers the same recovery controls if it stops.
+Right-click a branch and choose **Move the current branch onto this (rebase)**. Commit or stash changes first. This uses Git's merge-preserving rebase and offers the same recovery controls if it stops. The confirmation, like the interactive rebase editor, [forecasts](#rebase-cherry-pick-and-revert-forecast) the commit where it would stop with conflicts.
 
 For interactive editing, right-click an ancestor commit and choose **Edit commits after this (interactive rebase)**. The plan contains the current branch's commits after that ancestor, from oldest to newest. Move commits earlier or later, choose Pick/Reword/Squash/Fixup/Drop, and edit messages for Reword. Squash combines with the preceding retained commit and keeps the combined messages; Fixup discards the fixup's message. At least one commit must remain, and the first retained commit cannot be Squash or Fixup. Below each group of commits that Squash combines, a box shows the combined commit's message as Git would write it: the first commit's message (as reworded, for Reword) and each Squash commit's message, a blank line apart, without Fixup messages. Edit it there before starting. An edited message is kept as typed apart from surrounding whitespace, so lines that start with `#` stay: the group is folded with Fixup and the result amended with that message, skipping the commit hooks as Git does for a squash. A message left as offered is combined by Git itself, as it would be without the box.
 
@@ -222,6 +230,26 @@ The **Reflog** tab at the left of the header, also opened by **Settings & Tools 
 A commit marked **Not on any branch** is one that no branch, tag, remote branch or HEAD still reaches, such as the commit before an amend or a reset, or the work on a deleted branch. **Only commits no branch reaches** lists just those. Each row's **Show in Graph** opens the commit's history in the graph, and its **⋯** menu offers **Create Recovery Branch…**, which keeps the commit under a new branch without checking it out, **Check Out…** and **Reset…**, each with the same confirmation as in the graph. Git deletes unreachable commits once their reflog entries expire, after 30 days by default.
 
 The tab you were on is remembered when the panel reopens. Searching, **Jump to HEAD** and **Show in Graph** return to the **Graph** tab.
+
+## Undo and the Safety Net
+
+Before Branchwise runs an action that moves or deletes refs, it writes down which refs the action may change, where they point, and the branch HEAD is on, and keeps each old commit under `refs/branchwise/backup/`. Git keeps whatever those refs reach, and the graph, the branch lists, Go to and the reflog leave the namespace out. When the backups cannot be written, the action does not run. The actions recorded are:
+
+- reset (soft, mixed and hard); a hard reset also keeps the uncommitted changes it discards, as `git stash create` does, and a mixed reset keeps what was staged
+- rebase and interactive rebase, including squash, **Edit Message…** and **Add Staged Changes to This Commit…**
+- **Absorb Staged Changes…**, whose Undo removes the fixup commits and leaves the changes staged again
+- merge, cherry-pick and revert, of one commit or a selection
+- **Fast-forward Branches**
+- deleting and force-deleting a branch, and **Clean Up Merged Branches**; the branch's settings, such as its upstream, are kept too
+- renaming a branch, and deleting a tag
+- dropping a stash
+- a force push with lease and deleting a remote branch, which are only recorded: the remote branch's previous commit is kept, but Undo cannot push it back
+
+Once an action is done, a notification offers **Undo**, and **Settings & Tools** starts with **Undo** and the action's name, such as **Undo Hard Reset of main**, while there is something to undo. Undo puts every ref back with a compare-and-swap (`git update-ref <ref> <old> <new>`), so it refuses, and changes nothing, when any of them has moved since, such as after a new commit. The checked-out branch moves with `git reset --keep`, which refuses to overwrite uncommitted changes, or with `--soft` after a message edit, an amend or an absorb, which leaves the folded-in changes staged again. A deleted branch or tag is created again, a renamed branch is renamed back, a dropped stash goes back on the stash list, and a hard reset's discarded changes are applied again. Undo also refuses while a merge, rebase, cherry-pick or revert is stopped, and for a branch checked out in another worktree. What Undo replaces is kept as well. After one Undo, the menu offers the action before it.
+
+An action that stops on a conflict is completed in the record when **Continue** or **Abort** in the status strip ends it; one finished outside Branchwise stays listed, but cannot be undone in one step.
+
+**Settings & Tools → Safety Net…** lists the recorded actions, newest first, with the refs each one changed, from which commit to which, and the commits no branch, tag, remote branch or HEAD reaches any more because of it. **Restore** puts an action's refs back the same way as Undo, and **Create Recovery Branch…** keeps a lost commit under a new branch. The record is kept in the repository's Git directory, in `branchwise/safety-net.json`, so every worktree and VS Code window shares it; the 50 most recent records of the last 30 days are kept, and older ones and their backups are removed.
 
 ## Statistics
 

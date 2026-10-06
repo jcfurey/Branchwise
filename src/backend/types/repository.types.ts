@@ -51,6 +51,8 @@ export type RepositoryState = {
   conflicts: string[];
   /** How many paths have staged changes. */
   staged: number;
+  /** The last destructive action that Undo can put back, if any. */
+  undo?: SafetyUndo | null;
 };
 export type StashDetails = { ref: string; hash: string; message: string };
 export type RebaseEntry = {
@@ -79,6 +81,28 @@ export type EditPlan = {
 };
 /** An edit that adds the staged changes to the target commit. */
 export type AmendPlan = EditPlan & { staged: StagedPlan };
+/** What replaying commits would do, worked out without touching the work tree, index or refs. */
+export type ReplayForecast = {
+  /** The first commit that would stop with conflicts, and its conflicted files. */
+  stop: { hash: string; subject: string; files: string[] } | null;
+  /** How many commits would apply cleanly: all of them, or those before the stop. */
+  replayed: number;
+  /** Why nothing was tried: too many commits, or a Git older than 2.40. */
+  skipped?: "limit" | "unsupported";
+};
+/**
+ * Commits to replay onto `onto`. A rebase replays what `git rebase onto` would, merges included;
+ * a pick or revert replays `commits` in order, using parent `mainline` (1-based) of a merge.
+ */
+export type ReplayForecastQuery =
+  | { kind: "replayForecast"; mode: "rebase"; onto: string }
+  | {
+      kind: "replayForecast";
+      mode: "pick" | "revert";
+      onto: string;
+      commits: string[];
+      mainline?: number;
+    };
 /** One hunk of the staged changes: where its lines are in HEAD's version and in the staged one. */
 export type AbsorbHunk = {
   path: string;
@@ -132,6 +156,7 @@ export type RepositoryQuery =
       hiddenRemotes?: string[];
       hiddenBranchPatterns?: string[];
     }
+  | ReplayForecastQuery
   | { kind: "state" }
   | { kind: "stashes" }
   | {
@@ -144,7 +169,8 @@ export type RepositoryQuery =
   | { kind: "editPlan"; target: string }
   | { kind: "amendPlan"; target: string }
   | { kind: "absorbPlan" }
-  | { kind: "lease"; remote: string; branch: string };
+  | { kind: "lease"; remote: string; branch: string }
+  | { kind: "safetyNet" };
 
 export type RepositoryQueryData =
   | WorkflowQueryData
@@ -153,13 +179,15 @@ export type RepositoryQueryData =
   | { kind: "branchFocus"; tip: string; direct: string[]; merged: string[] }
   | { kind: "pushStatus"; unpushed: string[]; unpulled: string[] }
   | { kind: "conflictForecast"; conflicts: ConflictForecastEntry[] }
+  | { kind: "replayForecast"; forecast: ReplayForecast }
   | { kind: "state"; state: RepositoryState }
   | { kind: "stashes"; stashes: StashDetails[] }
   | { kind: "rebasePlan"; plan: RebasePlan }
   | { kind: "editPlan"; plan: EditPlan }
   | { kind: "amendPlan"; plan: AmendPlan }
   | { kind: "absorbPlan"; plan: AbsorbPlan }
-  | { kind: "lease"; hash: string };
+  | { kind: "lease"; hash: string }
+  | { kind: "safetyNet"; entries: SafetyNetEntry[] };
 
 export type RepositoryAction =
   | WorkflowAction
@@ -188,8 +216,10 @@ export type RepositoryAction =
   | { kind: "conflict"; path: string; operation: "open" | "stage" }
   | { kind: "addWorktree"; path: string; branch: string; newBranch: boolean; startPoint: string }
   | { kind: "removeWorktree"; path: string; expectedHead: string }
-  | { kind: "openWorktree"; path: string };
+  | { kind: "openWorktree"; path: string }
+  | { kind: "undoSafetyNet"; id: string };
 import type { GitRef } from "./git.types";
 import type { HistoryAction, HistoryQuery, HistoryQueryData, StagedPlan } from "./history.types";
+import type { SafetyNetEntry, SafetyUndo } from "./safetyNet.types";
 import type { WorkflowAction, WorkflowQuery, WorkflowQueryData } from "./workflow.types";
 import type { WorkingTreeFile, WorkingTreeGroup } from "./workingTree.types";
