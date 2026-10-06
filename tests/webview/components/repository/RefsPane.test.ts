@@ -312,6 +312,41 @@ describe("RefsPane", () => {
     expect(hasRow(`v1\n${"1".repeat(40)}`)).toBe(true);
   });
 
+  it("marks local and remote rows that would conflict, asking for remote branches the graph shows", () => {
+    const sent = mocks.postMessage.mock.calls
+      .map((call) => call[0] as { command: string; requestId: string; query?: { kind: string } })
+      .filter((message) => message.query?.kind === "conflictForecast");
+    expect(sent.at(-1)?.query).toEqual({
+      kind: "conflictForecast",
+      scope: "localAndRemote",
+      hiddenRemotes: [],
+      hiddenBranchPatterns: []
+    });
+    const entry = { committer: "Alice", date: 0 };
+    act(() =>
+      actions.handleRepositoryQuery({
+        repo: "/repo",
+        requestId: sent.at(-1)!.requestId,
+        data: {
+          kind: "conflictForecast",
+          conflicts: [
+            { ...entry, branch: "feature", remote: false, files: ["a"] },
+            { ...entry, branch: "origin/feature", remote: true, files: ["a", "b"] }
+          ]
+        },
+        status: null
+      })
+    );
+    const badge = (title: string) =>
+      row(title).parentElement!.querySelector("[data-conflicts]")?.textContent;
+    expect(badge("feature\norigin/feature")).toBe("1");
+    expect(badge("origin/feature")).toBe("2");
+    expect(badge("origin/main")).toBeUndefined();
+    expect(
+      row("origin/feature").parentElement!.querySelector<HTMLElement>("[data-conflicts]")!.title
+    ).toContain("lastCommitBy");
+  });
+
   it("groups remote refs under the longest matching remote name", () => {
     const groups = groupRemoteBranches(
       [

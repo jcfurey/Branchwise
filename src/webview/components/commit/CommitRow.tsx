@@ -2,7 +2,7 @@ import { computed } from "@preact/signals";
 import type { TargetedKeyboardEvent } from "preact";
 import { useMemo } from "preact/hooks";
 
-import type { GitRef, HistoryEntry } from "@/backend/types";
+import type { ConflictForecastEntry, GitRef, HistoryEntry } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
@@ -50,8 +50,11 @@ type CommitRowProps = {
   dimming?: FocusDimming;
   /** Whether only this computer, or only a remote, has the commit; undefined for neither. */
   push?: PushState | undefined;
-  /** The files each local branch would conflict in if merged into HEAD, by branch name. */
-  conflicts?: ReadonlyMap<string, Array<string>>;
+  /**
+   * The forecast of each branch that would conflict if merged into HEAD, by branch name, a
+   * remote one as `remotes/<remote>/<branch>`.
+   */
+  conflicts?: ReadonlyMap<string, ConflictForecastEntry>;
   /** Whether the details of this row are open beneath it. */
   expanded: boolean;
   onSelect: (() => void) | undefined;
@@ -377,7 +380,11 @@ export function CommitRow({
                     gitRef={ref}
                     active={ref.type === "head" && ref.name === headBranch}
                     remotes={remotes}
-                    conflicts={ref.type === "head" ? conflicts?.get(ref.name) : undefined}
+                    conflict={
+                      ref.type === "tag"
+                        ? undefined
+                        : conflicts?.get(ref.type === "remote" ? `remotes/${ref.name}` : ref.name)
+                    }
                   />
                 )
               )}

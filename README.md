@@ -35,6 +35,7 @@ basics.
 - Go to any branch, tag or commit from the keyboard, or open it on GitHub or GitLab
 - Dots and rings mark unpushed and unpulled commits
 - A mark on each branch that would conflict if merged into yours, naming the files
+- Teammates' remote branches that would conflict with yours, flagged before anyone opens a pull request
 
 **Focus**
 
@@ -71,20 +72,21 @@ The [user guide](docs/git-actions.md) describes every action.
 
 All settings start with `branchwise.`.
 
-| Setting                       | Default         | Description                                                  |
-| ----------------------------- | --------------- | ------------------------------------------------------------ |
-| `autoCenterCommitDetailsView` | `true`          | Centre an opened commit's details vertically                 |
-| `dateFormat`                  | `"Date & Time"` | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"` |
-| `dateType`                    | `"Author Date"` | Show each commit's `"Author Date"` or `"Commit Date"`        |
-| `graphColours`                | 12 colours      | Colours of the graph's lanes, in order                       |
-| `graphStyle`                  | `"rounded"`     | Lines that change lanes: `"rounded"` or `"angular"`          |
-| `initialLoadCommits`          | `300`           | Commits first loaded for a repository or branch              |
-| `loadMoreCommits`             | `100`           | Commits added by **Load Older Commits**                      |
-| `maxDepthOfRepoSearch`        | `0`             | Folder depth searched for repositories                       |
-| `nestedRepoSearchDepth`       | `3`             | Folder depth searched inside each repository for nested ones |
-| `showCurrentBranchByDefault`  | `false`         | Open showing only the checked-out branch                     |
-| `showUncommittedChanges`      | `true`          | Show the uncommitted changes row                             |
-| `tabIconColourTheme`          | `"colour"`      | Graph tab icon in `"colour"` or `"grey"`                     |
+| Setting                       | Default            | Description                                                              |
+| ----------------------------- | ------------------ | ------------------------------------------------------------------------ |
+| `autoCenterCommitDetailsView` | `true`             | Centre an opened commit's details vertically                             |
+| `conflictForecast`            | `"localAndRemote"` | Branches checked for conflicts: `"localAndRemote"`, `"local"` or `"off"` |
+| `dateFormat`                  | `"Date & Time"`    | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"`             |
+| `dateType`                    | `"Author Date"`    | Show each commit's `"Author Date"` or `"Commit Date"`                    |
+| `graphColours`                | 12 colours         | Colours of the graph's lanes, in order                                   |
+| `graphStyle`                  | `"rounded"`        | Lines that change lanes: `"rounded"` or `"angular"`                      |
+| `initialLoadCommits`          | `300`              | Commits first loaded for a repository or branch                          |
+| `loadMoreCommits`             | `100`              | Commits added by **Load Older Commits**                                  |
+| `maxDepthOfRepoSearch`        | `0`                | Folder depth searched for repositories                                   |
+| `nestedRepoSearchDepth`       | `3`                | Folder depth searched inside each repository for nested ones             |
+| `showCurrentBranchByDefault`  | `false`            | Open showing only the checked-out branch                                 |
+| `showUncommittedChanges`      | `true`             | Show the uncommitted changes row                                         |
+| `tabIconColourTheme`          | `"colour"`         | Graph tab icon in `"colour"` or `"grey"`                                 |
 
 ## Upgrading from (neo) Git Graph
 

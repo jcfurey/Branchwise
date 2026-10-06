@@ -7,6 +7,7 @@ import { buildFileTree, type FileTreeFolder, type FileTreeNode } from "@/webview
 
 const config: WebviewConfig = {
   autoCenterCommitDetailsView: true,
+  conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   graphColours: [],
   graphStyle: "rounded",
