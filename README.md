@@ -33,6 +33,7 @@ basics.
 - Commit details with formatted messages, linked issues, a file tree and per-file diffs
 - Search by message, ID, author, committer, branch, tag, date or path
 - Dots and rings mark unpushed and unpulled commits
+- A mark on each branch that would conflict if merged into yours, naming the files
 
 **Focus**
 

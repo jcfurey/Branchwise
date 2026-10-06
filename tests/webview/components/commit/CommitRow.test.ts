@@ -152,6 +152,51 @@ describe("the push status", () => {
   });
 });
 
+describe("the conflict forecast", () => {
+  const drawWith = (commit: GitCommitNode, conflicts: Map<string, Array<string>>) =>
+    render(
+      h(CommitRow, {
+        commit,
+        isHead: false,
+        headBranch: null,
+        conflicts,
+        messages: new Map(),
+        colour: undefined,
+        expanded: false,
+        onSelect: undefined
+      }),
+      body
+    );
+
+  it("marks a local branch that would conflict, with the number of files and their names", () => {
+    drawWith(LABELLED, new Map([["other", ["a"]]]));
+    expect(body.querySelector("[data-conflicts]")).toBeNull();
+
+    const files = Array.from({ length: 12 }, (_, index) => `src/file-${index}.ts`);
+    drawWith(LABELLED, new Map([[BRANCH, files]]));
+    const badge = body.querySelector<HTMLElement>("[data-conflicts]")!;
+    expect(badge.textContent).toBe("12");
+    expect(badge.getAttribute("role")).toBe("img");
+    expect(badge.getAttribute("aria-label")).toBe("conflictForecast");
+    // Ten files by name, then a count of the rest.
+    expect(badge.title.split("\n")).toEqual([
+      "conflictForecast",
+      ...files.slice(0, 10),
+      "conflictForecastMore"
+    ]);
+    expect(badge.classList.contains("text-git-conflict")).toBe(true);
+  });
+
+  it("leaves tags and remote branches of the same name alone", () => {
+    const refs: Array<GitRef> = [
+      { type: "tag", name: "v1", hash: HASH },
+      { type: "remote", name: "origin/v1", hash: HASH }
+    ];
+    drawWith(commitWith("Tagged", refs), new Map([["v1", ["a"]]]));
+    expect(body.querySelector("[data-conflicts]")).toBeNull();
+  });
+});
+
 describe("the actions button", () => {
   it("is named for the commit's actions and opens the commit menu for the row", () => {
     document.body.append(body);

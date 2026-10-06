@@ -3,7 +3,7 @@ import { useMemo } from "preact/hooks";
 
 import type { GitRef } from "@/backend/types";
 import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
-import { BranchIcon, RemoteIcon, TagIcon } from "@/webview/components/ui/Icons";
+import { BranchIcon, ConflictIcon, RemoteIcon, TagIcon } from "@/webview/components/ui/Icons";
 import { openContextMenu } from "@/webview/lib/actions";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
 import { repositoryState } from "@/webview/lib/repository-actions";
@@ -21,20 +21,53 @@ function localBranchFacts(gitRef: GitRef) {
   };
 }
 
+/** Files listed by name in the tooltip of a conflict forecast; the rest are counted. */
+const CONFLICTS_LISTED = 10;
+
+/**
+ * A warning that merging the branch into HEAD would stop with conflicts in `files`, with the
+ * number of them. The tooltip names the files.
+ */
+function ConflictBadge({ files }: { files: Array<string> }) {
+  const l10n = window.l10n;
+  const into = repositoryState.value?.head || "HEAD";
+  // Function replacements insert the names as written, even when they contain `$`.
+  const summary = l10n.conflictForecast.replace("{0}", () => into);
+  const lines = [summary, ...files.slice(0, CONFLICTS_LISTED)];
+  if (files.length > CONFLICTS_LISTED) {
+    lines.push(l10n.conflictForecastMore.replace("{0}", String(files.length - CONFLICTS_LISTED)));
+  }
+  return (
+    <span
+      data-conflicts={files.length}
+      role="img"
+      aria-label={summary}
+      class="ml-1 flex shrink-0 items-center gap-0.5 text-git-conflict"
+      title={lines.join("\n")}
+    >
+      <ConflictIcon class="size-3.5" />
+      {files.length}
+    </span>
+  );
+}
+
 /**
  * A branch or tag on a commit row. The tooltip starts with the ref's name, then adds what the
  * repository state knows about a local branch: its upstream and the worktree holding it.
  * `remotes` are remote branches of the same name on the same commit, shown as a cloud at the
- * end of the label, with their own tooltip and menu.
+ * end of the label, with their own tooltip and menu. `conflicts` are the files a merge of the
+ * branch into HEAD would leave in conflict, when it would.
  */
 export function RefLabel({
   gitRef,
   active,
-  remotes = []
+  remotes = [],
+  conflicts
 }: {
   gitRef: GitRef;
   active: boolean;
   remotes?: Array<GitRef>;
+  conflicts?: Array<string> | undefined;
 }) {
   const source = refMenuSource(gitRef);
   // Every label of the ref shares the key, so all of them light up while its menu is open.
@@ -91,6 +124,7 @@ export function RefLabel({
         <span class="ml-1 whitespace-nowrap">{`↑${branch.ahead} ↓${branch.behind}`}</span>
       )}
       {worktree !== undefined && !active && <span class="ml-1">↗</span>}
+      {conflicts !== undefined && conflicts.length > 0 && <ConflictBadge files={conflicts} />}
       {remotes.length > 0 && (
         <span
           data-remote-refs={remotes.map((remote) => remote.name).join(" ")}

@@ -63,6 +63,7 @@
   --color-git-added: var(--vscode-gitDecoration-addedResourceForeground);
   --color-git-modified: var(--vscode-gitDecoration-modifiedResourceForeground);
   --color-git-deleted: var(--vscode-gitDecoration-deletedResourceForeground);
+  --color-git-conflict: var(--vscode-gitDecoration-conflictingResourceForeground);
 
   --color-row-head: var(--vscode-list-inactiveSelectionBackground);
   --color-row-hover: var(--vscode-list-hoverBackground);

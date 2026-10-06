@@ -50,6 +50,8 @@ type CommitRowProps = {
   dimming?: FocusDimming;
   /** Whether only this computer, or only a remote, has the commit; undefined for neither. */
   push?: PushState | undefined;
+  /** The files each local branch would conflict in if merged into HEAD, by branch name. */
+  conflicts?: ReadonlyMap<string, Array<string>>;
   /** Whether the details of this row are open beneath it. */
   expanded: boolean;
   onSelect: (() => void) | undefined;
@@ -215,6 +217,7 @@ export function CommitRow({
   keepMergedBright = false,
   dimming = "subtle",
   push,
+  conflicts,
   expanded,
   onSelect,
   onRevealLane
@@ -374,6 +377,7 @@ export function CommitRow({
                     gitRef={ref}
                     active={ref.type === "head" && ref.name === headBranch}
                     remotes={remotes}
+                    conflicts={ref.type === "head" ? conflicts?.get(ref.name) : undefined}
                   />
                 )
               )}

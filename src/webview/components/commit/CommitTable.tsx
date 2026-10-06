@@ -36,6 +36,8 @@ type CommitTableProps = {
   focus?: { direct: Array<string>; merged: Array<string> } | null;
   /** Commits only on this computer and commits only on a remote, or `null` when not known. */
   pushStatus?: { unpushed: Array<string>; unpulled: Array<string> } | null;
+  /** Local branches that would not merge cleanly into HEAD, with the files in conflict. */
+  conflicts?: Array<{ branch: string; files: Array<string> }> | undefined;
   keepMergedBright?: boolean;
   dimming?: FocusDimming;
 };
@@ -116,6 +118,7 @@ export function CommitTable({
   headBranch,
   focus = null,
   pushStatus = null,
+  conflicts,
   keepMergedBright = false,
   dimming = "subtle"
 }: CommitTableProps) {
@@ -125,6 +128,10 @@ export function CommitTable({
     pushStatus?.unpulled.forEach((hash) => status.set(hash, "unpulled"));
     return status;
   }, [pushStatus]);
+  const conflictsOf = useMemo(
+    () => new Map(conflicts?.map(({ branch, files }) => [branch, files])),
+    [conflicts]
+  );
   const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);
   const relations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
   const { rowOf, messages } = useMemo(() => indexRows(commits), [commits]);
@@ -296,6 +303,7 @@ export function CommitTable({
                 keepMergedBright={keepMergedBright}
                 dimming={dimming}
                 push={pushOf.get(commit.hash)}
+                conflicts={conflictsOf}
                 expanded={index === expandedRow}
                 onSelect={toggles.get(commit.hash)}
                 onRevealLane={onRevealLane}

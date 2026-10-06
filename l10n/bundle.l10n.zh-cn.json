@@ -549,5 +549,7 @@
   "Copied": "已复制",
   "Not pushed: no remote branch has this commit yet": "未推送：尚无远程分支包含此提交",
   "Not pulled: only the tracked remote branch has this commit": "未拉取：仅跟踪的远程分支包含此提交",
+  "Merging this branch into {0} would conflict in:": "将此分支合并到 {0} 时会在以下文件中冲突：",
+  "and {0} more files": "以及另外 {0} 个文件",
   "More branches and tags: {0}": "更多分支和标签：{0}"
 }

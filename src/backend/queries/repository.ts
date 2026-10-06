@@ -7,6 +7,7 @@ import type { SimpleGit } from "simple-git";
 
 import { loadBisect } from "@/backend/queries/bisect";
 import { loadBranchFocus } from "@/backend/queries/branchFocus";
+import { loadConflictForecast } from "@/backend/queries/conflictForecast";
 import { historyQuery } from "@/backend/queries/history";
 import { loadPushStatus } from "@/backend/queries/pushStatus";
 import {
@@ -248,6 +249,12 @@ export async function repositoryQuery(
       return { kind: "branchFocus", ...(await loadBranchFocus(git, query.branch, query.hashes)) };
     case "pushStatus":
       return { kind: "pushStatus", ...(await loadPushStatus(git)) };
+    case "conflictForecast":
+      // While a merge, rebase or pick is under way, HEAD is not where the user will merge into.
+      return {
+        kind: "conflictForecast",
+        conflicts: (await loadOperation(git)) === null ? await loadConflictForecast(git) : []
+      };
     case "bisect":
       return {
         kind: "bisect",
