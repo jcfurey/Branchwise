@@ -43,12 +43,22 @@ function running(pid: string) {
   }
 }
 
+/**
+ * The marker's line, once the SSH command has written it. The shell creates the file before
+ * `echo` writes to it, so an empty or partial file means it has not written yet.
+ */
 async function started() {
-  for (let attempt = 0; attempt < 100 && !fs.existsSync(marker); attempt++) {
+  let line = "";
+  for (let attempt = 0; attempt < 100; attempt++) {
+    line = fs.existsSync(marker) ? fs.readFileSync(marker, "utf8") : "";
+    if (line.endsWith("\n")) {
+      break;
+    }
     // eslint-disable-next-line no-await-in-loop
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  expect(fs.existsSync(marker)).toBe(true);
+  expect(line).toMatch(/\n$/);
+  return line;
 }
 
 it.each([
@@ -77,8 +87,7 @@ it.each([
       () => "finished",
       () => "stopped"
     );
-    await started();
-    const [prompt, sshPid] = fs.readFileSync(marker, "utf8").trim().split(" ");
+    const [prompt, sshPid] = (await started()).trim().split(" ");
     expect(prompt).toBe("0");
     const stoppedAt = Date.now();
     controller.abort();

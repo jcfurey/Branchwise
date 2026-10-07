@@ -437,6 +437,7 @@ it("delivers every notification in the form the webview accepts", async () => {
     commitHoverCards: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dateSeparators: true,
     dragAndDrop: true,
     graphColours: ["#0085d9"],
     graphStyle: "rounded",

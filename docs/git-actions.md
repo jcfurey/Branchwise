@@ -77,6 +77,10 @@ The column headings and graph scrollbar stay below the main controls as you scro
 
 Clicking or keyboard-navigating to a commit brings its lane into view with the smallest necessary horizontal movement. To find it again after panning, use the crosshair button beside **Message**, labelled **Reveal selected lane**. Refreshing or resizing keeps your manual position where the graph still fits; switching repositories resets it. Revealing a lane leaves the branch, checkout, focus mode, and commit text position unchanged.
 
+## Days in the graph
+
+A faint line runs across the graph above the first commit of each day, where it follows a commit from a later day, so long stretches of **Relative** dates such as "3 days ago" still show where one day ends. Days are those of the dates the graph shows, author or commit dates as `branchwise.dateType` says, in your local time zone; the uncommitted changes row takes no part. Once you scroll down, a small label under the column headings names the day of the topmost commit, such as **Tuesday, October 6, 2026**, in VS Code's display language. The label lets clicks through to the rows beneath it, and screen readers skip it, since each row reads its own date. Set `branchwise.dateSeparators` to `false` to turn off both.
+
 ## Loading errors
 
 If Git cannot load the graph, the view shows the error and a **Retry** button. Repair the reported problem, such as an unavailable repository, Git executable, or invalid Git configuration, then retry. **This repository has no commits yet** is reserved for a successful load of a repository without commits.

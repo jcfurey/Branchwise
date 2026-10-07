@@ -38,6 +38,7 @@ basics.
 - A legend of every graph symbol, and one-click ways to widen a search that finds nothing
 - Go to any branch, tag or commit from the keyboard, or open it on GitHub or GitLab
 - Dots and rings mark unpushed and unpulled commits
+- A faint line where each day's commits begin, and the topmost day named as you scroll
 - A mark on each branch that would conflict if merged into yours, naming the files
 - A key on signed commits; their details check the GPG, SSH or X.509 signature
 - Teammates' remote branches that would conflict with yours, flagged before anyone opens a pull request
@@ -92,6 +93,7 @@ All settings start with `branchwise.`.
 | `commitHoverCards`            | `true`             | Show a card about a commit when the pointer or keyboard rests on it      |
 | `conflictForecast`            | `"localAndRemote"` | Branches checked for conflicts: `"localAndRemote"`, `"local"` or `"off"` |
 | `dateFormat`                  | `"Date & Time"`    | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"`             |
+| `dateSeparators`              | `true`             | Mark where each day begins and name the day at the top while scrolling   |
 | `dateType`                    | `"Author Date"`    | Show each commit's `"Author Date"` or `"Commit Date"`                    |
 | `dragAndDrop`                 | `true`             | Drag commits and branches onto branch labels                             |
 | `graphColours`                | 12 colours         | Colours of the graph's lanes, in order                                   |

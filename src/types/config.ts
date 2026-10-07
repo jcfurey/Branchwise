@@ -32,6 +32,8 @@ export type WebviewConfig = Readonly<{
    */
   conflictForecast: ConflictForecastScope;
   dateFormat: DateFormat;
+  /** Mark where each day's commits begin, and name the day of the topmost row while scrolled. */
+  dateSeparators: boolean;
   /** Let commits and branches be dragged onto branch labels to start an action. */
   dragAndDrop: boolean;
   /**

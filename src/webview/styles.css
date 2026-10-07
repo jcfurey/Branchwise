@@ -103,6 +103,9 @@
   /* A branch that would accept what is being dragged over it. */
   --color-drop: var(--vscode-list-dropBackground);
 
+  /* The faint line above the first commit of each day. Themes draw indent guides as subtly. */
+  --color-day-line: var(--vscode-tree-indentGuidesStroke, rgba(128, 128, 128, 0.4));
+
   /* The branch colour of a commit row. Each row sets its own; see .branch-focus-row. */
   --color-graph: var(--vscode-focusBorder);
 }
@@ -157,6 +160,17 @@
   .branch-focus-row[data-emphasized="true"] {
     --color-graph: var(--branch-colour);
     color: var(--color-fg);
+  }
+
+  /*
+   * The first commit of a day, below a commit from a later day: a line along the top of each of
+   * its cells. A background rather than a border, so the row stays on the graph's 24px grid, and
+   * the graph's lanes are drawn over it.
+   */
+  .branch-focus-row[data-day-start] > td {
+    background-image: linear-gradient(var(--color-day-line), var(--color-day-line));
+    background-repeat: no-repeat;
+    background-size: 100% 1px;
   }
 
   /*

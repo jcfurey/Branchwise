@@ -24,6 +24,7 @@ it("falls back to the defaults declared in package.json", () => {
     commitHoverCards: extConfig.commitHoverCards(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
+    dateSeparators: extConfig.dateSeparators(),
     dateType: extConfig.dateType(),
     dragAndDrop: extConfig.dragAndDrop(),
     graphStyle: extConfig.graphStyle(),

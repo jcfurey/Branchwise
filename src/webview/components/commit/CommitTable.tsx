@@ -7,6 +7,7 @@ import { CommitDetails } from "@/webview/components/commit/CommitDetails";
 import { CommitGraph } from "@/webview/components/commit/CommitGraph";
 import { CommitHoverCard } from "@/webview/components/commit/CommitHoverCard";
 import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
+import { DayPill } from "@/webview/components/commit/DayPill";
 import { type ColumnResize, useColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useGraphScroll } from "@/webview/components/commit/useGraphScroll";
 import { WorkingTreeDetails } from "@/webview/components/commit/WorkingTreeDetails";
@@ -43,6 +44,7 @@ import {
 } from "@/webview/lib/stores";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 import type { FocusDimming } from "@/webview/types";
+import { commitDays } from "@/webview/utils/date";
 
 type CommitTableProps = {
   /** The rows in graph order. An uncommitted-changes row, when present, comes first. */
@@ -209,6 +211,9 @@ export function CommitTable({
   const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);
   const relations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
   const { rowOf, byHash, messages, hashes } = useMemo(() => indexRows(commits), [commits]);
+  // Worked out once for each list of rows, never for each row as it draws.
+  const separators = getWebviewConfig().dateSeparators;
+  const days = useMemo(() => (separators ? commitDays(commits) : null), [commits, separators]);
   // Kept while the rows and their relations stay the same, so the graph keeps its paths.
   const relationForLine = useCallback(
     (line: GraphLine) => lineRelation(line, commits, relations),
@@ -328,6 +333,7 @@ export function CommitTable({
           />
         </div>
       </div>
+      {days !== null && <DayPill containerRef={containerRef} rowOf={rowOf} days={days} />}
       <table
         aria-label={l10n.graphKeyboardHint}
         class={`w-full cursor-default border-collapse text-ui select-none ${
@@ -425,6 +431,7 @@ export function CommitTable({
                 push={pushOf.get(commit.hash)}
                 conflicts={conflictsOf}
                 expanded={index === expandedRow}
+                dayStart={days?.starts.has(index) ?? false}
                 onSelect={toggles.get(commit.hash)}
                 onRevealLane={onRevealLane}
                 showChanges={showChangesColumn}

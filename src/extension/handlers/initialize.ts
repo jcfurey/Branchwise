@@ -11,6 +11,7 @@ export function webviewConfig(): WebviewConfig {
     commitHoverCards: extConfig.commitHoverCards(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
+    dateSeparators: extConfig.dateSeparators(),
     dragAndDrop: extConfig.dragAndDrop(),
     graphColours: extConfig.graphColours(),
     graphStyle: extConfig.graphStyle(),

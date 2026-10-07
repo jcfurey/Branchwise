@@ -33,6 +33,7 @@ const DEFAULT_CONFIG = {
   commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: themeGraphColours,
   graphStyle: "rounded",

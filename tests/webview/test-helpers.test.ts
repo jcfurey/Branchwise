@@ -28,6 +28,7 @@ const expectedSettings: WebviewConfig = {
   commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: [],
   graphStyle: "rounded",
