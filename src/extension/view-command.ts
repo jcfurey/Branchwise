@@ -183,7 +183,14 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
 
   function goTo(): void {
     pendingGoTo = true;
-    view();
+    if (graph === undefined) {
+      graph = openGraph();
+    } else {
+      // Forward, but without the keyboard: the picker takes it as it opens. The workbench hands
+      // a revealed page the keyboard a moment later, which could be after the picker opened, and
+      // a picker that loses the keyboard closes.
+      graph.panel.reveal(vscode.window.activeTextEditor?.viewColumn, true);
+    }
     showPendingGoTo();
   }
 
