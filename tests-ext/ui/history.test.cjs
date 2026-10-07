@@ -409,6 +409,23 @@ async function finished() {
     20000
   );
 }
+/**
+ * Click `text` in the menu of the ref `name`. Some entries depend on the repository's remotes and
+ * upstreams, which load after the graph, and a menu shows what was known when it opened: a menu
+ * without the entry is closed and opened again.
+ */
+async function refMenuEntry(name, text) {
+  await until(async () => {
+    await contextRef(name);
+    const clicked = await graph.evaluate(
+      `(() => { const item = [...document.querySelectorAll('[role="menuitem"]')].find(e => e.textContent.trim() === ${JSON.stringify(text)}); if (!item) return false; item.click(); return true; })()`
+    );
+    if (!clicked) {
+      await keypress("Escape");
+    }
+    return clicked;
+  }, `menu ${text} on ${name}`);
+}
 async function contextRef(name) {
   await until(
     () =>
@@ -2116,15 +2133,13 @@ suite("Branchwise workflow UI", function () {
       return decodeURIComponent(text.split("\n")[0]);
     };
 
-    await contextRef("feature/tracked");
-    await menu("Create Merge Request…");
+    await refMenuEntry("feature/tracked", "Create Merge Request…");
     assert.match(
       await asked("tracked"),
       /https:\/\/gitlab\.example\.test\/team\/project\/-\/merge_requests\/new\?merge_request\[source_branch\]=feature\/tracked&merge_request\[target_branch\]=main/
     );
 
-    await contextRef("fresh");
-    await menu("Push and Create Merge Request…");
+    await refMenuEntry("fresh", "Push and Create Merge Request…");
     await until(
       () =>
         graph.evaluate(
