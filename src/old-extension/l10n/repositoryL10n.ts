@@ -64,6 +64,11 @@ export function getRepositoryLocalizedStrings() {
     prunableWorktree: vscode.l10n.t("Missing worktree"),
     currentWorktree: vscode.l10n.t("Current worktree"),
     detachedHead: vscode.l10n.t("Detached HEAD"),
+    worktreeLabel: vscode.l10n.t("worktree: {0}"),
+    worktreeTitle: vscode.l10n.t("Worktree: {0}"),
+    worktreeDirty: vscode.l10n.t("Has uncommitted changes"),
+    openWorktreeWindow: vscode.l10n.t("Open Worktree in New Window"),
+    revealWorktree: vscode.l10n.t("Reveal in Explorer/Finder"),
     rebaseOnto: vscode.l10n.t("Move the current branch onto this (rebase)"),
     rebaseConfirm: vscode.l10n.t(
       "Rebase {0} onto {1}? This rewrites commits on the current branch and preserves merge structure. Commit or stash your changes first."
@@ -247,6 +252,10 @@ export function getRepositoryLocalizedStrings() {
     legendMore: vscode.l10n.t("More labels"),
     legendMoreHint: vscode.l10n.t(
       "The labels that do not fit on the row, counted. Its menu lists them."
+    ),
+    legendWorktree: vscode.l10n.t("Other worktree"),
+    legendWorktreeHint: vscode.l10n.t(
+      "Another worktree has this branch or commit checked out. A dot means it has uncommitted changes."
     ),
     legendDimmed: vscode.l10n.t("Dimmed history"),
     legendDimmedHint: vscode.l10n.t(

@@ -21,6 +21,7 @@ beforeAll(() => {
     loadMoreCommits: 100,
     locale: "en",
     showCurrentBranchByDefault: false,
+    showWorktrees: true,
     singleKeyShortcuts: true
   });
   initRpcHandler(new Map());

@@ -107,6 +107,7 @@ test("hands the page its strings and settings", async () => {
     loadMoreCommits: 100,
     locale: "en",
     showCurrentBranchByDefault: false,
+    showWorktrees: true,
     singleKeyShortcuts: true
   });
 });

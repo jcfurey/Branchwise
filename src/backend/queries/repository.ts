@@ -27,6 +27,7 @@ import {
 } from "@/backend/queries/workflows";
 import { loadWorkingTree } from "@/backend/queries/workingTree";
 import { loadWorkspace } from "@/backend/queries/workspace";
+import { loadWorktreeChanges } from "@/backend/queries/worktrees";
 import type {
   BranchDetails,
   OperationKind,
@@ -370,6 +371,8 @@ export async function repositoryQuery(
     }
     case "pushStatus":
       return { kind: "pushStatus", ...(await loadPushStatus(git)) };
+    case "worktreeChanges":
+      return { kind: "worktreeChanges", worktrees: await loadWorktreeChanges(git) };
     case "conflictForecast":
       // While a merge, rebase or pick is under way, HEAD is not where the user will merge into.
       return {

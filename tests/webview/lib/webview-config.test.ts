@@ -15,6 +15,7 @@ const first: WebviewConfig = {
   loadMoreCommits: 75,
   locale: "de",
   showCurrentBranchByDefault: true,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 

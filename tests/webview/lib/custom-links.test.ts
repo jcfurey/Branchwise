@@ -33,6 +33,7 @@ const settings = (issueLinks: readonly IssueLink[]): WebviewConfig => ({
   loadMoreCommits: 100,
   locale: "en",
   showCurrentBranchByDefault: false,
+  showWorktrees: true,
   singleKeyShortcuts: true
 });
 

@@ -52,6 +52,7 @@ async function freshPanel() {
     loadMoreCommits: 100,
     locale: "en",
     showCurrentBranchByDefault: false,
+    showWorktrees: true,
     singleKeyShortcuts: true
   });
   function branches(names = ["main", "topic"], head: string | null = "main") {

@@ -62,6 +62,11 @@ tree. `branchwise.showSignatures` (on by default) marks signed commits with a sm
 reads the loaded commits once more; turning it off saves about 10 ms for 300 rows and 40 ms for
 3,000 (see [performance](performance.md)). The commit details still check signatures. See [commit signatures](git-actions.md#commit-signatures).
 
+`branchwise.showWorktrees` (default `true`) marks the commits your other worktrees have checked
+out, with a dot for those with uncommitted changes. The dots come from a quick `git status` in up
+to 20 worktrees, at most 3 seconds each; turning the setting off skips them. See
+[worktrees in the graph](git-actions.md#worktrees-in-the-graph).
+
 `branchwise.dragAndDrop` (default `true`) lets commit rows and local branches be dragged onto
 branch labels in the graph and the Branches pane to cherry-pick, merge or rebase, each after a
 confirmation. Turn it off if you drag by accident; every action stays in the menus. See

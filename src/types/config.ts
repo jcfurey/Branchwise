@@ -49,6 +49,11 @@ export type WebviewConfig = Readonly<{
   locale: string;
   /** In filter mode, open a repository on its checked-out branch rather than on every branch. */
   showCurrentBranchByDefault: boolean;
+  /**
+   * Mark the commits other worktrees have checked out, with a dot for those with uncommitted
+   * changes, which the page then asks the extension to check.
+   */
+  showWorktrees: boolean;
   /** Let single keys, such as `b` for Create Branch, act on the focused commit row. */
   singleKeyShortcuts: boolean;
 }>;

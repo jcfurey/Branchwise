@@ -158,6 +158,7 @@ export const extConfig = {
   showCurrentBranchByDefault: () => setting<boolean>("showCurrentBranchByDefault", false),
   showSignatures: () => setting<boolean>("showSignatures", true),
   showUncommittedChanges: () => setting<boolean>("showUncommittedChanges", true),
+  showWorktrees: () => setting<boolean>("showWorktrees", true),
   singleKeyShortcuts: () => setting<boolean>("singleKeyShortcuts", true),
   tabIconColourTheme: () => setting<TabIconColourTheme>("tabIconColourTheme", "colour")
 };

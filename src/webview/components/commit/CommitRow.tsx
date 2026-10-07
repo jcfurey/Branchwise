@@ -6,6 +6,7 @@ import type { ConflictForecastEntry, GitRef, HistoryEntry } from "@/backend/type
 import { abbrevCommit } from "@/backend/utils/string";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
 import { SignedMark } from "@/webview/components/commit/SignatureBadge";
+import { WorktreeLabel } from "@/webview/components/commit/WorktreeMarker";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
 import { KebabIcon } from "@/webview/components/ui/Icons";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
@@ -28,6 +29,7 @@ import {
   selectedCommits
 } from "@/webview/lib/navigation";
 import { activeSource, contextMenu, uncommittedChanges } from "@/webview/lib/stores";
+import { type WorktreeMarker, worktreeMarkers } from "@/webview/lib/worktrees";
 import type { FocusDimming } from "@/webview/types";
 import { getCommitDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
@@ -133,6 +135,18 @@ function remoteBranchName(ref: GitRef) {
 
 /** Labels shown in full on a row before the rest fold into a "+N" button. */
 const LABELS_SHOWN = 2;
+
+/**
+ * The worktrees on a row whose branch has no label of its own there to carry their mark: one on
+ * a detached HEAD, or one whose branch label is folded into "+N".
+ */
+export function worktreesWithoutLabel(
+  markers: ReadonlyArray<WorktreeMarker> | undefined,
+  visible: ReadonlyArray<ShownRef>
+): Array<WorktreeMarker> {
+  const branches = new Set(visible.flatMap(({ ref }) => (ref.type === "head" ? [ref.name] : [])));
+  return (markers ?? []).filter((marker) => !branches.has(marker.branch));
+}
 
 /**
  * The labels that do not fit on a row, as a "+N" button. Its tooltip lists them, and it opens a
@@ -245,6 +259,8 @@ export function CommitRow({
 
   const message = uncommitted ? uncommittedText(uncommittedChanges.value) : commit.message;
   const labels = shownRefs(commit.refs, headBranch);
+  const visible = labels.length > LABELS_SHOWN ? labels.slice(0, 1) : labels;
+  const unlabelled = worktreesWithoutLabel(worktreeMarkers.value.get(hash), visible);
   const date = uncommitted ? null : getCommitDate(commit.date);
   const emphasized = isHead || uncommitted || expanded || selected || menuOpen;
   const background =
@@ -386,26 +402,27 @@ export function CommitRow({
         <div class="flex min-w-0 items-center">
           {isHead && <span class="mr-1.25 size-2.5 shrink-0 rounded-full border-2 border-graph" />}
           {push !== undefined && <PushDot state={push} />}
-          {labels.length > 0 && (
+          {labels.length + unlabelled.length > 0 && (
             <span class="flex max-w-1/2 shrink-0 overflow-hidden">
-              {(labels.length > LABELS_SHOWN ? labels.slice(0, 1) : labels).map(
-                ({ ref, remotes }) => (
-                  <RefLabel
-                    key={`${ref.type}:${ref.name}`}
-                    gitRef={ref}
-                    active={ref.type === "head" && ref.name === headBranch}
-                    remotes={remotes}
-                    conflict={
-                      ref.type === "tag"
-                        ? undefined
-                        : conflicts?.get(ref.type === "remote" ? `remotes/${ref.name}` : ref.name)
-                    }
-                  />
-                )
-              )}
+              {visible.map(({ ref, remotes }) => (
+                <RefLabel
+                  key={`${ref.type}:${ref.name}`}
+                  gitRef={ref}
+                  active={ref.type === "head" && ref.name === headBranch}
+                  remotes={remotes}
+                  conflict={
+                    ref.type === "tag"
+                      ? undefined
+                      : conflicts?.get(ref.type === "remote" ? `remotes/${ref.name}` : ref.name)
+                  }
+                />
+              ))}
               {labels.length > LABELS_SHOWN && (
                 <MoreRefs hidden={labels.slice(1)} headBranch={headBranch} />
               )}
+              {unlabelled.map((marker) => (
+                <WorktreeLabel key={marker.path} marker={marker} />
+              ))}
             </span>
           )}
           <span class="min-w-0 flex-1 truncate" title={message}>

@@ -333,6 +333,11 @@
           "type": "boolean",
           "default": true
         },
+        "branchwise.showWorktrees": {
+          "description": "%config.showWorktrees%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.singleKeyShortcuts": {
           "description": "%config.singleKeyShortcuts%",
           "type": "boolean",

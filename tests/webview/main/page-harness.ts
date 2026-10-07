@@ -30,6 +30,7 @@ export const PAGE_CONFIG: WebviewConfig = {
   autoCenterCommitDetailsView: false,
   conflictForecast: "localAndRemote",
   showCurrentBranchByDefault: false,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 

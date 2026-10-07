@@ -33,6 +33,7 @@ it("falls back to the defaults declared in package.json", () => {
     showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
     showSignatures: extConfig.showSignatures(),
     showUncommittedChanges: extConfig.showUncommittedChanges(),
+    showWorktrees: extConfig.showWorktrees(),
     singleKeyShortcuts: extConfig.singleKeyShortcuts(),
     tabIconColourTheme: extConfig.tabIconColourTheme()
   };

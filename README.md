@@ -37,6 +37,7 @@ basics.
 - A legend of every graph symbol, and one-click ways to widen a search that finds nothing
 - Go to any branch, tag or commit from the keyboard, or open it on GitHub or GitLab
 - Dots and rings mark unpushed and unpulled commits
+- See where your other worktrees are checked out, and which have uncommitted changes
 - A mark on each branch that would conflict if merged into yours, naming the files
 - A key on signed commits; their details check the GPG, SSH or X.509 signature
 - Teammates' remote branches that would conflict with yours, flagged before anyone opens a pull request
@@ -102,6 +103,7 @@ All settings start with `branchwise.`.
 | `showCurrentBranchByDefault`  | `false`            | Open showing only the checked-out branch                                 |
 | `showSignatures`              | `true`             | Mark signed commits in the graph                                         |
 | `showUncommittedChanges`      | `true`             | Show the uncommitted changes row                                         |
+| `showWorktrees`               | `true`             | Mark the commits other worktrees have checked out                        |
 | `singleKeyShortcuts`          | `true`             | Let single keys act on the focused commit row                            |
 | `tabIconColourTheme`          | `"colour"`         | Graph tab icon in `"colour"` or `"grey"`                                 |
 

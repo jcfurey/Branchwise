@@ -54,6 +54,7 @@ const titles: Record<string, keyof LocalizedStrings> = {
   addWorktree: "addWorktree",
   removeWorktree: "removeWorktree",
   openWorktree: "openWorktree",
+  revealWorktree: "revealWorktree",
   submodule: "updateSubmodule",
   restoreFile: "restoreHistoricalFile",
   fixup: "createFixup",

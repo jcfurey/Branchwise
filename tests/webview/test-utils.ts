@@ -23,6 +23,7 @@ const settings: WebviewConfig = {
   loadMoreCommits: 100,
   locale: "en",
   showCurrentBranchByDefault: false,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 

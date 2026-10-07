@@ -31,6 +31,7 @@
   "config.showCurrentBranchByDefault": "打开 Branchwise 时默认显示当前分支。默认值：false（显示所有分支）",
   "config.showSignatures": "在分支图中标记已签名的提交。查找它们需要再读取一次每个已加载的提交，因此关闭此项可略微加快大型仓库的加载速度。打开提交的详细信息时仍会检查其签名。",
   "config.showUncommittedChanges": "在分支图顶部显示一行未提交的更改。关闭此项会跳过对工作区的扫描，可加快大型仓库的加载速度。",
+  "config.showWorktrees": "标记其他工作树已检出的提交，并在有未提交更改的工作树上显示圆点。查找圆点需要在最多 20 个工作树中运行快速状态检查；关闭此项会跳过该检查。",
   "config.singleKeyShortcuts": "允许在分支图中用单个按键操作当前聚焦的提交行，例如按 B 创建分支、按 Y 复制提交的短 ID。在分支图中按 ? 查看完整列表。如果你使用屏幕阅读器或会自行发送单键的扩展，请关闭此项。",
   "config.tabIconColourTheme": "指定 Branchwise 标签页上所显示图标的颜色主题。",
   "config.tabIconColourTheme.colour": "显示彩色图标，适合大多数 Visual Studio Code 颜色主题",

@@ -444,6 +444,7 @@ it("delivers every notification in the form the webview accepts", async () => {
     loadMoreCommits: 100,
     locale: "en",
     showCurrentBranchByDefault: false,
+    showWorktrees: true,
     singleKeyShortcuts: true
   };
   const repo: GitRepo = { name: "app", path: "/work/app" };

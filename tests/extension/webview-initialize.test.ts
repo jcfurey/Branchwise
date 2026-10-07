@@ -40,6 +40,7 @@ const DEFAULT_CONFIG = {
   loadMoreCommits: 100,
   locale: "fr",
   showCurrentBranchByDefault: false,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 
