@@ -2,7 +2,10 @@ import { ROW_HEIGHT } from "@/webview/constants";
 import { LANE_OFFSET, LANE_WIDTH } from "@/webview/graph/constants";
 import type { GraphExpansion, GraphLayout } from "@/webview/graph/types";
 
-/* Pixels. The graph is drawn on a grid of lanes (columns) and rows. */
+/*
+ * Pixels. The graph is drawn on a grid of lanes (columns) and rows. Rows are `rowHeight` tall,
+ * the height the `rowDensity` setting gives the table's rows, and the default density's otherwise.
+ */
 
 /** Horizontal centre of a lane: where its dots and straight lines are drawn. */
 export function laneX(x: number): number {
@@ -10,8 +13,8 @@ export function laneX(x: number): number {
 }
 
 /** Vertical middle of a row, before any shift from the open commit details. */
-export function rowY(y: number): number {
-  return (y + 0.5) * ROW_HEIGHT;
+export function rowY(y: number, rowHeight: number = ROW_HEIGHT): number {
+  return (y + 0.5) * rowHeight;
 }
 
 /** A missing expansion, whether `null` or `undefined`, means no details are open. */
@@ -31,9 +34,13 @@ export function graphWidth(layout: GraphLayout): number {
  * Height of the drawing. Open details add their height only when they belong
  * to one of the layout's rows; anywhere else they would leave an empty gap.
  */
-export function graphHeight(layout: GraphLayout, expansion: GraphExpansion | null): number {
+export function graphHeight(
+  layout: GraphLayout,
+  expansion: GraphExpansion | null,
+  rowHeight: number = ROW_HEIGHT
+): number {
   const rows = layout.vertices.length;
-  const height = rows * ROW_HEIGHT;
+  const height = rows * rowHeight;
   if (isOpen(expansion) && expansion.row >= 0 && expansion.row < rows) {
     return height + expansion.height;
   }

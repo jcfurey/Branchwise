@@ -1,4 +1,4 @@
-/* The graph's geometry across its lanes, in CSS pixels. Rows follow `ROW_HEIGHT`. */
+/* The graph's geometry across its lanes, in CSS pixels. Rows follow the `rowDensity` setting. */
 
 /** From one lane's centre to the next. */
 export const LANE_WIDTH = 16;

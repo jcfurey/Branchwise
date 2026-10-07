@@ -287,6 +287,9 @@ async function openEffect(repo: string, effect: RepositoryEffect) {
     case "worktree":
       await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(effect.path), true);
       return;
+    case "reveal":
+      await vscode.commands.executeCommand("revealFileInOS", vscode.Uri.file(effect.path));
+      return;
     case "conflict":
       await openConflict(effect.path, effect.status);
       return;

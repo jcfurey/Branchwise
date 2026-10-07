@@ -6,8 +6,10 @@ import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import { loadAbsorbPlan } from "@/backend/queries/absorb";
+import { findEquivalentCommit, loadAppliedCommits } from "@/backend/queries/appliedCommits";
 import { loadBisect } from "@/backend/queries/bisect";
 import { loadBranchFocus } from "@/backend/queries/branchFocus";
+import { loadCommitStats } from "@/backend/queries/commitStats";
 import { loadConflictForecast } from "@/backend/queries/conflictForecast";
 import { loadContainingRefs } from "@/backend/queries/containingRefs";
 import { loadAmendPlan, loadRewordPlan } from "@/backend/queries/editCommit";
@@ -28,6 +30,7 @@ import {
 } from "@/backend/queries/workflows";
 import { loadWorkingTree } from "@/backend/queries/workingTree";
 import { loadWorkspace } from "@/backend/queries/workspace";
+import { loadWorktreeChanges } from "@/backend/queries/worktrees";
 import type {
   BranchDetails,
   OperationKind,
@@ -364,13 +367,28 @@ export async function repositoryQuery(
     case "workingTree":
       return { kind: "workingTree", files: await loadWorkingTree(git) };
     case "branchFocus":
-      return { kind: "branchFocus", ...(await loadBranchFocus(git, query.branch, query.hashes)) };
+      return {
+        kind: "branchFocus",
+        ...(await loadBranchFocus(git, query.branch, query.hashes, query.tag === true))
+      };
     case "containingRefs": {
       const { kind, hash, ...visibility } = query;
       return { kind, ...(await loadContainingRefs(git, hash, visibility)) };
     }
+    case "appliedCommits":
+      return { kind: "appliedCommits", ...(await loadAppliedCommits(git, query.branch)) };
+    case "equivalentCommit":
+      return {
+        kind: "equivalentCommit",
+        hash: query.hash,
+        ...(await findEquivalentCommit(git, query.hash))
+      };
+    case "commitStats":
+      return { kind: "commitStats", stats: await loadCommitStats(git, query.hashes) };
     case "pushStatus":
       return { kind: "pushStatus", ...(await loadPushStatus(git)) };
+    case "worktreeChanges":
+      return { kind: "worktreeChanges", worktrees: await loadWorktreeChanges(git) };
     case "conflictForecast":
       // While a merge, rebase or pick is under way, HEAD is not where the user will merge into.
       return {

@@ -3,6 +3,7 @@ import { useEffect } from "preact/hooks";
 import { openShortcutSheet } from "@/webview/components/ui/ShortcutSheet";
 import { focusSearch } from "@/webview/lib/focus";
 import { leaveNavigation, restoreScroll } from "@/webview/lib/navigation";
+import { onPageScroll } from "@/webview/lib/page-scroll";
 import { shortcutFor } from "@/webview/lib/shortcuts";
 import { contextMenu, dialog, selectedRepo } from "@/webview/lib/stores";
 
@@ -38,13 +39,13 @@ export function NavigationEffects() {
         }
       }
     };
-    window.addEventListener("scroll", scroll, { passive: true });
+    const stopScroll = onPageScroll(scroll);
     window.addEventListener("pagehide", save);
     window.addEventListener("keydown", key);
     return () => {
       clearTimeout(timer);
       save();
-      window.removeEventListener("scroll", scroll);
+      stopScroll();
       window.removeEventListener("pagehide", save);
       window.removeEventListener("keydown", key);
     };

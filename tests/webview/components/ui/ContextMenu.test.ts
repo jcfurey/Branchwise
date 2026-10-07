@@ -194,6 +194,31 @@ describe("rendering", () => {
     expect(document.querySelectorAll('[role="menu"]')).toHaveLength(1);
   });
 
+  it("draws an entry that is on or off as a checkbox item, ticked while on", () => {
+    const [plain, on, off] = entries("Plain", "On", "Off") as Array<NonNullable<ContextMenuEntry>>;
+    open([plain!, { ...on!, checked: true }, { ...off!, checked: false }]);
+
+    const shown = [...menu()!.children];
+    expect(
+      shown.map((row) => [row.getAttribute("role"), row.getAttribute("aria-checked")])
+    ).toEqual([
+      ["menuitem", null],
+      ["menuitemcheckbox", "true"],
+      ["menuitemcheckbox", "false"]
+    ]);
+    // The tick is drawn from an attribute, so each item's text and name stay its title.
+    expect(rows()).toEqual(["Plain", "On", "Off"]);
+    expect(
+      shown.map((row) => row.querySelector("[data-check]")?.getAttribute("data-check"))
+    ).toEqual([undefined, "✓", ""]);
+
+    // The keyboard moves over checkbox items and chooses them like any other.
+    press("End");
+    expect(highlighted()).toBe("Off");
+    press("Enter");
+    expect(chosen).toEqual([{ title: "Off", closed: true }]);
+  });
+
   it("shows an empty frame for a menu without items", () => {
     open([]);
     expect(menu()).not.toBeNull();

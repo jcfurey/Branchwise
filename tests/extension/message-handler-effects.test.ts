@@ -94,6 +94,21 @@ describe("what a repository action opens", () => {
     );
   });
 
+  it("shows a worktree folder in the system's file manager", async () => {
+    const page = await produce(
+      { kind: "reveal", path: "/wt" },
+      { kind: "revealWorktree", path: "/wt" }
+    );
+
+    expect(editor.executeCommand).toHaveBeenCalledExactlyOnceWith("revealFileInOS", {
+      scheme: "file",
+      fsPath: "/wt"
+    });
+    expect(page.received).toEqual([
+      { command: "repositoryAction", status: null, requestId: "fx", repo: "/repo" }
+    ]);
+  });
+
   it("hands a conflict to the conflict opener", async () => {
     const page = await produce({ kind: "conflict", path: "/repo/c.txt", status: "UU" });
 

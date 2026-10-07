@@ -18,14 +18,22 @@ export type RowFacts = {
    * forecast marks one; otherwise `null`.
    */
   conflictsWith: string | null;
+  /**
+   * The checked-out branch, such as `main`, when it already has the commit's change under another
+   * commit; otherwise absent or `null`.
+   */
+  appliedIn?: string | null;
   /** The row's branches and tags, in the order they are shown. */
   refs: ReadonlyArray<GitRef>;
+  /** The nearest branch containing the commit, when the row names one after its message. */
+  nearest?: string | undefined;
 };
 
 /**
  * One line that says what a commit row shows, for screen readers, which otherwise hear the cells
  * but nothing of the dot, the markers or the labels' kinds: "Fix the parser, Ann Lee, 3 days
- * ago, merge of 2 parents, unpushed, has conflicts with main, branch topic, tag v1.0".
+ * ago, merge of 2 parents, unpushed, has conflicts with main, already in main, branch topic,
+ * tag v1.0".
  */
 export function describeCommitRow(facts: RowFacts): string {
   const l10n = window.l10n;
@@ -44,10 +52,18 @@ export function describeCommitRow(facts: RowFacts): string {
     const into = facts.conflictsWith;
     parts.push(l10n.rowConflictsWith.replace("{0}", () => into));
   }
+  if (facts.appliedIn !== undefined && facts.appliedIn !== null) {
+    const into = facts.appliedIn;
+    parts.push(l10n.rowApplied.replace("{0}", () => into));
+  }
   for (const ref of facts.refs) {
     const kind =
       ref.type === "head" ? l10n.rowBranch : ref.type === "tag" ? l10n.rowTag : l10n.rowRemote;
     parts.push(kind.replace("{0}", () => ref.name));
+  }
+  const nearest = facts.nearest;
+  if (nearest !== undefined) {
+    parts.push(l10n.nearestBranch.replace("{0}", () => nearest));
   }
   return parts.filter((part) => part !== "").join(", ");
 }
@@ -61,6 +77,10 @@ function parentCount(parentHashes: ReadonlyArray<string>) {
  * The spoken summary of a row of the commit table. `message` is the text the row shows, which
  * for the uncommitted changes is all there is to say. A remote's `HEAD`, such as `origin/HEAD`,
  * only names the remote's default branch and is left out, as the row's labels leave it out.
+ *
+ * The summary stays whole when the user hides columns. Hiding one only makes room on screen, and
+ * a screen reader hears this summary in place of the row's cells, so leaving the author or the
+ * age out would take them from its user with nothing gained.
  */
 export function commitRowLabel({
   commit,
@@ -68,7 +88,9 @@ export function commitRowLabel({
   isHead,
   headBranch,
   push,
-  conflicts
+  conflicts,
+  applied = false,
+  nearest
 }: {
   commit: HistoryEntry;
   message: string;
@@ -77,6 +99,10 @@ export function commitRowLabel({
   push: RowFacts["push"];
   /** The conflict forecast by branch, a remote one under `remotes/`, as the table holds it. */
   conflicts: ReadonlyMap<string, ConflictForecastEntry> | undefined;
+  /** Whether the checked-out branch already has the commit's change under another commit. */
+  applied?: boolean;
+  /** The nearest branch the row names after its message, if it names one. */
+  nearest?: string | undefined;
 }): string {
   if (commit.hash === UNCOMMITTED_CHANGES) {
     return message;
@@ -102,6 +128,8 @@ export function commitRowLabel({
     isHead,
     push,
     conflictsWith: conflicting ? repositoryState.value?.head || "HEAD" : null,
-    refs
+    appliedIn: applied ? headBranch || "HEAD" : null,
+    refs,
+    nearest
   });
 }

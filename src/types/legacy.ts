@@ -37,6 +37,9 @@ export type GraphPreferences = {
   showRemoteBranches: boolean;
 };
 
+/** The commit table's columns that can be hidden. The graph and the message always show. */
+export type OptionalColumn = "date" | "author" | "commit";
+
 /** What the extension remembers about one repository. A new record is `{ columnWidths: null }`. */
 export type GitRepoState = {
   /**
@@ -44,6 +47,12 @@ export type GitRepoState = {
    * while the user has not resized the table. The description column takes what is left.
    */
   columnWidths: number[] | null;
+  /**
+   * Columns the user hid from the commit table, in table order. Their widths stay in
+   * `columnWidths`, so a column shown again comes back as wide as it was. Left out until the user
+   * first hides one.
+   */
+  hiddenColumns?: OptionalColumn[];
   /** Remotes whose branches the user hid, sorted and without repeats. Left out when there are none. */
   hiddenRemotes?: string[];
   /**

@@ -294,6 +294,17 @@ export function DetachedIcon(props: IconProps) {
   );
 }
 
+/** A folder with a commit on a line across it: a worktree, a folder with a commit checked out. */
+export function WorktreeIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <path d="M1.75 12.5V3.5Q1.75 2.75 2.5 2.75H6L7.5 4.5H13.5Q14.25 4.5 14.25 5.25V12.5Q14.25 13.25 13.5 13.25H2.5Q1.75 13.25 1.75 12.5z" />
+      <circle cx="8" cy="9" r="1.5" />
+      <path d="M4.25 9H6.5M9.5 9H11.75" />
+    </Icon>
+  );
+}
+
 /** A key with a round bow and two teeth: a signed commit. */
 export function KeyIcon(props: IconProps) {
   return (
