@@ -54,6 +54,7 @@ basics.
 **Work from the graph**
 
 - Branches and tags: create, check out, rename, merge, delete, push
+- Start a pull or merge request for a branch on GitHub or GitLab, pushing it first if needed
 - Commits: check out, cherry-pick, revert, reset, fixup; cherry-pick or revert several in order
 - Absorb staged changes: each hunk becomes a fixup for the commit that last changed its lines
 - Plain and interactive rebase; push and pull previews; force-push only with a lease

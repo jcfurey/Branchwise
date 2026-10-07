@@ -905,5 +905,9 @@
   "Follows {0}": "位于 {0} 之后",
   "Focus {0} in the graph": "在提交图中聚焦 {0}",
   "Select the commit tagged {0}": "选择标签 {0} 所在的提交",
-  "{0} is not a full commit ID.": "{0} 不是完整的提交 ID。"
+  "{0} is not a full commit ID.": "{0} 不是完整的提交 ID。",
+  "Create Pull Request": "创建拉取请求",
+  "Create Merge Request": "创建合并请求",
+  "Push and Create Pull Request": "推送并创建拉取请求",
+  "Push and Create Merge Request": "推送并创建合并请求"
 }

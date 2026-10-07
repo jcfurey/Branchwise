@@ -38,6 +38,29 @@ it("reports the commit behind every branch, remote branch and tag", async () => 
   ]);
 });
 
+it("names each remote's default branch from its HEAD, when the remote has one", async () => {
+  const other = makeRepo();
+  try {
+    for (const name of ["origin", "team/lab", "bare"]) {
+      git(["remote", "add", name, `https://example.com/${name}.git`], other);
+    }
+    git(["update-ref", "refs/remotes/origin/develop", "HEAD"], other);
+    git(["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/develop"], other);
+    git(["update-ref", "refs/remotes/team/lab/release/2", "HEAD"], other);
+    git(["symbolic-ref", "refs/remotes/team/lab/HEAD", "refs/remotes/team/lab/release/2"], other);
+    const state = await loadRepositoryState(createGit(other, "git"));
+    expect(state.remotes.map(({ name, defaultBranch }) => ({ name, defaultBranch }))).toEqual([
+      { name: "bare", defaultBranch: undefined },
+      { name: "origin", defaultBranch: "develop" },
+      { name: "team/lab", defaultBranch: "release/2" }
+    ]);
+    // A remote without a HEAD gets no field at all.
+    expect(Object.hasOwn(state.remotes[0]!, "defaultBranch")).toBe(false);
+  } finally {
+    fs.rmSync(other, { recursive: true, force: true });
+  }
+});
+
 it("dates each branch by its last commit and says whether HEAD contains it", async () => {
   const other = makeRepo();
   try {

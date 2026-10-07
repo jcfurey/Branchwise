@@ -222,6 +222,39 @@ it("sends a push review with more outgoing commits than it lists to the branch's
   expect(focusedCommit.value).toBe(local);
 });
 
+it("tells the caller of a push review that the push succeeded, and only then", () => {
+  const plan: SyncPlan = {
+    branch: "topic",
+    remote: "origin",
+    remoteBranch: "topic",
+    local: "c".repeat(40),
+    remoteHead: null,
+    incoming: { entries: [], more: false },
+    outgoing: { entries: [], more: false },
+    ahead: 1,
+    behind: 0,
+    canFastForward: false
+  };
+  const options = { operation: "push", setUpstream: true, force: false } as const;
+  for (const status of ["rejected", null]) {
+    const onDone = vi.fn();
+    openContentDialog("syncPreview", h("p", {}, "review"));
+    act(() => render(h(SyncReview, { plan, repo: "/repo", options, onDone }), container));
+    click("pushBranch");
+    const push = requests().at(-1) as { requestId: string; action: { kind: string } };
+    expect(push.action).toMatchObject({ kind: "sync", operation: "push", setUpstream: true });
+    expect(onDone).not.toHaveBeenCalled();
+    acceptRemoteActionResult({
+      command: "repositoryAction",
+      repo: "/repo",
+      requestId: push.requestId,
+      status
+    });
+    expect(onDone).toHaveBeenCalledTimes(status === null ? 1 : 0);
+    act(() => render(null, container));
+  }
+});
+
 it("returns keyboard focus to the original control across menu and dialog transitions", async () => {
   const anchor = document.createElement("button");
   container.append(anchor);

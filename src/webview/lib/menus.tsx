@@ -27,7 +27,16 @@ import {
 } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { openUrl } from "@/webview/lib/actions/open-url";
-import { branchPage, commitPage, type HostPage, tagPage } from "@/webview/lib/host-links";
+import {
+  branchPage,
+  branchReviewRequest,
+  commitPage,
+  type HostPage,
+  pushedReviewRequest,
+  remoteBranchReviewRequest,
+  type ReviewRequest,
+  tagPage
+} from "@/webview/lib/host-links";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
 import { repositoryState } from "@/webview/lib/repository-actions";
 import type { ShortcutId } from "@/webview/lib/shortcuts";
@@ -118,6 +127,50 @@ function hostEntry(title: string, page: HostPage | null, shortcut?: ShortcutId):
     onClick: () => void openUrl(page.url)
   };
   return [shortcut === undefined ? entry : { ...entry, shortcut }];
+}
+
+/** "Create Pull Request…" or "Create Merge Request…", by host. */
+function reviewTitle(kind: ReviewRequest["kind"], push: boolean) {
+  const l10n = window.l10n;
+  if (kind === "github") {
+    return more(push ? l10n.pushAndCreatePullRequest : l10n.createPullRequest);
+  }
+  return more(push ? l10n.pushAndCreateMergeRequest : l10n.createMergeRequest);
+}
+
+/**
+ * The entry that proposes a local branch for review on its upstream's host. A branch without an
+ * upstream, or whose upstream was deleted, is pushed first, through the push dialog with "set
+ * upstream" ticked, and the page opens once the push has succeeded.
+ */
+function localReviewEntry(branch: string): Array<Entry> {
+  const request = branchReviewRequest(repositoryState.peek(), branch);
+  if (request === null) {
+    return [];
+  }
+  if (!request.push) {
+    return [{ title: reviewTitle(request.kind, false), onClick: () => void openUrl(request.url) }];
+  }
+  return [
+    {
+      title: reviewTitle(request.kind, true),
+      onClick: () =>
+        openRemoteAction("push", branch, undefined, (remote, remoteBranch) => {
+          const pushed = pushedReviewRequest(repositoryState.peek(), remote, remoteBranch);
+          if (pushed !== null) {
+            void openUrl(pushed.url);
+          }
+        })
+    }
+  ];
+}
+
+/** The entry that proposes a remote-tracking branch, such as `origin/topic`, for review. */
+function remoteReviewEntry(name: string): Array<Entry> {
+  const request = remoteBranchReviewRequest(repositoryState.peek(), name);
+  return request === null
+    ? []
+    : [{ title: reviewTitle(request.kind, false), onClick: () => void openUrl(request.url) }];
 }
 
 function copyBranchEntry(name: string): Entry {
@@ -469,6 +522,7 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean) {
       ];
   return grouped([focusEntry(name), compareEntry(gitRef.hash)], tools, [
     ...hostEntry(l10n.openBranchOnHost, branchPage(repositoryState.peek(), name)),
+    ...localReviewEntry(name),
     copyBranchEntry(name),
     hideLikeEntry(gitRef)
   ]);
@@ -501,7 +555,7 @@ function remoteBranchMenu(gitRef: GitRef) {
       fetch,
       { title: more(l10n.checkoutBranch), onClick: () => checkoutBranchAction(gitRef) }
     ],
-    [copyBranchEntry(name), hideLikeEntry(gitRef)]
+    [...remoteReviewEntry(name), copyBranchEntry(name), hideLikeEntry(gitRef)]
   );
 }
 

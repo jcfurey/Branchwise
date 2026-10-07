@@ -213,12 +213,15 @@ export function SyncReview({
   plan,
   repo,
   options,
-  onApply
+  onApply,
+  onDone
 }: {
   plan: SyncPlan;
   repo: string;
   options: SyncOptions;
   onApply?: () => void;
+  /** Called once the push or pull it starts has succeeded. */
+  onDone?: (() => void) | undefined;
 }) {
   const [applying, setApplying] = useState(false);
   return (
@@ -305,7 +308,11 @@ export function SyncReview({
           if (onApply) {
             onApply();
           } else {
-            sendRepositoryAction({ kind: "sync", ...options, plan }, repo);
+            sendRepositoryAction(
+              { kind: "sync", ...options, plan },
+              repo,
+              onDone && ((error) => error === null && onDone())
+            );
           }
         }}
       >
@@ -320,13 +327,15 @@ function SyncView({
   branch,
   remote,
   remoteBranch,
-  options
+  options,
+  onDone
 }: {
   repo: string;
   branch: string;
   remote: string;
   remoteBranch: string;
   options: SyncOptions;
+  onDone: (() => void) | undefined;
 }) {
   const query = useRepositoryQuery<"syncPlan">(
     { kind: "syncPlan", branch, remote, remoteBranch },
@@ -370,18 +379,20 @@ function SyncView({
           aria-busy={query.loading}
           onFocusIn={(event) => (focused.current = event.target as HTMLElement)}
         >
-          <SyncReview key={planKey} plan={plan} repo={repo} options={options} />
+          <SyncReview key={planKey} plan={plan} repo={repo} options={options} onDone={onDone} />
         </div>
       )}
     </div>
   );
 }
+/** Review a push or a fast-forward pull, then run it; `onDone` hears that it succeeded. */
 export function openSync(
   repo: string,
   branch: string,
   remote: string,
   remoteBranch: string,
-  options: SyncOptions
+  options: SyncOptions,
+  onDone?: () => void
 ) {
   openContentDialog(
     window.l10n.syncPreview,
@@ -391,6 +402,7 @@ export function openSync(
       remote={remote}
       remoteBranch={remoteBranch}
       options={options}
+      onDone={onDone}
     />,
     true
   );

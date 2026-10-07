@@ -1936,6 +1936,75 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await vscode.env.clipboard.readText()) === local, "full ID copied");
   });
 
+  test("opens a merge request page for a branch, pushing one without an upstream first", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "review base", dir);
+    const bare = directory();
+    git(["init", "-q", "--bare", bare]);
+    // Fetch addresses name the host; pushes go to the local bare repository.
+    git(["remote", "add", "origin", "git@gitlab.example.test:team/project.git"], dir);
+    git(["config", "remote.origin.pushurl", bare], dir);
+    git(["push", "-q", bare, "main"], dir);
+    git(["update-ref", "refs/remotes/origin/main", "main"], dir);
+    git(["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"], dir);
+    git(["branch", "--set-upstream-to=origin/main"], dir);
+    git(["checkout", "-q", "-b", "feature/tracked"], dir);
+    commit("t", "review tracked", dir);
+    git(["update-ref", "refs/remotes/origin/feature/tracked", "HEAD"], dir);
+    git(["branch", "--set-upstream-to=origin/feature/tracked"], dir);
+    git(["checkout", "-q", "-b", "fresh"], dir);
+    commit("n", "review fresh", dir);
+    await openRepo(dir);
+    /**
+     * VS Code asks before opening a site it does not trust, and refuses to show that question
+     * under test, so the graph reports the address it could not open. Read it, then dismiss it.
+     */
+    const asked = async (label) => {
+      const text = await until(
+        () =>
+          graph.evaluate(
+            `(() => { const text = document.querySelector('[role=dialog]')?.innerText ?? ''; return text.startsWith('Unable to open https://gitlab.example.test/') ? text : null; })()`
+          ),
+        "address opened for " + label
+      );
+      await button("Dismiss");
+      return decodeURIComponent(text.split("\n")[0]);
+    };
+
+    await contextRef("feature/tracked");
+    await menu("Create Merge Request…");
+    assert.match(
+      await asked("tracked"),
+      /https:\/\/gitlab\.example\.test\/team\/project\/-\/merge_requests\/new\?merge_request\[source_branch\]=feature\/tracked&merge_request\[target_branch\]=main/
+    );
+
+    await contextRef("fresh");
+    await menu("Push and Create Merge Request…");
+    await until(
+      () =>
+        graph.evaluate(
+          `[...document.querySelectorAll('[role=dialog] label')].find(label => label.textContent.includes('Set as upstream branch'))?.querySelector('input').checked === true`
+        ),
+      "set upstream ticked"
+    );
+    await button("Preview Push");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]")?.innerText.includes("review fresh")'
+        ),
+      "outgoing commits"
+    );
+    await button("Push Branch");
+    assert.match(
+      await asked("pushed"),
+      /merge_requests\/new\?merge_request\[source_branch\]=fresh&merge_request\[target_branch\]=main/
+    );
+    assert.equal(git(["rev-parse", "fresh"], bare), git(["rev-parse", "fresh"], dir));
+    assert.equal(git(["rev-parse", "--abbrev-ref", "fresh@{upstream}"], dir), "origin/fresh");
+  });
+
   test("names the branches and tags that contain a commit and jumps to them", async () => {
     const dir = directory();
     init(dir);

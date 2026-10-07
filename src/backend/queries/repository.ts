@@ -33,6 +33,7 @@ import type {
   OperationState,
   RebasePlan,
   RefDetails,
+  RemoteDetails,
   RepositoryQuery,
   RepositoryQueryData,
   RepositoryState,
@@ -155,6 +156,26 @@ function parseRefs(text: string, extra: "symref" | "peeled"): RefDetails[] {
 }
 
 /**
+ * Each remote's default branch from the same `name NUL hash NUL symref` lines: `origin/HEAD`
+ * pointing at `refs/remotes/origin/main` makes `main` the default branch of `origin`.
+ */
+function parseDefaultBranches(text: string): Map<string, string> {
+  const defaults = new Map<string, string>();
+  for (const line of text.split("\n")) {
+    const [name = "", , target = ""] = line.split("\0");
+    if (!name.endsWith("/HEAD")) {
+      continue;
+    }
+    const remote = name.slice(0, -"/HEAD".length);
+    const prefix = `refs/remotes/${remote}/`;
+    if (target.startsWith(prefix) && target.length > prefix.length) {
+      defaults.set(remote, target.slice(prefix.length));
+    }
+  }
+  return defaults;
+}
+
+/**
  * Parses `name NUL upstream NUL tracking NUL hash NUL date` lines of local branches. `merged`
  * names the branches HEAD already contains.
  */
@@ -218,13 +239,21 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
     // The header's Undo entry is a convenience; an unreadable journal only hides it.
     loadSafetyUndo(git).catch(() => null)
   ]);
+  const defaultBranches = parseDefaultBranches(remoteRefs);
   return {
     remotes: await Promise.all(
-      remotes.map(async ({ name }) => ({
-        name,
-        fetchUrls: (await git.getConfig(`remote.${name}.url`)).values,
-        pushUrls: (await git.getConfig(`remote.${name}.pushurl`)).values
-      }))
+      remotes.map(async ({ name }) => {
+        const remote: RemoteDetails = {
+          name,
+          fetchUrls: (await git.getConfig(`remote.${name}.url`)).values,
+          pushUrls: (await git.getConfig(`remote.${name}.pushurl`)).values
+        };
+        const defaultBranch = defaultBranches.get(name);
+        if (defaultBranch !== undefined) {
+          remote.defaultBranch = defaultBranch;
+        }
+        return remote;
+      })
     ),
     pushDefault: pushDefault.value,
     branches: parseBranches(branches, new Set(mergedBranches.split("\n").filter(Boolean))),

@@ -88,8 +88,16 @@ describe("remote and tracking configuration", () => {
       fetchUrls: [bare, bare + "-mirror"],
       pushUrls: [bare]
     });
+    // Git 2.48 and later record the remote's default branch when they first fetch from it.
+    let followsHead = true;
+    try {
+      read(["symbolic-ref", "-q", "refs/remotes/team/origin/HEAD"]);
+    } catch {
+      followsHead = false;
+    }
     expect((await loadRepositoryState(createGit(repo, "git"))).remotes[0]).toEqual({
       name: "team/origin",
+      ...(followsHead ? { defaultBranch: "main" } : {}),
       fetchUrls: [bare, bare + "-mirror"],
       pushUrls: [bare]
     });
