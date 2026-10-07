@@ -28,11 +28,18 @@ export const PAGE_CONFIG: WebviewConfig = {
   initialLoadCommits: 123,
   issueLinks: [],
   loadMoreCommits: 50,
+  markAppliedCommits: true,
   autoCenterCommitDetailsView: false,
+  branchHoverPreview: true,
   commitHoverCards: true,
+  commitDetailsPosition: "inline",
   conflictForecast: "localAndRemote",
+  rowDensity: "default",
+  overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: false,
+  showNearestBranch: true,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 

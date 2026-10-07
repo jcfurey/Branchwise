@@ -26,6 +26,7 @@ const ENGLISH: Record<string, string> = {
   rowBranch: "branch {0}",
   rowRemote: "remote branch {0}",
   rowTag: "tag {0}",
+  nearestBranch: "on {0}",
   uncommittedChanges: "Uncommitted changes in {0} files"
 };
 
@@ -123,6 +124,12 @@ describe("describeCommitRow", () => {
     expect(
       describeCommitRow({ ...PLAIN, conflictsWith: "a$&b", refs: [ref("tag", "v$1{0}")] })
     ).toBe("Fix the parser, Ann Lee, 3 days ago, has conflicts with a$&b, tag v$1{0}");
+  });
+
+  it("ends with the nearest branch the row names after its message", () => {
+    expect(describeCommitRow({ ...PLAIN, refs: [ref("tag", "v1.0")], nearest: "feature/$&" })).toBe(
+      "Fix the parser, Ann Lee, 3 days ago, tag v1.0, on feature/$&"
+    );
   });
 
   it("leaves out an empty subject or author rather than reading a lone comma", () => {

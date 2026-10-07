@@ -198,13 +198,19 @@ describe("the day label", () => {
       frames.push(callback);
       return frames.length;
     });
-    drawTable();
-    frames.splice(0).forEach((callback) => act(() => callback(0)));
-    for (const top of [ROW, 2 * ROW, 3 * ROW + 2]) {
-      scrollTo(top);
+    // The overview strip also asks for a frame as the window scrolls; only the label's count here.
+    const restore = reconfigure({ overviewMarkers: false });
+    try {
+      drawTable();
+      frames.splice(0).forEach((callback) => act(() => callback(0)));
+      for (const top of [ROW, 2 * ROW, 3 * ROW + 2]) {
+        scrollTo(top);
+      }
+      expect(frames).toHaveLength(1);
+      act(() => frames[0]!(0));
+      expect(pill()?.textContent).toBe("Monday, October 5, 2026");
+    } finally {
+      act(() => restore());
     }
-    expect(frames).toHaveLength(1);
-    act(() => frames[0]!(0));
-    expect(pill()?.textContent).toBe("Monday, October 5, 2026");
   });
 });

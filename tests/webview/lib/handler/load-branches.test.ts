@@ -16,7 +16,9 @@ let handleLoadBranches: (msg: BranchesAnswer) => void;
 
 const settings: WebviewConfig = {
   autoCenterCommitDetailsView: false,
+  branchHoverPreview: true,
   commitHoverCards: true,
+  commitDetailsPosition: "inline",
   conflictForecast: "localAndRemote",
   dateFormat: "Relative",
   dateSeparators: true,
@@ -26,9 +28,14 @@ const settings: WebviewConfig = {
   initialLoadCommits: 300,
   issueLinks: [],
   loadMoreCommits: 50,
+  markAppliedCommits: true,
   locale: "en",
+  rowDensity: "default",
+  overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: false,
+  showNearestBranch: true,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 

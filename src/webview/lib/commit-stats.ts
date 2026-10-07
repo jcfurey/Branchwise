@@ -4,7 +4,9 @@ import { useEffect, useRef } from "preact/hooks";
 
 import type { CommitStats } from "@/backend/types";
 import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT, UNCOMMITTED_CHANGES } from "@/webview/constants";
+import { pageViewport } from "@/webview/lib/page-scroll";
 import { repositoryRevision, requestPanelQuery } from "@/webview/lib/repository-actions";
+import { rowHeight as currentRowHeight } from "@/webview/lib/webview-config";
 
 /** Rows above and below the window whose counts are read too, so a short scroll finds them. */
 export const STATS_MARGIN = 40;
@@ -116,17 +118,18 @@ export function requestCommitStats(repo: string, hashes: readonly string[]): () 
 /**
  * The rows worth reading for a table body whose top is `top` pixels below the top of a window
  * `height` pixels tall: those in sight and `STATS_MARGIN` either side, as `[start, end)`. Rows
- * are `ROW_HEIGHT` tall; open details push the rows below them down, which only widens the range.
+ * are `rowHeight` tall; open details push the rows below them down, which only widens the range.
  */
 export function rowsInSight(
   top: number,
   height: number,
   count: number,
-  detailsOpen: boolean
+  detailsOpen: boolean,
+  rowHeight: number = ROW_HEIGHT
 ): [start: number, end: number] {
-  const pushed = detailsOpen ? Math.ceil(COMMIT_DETAILS_HEIGHT / ROW_HEIGHT) : 0;
-  const first = Math.floor(-top / ROW_HEIGHT) - pushed - STATS_MARGIN;
-  const last = Math.ceil((height - top) / ROW_HEIGHT) + STATS_MARGIN;
+  const pushed = detailsOpen ? Math.ceil(COMMIT_DETAILS_HEIGHT / rowHeight) : 0;
+  const first = Math.floor(-top / rowHeight) - pushed - STATS_MARGIN;
+  const last = Math.ceil((height - top) / rowHeight) + STATS_MARGIN;
   const clamp = (row: number) => Math.min(Math.max(row, 0), count);
   return [clamp(first), clamp(last)];
 }
@@ -157,7 +160,13 @@ export function useCommitStatsLoader(
       const element = body.current;
       if (element !== null) {
         const top = element.getBoundingClientRect().top;
-        const [start, end] = rowsInSight(top, window.innerHeight, hashes.length, open.current);
+        const [start, end] = rowsInSight(
+          top,
+          pageViewport().bottom,
+          hashes.length,
+          open.current,
+          currentRowHeight()
+        );
         reads.push(requestCommitStats(repo, hashes.slice(start, end)));
       }
     };

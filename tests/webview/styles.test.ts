@@ -81,6 +81,18 @@ describe("styles.css", () => {
     expect(utilities).not.toContain(".grid-cols-labelled {");
   });
 
+  it("sizes commit rows and branch labels from the row height of the table they are in", () => {
+    expect(ruleOf(utilities, ".h-\\(--row-height\\)")).toContain("height: var(--row-height);");
+    expect(ruleOf(utilities, ".leading-\\(--row-height\\)")).toContain(
+      "line-height: var(--row-height);"
+    );
+    // Written into the rule rather than read from the root, which has no row height of its own.
+    const label = "min(18px, calc(var(--row-height, 24px) - 4px))";
+    expect(ruleOf(utilities, ".h-ref-label")).toContain(`height: ${label};`);
+    expect(ruleOf(utilities, ".size-ref-label")).toContain(`width: ${label};`);
+    expect(theme).not.toContain("--spacing-ref-label");
+  });
+
   it("lets a caller's background replace a button's, and hovering replace both", () => {
     const own = ruleAt(utilities, ".bg-btn");
     const pressed = ruleAt(utilities, ".bg-row-selected");
@@ -220,6 +232,42 @@ describe("styles.css", () => {
     const cap = ruleOf(forced, "[data-ref] > svg:first-child");
     expect(cap).toContain("background-color: CanvasText;");
     expect(cap).toContain("color: Canvas;");
+    const splitter = ruleOf(forced, "[data-details-splitter]");
+    expect(splitter).toContain("forced-color-adjust: none;");
+    expect(splitter).toContain("background-color: CanvasText;");
+    expect(
+      ruleOf(forced, "[data-details-splitter]:hover, [data-details-splitter]:focus")
+    ).toContain("background-color: Highlight;");
+  });
+
+  it("colours the overview strip from the theme, and from system colours when forced", () => {
+    expect(theme).toContain(
+      "--color-overview-band: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));"
+    );
+    expect(theme).toContain("--color-overview-unpushed: var(--color-unpushed);");
+    // The canvas reads its colours from probes, which the utilities colour.
+    for (const kind of ["head", "selected", "details", "branch", "tag", "unpushed"]) {
+      expect(ruleOf(utilities, `.text-overview-${kind}`)).toContain(
+        `color: var(--color-overview-${kind});`
+      );
+    }
+    expect(css).not.toContain("overview-match");
+    const strip = ruleOf(components, ".overview-strip");
+    expect(strip).toContain("forced-color-adjust: none;");
+    expect(strip).toContain("--overview-tag-alpha: 0.55;");
+    expect(
+      ruleOf(
+        components,
+        ".vscode-high-contrast .overview-strip, .vscode-high-contrast-light .overview-strip"
+      )
+    ).toContain("--overview-tag-alpha: 1;");
+    const forced = ruleOf(
+      css.slice(css.indexOf("@media (forced-colors: active) {")),
+      ".overview-strip"
+    );
+    expect(forced).toContain("--color-overview-head: CanvasText;");
+    expect(forced).toContain("--color-overview-selected: Highlight;");
+    expect(forced).toContain("--overview-band-alpha: 0.4;");
   });
 
   it("fades the scroll shade in over the first pixel of scrolling", () => {
@@ -239,5 +287,12 @@ describe("styles.css", () => {
     expect(components).toMatch(/@keyframes skeleton-shimmer \{\s+from \{\s+background-position/);
     const reduced = components.slice(components.indexOf("@media (prefers-reduced-motion: reduce)"));
     expect(ruleOf(reduced, ".skeleton-shimmer")).toContain("animation: none;");
+  });
+
+  it("eases a branch preview in, and not at all for less motion", () => {
+    const selector = ":where([data-branch-preview]) :is(.branch-focus-row, [data-branch-relation])";
+    expect(ruleOf(components, selector)).toContain("color 150ms ease-out");
+    const reduced = components.slice(components.lastIndexOf("@media (prefers-reduced-motion"));
+    expect(ruleOf(reduced, selector)).toContain("transition: none;");
   });
 });

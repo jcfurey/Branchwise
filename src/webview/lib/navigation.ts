@@ -2,6 +2,7 @@ import { computed, signal } from "@preact/signals";
 
 import type { HistoryEntry, HistoryFilter } from "@/backend/types";
 import type { GraphPreferences, SidebarPane } from "@/types";
+import { pageScrollTop } from "@/webview/lib/page-scroll";
 import {
   branchDisplay,
   focusDimming,
@@ -117,7 +118,7 @@ export function leaveNavigation(repo: string | undefined) {
         : (selectedBranch.value ?? savedFocusBranch(repo)),
     focusPaused: focusPaused.value,
     focusDimming: focusDimming.value,
-    scroll: window.scrollY
+    scroll: pageScrollTop()
   };
   persist();
   // Initial branch loading has not resolved the saved target yet. Do not replace it

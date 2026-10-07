@@ -108,6 +108,39 @@
 
   /* The branch colour of a commit row. Each row sets its own; see .branch-focus-row. */
   --color-graph: var(--vscode-focusBorder);
+
+  /*
+   * The overview strip beside the table, after the editor's overview ruler and scrollbar. The
+   * canvas reads these through hidden probes; each mark also has a shape and place of its own.
+   * Unpushed commits keep the colour of their dot in the table.
+   */
+  --color-overview-head: var(--vscode-editorCursor-foreground, var(--vscode-foreground));
+  --color-overview-selected: var(--vscode-focusBorder);
+  --color-overview-details: var(
+    --vscode-editorOverviewRuler-wordHighlightStrongForeground,
+    rgba(192, 160, 192, 0.8)
+  );
+  --color-overview-branch: var(
+    --vscode-editorOverviewRuler-addedForeground,
+    var(--vscode-gitDecoration-addedResourceForeground)
+  );
+  --color-overview-tag: var(
+    --vscode-editorOverviewRuler-addedForeground,
+    var(--vscode-gitDecoration-addedResourceForeground)
+  );
+  --color-overview-unpushed: var(--color-unpushed);
+  --color-overview-band: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+  --color-overview-edge: var(--vscode-editorOverviewRuler-border, rgba(127, 127, 127, 0.3));
+}
+
+/* Written into each utility rather than read from the root, as the row height differs per table. */
+@theme inline {
+  /*
+   * A branch label's height, border left out: 18px, or less in a row too short to hold that with
+   * the label's border and top margin, so that a compact row clips nothing. Outside the commit
+   * table, as in the legend, rows count as 24px tall.
+   */
+  --spacing-ref-label: min(18px, calc(var(--row-height, 24px) - 4px));
 }
 
 @layer components {
@@ -152,6 +185,16 @@
 
   .branch-focus-row[data-branch-relation="unrelated"] {
     color: var(--color-muted);
+  }
+
+  /*
+   * A branch preview (data-branch-preview on the table) fades the rest of the history less than
+   * a focus does. `:where` keeps it as specific as the relations, so a row in use still wins.
+   */
+  @supports (color: color-mix(in srgb, red, blue)) {
+    :where([data-branch-preview]) .branch-focus-row[data-branch-relation="unrelated"] {
+      color: color-mix(in srgb, var(--color-fg) 45%, var(--color-muted));
+    }
   }
 
   /* Same specificity as the relations, and later, so a row in use always shows in full. */
@@ -204,6 +247,20 @@
     }
   }
 
+  /* A branch preview eases in, unless the user prefers less motion. */
+  :where([data-branch-preview]) :is(.branch-focus-row, [data-branch-relation]) {
+    transition:
+      color 150ms ease-out,
+      fill 150ms ease-out,
+      stroke 150ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-branch-preview]) :is(.branch-focus-row, [data-branch-relation]) {
+      transition: none;
+    }
+  }
+
   /*
    * Fades in over the first pixel the page scrolls. The shorthand resets the timeline, so the
    * timeline and its range come after it.
@@ -233,6 +290,21 @@
   .vscode-high-contrast-light {
     --color-line: var(--vscode-contrastBorder, rgba(128, 128, 128, 0.5));
     --color-line-soft: var(--vscode-contrastBorder, rgba(128, 128, 128, 0.25));
+  }
+
+  /*
+   * The overview strip. Its probes' colours are read as written, never forced. Tags are drawn
+   * lighter than branches, except where contrast matters most.
+   */
+  .overview-strip {
+    forced-color-adjust: none;
+    --overview-tag-alpha: 0.55;
+    --overview-band-alpha: 1;
+  }
+
+  .vscode-high-contrast .overview-strip,
+  .vscode-high-contrast-light .overview-strip {
+    --overview-tag-alpha: 1;
   }
 
   .vscode-high-contrast .branch-focus-row:hover,
@@ -281,6 +353,17 @@
     color: LinkText;
   }
 
+  /* The bar between the graph and docked details, which would otherwise lose its fill. */
+  [data-details-splitter] {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+
+  [data-details-splitter]:hover,
+  [data-details-splitter]:focus {
+    background-color: Highlight;
+  }
+
   [data-push="unpushed"] {
     forced-color-adjust: none;
     background-color: CanvasText;
@@ -293,6 +376,20 @@
   [data-ref],
   [data-more-refs] {
     border-color: CanvasText;
+  }
+
+  /* The canvas is never recoloured, so the strip picks system colours for itself. */
+  .overview-strip {
+    --color-overview-head: CanvasText;
+    --color-overview-selected: Highlight;
+    --color-overview-details: Highlight;
+    --color-overview-branch: CanvasText;
+    --color-overview-tag: GrayText;
+    --color-overview-unpushed: CanvasText;
+    --color-overview-band: GrayText;
+    --color-overview-edge: CanvasText;
+    --overview-tag-alpha: 1;
+    --overview-band-alpha: 0.4;
   }
 
   /* The commit card's frame, the only edge between it and the rows it covers. */

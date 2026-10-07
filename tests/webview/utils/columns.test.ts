@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { isColumnWidths, MIN_COLUMN, MIN_DESCRIPTION, moveBoundary } from "@/webview/utils/columns";
+import {
+  hiddenColumnsOf,
+  isColumnWidths,
+  MIN_COLUMN,
+  MIN_DESCRIPTION,
+  moveBoundary,
+  shownCells
+} from "@/webview/utils/columns";
 
 // Stored widths, in slot order: graph, date, author, commit. The description column has no
 // stored width; its measured width is passed on its own. Boundary n is the right edge of header
@@ -431,6 +438,52 @@ describe("moveBoundary", () => {
       for (const widths of [[], [Number.NaN, 110, 130, 80]]) {
         expect(moveBoundary(widths, 0, 12, description).widths).not.toBe(widths);
       }
+    });
+  });
+});
+
+describe("hidden columns", () => {
+  it("are read from a record in table order, each once, and only the optional ones", () => {
+    expect(hiddenColumnsOf(["commit", "date", "commit"])).toEqual(["date", "commit"]);
+    expect(hiddenColumnsOf(["graph", "description", "author", "constructor", 3, null])).toEqual([
+      "author"
+    ]);
+    for (const damaged of [undefined, null, "author", { author: true }, 3]) {
+      expect(hiddenColumnsOf(damaged)).toEqual([]);
+    }
+  });
+
+  it("leave the graph and the description shown whatever they name", () => {
+    expect(shownCells([])).toEqual([0, 1, 2, 3, 4]);
+    expect(shownCells(["author"])).toEqual([0, 1, 2, 4]);
+    expect(shownCells(["date", "author", "commit"])).toEqual([0, 1]);
+    expect(shownCells(["graph", "description", "toString"])).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  describe("and the boundaries", () => {
+    it("move against the next column shown, leaving hidden widths alone", () => {
+      // Date hidden: boundary 1 is description | author.
+      expect(moveBoundary(layout, 1, 20, description, [0, 1, 3, 4])).toEqual({
+        widths: [150, 110, 110, 80],
+        moved: 20
+      });
+      // Author hidden: boundary 2 is date | commit.
+      expect(moveBoundary(layout, 2, -30, description, [0, 1, 2, 4])).toEqual({
+        widths: [150, 80, 130, 110],
+        moved: -30
+      });
+    });
+
+    it("do not exist for a hidden column or after the last column shown", () => {
+      for (const boundary of [2, 3, 4]) {
+        expect(moveBoundary(layout, boundary, 20, description, [0, 1, 3])).toEqual({
+          widths: layout,
+          moved: 0
+        });
+      }
+      // With every optional column hidden, only graph | description is left.
+      expect(moveBoundary(layout, 0, 20, description, [0, 1]).moved).toBe(20);
+      expect(moveBoundary(layout, 1, 20, description, [0, 1]).moved).toBe(0);
     });
   });
 });
