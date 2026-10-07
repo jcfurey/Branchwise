@@ -1,4 +1,5 @@
 import type { LocalizedStrings } from "@/old-extension/l10n/webviewL10n";
+import { pagePlatform } from "@/webview/lib/platform";
 import { contextMenu, dialog } from "@/webview/lib/stores";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 
@@ -134,7 +135,7 @@ export function shortcut(id: ShortcutId): ShortcutEntry {
 
 /** Whether the page runs on macOS, where Cmd stands in for Ctrl and keys are drawn as symbols. */
 function onMac() {
-  return /Mac|iPhone|iPad/.test(navigator.userAgent);
+  return pagePlatform() === "mac";
 }
 
 const LETTER = /^[a-z]$/;

@@ -76,6 +76,7 @@ it("merges preference patches in workspace storage and restores them after exten
       repo,
       state: { columnWidths: [80, 90, 100, 110] }
     });
+    await extension.send({ command: "saveRepoState", repo, state: { hiddenColumns: ["author"] } });
     extension.lifetime.dispose();
     extension = activate();
     await extension.send({ command: "selectRepo", repo });
@@ -85,7 +86,8 @@ it("merges preference patches in workspace storage and restores them after exten
       state: {
         columnWidths: [80, 90, 100, 110],
         hiddenRemotes: ["origin"],
-        graphPreferences
+        graphPreferences,
+        hiddenColumns: ["author"]
       }
     });
     expect(globalState.update).not.toHaveBeenCalled();
@@ -99,7 +101,8 @@ it("merges preference patches in workspace storage and restores them after exten
     expect(extension.manager.getRepos()[repo]).toEqual({
       columnWidths: [70, 80, 90, 100],
       hiddenRemotes: [],
-      graphPreferences
+      graphPreferences,
+      hiddenColumns: ["author"]
     });
   } finally {
     extension.lifetime.dispose();

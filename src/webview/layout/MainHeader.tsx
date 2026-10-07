@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "preact/hooks";
 
 import type { GitRepo } from "@/types";
+import { openColumnsDialog } from "@/webview/components/commit/column-choice";
 import { ActivityIndicator, openActivity } from "@/webview/components/history/ActivityView";
 import {
   openCompare,
@@ -217,6 +218,7 @@ function toolsMenu(): Array<ContextMenuEntry> {
       onClick: () => setShowRemoteBranch(!remotesShown)
     },
     { title: l10n.hiddenBranches + "…", onClick: () => openHiddenBranches() },
+    { title: l10n.columns + "…", onClick: openColumnsDialog },
     {
       title: l10n.gettingStarted,
       onClick: () => void rpcClient.request("walkthrough.open", null)

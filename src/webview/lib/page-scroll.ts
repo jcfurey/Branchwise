@@ -33,12 +33,9 @@ export function onPageScroll(listener: () => void): () => void {
   // An element's scroll event does not bubble, but the window sees every one while capturing.
   // Other scrolling lists, such as a commit's file tree, are left out.
   const handle = (event: Event) => {
+    // The window or the document scrolling has no element as its target.
     const { target } = event;
-    if (
-      target === document ||
-      target === window ||
-      (target instanceof Element && target.matches(SCROLLER))
-    ) {
+    if (!(target instanceof Element) || target.matches(SCROLLER)) {
       listener();
     }
   };

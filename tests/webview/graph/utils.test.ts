@@ -28,7 +28,16 @@ const details = (row: number, height = 250): GraphExpansion => ({ row, height })
 describe("graph geometry", () => {
   it("places lanes and rows at fixed pixel positions", () => {
     expect([0, 1, 2, 3, 10].map(laneX)).toEqual([8, 24, 40, 56, 168]);
-    expect([0, 1, 2, 5, 100].map(rowY)).toEqual([12, 36, 60, 132, 2412]);
+    expect([0, 1, 2, 5, 100].map((row) => rowY(row))).toEqual([12, 36, 60, 132, 2412]);
+  });
+
+  it("spaces rows by the row height it is given", () => {
+    expect([0, 1, 2].map((row) => rowY(row, 20))).toEqual([10, 30, 50]);
+    expect([0, 1, 2].map((row) => rowY(row, 30))).toEqual([15, 45, 75]);
+    expect(graphHeight(layoutOf(1, 3), null, 20)).toBe(60);
+    expect(graphHeight(layoutOf(1, 3), null, 30)).toBe(90);
+    // The details keep their own height whatever the rows'.
+    expect(graphHeight(layoutOf(1, 3), details(1), 20)).toBe(310);
   });
 
   it("sizes the width from the lanes, with the same margin on both sides", () => {

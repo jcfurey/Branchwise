@@ -22,6 +22,8 @@ import {
   setFocusDimming,
   toggleBranchFocus
 } from "@/webview/lib/actions";
+import { appliedCommitsQuery } from "@/webview/lib/applied-commits";
+import { previewTarget, usePreviewMembership } from "@/webview/lib/branch-preview";
 import { conflictForecastQuery } from "@/webview/lib/conflict-forecast";
 import { commitMenuHintDismissed, dismissCommitMenuHint } from "@/webview/lib/hints";
 import {
@@ -53,6 +55,7 @@ import {
 } from "@/webview/lib/stores";
 import { branchPatternScope } from "@/webview/lib/stores/hidden-branches.store";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
+import { getWebviewConfig } from "@/webview/lib/webview-config";
 import { NoCommitsPage } from "@/webview/pages/NoCommitsPage";
 import type { FocusDimming } from "@/webview/types";
 
@@ -284,6 +287,20 @@ export function GraphView() {
       : null
   );
 
+  // Only for a branch the user is looking at: comparing patches is too slow for every branch.
+  const applied = useRepositoryQuery<"appliedCommits">(
+    rows !== undefined && rows.length > 0 ? appliedCommitsQuery() : null
+  );
+  const paused = focusPaused.value;
+  // The table goes back to its own colours whenever the focus data may be out of date.
+  const focusData = paused || focus.loading || focus.error !== null ? null : focus.data;
+  const previewed = previewTarget.value;
+  const previewMembership = usePreviewMembership(rows, { branch: target, data: focusData });
+  const preview =
+    previewed === null || previewMembership === null
+      ? null
+      : { name: previewed.name, membership: previewMembership };
+
   const pushStatus = useRepositoryQuery<"pushStatus">(
     rows !== undefined && rows.length > 0 ? { kind: "pushStatus" } : null
   );
@@ -334,11 +351,8 @@ export function GraphView() {
     return <NoCommitsPage />;
   }
 
-  const paused = focusPaused.value;
   const selected = selectedCommits.value;
   const more = moreCommitsAvailable.value;
-  // The table goes back to its own colours whenever the focus data may be out of date.
-  const focusData = paused || focus.loading || focus.error !== null ? null : focus.data;
 
   return (
     <main class="relative">
@@ -366,8 +380,12 @@ export function GraphView() {
         focus={focusData}
         pushStatus={pushStatus.data}
         conflicts={conflictForecast.data?.conflicts}
+        applied={applied.data?.applied}
         keepMergedBright={branchDisplay.value === "ancestors"}
         dimming={focusDimming.value}
+        preview={preview}
+        // Search results are not a run of history, so their parents are mostly not loaded.
+        showNearestBranch={!inHistory && getWebviewConfig().showNearestBranch}
       />
       {inHistory && history.data !== null && (
         <div class="px-3">

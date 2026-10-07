@@ -147,7 +147,7 @@ function Menu({ state, serial }: { state: ContextMenuState; serial: number }) {
     if (menu === null || active === null) {
       return;
     }
-    const item = menu.querySelectorAll<HTMLElement>('[role="menuitem"]')[active];
+    const item = menu.querySelectorAll<HTMLElement>('[role^="menuitem"]')[active];
     if (item !== undefined) {
       reveal(menu, item);
     }
@@ -233,11 +233,13 @@ function Menu({ state, serial }: { state: ContextMenuState; serial: number }) {
           return <div key={order} role="separator" class={SEPARATOR_CLASS} />;
         }
         const hint = row.item.shortcut === undefined ? null : menuHint(row.item.shortcut);
+        const { checked } = row.item;
         return (
           <div
             key={order}
             id={itemId(row.index)}
-            role="menuitem"
+            role={checked === undefined ? "menuitem" : "menuitemcheckbox"}
+            aria-checked={checked}
             aria-keyshortcuts={hint?.aria}
             class={
               row.index === active ? `${ITEM_CLASS} bg-menu-active text-menu-active-fg` : ITEM_CLASS
@@ -245,6 +247,14 @@ function Menu({ state, serial }: { state: ContextMenuState; serial: number }) {
             onPointerMove={() => highlight(row.index)}
             onClick={() => choose(row.item)}
           >
+            {/* The tick is drawn from an attribute too, and its room is kept while unticked. */}
+            {checked !== undefined && (
+              <span
+                aria-hidden="true"
+                data-check={checked ? "✓" : ""}
+                class="-mr-8 -ml-3.5 w-3.5 shrink-0 after:content-[attr(data-check)]"
+              />
+            )}
             <span class="min-w-0 flex-1 break-words">{row.item.title}</span>
             {/* Drawn from an attribute, so the item's text and name stay its title alone. */}
             {hint !== null && (

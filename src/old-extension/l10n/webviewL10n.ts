@@ -50,6 +50,9 @@ export function getWebviewLocalizedStrings() {
       "Direct history: full colour · Merged history: muted · Other commits: grey"
     ),
     focusAncestorsHint: vscode.l10n.t("All ancestors: full colour · Other commits: grey"),
+    // After the message of a commit without a branch label: "on main". {0} is a branch name.
+    nearestBranch: vscode.l10n.t("on {0}"),
+    nearestBranchTitle: vscode.l10n.t("Nearest branch containing this commit: {0}"),
     showRemoteBranches: vscode.l10n.t("Show Remote Branches in Graph"),
     refresh: vscode.l10n.t("Refresh"),
     retry: vscode.l10n.t("Retry"),
@@ -61,7 +64,7 @@ export function getWebviewLocalizedStrings() {
     filterPlaceholder: vscode.l10n.t("{0}: type to filter…"),
     noResultsFound: vscode.l10n.t("Nothing matches this filter."),
 
-    // Commit table headers. All but the last also name their column in "Resize {0} column".
+    // Commit table headers. All but the last two also name their column in "Resize {0} column".
     graph: vscode.l10n.t("Graph"),
     scrollGraphHorizontally: vscode.l10n.t("Scroll graph horizontally"),
     revealSelectedLane: vscode.l10n.t("Reveal selected lane"),
@@ -70,6 +73,23 @@ export function getWebviewLocalizedStrings() {
     date: vscode.l10n.t("Date"),
     author: vscode.l10n.t("Author"),
     commit: vscode.l10n.t("ID"),
+    // The Settings & Tools entry, followed by "…", that opens the dialog below.
+    columns: vscode.l10n.t("Columns"),
+    columnsDialog: vscode.l10n.t(
+      "Columns to show in the graph. The graph and the message are always shown. You can also right-click the column headings."
+    ),
+    // The optional column of lines added and deleted, shown as "+12 −3".
+    changesColumn: vscode.l10n.t("Changes"),
+    // A commit's change counts: {0}, {1} and {2} are the three phrases below, in that order.
+    changesSummary: vscode.l10n.t("{0}, {1}, {2}"),
+    filesChanged: vscode.l10n.t("{0} file changed"),
+    filesChangedPlural: vscode.l10n.t("{0} files changed"),
+    insertions: vscode.l10n.t("{0} insertion"),
+    insertionsPlural: vscode.l10n.t("{0} insertions"),
+    deletions: vscode.l10n.t("{0} deletion"),
+    deletionsPlural: vscode.l10n.t("{0} deletions"),
+    // The hover card while a commit's change counts are read.
+    loadingChanges: vscode.l10n.t("Counting changes…"),
 
     // Pages shown instead of the graph
     noCommits: vscode.l10n.t("This repository has no commits yet"),
@@ -301,6 +321,22 @@ export function getWebviewLocalizedStrings() {
     followsTag: vscode.l10n.t("Follows {0}"),
     focusBranchChip: vscode.l10n.t("Focus {0} in the graph"),
     selectTaggedCommit: vscode.l10n.t("Select the commit tagged {0}"),
+
+    // Applied commits: a commit of the focused branch whose change the checked-out branch has
+    // already, as after a cherry-pick. "applied" is the short mark on its row. {0} is the
+    // checked-out branch, {1} the short ID of its commit with the same change, {2} that
+    // commit's subject.
+    appliedMark: vscode.l10n.t("applied"),
+    appliedAs: vscode.l10n.t("Already in {0} as {1}: {2}"),
+    appliedSomewhere: vscode.l10n.t("Already in {0}"),
+    rowApplied: vscode.l10n.t("already in {0}"),
+    findEquivalentCommit: vscode.l10n.t("Find Equivalent Commit"),
+    // {0} is the short ID of the commit looked for, {1} the checked-out branch.
+    equivalentNotFound: vscode.l10n.t("No commit on {1} makes the same change as {0}."),
+    equivalentNotFoundLimited: vscode.l10n.t(
+      "None of the newest commits on {1} that change the same files makes the same change as {0}. Older commits were not compared."
+    ),
+    equivalentOnBranch: vscode.l10n.t("{0} is on {1} already."),
 
     // Commit signatures: the mark on a signed commit's row, then the verdicts in its details.
     // {0} in signatureGoodBy and signatureSigner is the signer's name, or an SSH principal such

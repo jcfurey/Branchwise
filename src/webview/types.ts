@@ -16,9 +16,15 @@ export type CommitBranchType = "*" | (string & {});
 
 /**
  * A row of a context menu, or `null` for a separator line. `shortcut` names the key that does
- * the same from the commit row, which the menu shows beside the title.
+ * the same from the commit row, which the menu shows beside the title. An entry with `checked`
+ * is a choice that is on or off, ticked while on.
  */
-export type ContextMenuEntry = { title: string; onClick: () => void; shortcut?: ShortcutId } | null;
+export type ContextMenuEntry = {
+  title: string;
+  onClick: () => void;
+  shortcut?: ShortcutId;
+  checked?: boolean;
+} | null;
 
 /** The open context menu. */
 export type ContextMenuState = {

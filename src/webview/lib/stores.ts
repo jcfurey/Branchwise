@@ -1,7 +1,7 @@
 import { computed, signal } from "@preact/signals";
 
 import type { GitCommitDetails, GitCommitNode } from "@/backend/types";
-import type { BranchSort, GitRepoSet } from "@/types";
+import type { BranchSort, GitRepoSet, OptionalColumn } from "@/types";
 import { SHOW_ALL_BRANCHES } from "@/webview/constants";
 import type {
   BranchDisplay,
@@ -10,7 +10,7 @@ import type {
   DialogState,
   FocusDimming
 } from "@/webview/types";
-import { isColumnWidths } from "@/webview/utils/columns";
+import { hiddenColumnsOf, isColumnWidths, shownCells } from "@/webview/utils/columns";
 
 // The page's shared state. Loading this module only creates the signals: many tests load it
 // before there is a DOM, a configuration or any strings, and they reload it for a fresh page.
@@ -112,6 +112,35 @@ export const columnWidths = computed<Array<number> | null>(() => {
   const stored = repo === undefined ? null : (repoStates.value[repo]?.columnWidths ?? null);
   return isColumnWidths(stored) ? stored : null;
 });
+
+/**
+ * One record per set of hidden columns, made the first time that set is seen. The same set always
+ * gives the same arrays, so saving any other choice does not redraw every row.
+ */
+const columnChoices = new Map<
+  string,
+  { hidden: ReadonlyArray<OptionalColumn>; shown: ReadonlyArray<number> }
+>();
+
+const columnChoice = computed(() => {
+  const repo = selectedRepo.value;
+  const hidden = hiddenColumnsOf(
+    repo === undefined ? undefined : repoStates.value[repo]?.hiddenColumns
+  );
+  const key = hidden.join();
+  let choice = columnChoices.get(key);
+  if (choice === undefined) {
+    choice = { hidden: Object.freeze(hidden), shown: Object.freeze(shownCells(hidden)) };
+    columnChoices.set(key, choice);
+  }
+  return choice;
+});
+
+/** The columns hidden from the selected repository's commit table, in table order. */
+export const hiddenColumns = computed(() => columnChoice.value.hidden);
+
+/** The cells the commit table shows, by index, in table order. */
+export const shownColumns = computed(() => columnChoice.value.shown);
 
 /** The branch a focus mode emphasises, whether or not the emphasis is paused. */
 export const branchFocusTarget = computed<

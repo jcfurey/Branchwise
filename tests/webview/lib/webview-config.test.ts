@@ -5,17 +5,26 @@ import type { WebviewConfig } from "@/types";
 
 const first: WebviewConfig = {
   autoCenterCommitDetailsView: false,
+  branchHoverPreview: true,
+  commitHoverCards: true,
   commitDetailsPosition: "inline",
   conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: ["#1f77b4", "#ff7f0e", "#2ca02c"],
   graphStyle: "angular",
   initialLoadCommits: 250,
   issueLinks: [],
   loadMoreCommits: 75,
+  markAppliedCommits: true,
   locale: "de",
+  rowDensity: "compact",
+  overviewMarkers: true,
+  showChangesColumn: false,
   showCurrentBranchByDefault: true,
+  showNearestBranch: true,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 

@@ -10,12 +10,13 @@ import { onCheckedOutLine, openEditMessage } from "@/webview/components/reposito
 import { openSplitCommit } from "@/webview/components/repository/SplitCommit";
 import { Icon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
-import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT, TABLE_HEADER_HEIGHT } from "@/webview/constants";
+import { COMMIT_DETAILS_HEIGHT, TABLE_HEADER_HEIGHT } from "@/webview/constants";
 import { closeCommitDetails, openAllCommitChanges } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { CommitMessage, repositoryTracker } from "@/webview/lib/commit-message";
 import { repositoryState } from "@/webview/lib/repository-actions";
-import { getWebviewConfig } from "@/webview/lib/webview-config";
+import { shownColumns } from "@/webview/lib/stores";
+import { getWebviewConfig, rowHeight } from "@/webview/lib/webview-config";
 import { getFullDate } from "@/webview/utils/date";
 import { buildFileTree } from "@/webview/utils/fileTree";
 
@@ -48,7 +49,7 @@ function bringIntoView(row: HTMLElement) {
     window.scrollBy({ top: box.top + box.height / 2 - view / 2 });
     return;
   }
-  const above = stickyHeadings(row) + ROW_HEIGHT;
+  const above = stickyHeadings(row) + rowHeight();
   if (box.top < above) {
     window.scrollBy({ top: box.top - above });
   } else if (box.bottom + MARGIN_BELOW > view) {
@@ -114,7 +115,7 @@ export function DetailsRow({ children }: { children: ComponentChildren }) {
       {/* Under the graph column, left empty so the lanes show through. */}
       <td />
       <td
-        colSpan={4}
+        colSpan={shownColumns.value.length - 1 + (getWebviewConfig().showChangesColumn ? 1 : 0)}
         class="relative bg-btn p-0 align-top text-ui leading-4.5 whitespace-normal after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-line"
       >
         <div class="overflow-hidden" style={{ height: `${COMMIT_DETAILS_HEIGHT - BOTTOM_LINE}px` }}>
