@@ -8,6 +8,7 @@ import { CommitGraph } from "@/webview/components/commit/CommitGraph";
 import { CommitHoverCard } from "@/webview/components/commit/CommitHoverCard";
 import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
 import { DayPill } from "@/webview/components/commit/DayPill";
+import { OverviewStrip } from "@/webview/components/commit/OverviewStrip";
 import { type ColumnResize, useColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useGraphScroll } from "@/webview/components/commit/useGraphScroll";
 import { WorkingTreeDetails } from "@/webview/components/commit/WorkingTreeDetails";
@@ -35,6 +36,7 @@ import {
   selectCommitRows,
   selectedCommits
 } from "@/webview/lib/navigation";
+import { collectMarkers } from "@/webview/lib/overview-markers";
 import {
   activeSource,
   columnWidths,
@@ -252,6 +254,22 @@ export function CommitTable({
     }
   }
 
+  const overview = getWebviewConfig().overviewMarkers;
+  const selection = selectedCommits.value;
+  const markers = useMemo(
+    () =>
+      overview
+        ? collectMarkers({
+            commits,
+            head,
+            selected: new Set(selection.map((commit) => commit.hash)),
+            details: expandedHash,
+            unpushed: new Set(pushStatus?.unpushed)
+          })
+        : [],
+    [overview, commits, head, selection, expandedHash, pushStatus]
+  );
+
   // Rows get the same callbacks on every render, so a row whose own props did not change skips.
   const reveal = useRef<(hash: string) => void>(() => {});
   reveal.current = (hash: string) => {
@@ -312,7 +330,7 @@ export function CommitTable({
   const heading = "relative h-8 truncate border-b border-line px-3 text-left font-semibold";
 
   return (
-    <div ref={containerRef} class="relative">
+    <div ref={containerRef} class="relative pr-[var(--overview-gutter,0px)]">
       <div
         ref={scroll.viewportRef}
         data-graph-viewport
@@ -447,6 +465,14 @@ export function CommitTable({
           ))}
         </tbody>
       </table>
+      {overview && (
+        <OverviewStrip
+          containerRef={containerRef}
+          markers={markers}
+          rows={commits.length}
+          expandedRow={expandedRow}
+        />
+      )}
       <CommitHoverCard rows={byHash} />
     </div>
   );

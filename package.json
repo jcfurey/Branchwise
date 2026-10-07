@@ -328,6 +328,11 @@
           "default": 3,
           "minimum": 0
         },
+        "branchwise.overviewMarkers": {
+          "description": "%config.overviewMarkers%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.showChangesColumn": {
           "description": "%config.showChangesColumn%",
           "type": "boolean",

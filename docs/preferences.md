@@ -83,6 +83,12 @@ with the number of files in its tooltip. The counts are read only for the rows i
 scroll, so a long history costs no more than a short one. See
 [commit cards and change counts](git-actions.md#commit-cards-and-change-counts).
 
+`branchwise.overviewMarkers` (default `true`) shows the strip beside the commit table that marks
+HEAD, branch tips and tags, the selection, the open commit and unpushed commits across
+the whole loaded history, with a band for the rows on screen; click or drag on it to scroll.
+Turn it off to give the table those 10 pixels back. See
+[overview strip](git-actions.md#overview-strip).
+
 ### Single-key shortcuts
 
 `branchwise.singleKeyShortcuts` (default `true`) lets single keys act on the focused commit row,

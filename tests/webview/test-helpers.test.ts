@@ -36,6 +36,7 @@ const expectedSettings: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 100,
   locale: "en",
+  overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true

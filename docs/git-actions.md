@@ -77,6 +77,23 @@ The column headings and graph scrollbar stay below the main controls as you scro
 
 Clicking or keyboard-navigating to a commit brings its lane into view with the smallest necessary horizontal movement. To find it again after panning, use the crosshair button beside **Message**, labelled **Reveal selected lane**. Refreshing or resizing keeps your manual position where the graph still fits; switching repositories resets it. Revealing a lane leaves the branch, checkout, focus mode, and commit text position unchanged.
 
+## Overview strip
+
+A narrow strip along the right edge of the commit table shows the whole loaded history at once, as the overview ruler beside an editor's scrollbar does. Each mark has its own place and shape across the strip as well as its own colour:
+
+| Mark                          | Shape and place                        | Colour                                           |
+| ----------------------------- | -------------------------------------- | ------------------------------------------------ |
+| Checked-out commit (HEAD)     | Solid bar across the whole width       | The editor's cursor colour                       |
+| Selected commits              | Block in the right half                | The focus border colour                          |
+| Commit whose details are open | Outline across the whole width         | The overview ruler's strong-highlight colour     |
+| Branch tips, local or remote  | Bar in the left half                   | The overview ruler's added-lines colour          |
+| Tags                          | Narrower bar in the left half, lighter | The same colour as branches                      |
+| Unpushed commits              | Dot in the right half                  | The unpushed dot's colour, `branchwise.unpushed` |
+
+A translucent band, in the scrollbar's colour, covers the rows on screen. Rows share the strip's height evenly, so 50,000 rows still fit; where several rows fall on the same pixel, their marks are drawn there once, with the more important ones on top: HEAD, then the selection, the open details, branches, tags and unpushed commits. In high contrast themes tags are drawn as strongly as branches, and with forced colours, such as a Windows contrast theme, the strip uses system colours.
+
+Click the strip to scroll that part of the history to the middle of the window, or drag along it to scroll continuously. The strip only appears when the table is too long to see at once, and it has its own 10 pixels beside the table, so it never covers a row or the window's scrollbar. It is a pointer shortcut only: screen readers skip it and it takes no keyboard focus, since **Go to Branch, Tag or Commit…**, **Jump to HEAD** and the arrow keys reach every row. Set `branchwise.overviewMarkers` to `false` to hide it.
+
 ## Days in the graph
 
 A faint line runs across the graph above the first commit of each day, where it follows a commit from a later day, so long stretches of **Relative** dates such as "3 days ago" still show where one day ends. Days are those of the dates the graph shows, author or commit dates as `branchwise.dateType` says, in your local time zone; the uncommitted changes row takes no part. Once you scroll down, a small label under the column headings names the day of the topmost commit, such as **Tuesday, October 6, 2026**, in VS Code's display language. The label lets clicks through to the rows beneath it, and screen readers skip it, since each row reads its own date. Set `branchwise.dateSeparators` to `false` to turn off both.

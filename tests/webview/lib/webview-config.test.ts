@@ -16,6 +16,7 @@ const first: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 75,
   locale: "de",
+  overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: true,
   singleKeyShortcuts: true

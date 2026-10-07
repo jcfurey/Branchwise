@@ -31,6 +31,7 @@ export const PAGE_CONFIG: WebviewConfig = {
   autoCenterCommitDetailsView: false,
   commitHoverCards: true,
   conflictForecast: "localAndRemote",
+  overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true

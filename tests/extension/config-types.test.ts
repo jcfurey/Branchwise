@@ -26,6 +26,7 @@ const settings: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 25,
   locale: "de",
+  overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: true,
   singleKeyShortcuts: true
@@ -48,7 +49,7 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the fifteen display settings", () => {
+  it("holds exactly the sixteen display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
       | "commitHoverCards"
@@ -62,11 +63,12 @@ describe("WebviewConfig", () => {
       | "issueLinks"
       | "loadMoreCommits"
       | "locale"
+      | "overviewMarkers"
       | "showChangesColumn"
       | "showCurrentBranchByDefault"
       | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(15);
+    expect(Object.keys(settings)).toHaveLength(16);
   });
 });
 

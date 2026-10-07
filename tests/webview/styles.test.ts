@@ -222,6 +222,36 @@ describe("styles.css", () => {
     expect(cap).toContain("color: Canvas;");
   });
 
+  it("colours the overview strip from the theme, and from system colours when forced", () => {
+    expect(theme).toContain(
+      "--color-overview-band: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));"
+    );
+    expect(theme).toContain("--color-overview-unpushed: var(--color-unpushed);");
+    // The canvas reads its colours from probes, which the utilities colour.
+    for (const kind of ["head", "selected", "details", "branch", "tag", "unpushed"]) {
+      expect(ruleOf(utilities, `.text-overview-${kind}`)).toContain(
+        `color: var(--color-overview-${kind});`
+      );
+    }
+    expect(css).not.toContain("overview-match");
+    const strip = ruleOf(components, ".overview-strip");
+    expect(strip).toContain("forced-color-adjust: none;");
+    expect(strip).toContain("--overview-tag-alpha: 0.55;");
+    expect(
+      ruleOf(
+        components,
+        ".vscode-high-contrast .overview-strip, .vscode-high-contrast-light .overview-strip"
+      )
+    ).toContain("--overview-tag-alpha: 1;");
+    const forced = ruleOf(
+      css.slice(css.indexOf("@media (forced-colors: active) {")),
+      ".overview-strip"
+    );
+    expect(forced).toContain("--color-overview-head: CanvasText;");
+    expect(forced).toContain("--color-overview-selected: Highlight;");
+    expect(forced).toContain("--overview-band-alpha: 0.4;");
+  });
+
   it("fades the scroll shade in over the first pixel of scrolling", () => {
     expect(components).toMatch(/@keyframes scroll-shadow \{\s+from \{\s+opacity: 0;/);
     const shade = ruleOf(components, ".animate-scroll-shadow");

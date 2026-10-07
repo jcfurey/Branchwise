@@ -4733,6 +4733,143 @@ suite("Branchwise workflow UI", function () {
     await openRepo(repo);
   });
 
+  test("marks HEAD, branches and tags on the overview strip and scrolls to where it is clicked", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "strip-base", dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    let parent = git(["rev-parse", "HEAD"], dir);
+    // A history far taller than the window, with a branch and a tag near its bottom.
+    for (let index = 1; index <= 150; index++) {
+      parent = git(["commit-tree", tree, "-p", parent, "-m", `strip-${index}`], dir);
+      if (index === 4) {
+        git(["tag", "strip-old-tag", parent], dir);
+      }
+      if (index === 8) {
+        git(["branch", "strip-old-branch", parent], dir);
+      }
+    }
+    git(["update-ref", "refs/heads/main", parent], dir);
+    const tagged = git(["rev-parse", "strip-old-tag"], dir);
+    const refsBefore = git(["show-ref"], dir);
+    await openRepo(dir);
+    await until(
+      () => graph.evaluate("document.querySelectorAll('tr[data-commit-hash]').length === 151"),
+      "long history"
+    );
+    await graph.evaluate("window.scrollTo(0, 0)");
+    const strip = () =>
+      graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip]:not([hidden]) canvas');
+      if (!canvas) return null;
+      const box = canvas.getBoundingClientRect();
+      const table = document.querySelector('main table').getBoundingClientRect();
+      const row = document.querySelector('tr[data-commit-hash="${tagged}"]').getBoundingClientRect();
+      return { kinds: canvas.dataset.markerKinds, count: Number(canvas.dataset.markerCount),
+        top: box.top, bottom: box.bottom, left: box.left, right: box.right,
+        tableRight: table.right, pageWidth: document.documentElement.clientWidth,
+        pixels: canvas.width, scale: devicePixelRatio, ariaHidden: canvas.getAttribute('aria-hidden'),
+        tabIndex: canvas.tabIndex, y: scrollY, height: innerHeight,
+        heading: document.querySelector('main thead').getBoundingClientRect().bottom,
+        rowTop: row.top, rowBottom: row.bottom };
+    })()`);
+    const before = await until(async () => {
+      const state = await strip();
+      return state?.kinds === "head branch tag" && state.y === 0 && state;
+    }, "overview strip with HEAD, branch and tag marks");
+    // HEAD and main on the newest commit, the old branch, and the old tag.
+    assert.equal(before.count, 4);
+    assert.equal(before.ariaHidden, "true");
+    assert.equal(before.tabIndex, -1, "the strip is not a tab stop");
+    assert.equal(before.pixels, Math.round(10 * before.scale));
+    assert.ok(
+      before.tableRight <= before.left + 0.5,
+      `beside the table: ${JSON.stringify(before)}`
+    );
+    assert.ok(before.right <= before.pageWidth + 0.5, "clear of the window's scrollbar");
+    assert.ok(before.rowTop > before.height, "the tagged commit starts out of sight");
+
+    // Every theme colours the marks: HEAD in the editor's cursor colour, tags in the left half.
+    const marks = () =>
+      graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip] canvas');
+      const scale = canvas.width / 10, height = canvas.height / scale;
+      const pixel = (x, y) => [...canvas.getContext('2d').getImageData(Math.floor(x * scale), Math.floor(y * scale), 1, 1).data];
+      const rowY = (row) => Math.min(height - 3, Math.max(1, Math.floor(((row + 0.5) / 151) * height)));
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--vscode-editorCursor-foreground)';
+      document.body.append(probe);
+      const cursor = getComputedStyle(probe).color.match(/\\d+/g).slice(0, 3).map(Number);
+      probe.remove();
+      return { head: pixel(5, rowY(0) + 1), tag: pixel(3, rowY(146) + 1), cursor };
+    })()`);
+    const workbench = vscode.workspace.getConfiguration("workbench");
+    const originalTheme = workbench.inspect("colorTheme").globalValue;
+    try {
+      for (const [theme, kind] of [
+        ["Light Modern", "vscode-light"],
+        ["Dark Modern", "vscode-dark"],
+        ["Default High Contrast", "vscode-high-contrast"],
+        ["Default High Contrast Light", "vscode-high-contrast-light"]
+      ]) {
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        await until(async () => {
+          const { head, tag, cursor } = await marks();
+          return (
+            head[3] === 255 &&
+            head.slice(0, 3).every((channel, index) => Math.abs(channel - cursor[index]) <= 2) &&
+            tag[3] > 0
+          );
+        }, `HEAD and tag marks in ${theme}`);
+        const screenshot = await connections[0].call("Page.captureScreenshot");
+        fs.writeFileSync(
+          path.join(artifacts, `overview-strip-${kind}.png`),
+          Buffer.from(screenshot.data, "base64")
+        );
+      }
+    } finally {
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+    }
+
+    // Near the bottom of the strip: the oldest commits come into view.
+    await graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip] canvas');
+      const box = canvas.getBoundingClientRect();
+      canvas.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true,
+        pointerId: 1, button: 0, clientX: box.left + 5, clientY: box.bottom - 3 }));
+      canvas.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, button: 0,
+        clientX: box.left + 5, clientY: box.bottom - 3 }));
+    })()`);
+    const after = await until(async () => {
+      const state = await strip();
+      return state && state.y > 1000 && state;
+    }, "table scrolled by the strip");
+    assert.ok(
+      after.rowTop >= after.heading - 1 && after.rowBottom <= after.height + 1,
+      `the tagged commit is on screen: ${JSON.stringify(after)}`
+    );
+
+    // Near the top: back to the newest commits.
+    await graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip] canvas');
+      const box = canvas.getBoundingClientRect();
+      canvas.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true,
+        pointerId: 1, button: 0, clientX: box.left + 5, clientY: box.top + 1 }));
+    })()`);
+    await until(async () => (await strip())?.y === 0, "table scrolled back to the top");
+    assert.equal(git(["show-ref"], dir), refsBefore);
+
+    await openRepo(repo);
+    await until(
+      () => graph.evaluate("document.querySelector('[data-overview-strip]')?.hidden !== false"),
+      "no strip beside a history that fits the window"
+    );
+  });
+
   test("lists branches, remotes, tags and stashes beside the graph and switches the graph from them", async () => {
     const pane = directory();
     init(pane);
