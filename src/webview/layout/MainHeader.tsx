@@ -7,6 +7,7 @@ import {
   openFileHistory,
   openReflog
 } from "@/webview/components/history/HistoryTools";
+import { openLegend } from "@/webview/components/history/Legend";
 import { openSafetyNet } from "@/webview/components/history/SafetyNetView";
 import {
   openCleanup,
@@ -220,6 +221,7 @@ function toolsMenu(): Array<ContextMenuEntry> {
       title: l10n.gettingStarted,
       onClick: () => void rpcClient.request("walkthrough.open", null)
     },
+    { title: l10n.legend, onClick: openLegend },
     { title: l10n.keyboardShortcuts, onClick: openShortcutSheet, shortcut: "shortcutSheet" },
     { title: l10n.learnMore, onClick: () => void rpcClient.request("docs.open", null) },
     { title: l10n.openSettings, onClick: () => void rpcClient.request("settings.open", null) }

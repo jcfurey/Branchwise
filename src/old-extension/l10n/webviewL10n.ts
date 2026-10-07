@@ -78,6 +78,11 @@ export function getWebviewLocalizedStrings() {
     // The title of VS Code's own git.init command, which the button runs.
     initializeRepo: vscode.l10n.t("Initialize Repository"),
     unableToInitializeRepo: vscode.l10n.t("Unable to create a Git repository: {0}"),
+    // The titles of VS Code's own git.clone and File > Open Folder, which the other buttons run.
+    cloneRepo: vscode.l10n.t("Clone Repository…"),
+    unableToCloneRepo: vscode.l10n.t("Unable to clone a Git repository: {0}"),
+    openFolder: vscode.l10n.t("Open Folder…"),
+    unableToOpenFolder: vscode.l10n.t("Unable to open a folder: {0}"),
 
     // Error dialog titles. The reason, when there is one, is shown under the title.
     unableToLoad: vscode.l10n.t("Unable to load the graph"),

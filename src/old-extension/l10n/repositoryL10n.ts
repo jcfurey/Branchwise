@@ -214,6 +214,53 @@ export function getRepositoryLocalizedStrings() {
     gettingStarted: vscode.l10n.t("Getting Started"),
     learnMore: vscode.l10n.t("Learn more"),
 
+    // The legend: each symbol the graph uses, its name, then what it means.
+    legend: vscode.l10n.t("Legend"),
+    // The name of the branch on the legend's sample labels.
+    legendSampleBranch: vscode.l10n.t("feature"),
+    legendCommit: vscode.l10n.t("Commit"),
+    legendCommitHint: vscode.l10n.t("A commit, on the lane of the branch it belongs to."),
+    legendHead: vscode.l10n.t("Checked-out commit (HEAD)"),
+    legendHeadHint: vscode.l10n.t(
+      "The commit you have checked out, as a ring. Its row's description is bold."
+    ),
+    legendMerge: vscode.l10n.t("Merge commit"),
+    legendMergeHint: vscode.l10n.t("A commit with two or more parents, as a ring around a dot."),
+    legendUncommitted: vscode.l10n.t("Uncommitted changes"),
+    legendUncommittedHint: vscode.l10n.t(
+      "Changes in the work tree and the index, in grey above the checked-out commit."
+    ),
+    legendUnpushed: vscode.l10n.t("Unpushed commit"),
+    legendUnpulled: vscode.l10n.t("Unpulled commit"),
+    legendConflict: vscode.l10n.t("Conflict forecast"),
+    legendConflictHint: vscode.l10n.t(
+      "Merging this branch into yours would conflict; the number counts the files, which its tooltip names."
+    ),
+    legendBranch: vscode.l10n.t("Branch"),
+    legendBranchHint: vscode.l10n.t(
+      "A local branch. A cloud at its end stands for the remote branch of the same name on the same commit."
+    ),
+    legendRemote: vscode.l10n.t("Remote branch"),
+    legendRemoteHint: vscode.l10n.t("A remote branch with no local branch of the same name here."),
+    legendTag: vscode.l10n.t("Tag"),
+    legendTagHint: vscode.l10n.t("A tag."),
+    legendMore: vscode.l10n.t("More labels"),
+    legendMoreHint: vscode.l10n.t(
+      "The labels that do not fit on the row, counted. Its menu lists them."
+    ),
+    legendDimmed: vscode.l10n.t("Dimmed history"),
+    legendDimmedHint: vscode.l10n.t(
+      "While a branch is focused, commits outside its history turn grey."
+    ),
+    legendFocus: vscode.l10n.t("Branch focus"),
+    legendFocusHint: vscode.l10n.t(
+      "Above the graph while a branch is focused, with ways to pause, dim more or less, or clear the focus."
+    ),
+    legendHidden: vscode.l10n.t("Hidden branches"),
+    legendHiddenHint: vscode.l10n.t(
+      "Above the graph while name patterns hide branches, with ways to show them or edit the patterns."
+    ),
+
     // Hidden branches
     hiddenBranches: vscode.l10n.t("Hidden Branches"),
     hideBranchesLikeThis: vscode.l10n.t("Hide Branches Like This"),

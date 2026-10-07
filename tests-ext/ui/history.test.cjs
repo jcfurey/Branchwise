@@ -1436,6 +1436,85 @@ suite("Branchwise workflow UI", function () {
     );
   });
 
+  test("widens a search that found nothing with the buttons it offers", async () => {
+    const dir = directory();
+    init(dir);
+    const save = (file, value, message) => {
+      fs.writeFileSync(path.join(dir, file), value);
+      git(["add", "--", file], dir);
+      git(["commit", "-m", message], dir);
+    };
+    save("config.js", "function readOptions() {}\n", "add the reader");
+    save("other.js", "const unrelated = 1;\n", "unrelated work");
+    await openRepo(dir);
+    await openSearch();
+
+    const offered = () =>
+      graph.evaluate(
+        '[...document.querySelectorAll("[data-no-matches] button")].map(button => button.textContent)'
+      );
+    // No message names the text, and nobody by that name committed.
+    await searchHistory("readOptions author:nobody");
+    await until(async () => (await offered()).includes("Clear filters (1)"), "no-match buttons");
+    assert.ok(
+      (await offered()).includes("Search changes instead"),
+      JSON.stringify(await offered())
+    );
+    assert.equal(await searchField("Author name or email"), "nobody");
+
+    await button("Clear filters (1)", 'document.querySelector("[data-no-matches]")');
+    // The search runs again: the buttons go while it loads, and come back for what it found.
+    await until(
+      async () =>
+        JSON.stringify(await offered()) === JSON.stringify(["Search changes instead"]) &&
+        (await searchField("Author name or email")) === "",
+      "filters cleared, still nothing"
+    );
+    assert.equal(
+      await graph.evaluate('document.querySelector("[data-history-search]").value'),
+      "readOptions"
+    );
+
+    await button("Search changes instead", 'document.querySelector("[data-no-matches]")');
+    await until(async () => (await commitRows()).length === 1, "the commit that adds the text");
+    assert.ok((await commitRows())[0].includes("add the reader"));
+    assert.equal(await searchField("Text added or removed"), "readOptions");
+    await button("Return to Graph", 'document.querySelector("form[role=search]")');
+  });
+
+  test("explains every symbol of the graph in the legend", async () => {
+    await openRepo(repo);
+    await toolsMenu("Legend");
+    const entries = () =>
+      graph.evaluate(
+        '[...document.querySelectorAll("[role=dialog] [data-legend-entry]")].map(entry => [entry.dataset.legendEntry, entry.querySelector("p").textContent, !!entry.firstElementChild.inert])'
+      );
+    await until(async () => (await entries()).length >= 13, "legend entries");
+    const shown = await entries();
+    assert.deepEqual(
+      shown.filter(([key]) => ["head", "uncommitted", "conflict", "more"].includes(key)),
+      [
+        ["head", "Checked-out commit (HEAD)", true],
+        ["uncommitted", "Uncommitted changes", true],
+        ["conflict", "Conflict forecast", true],
+        ["more", "More labels", true]
+      ]
+    );
+    assert.ok(
+      shown.every(([, , inert]) => inert),
+      JSON.stringify(shown)
+    );
+    // The dots are the graph's own, drawn at the graph's size.
+    assert.equal(
+      await graph.evaluate(
+        'document.querySelector("[role=dialog] [data-legend-entry=commit] svg circle").getAttribute("r")'
+      ),
+      "4"
+    );
+    await button("Close");
+    await until(() => graph.evaluate('!document.querySelector("[role=dialog]")'), "legend closed");
+  });
+
   test("goes to a branch, tag or typed commit ID from the quick switcher", async () => {
     const named = directory();
     init(named);

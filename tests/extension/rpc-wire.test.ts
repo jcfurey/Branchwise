@@ -79,7 +79,9 @@ test("lists no repositories without workspace folders", async () => {
 test.each([
   ["settings.open", ["workbench.action.openSettings", "branchwise"]],
   ["docs.open", ["branchwise.openDocumentation"]],
-  ["walkthrough.open", ["branchwise.openWalkthrough"]]
+  ["walkthrough.open", ["branchwise.openWalkthrough"]],
+  ["git.clone", ["git.clone"]],
+  ["folder.open", ["vscode.openFolder"]]
 ])("opens what %s asks for", async (method, command) => {
   expect(await ask(method)).toEqual(success(true));
   expect(host.executeCommand).toHaveBeenCalledExactlyOnceWith(...command);

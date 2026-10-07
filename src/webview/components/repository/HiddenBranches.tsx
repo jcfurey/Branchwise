@@ -80,11 +80,13 @@ export function openHiddenBranches(suggestion?: string): void {
  * or edit the patterns. Nothing while the patterns hide none.
  */
 export function HiddenBranchesHint() {
-  const l10n = window.l10n;
   const count = hiddenBranchCount.value;
-  if (count === 0) {
-    return null;
-  }
+  return count === 0 ? null : <HiddenBranchesStrip count={count} />;
+}
+
+/** The strip for `count` hidden branches. The legend draws it with a count of its own. */
+export function HiddenBranchesStrip({ count }: { count: number }) {
+  const l10n = window.l10n;
   return (
     <div
       role="status"
