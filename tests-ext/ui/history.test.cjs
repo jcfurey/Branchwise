@@ -2230,8 +2230,7 @@ suite("Branchwise workflow UI", function () {
       git(["status", "--porcelain"], dir)
     ];
     await openRepo(dir);
-    await contextRef("applied-topic");
-    await menu("Focus this branch");
+    await refMenuEntry("applied-topic", "Focus this branch");
     const mark = (hash) =>
       graph.evaluate(
         `document.querySelector('tr[data-commit-hash="${hash}"] [data-applied-as]')?.dataset.appliedAs ?? null`
