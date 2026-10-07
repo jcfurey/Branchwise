@@ -56,8 +56,11 @@ export type RpcNotificationMap = {
   "view.showPane": { pane: SidebarPane };
   /** Ask the extension to show the Go to picker for the selected repository. */
   "view.goTo": null;
-  /** Show this commit of this repository, chosen in the Go to picker. */
-  "view.reveal": { repo: string; hash: string };
+  /**
+   * Show this commit of this repository, chosen in the Go to picker or from a line of an editor,
+   * and with `details` open its details.
+   */
+  "view.reveal": { repo: string; hash: string; details?: boolean };
   /** Offer this repository in the picker and select it. */
   "repo.select": GitRepo;
   /** Repositories may have appeared or gone: list them again. */

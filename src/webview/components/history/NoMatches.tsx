@@ -28,14 +28,14 @@ export type NoMatchSuggestion = "allBranches" | "clearFilters" | "noRegex" | "ch
  * What to suggest after a search found nothing, in the order to offer it: searching every branch
  * when the graph is filtered to `branch`, clearing the filled-in fields, matching literal text
  * instead of regular expressions, and looking for the text in the changes when only the messages
- * were searched. A search of one commit's history is not filtered to a branch.
+ * were searched. A search of one commit's history, or of lines, is not filtered to a branch.
  */
 export function noMatchSuggestions(
   filter: HistoryFilter,
   branch: string
 ): Array<NoMatchSuggestion> {
   const suggestions: Array<NoMatchSuggestion> = [];
-  if (branch !== "" && filter.revision === "") {
+  if (branch !== "" && filter.revision === "" && (filter.lines ?? "") === "") {
     suggestions.push("allBranches");
   }
   if (activeFilterCount(filter) > 0) {

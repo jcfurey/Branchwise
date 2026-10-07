@@ -40,6 +40,11 @@ export function getHistoryLocalizedStrings() {
     filteredHistory: vscode.l10n.t("Filtered history"),
     filteredHistoryHint: vscode.l10n.t("Commits between matches may be hidden."),
     historyAt: vscode.l10n.t("History at {0}"),
+    // The banner above a line history: the line numbers, then the file's path last.
+    lineOfFile: vscode.l10n.t("Line {0} of {1}"),
+    linesOfFile: vscode.l10n.t("Lines {0}–{1} of {2}"),
+    // Opens how a commit of a line history changed those lines, as a patch.
+    lineChanges: vscode.l10n.t("Show Changes to These Lines"),
     showInGraph: vscode.l10n.t("Show in Graph"),
     fileHistory: vscode.l10n.t("File History"),
     followRenames: vscode.l10n.t("Follow file renames"),

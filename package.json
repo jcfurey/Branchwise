@@ -118,6 +118,16 @@
         "title": "%command.fileHistory%"
       },
       {
+        "command": "branchwise.showLineCommit",
+        "category": "Branchwise",
+        "title": "%command.showLineCommit%"
+      },
+      {
+        "command": "branchwise.lineHistory",
+        "category": "Branchwise",
+        "title": "%command.lineHistory%"
+      },
+      {
         "command": "branchwise.showBranches",
         "category": "Branchwise",
         "title": "%command.showBranches%"
@@ -166,6 +176,18 @@
           "command": "branchwise.fileHistory",
           "group": "git",
           "when": "resourceScheme == file || resourceScheme == vscode-remote"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "branchwise.showLineCommit",
+          "group": "branchwise@1",
+          "when": "resourceScheme == file || resourceScheme == vscode-remote || resourceScheme == branchwise"
+        },
+        {
+          "command": "branchwise.lineHistory",
+          "group": "branchwise@2",
+          "when": "resourceScheme == file || resourceScheme == vscode-remote || resourceScheme == branchwise"
         }
       ]
     },

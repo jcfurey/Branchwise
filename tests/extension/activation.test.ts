@@ -78,6 +78,8 @@ function context(saved: Record<string, unknown>) {
 const COMMANDS = [
   "branchwise.view",
   "branchwise.fileHistory",
+  "branchwise.showLineCommit",
+  "branchwise.lineHistory",
   "branchwise.showBranches",
   "branchwise.goTo",
   "branchwise.openDocumentation",

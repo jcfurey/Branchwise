@@ -147,6 +147,14 @@ describe("the history query", () => {
     showGraphView();
     expect(lastQuery("history").query.filter.revision).toBe(expected);
   });
+
+  it("starts a line history where its lines were counted, whatever branch is shown", () => {
+    stores.branchDisplay.value = "filter";
+    stores.selectedBranch.value = "feature";
+    search({ path: "a.ts", lines: "2,4" });
+    showGraphView();
+    expect(lastQuery("history").query.filter).toMatchObject({ lines: "2,4", revision: "" });
+  });
 });
 
 describe("the filtered-history banner", () => {
@@ -179,6 +187,22 @@ describe("the filtered-history banner", () => {
       span.textContent?.startsWith("History at")
     );
     expect(scope?.textContent).toBe(text);
+  });
+
+  it.each([
+    ["10,20", "Lines 10–20 of src/a.ts"],
+    ["7,7", "Line 7 of src/a.ts"]
+  ])("names the lines %s of a line history and their file", (lines, text) => {
+    withEnglish({
+      lineOfFile: "Line {0} of {1}",
+      linesOfFile: "Lines {0}–{1} of {2}",
+      filteredHistoryHint: "hint"
+    });
+    search({ path: "src/a.ts", lines, revision: "abc" });
+    showGraphView();
+    replyWithPage(chain("match"));
+    const hint = [...view().querySelectorAll("span")].find((span) => span.textContent === "hint");
+    expect(hint?.previousElementSibling?.textContent).toBe(text);
   });
 });
 

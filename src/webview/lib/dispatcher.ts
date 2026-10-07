@@ -1,6 +1,6 @@
 import type { ActionResponse } from "@/backend/types";
 import type { ResponseMessage } from "@/types";
-import { openFileHistory } from "@/webview/components/history/HistoryTools";
+import { openFileHistory, openLineHistory } from "@/webview/components/history/HistoryTools";
 import { receiveRepoState, selectRepo } from "@/webview/lib/actions";
 import { handleActionResult } from "@/webview/lib/handler/action-result";
 import { handleCommitDetails } from "@/webview/lib/handler/commit-details";
@@ -27,7 +27,12 @@ const routes: Routes = {
   fileHistory: (message) => {
     // Switching restores the repository's own saved search, so it must come before this one.
     selectRepo(message.repo);
-    openFileHistory(message.path);
+    if (message.lines === undefined) {
+      openFileHistory(message.path);
+    } else {
+      const { start, end } = message.lines;
+      openLineHistory(message.path, start, end, message.revision);
+    }
   },
   repositoryAction: actionResult,
   addTag: actionResult,

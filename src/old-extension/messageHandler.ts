@@ -125,6 +125,7 @@ const VIEW_ONLY = new Set<RepositoryAction["kind"]>([
   "viewRangeFile",
   "viewHistoricalFile",
   "viewCommitChanges",
+  "viewLineChanges",
   "viewRangeChanges",
   "previewFileRestore"
 ]);

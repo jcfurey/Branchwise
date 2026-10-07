@@ -32,6 +32,7 @@ import { commitMenuSource } from "@/webview/lib/menus";
 import {
   focusedCommit,
   pendingReveal,
+  revealDetails,
   selectCommitRows,
   selectedCommits
 } from "@/webview/lib/navigation";
@@ -274,7 +275,8 @@ export function CommitTable({
   };
   const drag = useMemo(() => dragHandlers(() => rowsNow.current), []);
 
-  // A commit chosen in Go to, once its row is here: centred, focused and selected.
+  // A commit chosen in Go to, once its row is here: centred, focused and selected, and with its
+  // details open when the reveal asked for them.
   const revealing = pendingReveal.value;
   useEffect(() => {
     const index = revealing === null ? undefined : rowOf.get(revealing);
@@ -284,6 +286,12 @@ export function CommitTable({
     }
     pendingReveal.value = null;
     selectCommitRows(commit, commits, false, false);
+    if (revealDetails.peek()) {
+      revealDetails.value = false;
+      if (expandedCommit.peek() !== commit.hash) {
+        toggleCommitDetails(commit.hash);
+      }
+    }
     const row = containerRef.current?.querySelector<HTMLElement>(
       `tr[data-commit-hash=${JSON.stringify(commit.hash)}]`
     );

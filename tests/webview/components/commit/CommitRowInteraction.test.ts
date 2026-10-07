@@ -6,8 +6,18 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { GitRef, HistoryEntry } from "@/backend/types";
 import { CommitRow } from "@/webview/components/commit/CommitRow";
 import type { BranchRelation } from "@/webview/graph/types";
-import { focusedCommit, selectedCommits } from "@/webview/lib/navigation";
-import { contextMenu, expandedCommit, uncommittedChanges } from "@/webview/lib/stores";
+import {
+  emptyFilter,
+  focusedCommit,
+  historyFilter,
+  selectedCommits
+} from "@/webview/lib/navigation";
+import {
+  contextMenu,
+  expandedCommit,
+  selectedRepo,
+  uncommittedChanges
+} from "@/webview/lib/stores";
 import type { FocusDimming } from "@/webview/types";
 
 import {
@@ -16,6 +26,7 @@ import {
   plainText,
   speak
 } from "@tests/webview/components/commit/commit-view-fixtures";
+import { vscodeApi } from "@tests/webview/setup";
 import { setupWebviewTest } from "@tests/webview/test-utils";
 
 const GREY = "var(--vscode-descriptionForeground, #808080)";
@@ -275,6 +286,32 @@ describe("pointer", () => {
       "openHistoricalFile",
       "restoreHistoricalFile"
     ]);
+  });
+
+  it("offers the changes to the lines on a row of a line history", () => {
+    const hash = "e".repeat(40);
+    historyFilter.value = { ...emptyFilter(), path: "src/a.ts", lines: "3,9", revision: "abc" };
+    selectedRepo.value = "/repo";
+    try {
+      const tr = drawOne({ commit: entry(hash) });
+      act(() => {
+        tr.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+      });
+      const entries = contextMenu.value!.entries;
+      expect(entries.map((item) => item?.title ?? "—").slice(-2)).toEqual(["—", "lineChanges"]);
+      vscodeApi.postMessage.mockClear();
+      act(() => entries.at(-1)!.onClick());
+      const [message] = vscodeApi.postMessage.mock.calls.at(-1)! as [
+        { command: string; action: unknown }
+      ];
+      expect(message).toMatchObject({
+        command: "repositoryAction",
+        action: { kind: "viewLineChanges", hash, path: "src/a.ts", lines: "3,9", revision: "abc" }
+      });
+    } finally {
+      historyFilter.value = emptyFilter();
+      selectedRepo.value = undefined;
+    }
   });
 });
 

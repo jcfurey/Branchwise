@@ -5,7 +5,12 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 import type { HistoryEntry } from "@/backend/types";
 import { CommitTable } from "@/webview/components/commit/CommitTable";
-import { focusedCommit, pendingReveal, selectedCommits } from "@/webview/lib/navigation";
+import {
+  focusedCommit,
+  pendingReveal,
+  revealDetails,
+  selectedCommits
+} from "@/webview/lib/navigation";
 import {
   commitDetails,
   contextMenu,
@@ -281,6 +286,31 @@ describe("a commit chosen in Go to", () => {
     drawTable({ commits: [entry("b"), entry("a")] });
     expect(pendingReveal.value).toBeNull();
     expect(document.activeElement).toBe(row("b"));
+  });
+
+  it("opens its details too when the reveal asks for them, and only then", () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    selectedRepo.value = "/repo";
+    const commits = [entry("c"), entry("b", ["a"]), entry("a")];
+    pendingReveal.value = "c";
+    drawTable({ commits });
+    expect(expandedCommit.value).toBeNull();
+
+    pendingReveal.value = "b";
+    revealDetails.value = true;
+    drawTable({ commits });
+    expect(expandedCommit.value).toBe("b");
+    expect(revealDetails.value).toBe(false);
+
+    // Revealing the commit whose details are open leaves them open.
+    pendingReveal.value = "b";
+    revealDetails.value = true;
+    drawTable({ commits });
+    expect(expandedCommit.value).toBe("b");
+    act(() => {
+      expandedCommit.value = null;
+      commitDetails.value = null;
+    });
   });
 
   it("takes the keyboard back for its row when the page regains focus", () => {

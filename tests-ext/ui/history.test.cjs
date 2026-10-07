@@ -1657,6 +1657,75 @@ suite("Branchwise workflow UI", function () {
     await headerChoice("Branch", "All branches");
   });
 
+  test("goes from an editor line to its commit, and lists the history of selected lines", async () => {
+    const dir = directory();
+    init(dir);
+    const file = path.join(dir, "lines.txt");
+    const write = (text, message) => {
+      fs.writeFileSync(file, text);
+      git(["add", "lines.txt"], dir);
+      git(["commit", "-m", message], dir);
+      return git(["rev-parse", "HEAD"], dir);
+    };
+    const first = write("alpha\nbeta\ngamma\ndelta\n", "lines first");
+    const second = write("alpha\nBETA\ngamma\ndelta\n", "lines second");
+    const third = write("alpha\nBETA\ngamma\nDELTA\n", "lines third");
+    await openRepo(dir);
+    const editor = await vscode.window.showTextDocument(
+      await vscode.workspace.openTextDocument(file)
+    );
+    try {
+      // The cursor on line 2, which the second commit changed.
+      editor.selection = new vscode.Selection(1, 2, 1, 2);
+      await vscode.commands.executeCommand("branchwise.showLineCommit");
+      await until(
+        () =>
+          graph.evaluate(`(() => {
+            const row = document.querySelector('tr[data-commit-hash="${second}"]');
+            return row?.getAttribute("aria-selected") === "true" &&
+              !!row.nextElementSibling?.matches("[data-details-row]") &&
+              document.querySelectorAll("[data-details-row]").length === 1;
+          })()`),
+        "the second commit selected with its details open"
+      );
+      assert.equal(
+        await graph.evaluate('document.querySelector("main").innerText.includes("History at")'),
+        false,
+        "a loaded commit is selected in the graph itself"
+      );
+
+      // The graph came forward over the editor, so the file is shown again in a new editor.
+      const again = await vscode.window.showTextDocument(editor.document);
+      again.selection = new vscode.Selection(0, 0, 2, 5);
+      await vscode.commands.executeCommand("branchwise.lineHistory");
+      await until(
+        () =>
+          graph.evaluate(
+            'document.querySelector("main").innerText.includes("Lines 1–3 of lines.txt")'
+          ),
+        "the line history's title"
+      );
+      await until(
+        async () =>
+          JSON.stringify(
+            await graph.evaluate(
+              '[...document.querySelectorAll("tr[data-commit-hash]")].map(row => row.dataset.commitHash)'
+            )
+          ) === JSON.stringify([second, first]),
+        "the commits that changed lines 1 to 3"
+      );
+      assert.equal(await graph.evaluate(visible(third)), false);
+      await button("Return to Graph");
+      await until(() => graph.evaluate(visible(third)), "the graph again");
+    } finally {
+      // Only the file's editor: later scenarios keep using the graph.
+      const tabs = vscode.window.tabGroups.all
+        .flatMap((group) => group.tabs)
+        .filter((tab) => tab.input instanceof vscode.TabInputText && tab.input.uri.fsPath === file);
+      await vscode.window.tabGroups.close(tabs);
+    }
+  });
+
   test("compares branch contributions, opens native diffs and recovers a reflog commit", async () => {
     const history = directory();
     init(history);

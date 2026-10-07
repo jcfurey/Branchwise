@@ -27,7 +27,8 @@ export const emptyFilter = (): HistoryFilter => ({
   branch: "",
   tag: "",
   changes: "",
-  regex: false
+  regex: false,
+  lines: ""
 });
 type SavedFilter = { name: string; filter: HistoryFilter };
 type SavedRepo = {
@@ -78,6 +79,8 @@ export const focusedCommit = signal<string | null>(null);
  * graph table takes it; a new search or repository drops it.
  */
 export const pendingReveal = signal<string | null>(null);
+/** Whether the table also opens the details of `pendingReveal` once it selects the row. */
+export const revealDetails = signal(false);
 export const restoreScroll = signal<number | null>(null);
 let selectionRows: HistoryEntry[] = [];
 let selectionAnchor: string | null = null;
@@ -158,6 +161,7 @@ export function enterNavigation(repo: string) {
   selectedCommits.value = [];
   focusedCommit.value = null;
   pendingReveal.value = null;
+  revealDetails.value = false;
   restoreScroll.value = state?.scroll ?? 0;
 }
 
@@ -185,6 +189,7 @@ export function setHistoryFilter(filter: HistoryFilter) {
   selectedCommits.value = [];
   focusedCommit.value = null;
   pendingReveal.value = null;
+  revealDetails.value = false;
   leaveNavigation(selectedRepo.value);
 }
 

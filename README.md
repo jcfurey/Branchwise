@@ -37,6 +37,7 @@ basics.
 - Search by message, ID, author, committer, branch, tag, date or path, or for the commits that added or removed a piece of text
 - A legend of every graph symbol, and one-click ways to widen a search that finds nothing
 - Go to any branch, tag or commit from the keyboard, or open it on GitHub or GitLab
+- From an editor line, jump to the commit that last changed it, or list the history of the selected lines
 - Dots and rings mark unpushed and unpulled commits
 - A faint line where each day's commits begin, and the topmost day named as you scroll
 - A mark on each branch that would conflict if merged into yours, naming the files

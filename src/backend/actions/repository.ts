@@ -94,6 +94,7 @@ export async function runRepositoryAction(
     case "viewRangeFile":
     case "viewHistoricalFile":
     case "viewCommitChanges":
+    case "viewLineChanges":
     case "viewRangeChanges":
       return runHistoryAction(git, action, binary);
     case "addRemote":

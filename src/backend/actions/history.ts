@@ -19,6 +19,7 @@ import type { RepositoryEffect } from "@/backend/actions/repository";
 import { gitClientFactory } from "@/backend/gitClient";
 import { commitDetails } from "@/backend/queries/commitDetails";
 import { loadBatchPlan, loadStagedPlan, sourceFile } from "@/backend/queries/history";
+import { lineChanges, lineSpan } from "@/backend/queries/lineHistory";
 import { loadWorkspace, submoduleLinks } from "@/backend/queries/workspace";
 import type { HistoryAction, RestoreBackup } from "@/backend/types";
 import { checkedWorktreePath, fileSnapshot, repoFile } from "@/backend/utils/history";
@@ -128,6 +129,16 @@ export async function runHistoryAction(
         hash: (await sourceFile(git, action.hash, action.path)).hash,
         path: repoFile(action.path)
       };
+    case "viewLineChanges": {
+      const span = lineSpan(action);
+      if (span === null) {
+        throw new Error(l10n.t("Choose a range of lines in a file."));
+      }
+      return {
+        kind: "document",
+        text: await lineChanges(git, action.hash, action.path, span, action.revision)
+      };
+    }
     case "recoverBranch":
       await requireBranchName(git, action.name);
       await git.raw(["branch", "--no-track", action.name, await resolveCommit(git, action.hash)]);

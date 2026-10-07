@@ -129,7 +129,8 @@ export function SearchBar() {
             <TextField
               label={window.l10n.historyPath}
               value={draft.path}
-              change={(file) => update({ path: file })}
+              // The lines of a line history belong to the file it was opened for.
+              change={(file) => update({ path: file, lines: "" })}
             />
             <TextField
               label={window.l10n.historyChanges}

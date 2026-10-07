@@ -375,7 +375,16 @@ describe("view.goTo and view.reveal", () => {
 
   it("show the commit chosen in the picker", () => {
     send(notification("view.reveal", { repo: "/work/app", hash: "abc" }));
-    expect(goTo.revealChoice).toHaveBeenCalledExactlyOnceWith("/work/app", "abc");
+    expect(goTo.revealChoice).toHaveBeenCalledExactlyOnceWith("/work/app", "abc", false);
+  });
+
+  it("open the details of a commit revealed from an editor line, and only when asked", () => {
+    send(notification("view.reveal", { repo: "/work/app", hash: "abc", details: true }));
+    send(notification("view.reveal", { repo: "/work/app", hash: "def", details: "yes" }));
+    expect(goTo.revealChoice.mock.calls).toEqual([
+      ["/work/app", "abc", true],
+      ["/work/app", "def", false]
+    ]);
   });
 
   it.each([

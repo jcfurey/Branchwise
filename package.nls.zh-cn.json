@@ -39,6 +39,8 @@
   "config.tabIconColourTheme.colour": "显示彩色图标，适合大多数 Visual Studio Code 颜色主题",
   "config.tabIconColourTheme.grey": "显示适合以灰度为主的 Visual Studio Code 颜色主题的灰色图标",
   "command.fileHistory": "查看文件历史",
+  "command.showLineCommit": "在提交图中显示该行的提交",
+  "command.lineHistory": "显示所选行的历史",
   "command.showBranches": "显示分支面板",
   "command.goTo": "转到分支、标签或提交…",
   "command.openDocumentation": "打开文档",

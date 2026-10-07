@@ -54,6 +54,7 @@ import { branchPatternScope } from "@/webview/lib/stores/hidden-branches.store";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { NoCommitsPage } from "@/webview/pages/NoCommitsPage";
 import type { FocusDimming } from "@/webview/types";
+import { format } from "@/webview/utils/format";
 
 /** A full object name: SHA-1 or SHA-256. Anything else is shown as typed. */
 const OBJECT_NAME = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;
@@ -71,7 +72,8 @@ function fill(template: string, value: string) {
  * the branch the graph is filtered to.
  */
 function historyQueryFilter(filter: HistoryFilter): HistoryFilter {
-  if (filter.revision !== "") {
+  // A line history counts its lines in the file at HEAD, so it starts there whatever is shown.
+  if (filter.revision !== "" || (filter.lines ?? "") !== "") {
     return filter;
   }
   const branch = displayedBranch();
@@ -80,6 +82,12 @@ function historyQueryFilter(filter: HistoryFilter): HistoryFilter {
 
 /** What the filtered-history banner says the rows are. */
 function historyScope(filter: HistoryFilter) {
+  const [start = "", end = ""] = (filter.lines ?? "").split(",");
+  if (start !== "" && filter.path !== "") {
+    return start === end
+      ? format(window.l10n.lineOfFile, start, filter.path)
+      : format(window.l10n.linesOfFile, start, end, filter.path);
+  }
   if (filter.path !== "") {
     return filter.path;
   }

@@ -46,6 +46,32 @@ it("switches repositories before following a file's history", () => {
   expect(vscodeApi.postMessage).not.toHaveBeenCalled();
 });
 
+it("follows the history of a file's lines, from the revision the extension names", () => {
+  selectRepo("/first");
+  deliver({
+    command: "fileHistory",
+    repo: "/lines",
+    path: "src/a.ts",
+    lines: { start: 10, end: 20 }
+  });
+  expect(stores.selectedRepo.value).toBe("/lines");
+  expect(historyFilter.value).toMatchObject({
+    path: "src/a.ts",
+    lines: "10,20",
+    revision: "",
+    follow: false
+  });
+
+  deliver({
+    command: "fileHistory",
+    repo: "/lines",
+    path: "src/a.ts",
+    lines: { start: 3, end: 3 },
+    revision: "abc^"
+  });
+  expect(historyFilter.value).toMatchObject({ lines: "3,3", revision: "abc^" });
+});
+
 it("changes nothing for data that is not a command", () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const escaped: Array<unknown> = [];
