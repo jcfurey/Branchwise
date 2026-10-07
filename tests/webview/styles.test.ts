@@ -53,6 +53,7 @@ describe("styles.css", () => {
       "--radius-md: 5px;",
       "--color-line: rgba(128, 128, 128, 0.5);",
       "--color-focus: var(--vscode-focusBorder);",
+      "--color-drop: var(--vscode-list-dropBackground);",
       "--color-graph: var(--vscode-focusBorder);",
       "--color-git-deleted: var(--vscode-gitDecoration-deletedResourceForeground);",
       "--default-font-family: var(--vscode-font-family);"
@@ -136,6 +137,77 @@ describe("styles.css", () => {
     expect(ruleAt(components, emphasis)).toBeGreaterThan(last);
   });
 
+  it("prefers Branchwise's own theme colours for the conflict mark and the unpushed dot", () => {
+    expect(theme).toMatch(
+      /--color-git-conflict: var\(\s*--vscode-branchwise-conflict,\s*var\(--vscode-gitDecoration-conflictingResourceForeground\)\s*\);/
+    );
+    expect(theme).toMatch(
+      /--color-unpushed: var\(\s*--vscode-branchwise-unpushed,\s*var\(--vscode-gitDecoration-modifiedResourceForeground\)\s*\);/
+    );
+    // Outside the layers, so it wins over the dot's own background utility.
+    const unlayered = css.slice(css.lastIndexOf("\n}\n", css.indexOf('[data-push="unpushed"] {')));
+    expect(ruleOf(unlayered, '[data-push="unpushed"]')).toContain(
+      "background-color: var(--color-unpushed);"
+    );
+    expect(ruleAt(css, '[data-push="unpushed"]')).toBeGreaterThan(
+      css.indexOf("@layer utilities {")
+    );
+  });
+
+  it("outlines what high contrast themes cannot see as shading", () => {
+    const tokens = ruleOf(components, ".vscode-high-contrast, .vscode-high-contrast-light");
+    expect(tokens).toContain(
+      "--color-line: var(--vscode-contrastBorder, rgba(128, 128, 128, 0.5));"
+    );
+    expect(tokens).toContain(
+      "--color-line-soft: var(--vscode-contrastBorder, rgba(128, 128, 128, 0.25));"
+    );
+    const hovered = ruleOf(
+      components,
+      ".vscode-high-contrast .branch-focus-row:hover, .vscode-high-contrast-light .branch-focus-row:hover"
+    );
+    expect(hovered).toContain(
+      "outline: 1px dashed var(--vscode-contrastActiveBorder, transparent);"
+    );
+    const selected = ruleOf(
+      components,
+      ["", "-light"]
+        .flatMap((kind) =>
+          ["selected", "expanded"].map(
+            (state) => `.vscode-high-contrast${kind} .branch-focus-row[aria-${state}="true"]`
+          )
+        )
+        .join(", ")
+    );
+    expect(selected).toContain(
+      "outline: 1px solid var(--vscode-contrastActiveBorder, transparent);"
+    );
+  });
+
+  it("keeps focus, selection and the graph's marks visible in forced colours", () => {
+    const start = css.indexOf("@media (forced-colors: active) {");
+    expect(start).toBeGreaterThan(css.indexOf("@layer utilities {"));
+    const forced = css.slice(start);
+    expect(ruleOf(forced, ":focus-visible, .branch-focus-row:focus")).toContain(
+      "outline: 2px solid Highlight;"
+    );
+    expect(
+      ruleOf(
+        forced,
+        '.branch-focus-row[aria-selected="true"], .branch-focus-row[aria-expanded="true"]'
+      )
+    ).toContain("outline: 2px solid Highlight;");
+    expect(ruleOf(forced, "[data-conflicts]")).toContain("color: LinkText;");
+    const unpushed = ruleOf(forced, '[data-push="unpushed"]');
+    expect(unpushed).toContain("forced-color-adjust: none;");
+    expect(unpushed).toContain("background-color: CanvasText;");
+    expect(ruleOf(forced, '[data-push="unpulled"]')).toContain("border-color: CanvasText;");
+    expect(ruleOf(forced, "[data-ref], [data-more-refs]")).toContain("border-color: CanvasText;");
+    const cap = ruleOf(forced, "[data-ref] > svg:first-child");
+    expect(cap).toContain("background-color: CanvasText;");
+    expect(cap).toContain("color: Canvas;");
+  });
+
   it("fades the scroll shade in over the first pixel of scrolling", () => {
     expect(components).toMatch(/@keyframes scroll-shadow \{\s+from \{\s+opacity: 0;/);
     const shade = ruleOf(components, ".animate-scroll-shadow");
@@ -144,5 +216,14 @@ describe("styles.css", () => {
     // After the shorthand, which would reset them.
     expect(shade.indexOf("animation-timeline: scroll(root block);")).toBeGreaterThan(shorthand);
     expect(shade.indexOf("animation-range: 0 1px;")).toBeGreaterThan(shorthand);
+  });
+
+  it("shimmers the graph's placeholders quietly, and not at all for less motion", () => {
+    const shimmer = ruleOf(components, ".skeleton-shimmer");
+    expect(shimmer).toContain("var(--color-btn-hover)");
+    expect(shimmer).toContain("animation: skeleton-shimmer 1.8s ease-in-out infinite;");
+    expect(components).toMatch(/@keyframes skeleton-shimmer \{\s+from \{\s+background-position/);
+    const reduced = components.slice(components.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(ruleOf(reduced, ".skeleton-shimmer")).toContain("animation: none;");
   });
 });

@@ -7,6 +7,8 @@ const delegates = vi.hoisted(() => ({
   copyToClipboard: vi.fn(),
   webviewInitialize: vi.fn(),
   initializeRepo: vi.fn(),
+  cloneRepo: vi.fn(),
+  openFolder: vi.fn(),
   scanRepos: vi.fn(),
   openExtensionSettings: vi.fn(),
   runCommand: vi.fn(),
@@ -19,7 +21,9 @@ vi.mock("@/extension/handlers/initialize", () => ({
   webviewInitialize: delegates.webviewInitialize
 }));
 vi.mock("@/extension/handlers/initialize-repo", () => ({
-  initializeRepo: delegates.initializeRepo
+  initializeRepo: delegates.initializeRepo,
+  cloneRepo: delegates.cloneRepo,
+  openFolder: delegates.openFolder
 }));
 vi.mock("@/extension/handlers/scan-repo", () => ({ scanRepos: delegates.scanRepos }));
 vi.mock("@/extension/handlers/open-settings", () => ({
@@ -48,6 +52,8 @@ describe("the RPC handler table", () => {
     expect(Object.keys(rpcHandlers).toSorted()).toEqual([
       "clipboard.copy",
       "docs.open",
+      "folder.open",
+      "git.clone",
       "git.init",
       "goTo.show",
       "repo.scan",
@@ -73,6 +79,8 @@ describe("the RPC handler table", () => {
     ["clipboard.copy", delegates.copyToClipboard, ["p"]],
     ["webview.initialize", delegates.webviewInitialize, []],
     ["git.init", delegates.initializeRepo, []],
+    ["git.clone", delegates.cloneRepo, []],
+    ["folder.open", delegates.openFolder, []],
     ["repo.scan", delegates.scanRepos, []],
     ["settings.open", delegates.openExtensionSettings, []],
     ["docs.open", delegates.runCommand, ["branchwise.openDocumentation"]],
@@ -101,8 +109,12 @@ describe("the RPC handler table", () => {
 
   test("ignores params for every method that takes none", () => {
     call("git.init", { x: 1 });
+    call("git.clone", "https://example.com/x.git");
+    call("folder.open", "/elsewhere");
     call("settings.open", [1, 2]);
     expect(delegates.initializeRepo).toHaveBeenCalledExactlyOnceWith();
+    expect(delegates.cloneRepo).toHaveBeenCalledExactlyOnceWith();
+    expect(delegates.openFolder).toHaveBeenCalledExactlyOnceWith();
     expect(delegates.openExtensionSettings).toHaveBeenCalledExactlyOnceWith();
   });
 });

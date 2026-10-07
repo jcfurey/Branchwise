@@ -39,6 +39,16 @@ export function gitProcessOf(git: SimpleGit): GitProcess | undefined {
   return processes.get(git);
 }
 
+const folders = new WeakMap<SimpleGit, string>();
+
+/**
+ * The folder a client was made for, where processes started outside simple-git can run without
+ * first asking Git for the top level. Undefined for clients that `createGit` did not make.
+ */
+export function gitFolderOf(git: SimpleGit): string | undefined {
+  return folders.get(git);
+}
+
 /**
  * simple-git refuses executable paths with spaces or parentheses unless told to accept them, and
  * then warns about them on the console. Such paths are legitimate here, and nobody reads the
@@ -78,6 +88,7 @@ export function createGit(repoPath: string, gitPath: string, abort?: AbortSignal
     })
   );
   processes.set(git, abort ? { gitPath, abort } : { gitPath });
+  folders.set(git, repoPath);
   return git;
 }
 

@@ -34,6 +34,7 @@ function setup() {
       config: {
         gitPath: () => "git",
         dateType: () => "Author Date",
+        showSignatures: () => true,
         showUncommittedChanges: () => true
       },
       repoManager: { getRepos: () => ({}) },

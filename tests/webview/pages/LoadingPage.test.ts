@@ -4,7 +4,7 @@ import { expect, it } from "vitest";
 
 import { LoadingPage } from "@/webview/pages/LoadingPage";
 
-it("fills the window with the loading heading before any strings have arrived", () => {
+it("fills the window with placeholder rows before any strings have arrived", () => {
   expect("l10n" in window).toBe(false);
   document.documentElement.dataset["loading"] = "Starting up";
   const host = document.createElement("div");
@@ -15,7 +15,9 @@ it("fills the window with the loading heading before any strings have arrived", 
   expect(main.tagName).toBe("MAIN");
   const statuses = main.querySelectorAll('[role="status"]');
   expect(statuses).toHaveLength(1);
-  expect(statuses[0]!.querySelector("h1")?.textContent).toBe("Starting up");
+  expect(statuses[0]!.getAttribute("aria-busy")).toBe("true");
+  expect(statuses[0]!.hasAttribute("data-graph-skeleton")).toBe(true);
+  expect(statuses[0]!.textContent).toBe("Starting up");
 
   render(null, host);
   delete document.documentElement.dataset["loading"];

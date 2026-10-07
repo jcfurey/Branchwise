@@ -6,7 +6,9 @@ All controls act on the repository selected in the graph, including initialized 
 
 After installing, VS Code offers the **Get started with Branchwise** walkthrough on the Welcome page, and the command **Branchwise: Open Getting Started Walkthrough** reopens it. Its five steps open the graph, explain how to read it, show where a commit's actions live, open the Branches pane, and cover recovery.
 
-Inside the graph, a hint above the commit list says how to reach a commit's actions until the first menu opens. Every commit row shows a **⋯** button at its end on hover, and the settings cog holds **Getting Started** and **Learn more**, which opens this guide.
+Inside the graph, a hint above the commit list says how to reach a commit's actions until the first menu opens. Every commit row shows a **⋯** button at its end on hover, and the settings cog holds **Getting Started**, **Legend** and **Learn more**, which opens this guide. **Legend** explains every symbol of the graph, each drawn as the graph draws it: commit dots and the checked-out commit's ring, the uncommitted changes, the unpushed dot and unpulled ring, the conflict mark, branch, remote branch and tag labels, the **+N** of labels that do not fit, dimmed history, and the branch focus and hidden-branches strips.
+
+When the workspace holds no Git repository, the graph offers **Initialize Repository**, **Clone Repository…** and **Open Folder…**, which start VS Code's own flows for each. While a repository's graph first loads, grey placeholder rows stand in for its commits.
 
 ## Branches pane
 
@@ -54,6 +56,18 @@ Patterns are globs, read as Git's `--exclude` reads them: `*` matches any charac
 Hidden branches leave the graph with their labels and the commits only they reach; shared history, tags and other branches stay. They also leave the header's branch picker, history searches and the **All branches** count of the Statistics tab. In the Branches pane they stay listed but dimmed. A line above the graph says how many branches are hidden, with **Show all** to clear the patterns and **Edit patterns** to change them.
 
 The checked-out branch is never hidden. Neither is the branch selected in the header: choosing a hidden branch from the Branches pane, or focusing it, shows it while it stays selected, and an eye-closed mark beside the branch picker says a pattern matches it. The pattern is kept, so the branch is hidden again once another one is selected. Patterns are saved per repository and restored when you reopen the graph; hiding branches never changes Git refs.
+
+### Drag and drop
+
+Drag and drop is a shortcut to three menu actions; each stays in its menu, for the keyboard too. A drop never acts on its own: it opens the confirmation of the matching menu entry, and nothing changes until you confirm it. Press Escape while dragging to cancel.
+
+- Drag a commit row onto the label of the checked-out branch, in the graph or the Branches pane, to **Cherry-pick** it, as the commit's menu does. A merge commit asks which parent to cherry-pick against.
+- Drag a local branch label, or a local branch in the Branches pane, onto the checked-out branch to merge it in, as the dragged branch's **Merge into Current Branch** does.
+- Drag the checked-out branch onto another local or remote branch to rebase it onto that branch, as that branch's **Move the current branch onto this (rebase)** does.
+
+While you drag, the note beside the pointer names what the drop will do. Git cherry-picks, merges and rebases on the checked-out branch only, so a branch that is not checked out refuses a commit, and two branches that are both not checked out refuse each other; the pointer shows that the drop is not allowed, and a note beside it says which branch to check out first. While you drag, a pill shows what is carried, such as `3a4b5c6d Fix parser` or a branch's name, and a branch that would take the drop is outlined. Dragging a tag or remote branch label drags its commit. A commit dropped on another commit does nothing.
+
+Set `branchwise.dragAndDrop` to `false` to turn dragging off; clicking, selecting and the menus work the same either way.
 
 ## Wide graphs
 
@@ -109,17 +123,25 @@ Up to 50 remote branches are tried on top of the local ones, newest first, and o
 
 The `branchwise.conflictForecast` setting chooses what is tried: `localAndRemote` (the default), `local` for local branches only, or `off`.
 
+### Rebase, cherry-pick and revert forecast
+
+The confirmations for **Move the current branch onto this (rebase)**, **Cherry-pick…** and **Revert…**, the interactive rebase editor, and the editors for cherry-picking or reverting selected commits say whether the operation would stop with conflicts before you start it. The line reads, for example, "Rebase would stop at 1a2b3c4d Add parser: conflicts in src/parser.ts, README.md", or "Replays 3 commits cleanly"; "Checking for conflicts…" shows while it is worked out. In the editors, the commit where it would stop is also marked, and the forecast is worked out again shortly after you reorder or drop commits. It only informs: every action can still be started.
+
+Git replays the commits in memory, one at a time, with `git merge-tree --merge-base`, as the real operation would apply them: each commit onto the result of the one before. A rebase replays what `git rebase --rebase-merges` would: commits the target already has are left out, and merges are merged again from their replayed parents. A revert merges each commit's parent into the result, from the commit itself. The first commit that would conflict is reported with its files, and the forecast stops there, since what follows depends on how you resolve it. The merged trees and the throwaway commits between steps are written to a temporary folder that is deleted afterwards: the work tree, the index, the refs and the repository's objects are left as they are.
+
+A merge picked or reverted from the commit menu has no forecast, as the result depends on the parent you choose; in the selection editors it is forecast against the parent chosen there. More than 200 commits are not forecast, and the line says so. The forecast needs Git 2.40 or later; with an older Git the line says that instead. Each answer is remembered for its exact commits, so asking again costs nothing.
+
 ## Stashes
 
 Open **Settings & Tools → Stashes** to save changes, optionally including untracked files. Each stash can be inspected as a diff in VS Code, applied, popped or dropped. Apply and pop can restore staged changes as staged. A conflicting pop keeps the stash and displays the conflicts. Drop requires confirmation. Stash selections include the commit ID so a newer stash does not silently redirect a pending action.
 
 ## Rebasing
 
-Right-click a branch and choose **Move the current branch onto this (rebase)**. Commit or stash changes first. This uses Git's merge-preserving rebase and offers the same recovery controls if it stops.
+Right-click a branch and choose **Move the current branch onto this (rebase)**. Commit or stash changes first. This uses Git's merge-preserving rebase and offers the same recovery controls if it stops. The confirmation, like the interactive rebase editor, [forecasts](#rebase-cherry-pick-and-revert-forecast) the commit where it would stop with conflicts.
 
-For interactive editing, right-click an ancestor commit and choose **Edit commits after this (interactive rebase)**. The plan contains the current branch's commits after that ancestor, from oldest to newest. Move commits earlier or later, choose Pick/Reword/Squash/Fixup/Drop, and edit messages for Reword. Squash combines with the preceding retained commit and keeps the combined messages; Fixup discards the fixup's message. At least one commit must remain, and the first retained commit cannot be Squash or Fixup.
+For interactive editing, right-click an ancestor commit and choose **Edit commits after this (interactive rebase)**. The plan contains the current branch's commits after that ancestor, from oldest to newest. Move commits earlier or later, choose Pick/Reword/Squash/Fixup/Drop, and edit messages for Reword. Squash combines with the preceding retained commit and keeps the combined messages; Fixup discards the fixup's message. At least one commit must remain, and the first retained commit cannot be Squash or Fixup. Below each group of commits that Squash combines, a box shows the combined commit's message as Git would write it: the first commit's message (as reworded, for Reword) and each Squash commit's message, a blank line apart, without Fixup messages. Edit it there before starting. An edited message is kept as typed apart from surrounding whitespace, so lines that start with `#` stay: the group is folded with Fixup and the result amended with that message, skipping the commit hooks as Git does for a squash. A message left as offered is combined by Git itself, as it would be without the box.
 
-To combine several commits into one, select them in the graph (see [multiple commits](#reflog-and-multiple-commits)) and choose **Squash N Commits…** in the selection bar. This opens the same rebase editor, from the parent of the oldest selected commit: the oldest is Pick, the others are Squash, and the commits after them up to `HEAD` stay Pick. Nothing changes until **Start Rebase**, and the same checks apply, so uncommitted changes must be committed or stashed first. The combined commit keeps every selected commit's message. The button is disabled, with the reason in its tooltip, unless the selected commits run without a gap along the current branch's first parents from `HEAD`, and neither they nor the commits after them include a merge. The repository's first commit cannot be squashed: it has no parent to rebase onto.
+To combine several commits into one, select them in the graph (see [multiple commits](#reflog-and-multiple-commits)) and choose **Squash N Commits…** in the selection bar. This opens the same rebase editor, from the parent of the oldest selected commit: the oldest is Pick, the others are Squash, and the commits after them up to `HEAD` stay Pick. Nothing changes until **Start Rebase**, and the same checks apply, so uncommitted changes must be committed or stashed first. The combined commit keeps every selected commit's message, which can be edited in the editor first. The button is disabled, with the reason in its tooltip, unless the selected commits run without a gap along the current branch's first parents from `HEAD`, and neither they nor the commits after them include a merge. The repository's first commit cannot be squashed: it has no parent to rebase onto.
 
 Stage changes in Source Control, then choose **Fold staged changes into this commit (fixup)** on the commit being corrected. Review the staged file list before submitting. **Arrange Fixup / Squash Commits** in the rebase editor places matching `fixup!` and `squash!` commits after their targets while preserving manual edits. Review the resulting order and actions before starting; ambiguous or unmatched targets remain Pick.
 
@@ -127,13 +149,17 @@ Interactive plans support linear ranges. A range containing merge commits is rej
 
 ### Editing one commit in place
 
-Two commit-menu entries change a single commit of the checked-out branch without a plan to arrange. They appear only on commits of the branch's own first-parent line, not on commits it gained through a merge, and the check is repeated before anything changes.
+Three commit-menu entries change a single commit of the checked-out branch without a plan to arrange. They appear only on commits of the branch's own first-parent line, not on commits it gained through a merge, and the check is repeated before anything changes.
 
 **Edit Message…**, also a button in the commit details, opens the commit's whole message for editing. The new message is kept as typed apart from surrounding whitespace, so lines that start with `#` stay. `HEAD` is amended with `git commit --amend --only`, which changes only the message: staged changes stay staged and other changes stay where they are. An older commit is reworded by an interactive rebase from its parent that picks every other commit; each commit keeps its files, and the later ones get new IDs. That rebase needs a clean working tree.
 
 **Add Staged Changes to This Commit…** appears while changes are staged. Its confirmation lists the commit, the staged files and how many later commits will be rewritten. `HEAD` is amended with the staged changes, and unstaged changes are left alone. For an older commit, the staged changes are committed as `fixup! <subject>`, as **Fold staged changes into this commit (fixup)** does, and an autosquash rebase from the commit's parent folds them in at once. Like any autosquash, it also folds in other `fixup!` and `squash!` commits already waiting in that range. Nothing else may be unstaged or untracked, since the rebase needs a clean working tree. If the rebase stops on a conflict, the status strip offers Continue and Abort; Abort leaves the changes in the `fixup!` commit at the top of the branch.
 
 Both are refused on a detached `HEAD`, on the first commit of the history unless it is `HEAD`, when the commit or one after it is a merge (again unless the commit is `HEAD`), and when the branch moved after the dialog opened. An empty message is refused too. When a remote-tracking branch already contains the commit, the dialog warns that sharing the rewritten history needs a force push; see [Remotes and tracking](#remotes-and-tracking) for **Force with lease**.
+
+**Split Commit…**, in the commit menu and as a button in the commit details beside **Edit Message…**, breaks one commit into two or more. The dialog lists the files the commit changes, and a text file changed in place with more than one hunk can be opened to show its hunks. Choose a part for each file, or for each hunk, and add parts with **+ Part**. Each part has its own message: Part 1 starts with the original message and the others start empty. A line under the parts previews the result, such as "3 commits: Part 1 (4 files), Part 2 (2 files), Part 3 (1 file)", and **Split Commit** stays disabled until every part has a change and a message. An added, deleted or renamed file, a binary file and a change of file mode always go whole, so a rename stays one change in one part.
+
+The parts are committed in order on the commit's parent, each with the original author and author date, and are built in a private index, so the working tree and the index are not touched. Together they must make exactly the original commit's files; if they would not, nothing changes. The commits after it are then made again on the last part with the same files, messages and authors and get new IDs; since their files do not change, no rebase runs, and staged, unstaged and untracked changes stay as they are. The branch moves only after all of that succeeds, and only if it has not moved since the dialog opened. When `commit.gpgSign` is set, the new commits are signed, and a signing failure leaves everything as it was. Split Commit is not offered for merge commits, and is refused on a detached `HEAD`, while another operation such as a merge or rebase is in progress, for a commit with only one change, and when a merge follows the commit on the branch. The first commit of the history can be split even when it is not `HEAD`.
 
 ### Absorbing staged changes into the commits they fix
 
@@ -193,11 +219,26 @@ The result displays the first bad commit, or explains when skipped commits preve
 
 ## Commit details
 
-Click a commit to open its details: the commit ID with **Copy Short ID** and **Copy Full ID** buttons, and **Edit Message…** on the checked-out branch's own commits (see [editing one commit in place](#editing-one-commit-in-place)), its parents, author, date and committer, the whole message, and the changed files. The commit menu also offers **Copy Commit ID** and **Copy Short Commit ID**. The message keeps its line breaks; inline code, fenced code blocks, `**bold**` and `*italic*` are styled, and web addresses become links. When the checked-out branch's remote, `origin` or the only remote is on github.com or a GitLab server, references such as `#12`, `GH-12`, `owner/repo#12` and, on GitLab, `!12` link to that issue or merge request.
+Click a commit to open its details: the commit ID with **Copy Short ID** and **Copy Full ID** buttons, and **Edit Message…** and **Split Commit…** on the checked-out branch's own commits (see [editing one commit in place](#editing-one-commit-in-place)), its parents, author, date and committer, the whole message, and the changed files. The commit menu also offers **Copy Commit ID** and **Copy Short Commit ID**. The message keeps its line breaks; inline code, fenced code blocks, `**bold**` and `*italic*` are styled, and web addresses become links. When the checked-out branch's remote, `origin` or the only remote is on github.com or a GitLab server, references such as `#12`, `GH-12`, `owner/repo#12` and, on GitLab, `!12` link to that issue or merge request.
 
 Click a changed file to open its diff against the commit's first parent. **Open All Changes**, at the top of the file list and in the commit menu, opens every changed file in one VS Code multi-file diff editor instead, titled **Changes in** and the short commit ID, with the same two sides each file's own diff shows: an added file compares with an empty left side, a deleted file with an empty right side, and a renamed file shows its old name on the left. Should VS Code be unable to open that editor, the first file's diff opens on its own and a notification says why.
 
 The same remote gives the commit menu **Open Commit on GitHub** or **Open Commit on GitLab**, and the tag menu **Open Tag on GitHub** (the tag's release page) or **Open Tag on GitLab**. A local branch that tracks a branch on such a host offers **Open Branch on GitHub** or **Open Branch on GitLab**, which opens the branch the remote has, under its name there. Self-hosted GitLab servers count when their host name contains `gitlab`, and HTTPS and SSH remote addresses both work. The page opens in your browser; the entries are missing when no remote is on a known host, and the branch entry is missing for a branch without an upstream or whose upstream was deleted.
+
+Under the committer, once the rest of the details are showing, a line names the branches that contain the commit, with **Contained in:** and one chip per branch: the checked-out branch first, then the other local branches, then the remote ones. Branches the graph hides, those of hidden remotes or matching a hidden-branch pattern, are left out. Ten are shown; **and N more** lists the rest in its tooltip. A second line names the earliest tag, by its tag date, that contains the commit as **First released in v1.2.0**, counts the later ones as **also in N later tags** (hover to see them), and names the nearest tag before it, from its first parent, as **Follows v1.1.0**. Click a branch chip to focus that branch in the graph, or a tag chip to select its commit. Git answers with `git for-each-ref --contains` and `git describe`, which can take a moment in a repository with thousands of refs: the line reads **Checking…** meanwhile, the rest of the details never wait for it, and closing the details stops it. Answers are kept until a ref changes. A commit that no branch or tag contains shows neither line.
+
+### Commit signatures
+
+A small key after a commit's description in the graph means the commit carries a signature: OpenPGP (gpg), X.509 (gpgsm) or SSH. The graph only reads the commits for it and checks nothing, so its tooltip says to open the details to verify. The details then check the signature with the programs, keys and allowed signers your Git configuration names, as `git log --format=%G?` does, and show the verdict as an icon and words:
+
+- **Good signature by** the signer, with the end of the key's fingerprint (the start of an SSH key's) and Git's trust level
+- **Good signature from a key that is not trusted**: the signature matches, but no one certified the OpenPGP key, or no entry of `gpg.ssh.allowedSignersFile` names the SSH key
+- **Bad signature**: the commit no longer matches its signature
+- **Expired signature**, **Signed with an expired key** or **Signed with a revoked key**
+- **Signature can't be checked**, with the reason: the signing key is not in your keyring; gpg, gpgsm or ssh-keygen could not be started, as on a remote host without gpg; SSH signatures need `gpg.ssh.allowedSignersFile`; or the check took longer than 10 seconds, as when gpg waits for an agent or a key server, and was stopped
+- **Unsigned**
+
+Checking changes nothing in the repository, and an unsigned commit starts no program. Verdicts are kept until VS Code restarts, except those your own setup decides: a key that is not trusted, a missing key or program, or a check that was stopped. Once you import the key or add the signer to your allowed signers, opening the details again checks again. To sign with SSH keys, set `gpg.format` to `ssh` and `user.signingKey` to your key. Turn off `branchwise.showSignatures` to leave out the graph's keys, which saves reading each loaded commit a second time; the details still check signatures.
 
 ## Search, file history, and comparison
 
@@ -208,6 +249,8 @@ The header's search button opens the search row, and `/` or Ctrl/Cmd+F opens and
 **Text added or removed** answers "when did this string appear, or go?". It finds the commits that change how many times the text occurs in a file (`git log -S`), so a commit that only moves or edits the line around it is left out. With **Regular expressions** ticked it finds instead every commit that adds or removes a line matching the expression (`git log -G`), which includes such edits. For example, `changes:"parseConfig("` finds the commit that introduced a call and the one that removed it, and adding `path:src/app.ts` limits the search to one file. It finds the commits that made a change rather than the merges that brought it in, except while following renames, where a merge counts with what it changed on its first parent. Git reads each commit's changes to answer, so this search is slower than the others in a large repository: each page stops after its 100 results, and starting another search, or leaving the history, stops the one under way.
 
 When the search text appears in the names of branches or tags, they are listed above the results; click one to open the history at the commit it points to. In **Filter to branch** view, a selected branch limits the history to that branch. Filtered results may omit commits between matches. **Return to Graph** clears the filters.
+
+When a search finds nothing, buttons below the message widen it in one step, each shown only when it applies: **Search all branches** while the graph is filtered to one branch, **Clear filters (N)** with the number of Filters fields filled in (the search text stays), **Turn off regular expressions**, and **Search changes instead**, which moves message text into **Text added or removed**.
 
 The **Jump to HEAD** button next to search scrolls to the checked-out commit and puts the keyboard on it. It is highlighted while that commit is out of sight. From a search it returns to the graph first, and when the graph has not loaded that commit, it opens the history at HEAD.
 
@@ -225,6 +268,27 @@ A commit marked **Not on any branch** is one that no branch, tag, remote branch 
 
 The tab you were on is remembered when the panel reopens. Searching, **Jump to HEAD** and **Show in Graph** return to the **Graph** tab.
 
+## Undo and the Safety Net
+
+Before Branchwise runs an action that moves or deletes refs, it writes down which refs the action may change, where they point, and the branch HEAD is on, and keeps each old commit under `refs/branchwise/backup/`. Git keeps whatever those refs reach, and the graph, the branch lists, Go to and the reflog leave the namespace out. When the backups cannot be written, the action does not run. The actions recorded are:
+
+- reset (soft, mixed and hard); a hard reset also keeps the uncommitted changes it discards, as `git stash create` does, and a mixed reset keeps what was staged
+- rebase and interactive rebase, including squash, **Edit Message…** and **Add Staged Changes to This Commit…**
+- **Absorb Staged Changes…**, whose Undo removes the fixup commits and leaves the changes staged again
+- **Split Commit…**
+- merge, cherry-pick and revert, of one commit or a selection
+- **Fast-forward Branches**
+- deleting and force-deleting a branch, and **Clean Up Merged Branches**; the branch's settings, such as its upstream, are kept too
+- renaming a branch, and deleting a tag
+- dropping a stash
+- a force push with lease and deleting a remote branch, which are only recorded: the remote branch's previous commit is kept, but Undo cannot push it back
+
+Once an action is done, a notification offers **Undo**, and **Settings & Tools** starts with **Undo** and the action's name, such as **Undo Hard Reset of main**, while there is something to undo. Undo puts every ref back with a compare-and-swap (`git update-ref <ref> <old> <new>`), so it refuses, and changes nothing, when any of them has moved since, such as after a new commit. The checked-out branch moves with `git reset --keep`, which refuses to overwrite uncommitted changes, or with `--soft` after a message edit, an amend or an absorb, which leaves the folded-in changes staged again. A deleted branch or tag is created again, a renamed branch is renamed back, a dropped stash goes back on the stash list, and a hard reset's discarded changes are applied again. Undo also refuses while a merge, rebase, cherry-pick or revert is stopped, and for a branch checked out in another worktree. What Undo replaces is kept as well. After one Undo, the menu offers the action before it.
+
+An action that stops on a conflict is completed in the record when **Continue** or **Abort** in the status strip ends it; one finished outside Branchwise stays listed, but cannot be undone in one step.
+
+**Settings & Tools → Safety Net…** lists the recorded actions, newest first, with the refs each one changed, from which commit to which, and the commits no branch, tag, remote branch or HEAD reaches any more because of it. **Restore** puts an action's refs back the same way as Undo, and **Create Recovery Branch…** keeps a lost commit under a new branch. The record is kept in the repository's Git directory, in `branchwise/safety-net.json`, so every worktree and VS Code window shares it; the 50 most recent records of the last 30 days are kept, and older ones and their backups are removed.
+
 ## Statistics
 
 The **Statistics** tab counts the commits on every branch the graph shows, or on one local branch, over the last 30 days, 90 days, year, or all time. It shows the number of commits, contributors and days with commits, a grid of commits per day over the last year (point at a day for its date and count), and every contributor with their commits, share and first and last commit. People are named as `.mailmap` names them, so someone who committed under several addresses counts once. **Count lines changed** adds the lines each contributor added and deleted outside merges; it reads every commit's changes, so it is slower on large repositories. Click a contributor to search the graph for their commits. Avatars are initials; Branchwise fetches nothing over the network.
@@ -235,6 +299,29 @@ Ctrl/Cmd-click selects individual commits; Shift-click selects a range. Select u
 
 Arrow keys move between commit rows; Home/End move to the first/last loaded row. Enter opens details, Space selects, and Shift+F10 opens actions. Ctrl/Cmd+F or `/` opens and focuses history search when no dialog is active, and Ctrl+Alt+G (Cmd+Alt+G on macOS) opens **Go to Branch, Tag or Commit…**. Repository switches preserve filters and scroll position.
 
+Single keys act on the commit row that has focus, without opening its menu. Each one opens the same dialog or confirmation as the matching menu entry, so nothing changes until you confirm:
+
+| Key | Action                                                        |
+| --- | ------------------------------------------------------------- |
+| C   | **Check Out…** the commit                                     |
+| B   | **Create Branch…**                                            |
+| T   | **Create Tag…**                                               |
+| P   | **Cherry-pick…**; with several commits selected, all of them  |
+| V   | **Revert…**                                                   |
+| R   | Rebase the current branch onto the branch on the row          |
+| I   | **Edit commits after this (interactive rebase)…**             |
+| M   | **Merge into Current Branch…**: the branch on the row, if any |
+| X   | **Reset Current Branch to This Commit…**                      |
+| E   | **Edit Message…**, for commits of the checked-out branch      |
+| Y   | Copy the short commit ID; Shift+Y copies the full ID          |
+| O   | Open the commit on GitHub or GitLab                           |
+| D   | Open or close the details, like Enter                         |
+| ?   | Show every keyboard shortcut                                  |
+
+R and M use the first branch label on the row whose own menu offers the action. A key whose action the row does not offer, such as E on a commit of another branch, does nothing; a screen reader announces that it is not available here. Menus show each entry's key at the right. The keys are ignored while typing in the search box or a dialog, while a dialog or menu is open, and with modifiers such as Ctrl, so VS Code's own shortcuts keep working. **Settings & Tools → Keyboard Shortcuts** opens the same list as `?`. To turn the single keys off, for example for a screen reader or an extension that sends single keys, set `branchwise.singleKeyShortcuts` to `false`.
+
 Running operations show their repository, action, and elapsed time. **Hide** closes the progress dialog while Git continues. Push, pull, fetch, remote branch and tag deletion, and checkouts that fetch first also offer **Stop Git**, which ends the Git process, for example when a server stops responding, and frees the repository for other actions. Git never waits for a password typed in a terminal; use a credential helper or SSH agent. **Git Activity** retains the last 100 operations from this view, including results that arrive after switching repositories or opening another dialog. Errors have selectable output and **Copy Error Details**. This activity list lasts for the current graph view; it is separate from Git's reflog.
 
 Closing a menu or dialog restores focus to the original control or commit row. On narrow windows the workspace sidebar moves above the graph and dialog fields stack vertically. Superseded history queries cancel their Git processes; hiding a mutation's progress dialog leaves that operation running.
+
+Colour is never the only sign of what something is. In the graph, an ordinary commit is a filled dot, the checked-out commit a ring, a merge a wider ring around a small dot, and the uncommitted changes a dashed ring. Each changed file in a commit's details ends with its status letter, such as **A** for added, **M** modified, **D** deleted or **R** renamed, which its tooltip and screen readers name in full. A screen reader reads each commit row as one summary: its subject, author and age, then whether it is checked out, a merge, unpushed or unpulled, whether a branch on it would conflict with yours, and its branches and tags, as in "Fix the parser, Ann Lee, 3 days ago, merge of 2 parents, unpushed, branch main, tag v1.0". High contrast themes outline the selected or hovered row, and forced colours, such as a Windows contrast theme, keep system colours for focus, selection, the unpushed dot, the conflict mark and branch and tag labels.

@@ -123,6 +123,10 @@ describe("English questions", () => {
   const explain = (text: string) => markup(h(Explain, null, text));
   const hashName = "<b><i>01234567</i></b>";
   const current = "<b>the current branch</b>";
+  // The conflict forecast under a cherry-pick or revert question, while it is worked out.
+  const checking =
+    '<span role="status" data-replay-forecast="checking" class="mt-2 block text-left text-xs">' +
+    '<span class="text-muted">Checking for conflicts…</span></span>';
 
   it.each<[string, () => Array<ContextMenuEntry>, string]>([
     [
@@ -146,12 +150,12 @@ describe("English questions", () => {
     [
       "Cherry-pick…",
       () => menus.commitMenu(commit, new Map()),
-      `Cherry-pick commit ${hashName}? Its changes are applied to the current branch as a new commit.`
+      `Cherry-pick commit ${hashName}? Its changes are applied to the current branch as a new commit.${checking}`
     ],
     [
       "Revert…",
       () => menus.commitMenu(commit, new Map()),
-      `Revert commit ${hashName}? A new commit that undoes its changes is added to the current branch.`
+      `Revert commit ${hashName}? A new commit that undoes its changes is added to the current branch.${checking}`
     ],
     [
       "Merge into Current Branch…",

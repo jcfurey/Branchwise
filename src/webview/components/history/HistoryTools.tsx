@@ -7,6 +7,12 @@ import type {
   HistoryEntry,
   StagedPlan
 } from "@/backend/types";
+import {
+  FORECAST_DELAY,
+  ForecastStopMark,
+  ReplayForecastLine,
+  useReplayForecast
+} from "@/webview/components/repository/ReplayForecast";
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
 import { Select } from "@/webview/components/ui/Select";
@@ -366,6 +372,18 @@ export function BatchEditor({
     merges.length > 0 ? Math.min(...merges.map((entry) => entry.parentHashes.length)) : 0;
   const { root, move, status } = useListMove(entries, setEntries);
   const title = operation === "revert" ? window.l10n.batchRevert : window.l10n.batchCherryPick;
+  const forecast = useReplayForecast(
+    {
+      kind: "replayForecast",
+      mode: operation === "revert" ? "revert" : "pick",
+      onto: plan.head,
+      commits: entries.map((entry) => entry.hash),
+      ...(parentCount > 0 ? { mainline: Number(mainline) } : {})
+    },
+    FORECAST_DELAY,
+    repo
+  );
+  const stop = forecast.forecast?.stop ?? null;
   return (
     <div ref={root} class="space-y-3 text-left">
       <p>
@@ -380,6 +398,7 @@ export function BatchEditor({
               <code>{entry.hash.slice(0, 8)}</code>
               <span class="break-words">{entry.message}</span>
             </div>
+            {stop?.hash === entry.hash && <ForecastStopMark files={stop.files} />}
             {entry.parentHashes.length > 1 && (
               <p class="break-all text-xs text-muted">
                 {entry.parentHashes.map((hash, i) => `${i + 1}: ${hash.slice(0, 12)}`).join(" · ")}
@@ -418,6 +437,7 @@ export function BatchEditor({
           />
         </label>
       )}
+      <ReplayForecastLine state={forecast} operation={operation} />
       <Button
         variant="primary"
         onClick={() =>

@@ -14,6 +14,7 @@ import { mergeBranch, mergeCommit } from "@/backend/actions/merge";
 import { fetchRemote, pullBranch, pushBranch } from "@/backend/actions/remote";
 import { runRepositoryAction } from "@/backend/actions/repository";
 import type { RepositoryEffect } from "@/backend/actions/repository";
+import { recordedAction } from "@/backend/actions/safetyNet";
 import { addTag, deleteTag, pushTag } from "@/backend/actions/tag";
 import { gitClientFactory } from "@/backend/gitClient";
 import { commitDetails } from "@/backend/queries/commitDetails";
@@ -21,13 +22,15 @@ import { loadBranches } from "@/backend/queries/loadBranches";
 import { loadCommits } from "@/backend/queries/loadCommits";
 import { loadRemotes } from "@/backend/queries/loadRemotes";
 import { repositoryQuery } from "@/backend/queries/repository";
+import { safetyTitle } from "@/backend/queries/safetyNet";
 import type {
   ActionRequest,
   GraphQueryCommand,
   RepositoryAction,
   RepositoryQueryData,
   RepositoryState,
-  RestoreBackup
+  RestoreBackup,
+  SafetyRecord
 } from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
@@ -85,7 +88,10 @@ const text = {
     vscode.l10n.t(
       "VS Code could not show all the changes in one editor, so only the first file's changes are open: {0}",
       reason
-    )
+    ),
+  undo: () => vscode.l10n.t("Undo"),
+  recorded: (action: string) =>
+    vscode.l10n.t("{0} is done. The Safety Net kept what it replaced, so it can be undone.", action)
 };
 
 type Request<C extends RequestMessage["command"]> = Extract<RequestMessage, { command: C }>;
@@ -495,21 +501,63 @@ export function registerMessageHandlers(
 
   async function repositoryAction(request: RepositoryActionRequest) {
     const { repo, action } = request;
-    const { status, result: effect } = await runAction(request, scopeOf(action), async (signal) => {
+    const { status, result } = await runAction(request, scopeOf(action), async (signal) => {
       checkUnsavedEditors(repo, action);
-      const produced = await runRepositoryAction(clientFor(repo, signal), action, config.gitPath());
+      const recorded = await recordedAction(recorderFor(repo), request, () =>
+        runRepositoryAction(clientFor(repo, signal), action, config.gitPath())
+      );
       followRemoteChange(repo, action);
-      await openEffect(repo, produced);
+      await openEffect(repo, recorded.result);
       if (action.kind === "submodule") {
         // A submodule may have appeared or gone, so the picker scans again.
         invalidateWorkspaceScan();
       }
-      return produced;
+      return recorded;
     });
+    const effect = result?.result;
     if (effect?.kind === "restored" && effect.backup !== null) {
       offerUndo(repo, effect.backup);
     }
+    offerSafetyUndo(repo, result?.record);
     return status;
+  }
+
+  /**
+   * A client for the Safety Net's own reads and writes around an action. It cannot be cancelled,
+   * so that an action stopped from the page is still written down as far as it got.
+   */
+  function recorderFor(repo: string) {
+    return gitClientFactory(repo, config.gitPath()).getInstance();
+  }
+
+  /**
+   * Offer to undo a destructive action that the Safety Net recorded, as a restore offers its
+   * undo. The undo is a request of its own; the page reloads whatever the outcome.
+   */
+  function offerSafetyUndo(repo: string, record: SafetyRecord | null | undefined) {
+    if (!record?.undoable) {
+      return;
+    }
+    const undo = text.undo();
+    const offer = Promise.resolve(
+      vscode.window.showInformationMessage(text.recorded(safetyTitle(record)), undo)
+    ).then(async (choice) => {
+      if (choice !== undo) {
+        return;
+      }
+      undoRequests += 1;
+      const status = await repositoryAction({
+        command: "repositoryAction",
+        repo,
+        requestId: `undo-action-${undoRequests}`,
+        action: { kind: "undoSafetyNet", id: record.id }
+      });
+      send({ command: "refresh" });
+      if (status !== null) {
+        detach(vscode.window.showErrorMessage(status), "Reporting the failed undo");
+      }
+    });
+    detach(offer, "Undo");
   }
 
   /**
@@ -700,9 +748,12 @@ export function registerMessageHandlers(
 
   for (const command of PLAIN_ACTIONS) {
     bridge.onMessage(command, async (request) => {
-      await runAction(request, "repository", (signal) =>
-        runPlainAction(clientFor(request.repo, signal), request, config)
+      const { result } = await runAction(request, "repository", (signal) =>
+        recordedAction(recorderFor(request.repo), request, () =>
+          runPlainAction(clientFor(request.repo, signal), request, config)
+        )
       );
+      offerSafetyUndo(request.repo, result?.record);
     });
   }
   bridge.onMessage("repositoryAction", async (request) => {
@@ -730,6 +781,7 @@ export function registerMessageHandlers(
         showRemoteBranches: request.showRemoteBranches,
         hard: request.hard,
         dateType: config.dateType(),
+        showSignatures: config.showSignatures(),
         showUncommittedChanges: config.showUncommittedChanges()
       });
       return {

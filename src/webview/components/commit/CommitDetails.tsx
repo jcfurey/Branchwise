@@ -3,8 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import type { GitCommitDetails } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
+import { ContainingRefs } from "@/webview/components/commit/ContainingRefs";
 import { FileTree } from "@/webview/components/commit/FileTree";
+import { SignatureLine } from "@/webview/components/commit/SignatureBadge";
 import { onCheckedOutLine, openEditMessage } from "@/webview/components/repository/EditCommit";
+import { openSplitCommit } from "@/webview/components/repository/SplitCommit";
 import { Icon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
 import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT, TABLE_HEADER_HEIGHT } from "@/webview/constants";
@@ -230,6 +233,15 @@ export function CommitDetails({ details }: { details: GitCommitDetails | null })
                 {l10n.editMessage + "…"}
               </button>
             )}
+            {onCheckedOutLine(details.hash) && details.parents.length < 2 && (
+              <button
+                type="button"
+                class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
+                onClick={() => openSplitCommit(details.hash)}
+              >
+                {l10n.splitCommit + "…"}
+              </button>
+            )}
           </div>
           <Fact template={l10n.detailParents}>{details.parents.join(", ")}</Fact>
           <Fact template={l10n.detailAuthor}>
@@ -237,6 +249,8 @@ export function CommitDetails({ details }: { details: GitCommitDetails | null })
           </Fact>
           <Fact template={l10n.detailDate}>{getFullDate(details.date)}</Fact>
           <Fact template={l10n.detailCommitter}>{details.committer}</Fact>
+          <ContainingRefs hash={details.hash} />
+          <SignatureLine hash={details.hash} />
           <CommitMessage body={details.body} tracker={repositoryTracker(repositoryState.value)} />
         </div>
         <div class="mr-8 flex min-w-0 flex-1 flex-col border-r border-line">
