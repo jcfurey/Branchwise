@@ -32,6 +32,7 @@ export const PAGE_CONFIG: WebviewConfig = {
   autoCenterCommitDetailsView: false,
   branchHoverPreview: true,
   commitHoverCards: true,
+  commitDetailsPosition: "inline",
   conflictForecast: "localAndRemote",
   rowDensity: "default",
   overviewMarkers: true,

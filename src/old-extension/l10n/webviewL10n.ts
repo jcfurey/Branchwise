@@ -305,6 +305,10 @@ export function getWebviewLocalizedStrings() {
     detailDate: vscode.l10n.t("Date: {0}"),
     detailCommitter: vscode.l10n.t("Committer: {0}"),
     detailSignature: vscode.l10n.t("Signature: {0}"),
+    // The pane that holds the details when the commitDetailsPosition setting docks them below or
+    // beside the graph, and the bar between the two that resizes it.
+    detailsPane: vscode.l10n.t("Commit details"),
+    resizeDetailsPane: vscode.l10n.t("Resize commit details"),
 
     // The branches and tags that contain the commit, loaded after the rest of the details.
     // {0} is a tag, shown as a button that selects its commit.

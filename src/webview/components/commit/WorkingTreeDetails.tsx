@@ -32,7 +32,17 @@ function replacement(list: HTMLElement, lost: { group: string; path: string; ind
   );
 }
 
+/** The uncommitted changes under their row in the table. */
 export function WorkingTreeDetails() {
+  return (
+    <DetailsRow>
+      <WorkingTreeChanges />
+    </DetailsRow>
+  );
+}
+
+/** The files with uncommitted changes, in their groups. It fills its frame. */
+export function WorkingTreeChanges() {
   const query = useRepositoryQuery({ kind: "workingTree" });
   const list = useRef<HTMLDivElement>(null);
   const focused = useRef<{
@@ -60,56 +70,54 @@ export function WorkingTreeDetails() {
 
   const files = query.data?.files;
   return (
-    <DetailsRow>
-      <div class="mr-8 flex h-full flex-col px-3 py-2" data-working-tree-details>
-        <div class="flex shrink-0 items-center justify-between gap-3 pb-2">
-          <span class="text-muted">{window.l10n.workingTreeHint}</span>
-          <Button onClick={refresh}>{window.l10n.refresh}</Button>
-        </div>
-        <div
-          ref={list}
-          class="min-h-0 overflow-auto"
-          aria-busy={query.loading}
-          onFocusIn={(event) => {
-            const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
-              "button[data-file-path]"
-            );
-            focused.current =
-              button === null
-                ? null
-                : {
-                    element: button,
-                    group: button.dataset["fileGroup"]!,
-                    path: button.dataset["filePath"]!,
-                    index: Number(button.dataset["fileIndex"])
-                  };
-          }}
-          onFocusOut={(event) => {
-            // Focus moved elsewhere on purpose; a removed row has no next target.
-            const next = event.relatedTarget as Node | null;
-            if (next !== null && !list.current?.contains(next)) {
-              focused.current = null;
-            }
-          }}
-        >
-          {/* The previous list stays while a refresh loads, so focus and scrolling survive it. */}
-          <QueryStatus loading={query.loading && files === undefined} error={query.error} />
-          {!query.error &&
-            files !== undefined &&
-            (files.length === 0 ? (
-              <p class="p-3 text-muted">{window.l10n.noWorkingTreeChanges}</p>
-            ) : (
-              GROUPS.map((group) => (
-                <FileGroup
-                  key={group}
-                  group={group}
-                  files={files.filter((file) => file.group === group)}
-                />
-              ))
-            ))}
-        </div>
+    <div class="mr-8 flex h-full flex-col px-3 py-2" data-working-tree-details>
+      <div class="flex shrink-0 items-center justify-between gap-3 pb-2">
+        <span class="text-muted">{window.l10n.workingTreeHint}</span>
+        <Button onClick={refresh}>{window.l10n.refresh}</Button>
       </div>
-    </DetailsRow>
+      <div
+        ref={list}
+        class="min-h-0 overflow-auto"
+        aria-busy={query.loading}
+        onFocusIn={(event) => {
+          const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+            "button[data-file-path]"
+          );
+          focused.current =
+            button === null
+              ? null
+              : {
+                  element: button,
+                  group: button.dataset["fileGroup"]!,
+                  path: button.dataset["filePath"]!,
+                  index: Number(button.dataset["fileIndex"])
+                };
+        }}
+        onFocusOut={(event) => {
+          // Focus moved elsewhere on purpose; a removed row has no next target.
+          const next = event.relatedTarget as Node | null;
+          if (next !== null && !list.current?.contains(next)) {
+            focused.current = null;
+          }
+        }}
+      >
+        {/* The previous list stays while a refresh loads, so focus and scrolling survive it. */}
+        <QueryStatus loading={query.loading && files === undefined} error={query.error} />
+        {!query.error &&
+          files !== undefined &&
+          (files.length === 0 ? (
+            <p class="p-3 text-muted">{window.l10n.noWorkingTreeChanges}</p>
+          ) : (
+            GROUPS.map((group) => (
+              <FileGroup
+                key={group}
+                group={group}
+                files={files.filter((file) => file.group === group)}
+              />
+            ))
+          ))}
+      </div>
+    </div>
   );
 }
 

@@ -9,6 +9,7 @@ const config: WebviewConfig = {
   autoCenterCommitDetailsView: true,
   branchHoverPreview: true,
   commitHoverCards: true,
+  commitDetailsPosition: "inline",
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   dateSeparators: true,

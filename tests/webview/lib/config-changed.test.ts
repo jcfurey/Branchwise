@@ -24,6 +24,7 @@ const changed: WebviewConfig = {
   autoCenterCommitDetailsView: true,
   branchHoverPreview: true,
   commitHoverCards: true,
+  commitDetailsPosition: "inline",
   conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
   dateSeparators: true,

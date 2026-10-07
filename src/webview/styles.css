@@ -353,6 +353,17 @@
     color: LinkText;
   }
 
+  /* The bar between the graph and docked details, which would otherwise lose its fill. */
+  [data-details-splitter] {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+
+  [data-details-splitter]:hover,
+  [data-details-splitter]:focus {
+    background-color: Highlight;
+  }
+
   [data-push="unpushed"] {
     forced-color-adjust: none;
     background-color: CanvasText;

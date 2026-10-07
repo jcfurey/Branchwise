@@ -4,6 +4,7 @@ import { useEffect, useRef } from "preact/hooks";
 
 import type { CommitStats } from "@/backend/types";
 import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT, UNCOMMITTED_CHANGES } from "@/webview/constants";
+import { pageViewport } from "@/webview/lib/page-scroll";
 import { repositoryRevision, requestPanelQuery } from "@/webview/lib/repository-actions";
 import { rowHeight as currentRowHeight } from "@/webview/lib/webview-config";
 
@@ -161,7 +162,7 @@ export function useCommitStatsLoader(
         const top = element.getBoundingClientRect().top;
         const [start, end] = rowsInSight(
           top,
-          window.innerHeight,
+          pageViewport().bottom,
           hashes.length,
           open.current,
           currentRowHeight()

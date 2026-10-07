@@ -14,6 +14,13 @@ import {
   type StripMark,
   visibleBand
 } from "@/webview/lib/overview-markers";
+import {
+  graphScroller,
+  onPageScroll,
+  pageScrollTop,
+  pageViewport,
+  scrollPageTo
+} from "@/webview/lib/page-scroll";
 import { rowHeight } from "@/webview/lib/webview-config";
 
 /** The strip's width, in CSS pixels. The table gives up this much on its right. */
@@ -131,15 +138,11 @@ function paint(
   context.globalAlpha = 1;
 }
 
-/** The height of the root's sticky header, which `MainHeader` keeps on the root element. */
-function pageHeader() {
-  const value = Number.parseFloat(
-    document.documentElement.style.getPropertyValue("--main-header-height")
-  );
-  return Number.isFinite(value) ? value : 0;
-}
-
-/** Where the table and the window are now, or `null` while the table has no body to measure. */
+/**
+ * Where the table and the part of the window that shows it are now, or `null` while the table has
+ * no body to measure. That part is the window below its header, or the graph's own scroller while
+ * the details are docked.
+ */
 function measure(container: HTMLElement, rows: number) {
   const table = container.querySelector<HTMLTableElement>(":scope > table");
   const tbody = table?.tBodies.item(0);
@@ -148,8 +151,9 @@ function measure(container: HTMLElement, rows: number) {
   }
   const body = tbody.getBoundingClientRect();
   const heading = table.tHead?.getBoundingClientRect().height ?? TABLE_HEADER_HEIGHT;
-  const viewTop = pageHeader() + heading;
-  const viewBottom = window.innerHeight;
+  const view = pageViewport();
+  const viewTop = view.top + heading;
+  const viewBottom = view.bottom;
   const top = Math.max(viewTop, body.top);
   const bottom = Math.min(viewBottom, body.bottom);
   const height = Math.floor(bottom - top);
@@ -252,7 +256,7 @@ export function OverviewStrip({ containerRef, markers, rows, expandedRow }: Over
         frame.current = requestAnimationFrame(() => draw.current());
       }
     };
-    window.addEventListener("scroll", schedule, { passive: true });
+    const stopScroll = onPageScroll(schedule);
     window.addEventListener("resize", schedule);
     // The table grows as rows load and details open, and banners opening above it move it down
     // without any scrolling; either way the page's body changes size.
@@ -269,7 +273,7 @@ export function OverviewStrip({ containerRef, markers, rows, expandedRow }: Over
     return () => {
       cancelAnimationFrame(frame.current);
       frame.current = 0;
-      window.removeEventListener("scroll", schedule);
+      stopScroll();
       window.removeEventListener("resize", schedule);
       observer.disconnect();
       themes.disconnect();
@@ -277,7 +281,10 @@ export function OverviewStrip({ containerRef, markers, rows, expandedRow }: Over
     };
   }, [containerRef]);
 
-  /** Scroll the window so the row under `clientY` sits in the middle of the rows on screen. */
+  /**
+   * Scroll the graph so the row under `clientY` sits in the middle of the rows on screen. While
+   * the details are docked the graph scrolls in its own element, whose top is then the origin.
+   */
   function scrollToPoint(clientY: number) {
     const container = containerRef.current;
     const canvas = canvasRef.current;
@@ -286,11 +293,16 @@ export function OverviewStrip({ containerRef, markers, rows, expandedRow }: Over
       return;
     }
     const box = canvas.getBoundingClientRect();
+    const scroller = graphScroller();
+    const origin = scroller?.getBoundingClientRect().top ?? 0;
     const page: PageGeometry = {
-      bodyTop: geometry.body.top + window.scrollY,
-      viewTop: geometry.viewTop,
-      viewBottom: geometry.viewBottom,
-      maxScroll: document.documentElement.scrollHeight - window.innerHeight
+      bodyTop: geometry.body.top - origin + pageScrollTop(),
+      viewTop: geometry.viewTop - origin,
+      viewBottom: geometry.viewBottom - origin,
+      maxScroll:
+        scroller === null
+          ? document.documentElement.scrollHeight - window.innerHeight
+          : scroller.scrollHeight - scroller.clientHeight
     };
     const { scrollTop } = scrollForStripPoint(
       clientY - box.top,
@@ -298,7 +310,7 @@ export function OverviewStrip({ containerRef, markers, rows, expandedRow }: Over
       latest.current.body,
       page
     );
-    window.scrollTo(0, scrollTop);
+    scrollPageTo(scrollTop);
   }
 
   const kinds = markerKinds(markers);

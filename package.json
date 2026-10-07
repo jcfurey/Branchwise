@@ -188,6 +188,21 @@
           "type": "boolean",
           "default": true
         },
+        "branchwise.commitDetailsPosition": {
+          "description": "%config.commitDetailsPosition%",
+          "type": "string",
+          "default": "inline",
+          "enum": [
+            "inline",
+            "bottom",
+            "right"
+          ],
+          "enumDescriptions": [
+            "%config.commitDetailsPosition.inline%",
+            "%config.commitDetailsPosition.bottom%",
+            "%config.commitDetailsPosition.right%"
+          ]
+        },
         "branchwise.conflictForecast": {
           "description": "%config.conflictForecast%",
           "type": "string",

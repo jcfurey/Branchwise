@@ -31,6 +31,7 @@ basics.
 
 - One graph of branches, tags, remotes, stashes and uncommitted changes
 - Commit details with formatted messages, linked issues, a file tree and per-file diffs
+- Open details under the commit, or in a resizable pane docked below or beside the graph
 - See which branches and tags contain a commit, and the first release it shipped in
 - Hover a commit for a card with its message, author, date and change counts, or add a **+12 −3** Changes column
 - Open all of a commit's or a comparison's changes in one multi-file diff editor
@@ -96,6 +97,7 @@ All settings start with `branchwise.`.
 | ----------------------------- | ------------------ | ------------------------------------------------------------------------ |
 | `autoCenterCommitDetailsView` | `true`             | Centre an opened commit's details vertically                             |
 | `branchHoverPreview`          | `true`             | Preview a branch's history while the pointer rests on its label          |
+| `commitDetailsPosition`       | `"inline"`         | Open details `"inline"` under the row, or docked `"bottom"` or `"right"` |
 | `commitHoverCards`            | `true`             | Show a card about a commit when the pointer or keyboard rests on it      |
 | `conflictForecast`            | `"localAndRemote"` | Branches checked for conflicts: `"localAndRemote"`, `"local"` or `"off"` |
 | `dateFormat`                  | `"Date & Time"`    | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"`             |

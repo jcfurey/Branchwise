@@ -128,7 +128,7 @@ it("copies every declared setting except the one without an effect and the new o
   // The old extension never had `nestedRepoSearchDepth`, `conflictForecast`, `showSignatures`,
   // `singleKeyShortcuts`, `dragAndDrop`, `issueLinks`, `dateSeparators`, `commitHoverCards`,
   // `showChangesColumn`, `overviewMarkers`, `branchHoverPreview`, `showNearestBranch`,
-  // `markAppliedCommits`, `showWorktrees` or `rowDensity`.
+  // `markAppliedCommits`, `showWorktrees`, `rowDensity` or `commitDetailsPosition`.
   const notCopied = new Set([
     "fetchAvatars",
     "nestedRepoSearchDepth",
@@ -145,7 +145,8 @@ it("copies every declared setting except the one without an effect and the new o
     "showNearestBranch",
     "markAppliedCommits",
     "showWorktrees",
-    "rowDensity"
+    "rowDensity",
+    "commitDetailsPosition"
   ]);
   expect(MIGRATED_SETTINGS).toEqual(declared.filter((key) => !notCopied.has(key)));
 });

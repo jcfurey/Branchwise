@@ -2,6 +2,7 @@ import type { RefObject } from "preact";
 import { useEffect, useState } from "preact/hooks";
 
 import { TABLE_HEADER_HEIGHT } from "@/webview/constants";
+import { onPageScroll } from "@/webview/lib/page-scroll";
 import { type CommitDays, getDayName } from "@/webview/utils/date";
 
 /**
@@ -77,11 +78,11 @@ export function DayPill({
       }
     };
     schedule();
-    window.addEventListener("scroll", schedule, { passive: true });
+    const stopScroll = onPageScroll(schedule);
     window.addEventListener("resize", schedule);
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule);
+      stopScroll();
       window.removeEventListener("resize", schedule);
     };
   }, [containerRef, rowOf, days]);

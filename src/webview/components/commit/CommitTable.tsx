@@ -30,6 +30,7 @@ import { openContextMenu, toggleCommitDetails } from "@/webview/lib/actions";
 import type { Membership } from "@/webview/lib/branch-preview";
 import { useCommitStatsLoader } from "@/webview/lib/commit-stats";
 import { conflictsByBranch } from "@/webview/lib/conflict-forecast";
+import { detailsPosition } from "@/webview/lib/details-pane";
 import { type CommitLookup, dragHandlers } from "@/webview/lib/drag-drop";
 import { useHoverCards } from "@/webview/lib/hover-card";
 import { commitMenuSource } from "@/webview/lib/menus";
@@ -215,7 +216,8 @@ function Grip({
 
 /**
  * The history view: a table of commits with the graph laid over its first column, the details
- * of the open commit beneath its row, and resizable columns.
+ * of the open commit beneath its row unless they are docked beside the table, and resizable
+ * columns.
  */
 export function CommitTable({
   commits,
@@ -281,9 +283,11 @@ export function CommitTable({
 
   const expandedHash = expandedCommit.value;
   const expandedRow = expandedHash === null ? -1 : (rowOf.get(expandedHash) ?? -1);
+  // Docked details leave the rows, and so the graph, as they are.
+  const inline = detailsPosition() === "inline";
   const expansion = useMemo<GraphExpansion | null>(
-    () => (expandedRow < 0 ? null : { row: expandedRow, height: COMMIT_DETAILS_HEIGHT }),
-    [expandedRow]
+    () => (expandedRow < 0 || !inline ? null : { row: expandedRow, height: COMMIT_DETAILS_HEIGHT }),
+    [expandedRow, inline]
   );
   const focusedHash = focusedCommit.value;
   const focusedLoaded = focusedHash !== null && rowOf.has(focusedHash);
@@ -291,7 +295,13 @@ export function CommitTable({
 
   const { showChangesColumn, commitHoverCards } = getWebviewConfig();
   const bodyRef = useRef<HTMLTableSectionElement>(null);
-  useCommitStatsLoader(bodyRef, hashes, expandedRow >= 0, selectedRepo.value, showChangesColumn);
+  useCommitStatsLoader(
+    bodyRef,
+    hashes,
+    inline && expandedRow >= 0,
+    selectedRepo.value,
+    showChangesColumn
+  );
   useHoverCards(containerRef);
 
   // Dots that keep their full colour whatever the focus: the commits the user is on or chose.
@@ -540,6 +550,7 @@ export function CommitTable({
                 hoverCards={commitHoverCards}
               />
               {index === expandedRow &&
+                inline &&
                 (commit.hash === UNCOMMITTED_CHANGES ? (
                   <WorkingTreeDetails />
                 ) : (
@@ -554,7 +565,7 @@ export function CommitTable({
           containerRef={containerRef}
           markers={markers}
           rows={commits.length}
-          expandedRow={expandedRow}
+          expandedRow={inline ? expandedRow : -1}
         />
       )}
       <CommitHoverCard rows={byHash} />

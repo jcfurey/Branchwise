@@ -6,6 +6,12 @@ import type { ConflictForecastScope } from "@/backend/types";
  */
 export type DateFormat = "Date & Time" | "Date Only" | "Relative";
 
+/**
+ * Values of the `branchwise.commitDetailsPosition` setting: under the commit's row, or in a pane
+ * docked below or to the right of the graph. Readers open anything else under the row.
+ */
+export type CommitDetailsPosition = "inline" | "bottom" | "right";
+
 /** Values of the `branchwise.graphStyle` setting. Readers draw curves for anything but angular. */
 export type GraphStyle = "rounded" | "angular";
 
@@ -34,6 +40,8 @@ export type WebviewConfig = Readonly<{
   branchHoverPreview: boolean;
   /** Show a card about a commit when the pointer or the keyboard rests on its row. */
   commitHoverCards: boolean;
+  /** Where a commit's details open. */
+  commitDetailsPosition: CommitDetailsPosition;
   /**
    * Which branches the conflict forecast tries. The page reads anything but `local` and `off` as
    * `localAndRemote`, the default.

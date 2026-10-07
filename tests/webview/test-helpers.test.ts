@@ -27,6 +27,7 @@ const expectedSettings: WebviewConfig = {
   autoCenterCommitDetailsView: true,
   branchHoverPreview: true,
   commitHoverCards: true,
+  commitDetailsPosition: "inline",
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   dateSeparators: true,

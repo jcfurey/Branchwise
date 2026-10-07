@@ -240,6 +240,8 @@
   "Date: {0}": "日期：{0}",
   "Committer: {0}": "提交者：{0}",
   "Signature: {0}": "簽章：{0}",
+  "Commit details": "提交詳細資料",
+  "Resize commit details": "調整提交詳細資料大小",
   "Signed — open the details to verify": "已簽署 — 開啟詳細資料以驗證",
   "Checking the signature…": "正在檢查簽章…",
   "Good signature by {0}": "{0} 的有效簽章",

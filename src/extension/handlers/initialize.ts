@@ -10,6 +10,7 @@ export function webviewConfig(): WebviewConfig {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
     branchHoverPreview: extConfig.branchHoverPreview(),
     commitHoverCards: extConfig.commitHoverCards(),
+    commitDetailsPosition: extConfig.commitDetailsPosition(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
     dateSeparators: extConfig.dateSeparators(),

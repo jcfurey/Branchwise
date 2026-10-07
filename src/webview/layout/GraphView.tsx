@@ -35,6 +35,7 @@ import {
   selectedCommits,
   setHistoryFilter
 } from "@/webview/lib/navigation";
+import { scrollPageTo } from "@/webview/lib/page-scroll";
 import { squashSelection } from "@/webview/lib/squash-selection";
 import {
   branchDisplay,
@@ -103,7 +104,7 @@ function useScrollRestore(rows: Array<HistoryEntry> | undefined, repo: string | 
       return;
     }
     const frame = requestAnimationFrame(() => {
-      window.scrollTo(0, top);
+      scrollPageTo(top);
       restoreScroll.value = null;
     });
     return () => cancelAnimationFrame(frame);

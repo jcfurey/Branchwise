@@ -23,6 +23,7 @@ it("falls back to the defaults declared in package.json", () => {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
     branchHoverPreview: extConfig.branchHoverPreview(),
     commitHoverCards: extConfig.commitHoverCards(),
+    commitDetailsPosition: extConfig.commitDetailsPosition(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
     dateSeparators: extConfig.dateSeparators(),
