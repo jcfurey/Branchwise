@@ -258,11 +258,11 @@ describe("files", () => {
     ["both counts are missing", [null, null] as [null, null]],
     ["one count is missing", [5, null] as [number, null]]
   ])("marks a binary file unavailable when %s (Q3)", (_case, counts) => {
-    show([changed("img.png", "M", counts), changed("text.ts")]);
-    const binary = entry("img.png");
+    show([changed("data.bin", "M", counts), changed("text.ts")]);
+    const binary = entry("data.bin");
 
     expect(binary.title).toBe("tooltipBinaryFile");
-    expect(binary.textContent).toBe("img.pngM");
+    expect(binary.textContent).toBe("data.binM");
     expect(binary.getAttribute("aria-disabled")).toBe("true");
     expect(binary.disabled).toBe(false);
     expect(binary.hasAttribute("disabled")).toBe(false);
@@ -276,7 +276,27 @@ describe("files", () => {
 
     // Its menu is still there.
     expect(cancelled(binary, rightClick(1, 1))).toBe(true);
-    expect(contextMenu.value?.source).toBe("file:img.png");
+    expect(contextMenu.value?.source).toBe("file:data.bin");
+  });
+
+  it("opens a binary image's diff, which shows its two versions side by side", () => {
+    show([
+      changed("pics/logo.PNG", "M", [null, null]),
+      changed("gone.gif", "D", [null, null]),
+      changed("new.webp", "R", [null, null], "old.data")
+    ]);
+
+    for (const name of ["logo.PNG", "gone.gif", "new.webp"]) {
+      expect(entry(name).hasAttribute("aria-disabled")).toBe(false);
+      expect(entry(name).hasAttribute("title")).toBe(false);
+      act(() => entry(name).click());
+    }
+
+    expect(diffs()).toEqual([
+      expect.objectContaining({ newFilePath: "pics/logo.PNG", type: "M" }),
+      expect.objectContaining({ newFilePath: "gone.gif", type: "D" }),
+      expect.objectContaining({ newFilePath: "new.webp", oldFilePath: "old.data", type: "R" })
+    ]);
   });
 
   it("shows line counts for modified and renamed files only", () => {
@@ -328,7 +348,7 @@ describe("files", () => {
       changed("modified.ts", "M"),
       changed("deleted.ts", "D"),
       changed("moved.ts", "R", [1, 0], "was.ts"),
-      changed("img.png", "A", [null, null])
+      changed("data.bin", "A", [null, null])
     ]);
     const status = (name: string) => {
       const cell = entry(name).querySelector<HTMLElement>("[data-change]")!;
@@ -348,7 +368,7 @@ describe("files", () => {
     expect(status("deleted.ts")).toEqual({ ...common, letter: "D", label: "changeDeleted" });
     expect(status("moved.ts")).toEqual({ ...common, letter: "R", label: "changeRenamed" });
     // A binary file has no line counts, but still says what happened to it.
-    expect(status("img.png")).toEqual({ ...common, letter: "A", label: "changeAdded" });
+    expect(status("data.bin")).toEqual({ ...common, letter: "A", label: "changeAdded" });
     // The colour stays as well.
     expect(entry("added.ts").classList.contains("text-git-added")).toBe(true);
     expect(entry("deleted.ts").classList.contains("text-git-deleted")).toBe(true);
@@ -361,7 +381,7 @@ describe("files", () => {
     speakEnglish();
     show([
       changed("new/path.ts", "R", [2, 3], "old/path.ts"),
-      changed("rb.png", "R", [null, null], "ra.png"),
+      changed("rb.bin", "R", [null, null], "ra.bin"),
       changed("m.ts", "M"),
       changed("a.ts", "A"),
       changed("d.ts", "D")
@@ -371,9 +391,9 @@ describe("files", () => {
 
     expect(marker("path.ts")?.title).toBe("Renamed from old/path.ts to new/path.ts");
     expect(entry("path.ts").textContent).toBe("path.ts(+2|-3)R");
-    expect(marker("rb.png")?.title).toBe("Renamed from ra.png to rb.png");
-    expect(entry("rb.png").textContent).toBe("rb.pngR");
-    expect(entry("rb.png").title).toBe(
+    expect(marker("rb.bin")?.title).toBe("Renamed from ra.bin to rb.bin");
+    expect(entry("rb.bin").textContent).toBe("rb.binR");
+    expect(entry("rb.bin").title).toBe(
       "Git has no text diff for this file, so there is nothing to open."
     );
     for (const name of ["m.ts", "a.ts", "d.ts"]) {

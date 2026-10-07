@@ -378,7 +378,25 @@ export function getWebviewLocalizedStrings() {
     changeRenamed: vscode.l10n.t("Renamed"),
     changeCopied: vscode.l10n.t("Copied"),
     changeTypeChanged: vscode.l10n.t("Type changed"),
-    changeUnmerged: vscode.l10n.t("Unmerged")
+    changeUnmerged: vscode.l10n.t("Unmerged"),
+
+    // The commit details' file list shows the files the commit changed (comparedFiles) or, with
+    // allFiles, every file of the commit's tree; fileListShows names that choice.
+    allFiles: vscode.l10n.t("All Files"),
+    fileListShows: vscode.l10n.t("Files to list"),
+    filterFiles: vscode.l10n.t("Filter by path"),
+    showMoreFiles: vscode.l10n.t("Show More"),
+    noMatchingFiles: vscode.l10n.t("No files match."),
+    unableToListFiles: vscode.l10n.t("Unable to list the files: {0}"),
+    // {0} is how many files are listed, the most the list ever holds.
+    allFilesLimited: vscode.l10n.t("This commit has more files than the first {0} listed here."),
+    symbolicLink: vscode.l10n.t("Symbolic link"),
+    // {0} is the short ID of the commit the submodule records.
+    submoduleAt: vscode.l10n.t("Submodule at {0}"),
+    openCurrentFile: vscode.l10n.t("Open Current Version"),
+    copyPath: vscode.l10n.t("Copy Path"),
+    // What Copy Path copies, named in the message when the copy fails.
+    typeFilePath: vscode.l10n.t("file path")
   };
 }
 

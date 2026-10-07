@@ -16,7 +16,7 @@ import { manageRemote } from "@/backend/actions/remotes";
 import { undoSafetyRecord } from "@/backend/actions/safetyNet";
 import { splitCommit } from "@/backend/actions/splitCommit";
 import { runWorkflowAction } from "@/backend/actions/workflows";
-import { viewWorkingTreeFile } from "@/backend/actions/workingTree";
+import { viewCurrentFile, viewWorkingTreeFile } from "@/backend/actions/workingTree";
 import { loadOperation, loadStashes, loadWorktrees } from "@/backend/queries/repository";
 import { loadWorkingTree } from "@/backend/queries/workingTree";
 import type { RepositoryAction, RestoreBackup, StashDetails } from "@/backend/types";
@@ -41,6 +41,8 @@ export type RepositoryEffect =
       files: Array<{ left: string | null; right: string | null; before: string; after: string }>;
     }
   | { kind: "historicalFile"; hash: string; path: string }
+  /** A file of the work tree, by its absolute path. */
+  | { kind: "workingFile"; path: string }
   | {
       kind: "workingTreeDiff";
       before: string;
@@ -76,6 +78,8 @@ export async function runRepositoryAction(
   switch (action.kind) {
     case "viewWorkingTreeFile":
       return viewWorkingTreeFile(git, action.path, action.group);
+    case "viewCurrentFile":
+      return viewCurrentFile(git, action.path);
     case "submodulePointer":
     case "fetch":
     case "sync":

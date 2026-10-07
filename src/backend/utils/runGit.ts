@@ -216,6 +216,55 @@ export async function readGitBytes(git: SimpleGit, args: string[]): Promise<Buff
   return (await done).stdout;
 }
 
+/**
+ * The first `limit` NUL-terminated records a read-only Git command prints, as bytes, and whether
+ * it printed more. Git is stopped as soon as one record too many arrives, so a command that would
+ * print millions of them, such as `ls-tree -r` of a huge tree, costs no more than the records
+ * kept. Cancelling the client's abort signal stops Git as well, and rejects.
+ */
+export async function readGitRecords(
+  git: SimpleGit,
+  args: string[],
+  limit: number
+): Promise<{ records: Buffer[]; more: boolean }> {
+  const { gitPath = "git", abort: signal } = gitProcessOf(git) ?? {};
+  signal?.throwIfAborted();
+  const cwd = await readDirectory(git);
+  const { child, done } = start(gitPath, args, cwd, process.env, { stoppable: true });
+  const records: Buffer[] = [];
+  let partial: Buffer[] = [];
+  const { promise: cut, resolve, reject } = Promise.withResolvers<boolean>();
+  const stop = () => {
+    killTree(child);
+    reject(signal?.reason ?? new Error("Aborted"));
+  };
+  child.stdout.on("data", (chunk: Buffer) => {
+    let from = 0;
+    for (let end = chunk.indexOf(0); end !== -1; end = chunk.indexOf(0, from)) {
+      if (records.length === limit) {
+        killTree(child);
+        resolve(true);
+        return;
+      }
+      records.push(Buffer.concat([...partial, chunk.subarray(from, end)]));
+      partial = [];
+      from = end + 1;
+    }
+    if (from < chunk.length) {
+      partial.push(chunk.subarray(from));
+    }
+  });
+  signal?.addEventListener("abort", stop, { once: true });
+  try {
+    const more = await Promise.race([done.then(() => false), cut]);
+    return { records, more };
+  } finally {
+    // A stopped process still settles later, as a failure.
+    done.catch(() => {});
+    signal?.removeEventListener("abort", stop);
+  }
+}
+
 /** A blob's exact bytes, which a string result would corrupt for binary files. */
 export async function readBlob(git: SimpleGit, blob: string): Promise<Buffer> {
   return readGitBytes(git, ["cat-file", "blob", blob]);

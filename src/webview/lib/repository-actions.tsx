@@ -102,6 +102,7 @@ function runsInBackground(action: RepositoryAction) {
     case "previewFileRestore":
     case "viewRangeFile":
     case "viewHistoricalFile":
+    case "viewCurrentFile":
     case "viewCommitChanges":
     case "viewRangeChanges":
       return true;

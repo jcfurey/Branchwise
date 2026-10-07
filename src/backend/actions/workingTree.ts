@@ -86,3 +86,16 @@ export async function viewWorkingTreeFile(
     staged
   };
 }
+
+/**
+ * The work tree's own copy of `path`, to open as it is now. A path that is gone, or is a folder
+ * there now, is refused, as is one reached through a symbolic link or a nested repository.
+ */
+export async function viewCurrentFile(git: SimpleGit, path: string): Promise<RepositoryEffect> {
+  const destination = await checkedWorktreePath(git, path);
+  const stat = await lstat(destination).catch(() => null);
+  if (stat === null || stat.isDirectory()) {
+    throw new Error(l10n.t("{0} is not in the working tree any more.", path));
+  }
+  return { kind: "workingFile", path: destination };
+}

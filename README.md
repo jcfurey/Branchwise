@@ -33,6 +33,7 @@ basics.
 - Commit details with formatted messages, linked issues, a file tree and per-file diffs
 - See which branches and tags contain a commit, and the first release it shipped in
 - Open all of a commit's or a comparison's changes in one multi-file diff editor
+- Browse every file of a commit, and compare changed images side by side
 - Search by message, ID, author, committer, branch, tag, date or path, or for the commits that added or removed a piece of text
 - A legend of every graph symbol, and one-click ways to widen a search that finds nothing
 - Go to any branch, tag or commit from the keyboard, or open it on GitHub or GitLab

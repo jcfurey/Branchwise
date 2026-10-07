@@ -39,7 +39,7 @@ const collators = new Map<string, Intl.Collator>();
  * "file10". Intl rejects some tags, such as "en_US", and those order names in the runtime's
  * default locale. The fallback is kept under the rejected tag, so the tag is tried only once.
  */
-function collatorFor(locale: string): Intl.Collator {
+export function collatorFor(locale: string): Intl.Collator {
   let collator = collators.get(locale);
   if (collator === undefined) {
     try {

@@ -56,6 +56,47 @@ function commit(file, value, cwd = repo) {
   git(["add", "--", file], cwd);
   git(["commit", "-m", value], cwd);
 }
+/** A PNG of `width` × `height` pixels, all of the colour `rgb`, built from its chunks. */
+function png(width, height, rgb) {
+  const crc = (bytes) => {
+    let value = 0xffffffff;
+    for (const byte of bytes) {
+      value ^= byte;
+      for (let bit = 0; bit < 8; bit++) {
+        value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+      }
+    }
+    return (value ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type, data) => {
+    const body = Buffer.concat([Buffer.from(type, "latin1"), data]);
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const sum = Buffer.alloc(4);
+    sum.writeUInt32BE(crc(body));
+    return Buffer.concat([length, body, sum]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  // 8 bits per channel, true colour; no interlacing.
+  header[8] = 8;
+  header[9] = 2;
+  // Each row starts with filter type 0.
+  const row = Buffer.concat([
+    Buffer.from([0]),
+    ...Array.from({ length: width }, () => Buffer.from(rgb))
+  ]);
+  const pixels = require("node:zlib").deflateSync(
+    Buffer.concat(Array.from({ length: height }, () => row))
+  );
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", header),
+    chunk("IDAT", pixels),
+    chunk("IEND", Buffer.alloc(0))
+  ]);
+}
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function keypress(key, modifiers = 0) {
   const letter = /^[a-z]$/i.test(key);
@@ -1858,6 +1899,156 @@ suite("Branchwise workflow UI", function () {
     );
     await closeChanges();
     await button("Close");
+  });
+
+  test("browses all files at a commit and compares an image's two versions", async () => {
+    const dir = directory();
+    init(dir);
+    fs.mkdirSync(path.join(dir, "docs", "deep"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "readme.txt"), "top\n");
+    fs.writeFileSync(path.join(dir, "docs", "deep", "nested note.md"), "nested at first\n");
+    fs.writeFileSync(path.join(dir, "pic.png"), png(2, 2, [255, 0, 0]));
+    git(["add", "-A"], dir);
+    git(["commit", "-q", "-m", "browse first"], dir);
+    const first = git(["rev-parse", "HEAD"], dir);
+    fs.writeFileSync(path.join(dir, "pic.png"), png(3, 3, [0, 0, 255]));
+    fs.writeFileSync(path.join(dir, "docs", "deep", "nested note.md"), "nested later\n");
+    git(["commit", "-q", "-am", "browse second"], dir);
+    const second = git(["rev-parse", "HEAD"], dir);
+    await openRepo(dir);
+    const header = 'document.querySelector("[data-details-row] [data-file-list-header]")';
+    /** The names the All Files list shows, in order. */
+    const names = () =>
+      graph.evaluate(
+        `[...document.querySelectorAll('[data-all-files] li > button')].map(b => b.querySelector('span').textContent)`
+      );
+    /** Click the All Files entry named `name`, once it shows. */
+    const clickEntry = (name) =>
+      until(
+        () =>
+          graph.evaluate(`(() => {
+            const entry = [...document.querySelectorAll('[data-all-files] li > button')].find(b => b.querySelector('span').textContent === ${JSON.stringify(name)});
+            if (!entry) return false;
+            entry.click();
+            return true;
+          })()`),
+        "All Files entry " + name
+      );
+    /** Close the active editor and bring the graph back. */
+    const backToGraph = async () => {
+      await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      await vscode.commands.executeCommand("branchwise.view", { rootUri: vscode.Uri.file(dir) });
+    };
+
+    try {
+      await graph.evaluate(`document.querySelector('tr[data-commit-hash="${first}"]').click()`);
+      await until(() => graph.evaluate(`!!${header}`), "file list header");
+      await button("All Files", header);
+      // Folders first and closed; then the files. Nothing the commit changed but the files it added.
+      await until(
+        async () =>
+          JSON.stringify(await names()) === JSON.stringify(["docs", "pic.png", "readme.txt"]),
+        "the commit's top level"
+      );
+      await clickEntry("docs");
+      await clickEntry("deep");
+      await until(async () => (await names()).includes("nested note.md"), "nested file");
+      assert.equal(
+        await graph.evaluate(
+          `[...document.querySelectorAll('[data-all-files] li > button')].find(b => b.textContent.startsWith('nested note.md')).querySelector('[data-change]')?.textContent`
+        ),
+        "A"
+      );
+
+      await graph.evaluate(`(() => {
+        const input = ${header}.querySelector('input[type=search]');
+        input.value = 'NOTE';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      })()`);
+      await until(
+        async () => JSON.stringify(await names()) === JSON.stringify(["docs/deep/nested note.md"]),
+        "filtered list"
+      );
+
+      // The file opens read-only as it was at the commit, titled with the short commit ID.
+      await clickEntry("docs/deep/nested note.md");
+      const opened = await until(() => {
+        const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        return tab?.label === `nested note.md (${first.slice(0, 8)})` &&
+          tab.input instanceof vscode.TabInputText
+          ? tab.input.uri
+          : false;
+      }, "file at revision");
+      assert.equal(opened.scheme, "branchwise");
+      const document = vscode.workspace.textDocuments.find(
+        (item) => item.uri.toString() === opened.toString()
+      );
+      assert.equal(document?.getText(), "nested at first\n");
+      await backToGraph();
+
+      // The second commit changes the picture: its diff shows both versions as images.
+      // A click on the open commit's row would close its details, so the row is clicked once.
+      await until(() => graph.evaluate(visible(second)), "second commit's row");
+      await graph.evaluate(`document.querySelector('tr[data-commit-hash="${second}"]').click()`);
+      await until(
+        () => graph.evaluate(`!!${header}?.innerText.includes('Changed Files (2)')`),
+        "second commit's details"
+      );
+      await button("Changed Files (2)", header);
+      await until(
+        () =>
+          graph.evaluate(`(() => {
+            const entry = [...document.querySelectorAll('[data-details-row] li > button')].find(b => b.textContent.startsWith('pic.png'));
+            if (!entry || entry.getAttribute('aria-disabled') === 'true') return false;
+            entry.click();
+            return true;
+          })()`),
+        "changed picture"
+      );
+      const short = second.slice(0, 8);
+      await until(() => {
+        const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        return (
+          tab?.label === `pic.png (${short}^ ↔ ${short})` &&
+          tab.input instanceof vscode.TabInputWebview &&
+          tab.input.viewType.endsWith("branchwise.imageDiff")
+        );
+      }, "image comparison panel");
+      // Both versions show as images, with their sizes in pixels.
+      await until(async () => {
+        const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+        for (const target of targets.filter((t) => t.webSocketDebuggerUrl && t.type === "iframe")) {
+          if (
+            !connections.some(
+              (c) => c.url === target.webSocketDebuggerUrl && c.ws.readyState === WebSocket.OPEN
+            )
+          ) {
+            await connect(target.webSocketDebuggerUrl, target.type);
+          }
+        }
+        for (const connection of connections.filter((c) => c.ws.readyState === WebSocket.OPEN)) {
+          for (const context of connection.contexts) {
+            try {
+              const shown = await connection.evaluate(
+                `document.querySelector('[data-image-diff]') ? [...document.querySelectorAll('img')].map(i => i.naturalWidth + 'x' + i.naturalHeight + ' ' + i.closest('figure').querySelector('[data-dimensions]').textContent).join('|') : null`,
+                context
+              );
+              if (shown === "2x2 2 × 2 pixels|3x3 3 × 3 pixels") {
+                return true;
+              }
+            } catch {}
+          }
+        }
+        return false;
+      }, "both versions of the picture");
+      await backToGraph();
+    } finally {
+      // Later scenarios expect the changed files.
+      await graph.evaluate(`(() => {
+        const choice = [...(${header}?.querySelectorAll('button') ?? [])].find(b => b.textContent.startsWith('Changed Files'));
+        choice?.click();
+      })()`);
+    }
   });
 
   test("counts contributors and daily activity in the Statistics tab", async () => {

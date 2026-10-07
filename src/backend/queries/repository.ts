@@ -17,6 +17,7 @@ import { loadReplayForecast } from "@/backend/queries/replayForecast";
 import { loadSafetyNet, loadSafetyUndo } from "@/backend/queries/safetyNet";
 import { verifySignature } from "@/backend/queries/signatures";
 import { loadSplitPlan } from "@/backend/queries/splitCommit";
+import { loadTree } from "@/backend/queries/tree";
 import {
   loadBulkSyncPlan,
   loadSyncPlan,
@@ -444,6 +445,8 @@ export async function repositoryQuery(
       return { kind: "splitPlan", plan: await loadSplitPlan(git, query.target) };
     case "signature":
       return { kind: "signature", ...(await verifySignature(git, query.hash)) };
+    case "tree":
+      return { kind: "tree", ...(await loadTree(git, query.hash)) };
     case "absorbPlan":
       return { kind: "absorbPlan", plan: await loadAbsorbPlan(git) };
     case "lease": {
