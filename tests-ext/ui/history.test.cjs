@@ -822,6 +822,95 @@ suite("Branchwise workflow UI", function () {
     await openRepo(repo);
   });
 
+  test("previews a branch's history while the pointer rests on its label, and names nearest branches", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "preview-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    commit("main", "preview-main-older", dir);
+    const older = git(["rev-parse", "HEAD"], dir);
+    commit("main", "preview-main-tip", dir);
+    const tip = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "-b", "preview-topic", base], dir);
+    commit("topic", "preview-topic-work", dir);
+    const work = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    await openRepo(dir);
+    await until(() => graph.evaluate(visible(work)), "preview fixture rows");
+
+    // Nearest branch: the unlabelled commit under main's tip names main.
+    const nearest = (hash) =>
+      graph.evaluate(`(() => {
+        const label = document.querySelector('tr[data-commit-hash="${hash}"] [data-nearest-branch]');
+        return label ? [label.textContent, label.title] : null;
+      })()`);
+    await until(async () => (await nearest(older)) !== null, "nearest branch label");
+    assert.deepEqual(await nearest(older), [
+      "on main",
+      "Nearest branch containing this commit: main"
+    ]);
+    assert.equal(await nearest(tip), null);
+    assert.equal(await nearest(work), null);
+
+    const previewed = () =>
+      graph.evaluate(
+        `[...document.querySelectorAll('tr[data-preview-branch]')].map(row => [row.dataset.commitHash, row.dataset.previewBranch])`
+      );
+    const state = () =>
+      graph.evaluate(`({
+        active: document.activeElement?.outerHTML.slice(0, 120) ?? null,
+        scroll: window.scrollY,
+        selected: [...document.querySelectorAll('tr[aria-selected="true"]')].length,
+        focus: document.querySelectorAll('[data-focus-branch]').length
+      })`);
+    const before = await state();
+    const hover = (type) =>
+      graph.evaluate(`(() => {
+        const label = [...document.querySelectorAll('tbody span[title]')].find(e => e.title.split(String.fromCharCode(10))[0] === "preview-topic" && e.querySelector('svg'));
+        if (!label) return false;
+        for (const event of ${JSON.stringify(type === "enter" ? ["mouseover", "mouseenter"] : ["mouseout", "mouseleave"])}) {
+          label.dispatchEvent(new MouseEvent(event, { bubbles: event.startsWith("mouseo") }));
+        }
+        return true;
+      })()`);
+    await until(() => hover("enter"), "hover the topic label");
+    await until(async () => (await previewed()).length === 2, "branch preview");
+    assert.deepEqual(
+      (await previewed()).toSorted(),
+      [
+        [base, "preview-topic"],
+        [work, "preview-topic"]
+      ].toSorted()
+    );
+    assert.equal(
+      await graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${tip}"]').dataset.branchRelation`
+      ),
+      "unrelated"
+    );
+    assert.deepEqual(await state(), before);
+
+    await hover("leave");
+    await until(async () => (await previewed()).length === 0, "preview ends on leave");
+    assert.equal(
+      await graph.evaluate(
+        `[...document.querySelectorAll('tr[data-commit-hash]')].every(row => row.dataset.branchRelation === 'normal')`
+      ),
+      true
+    );
+
+    // Escape ends a preview while the pointer is still on the label.
+    await hover("enter");
+    await until(async () => (await previewed()).length === 2, "branch preview again");
+    await graph.evaluate(
+      `document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`
+    );
+    await until(async () => (await previewed()).length === 0, "preview ends on Escape");
+    await hover("leave");
+    assert.deepEqual(await state(), before);
+    await openRepo(repo);
+  });
+
   test("opens uncommitted files from the graph with separate staged and working diffs", async () => {
     const dir = directory();
     init(dir);
@@ -2174,6 +2263,131 @@ suite("Branchwise workflow UI", function () {
       before
     );
     await button("Clear focus");
+  });
+
+  test("counts a commit's changes in the Changes column and shows its card on hover", async () => {
+    const dir = directory();
+    init(dir);
+    fs.writeFileSync(path.join(dir, "notes.txt"), "a\nb\nc\n");
+    git(["add", "--", "notes.txt"], dir);
+    git(["commit", "-m", "stats base"], dir);
+    fs.writeFileSync(path.join(dir, "notes.txt"), "a\nB\nc\nd\n");
+    fs.writeFileSync(path.join(dir, "extra.txt"), "x\n");
+    git(["add", "-A"], dir);
+    git(["commit", "-m", "Count these changes", "-m", "Why it changed.\nSecond line."], dir);
+    const target = git(["rev-parse", "HEAD"], dir);
+    // A later commit, so that the row measured has no checked-out highlight behind it.
+    commit("later.txt", "stats later", dir);
+    const config = vscode.workspace.getConfiguration("branchwise");
+    const original = config.inspect("showChangesColumn").globalValue;
+    const workbench = vscode.workspace.getConfiguration("workbench");
+    const originalTheme = workbench.inspect("colorTheme").globalValue;
+    try {
+      await config.update("showChangesColumn", true, vscode.ConfigurationTarget.Global);
+      await openRepo(dir);
+      const cell = `document.querySelector('tr[data-commit-hash="${target}"] [data-changes]')`;
+      // notes.txt: one line changed and one added; extra.txt: one line added.
+      await until(
+        async () => (await graph.evaluate(`${cell}?.innerText ?? null`)) === "+3 −1",
+        "change counts in the Changes column"
+      );
+      assert.equal(
+        await graph.evaluate(`${cell}.title`),
+        "2 files changed, 3 insertions, 1 deletion"
+      );
+      assert.equal(
+        await graph.evaluate(
+          `[...document.querySelectorAll('thead th')].map(th => th.innerText.trim()).at(-1)`
+        ),
+        "Changes"
+      );
+
+      await graph.evaluate(`(() => {
+        const message = document.querySelector('tr[data-commit-hash="${target}"] [data-commit-message]');
+        const box = message.getBoundingClientRect();
+        for (const type of ['mouseenter', 'mouseover']) {
+          message.dispatchEvent(new MouseEvent(type, { bubbles: type === 'mouseover', clientX: box.left + 8, clientY: box.top + 6 }));
+        }
+      })()`);
+      const card = `document.querySelector('[data-hover-card="${target}"]')`;
+      const text = await until(
+        () =>
+          graph.evaluate(
+            `(() => { const text = ${card}?.innerText ?? ''; return text.includes('2 files changed') ? text : null; })()`
+          ),
+        "commit card with its change counts"
+      );
+      for (const part of [
+        "Count these changes",
+        "Why it changed.\nSecond line.",
+        "UI Test <ui@test>",
+        target.slice(0, 8),
+        target,
+        "+3 −1"
+      ]) {
+        assert.ok(text.includes(part), `card shows ${JSON.stringify(part)}:\n${text}`);
+      }
+      assert.deepEqual(
+        await graph.evaluate(
+          `(() => { const element = ${card}; const box = element.getBoundingClientRect(); return [element.getAttribute('aria-hidden'), getComputedStyle(element).pointerEvents, box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight, element.contains(document.activeElement)]; })()`
+        ),
+        ["true", "none", true, false]
+      );
+
+      // Moving off the message takes the card away.
+      const leave = `document.querySelector('tr[data-commit-hash="${target}"]').cells[2].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))`;
+      await graph.evaluate(leave);
+      await until(() => graph.evaluate(`${card} === null`), "card hidden");
+
+      // The card and the counts stay readable in light, dark and high contrast themes.
+      for (const [theme, kind] of [
+        ["Light Modern", "vscode-light"],
+        ["Dark Modern", "vscode-dark"],
+        ["Default High Contrast", "vscode-high-contrast"],
+        ["Default High Contrast Light", "vscode-high-contrast-light"]
+      ]) {
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        await graph.evaluate(`(() => {
+          const message = document.querySelector('tr[data-commit-hash="${target}"] [data-commit-message]');
+          const box = message.getBoundingClientRect();
+          message.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, clientX: box.left + 8, clientY: box.top + 6 }));
+        })()`);
+        await until(
+          () => graph.evaluate(`!!${card}?.querySelector('[data-hover-changes] .text-git-added')`),
+          `card in ${theme}`
+        );
+        // Text needs 4.5:1. The counts are in the theme's own added and deleted colours, which
+        // VS Code draws file names in, and their + and − signs say what the colour says: 3:1.
+        const readable = [
+          [4.5, "subject", `[data-hover-card] [data-hover-subject]`],
+          [4.5, "author", `[data-hover-card] [data-hover-author]`],
+          [3, "added", `[data-hover-card] .text-git-added`],
+          [3, "deleted", `[data-hover-card] .text-git-deleted`],
+          [3, "cell added", `tr[data-commit-hash="${target}"] [data-changes] .text-git-added`],
+          [3, "cell deleted", `tr[data-commit-hash="${target}"] [data-changes] .text-git-deleted`]
+        ];
+        for (const [minimum, part, selector] of readable) {
+          const measured = await contrast(selector);
+          assert.ok(
+            measured.ratio >= minimum,
+            `${part} contrast in ${theme}: ${JSON.stringify(measured)}`
+          );
+        }
+        await graph.evaluate(leave);
+        await until(() => graph.evaluate(`${card} === null`), `card hidden in ${theme}`);
+      }
+    } finally {
+      await config.update("showChangesColumn", original, vscode.ConfigurationTarget.Global);
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+    }
+    await until(
+      () => graph.evaluate(`document.querySelector('[data-changes]') === null`),
+      "Changes column turned off again"
+    );
   });
 
   test("acts on the focused commit with single keys and lists them on the shortcut sheet", async () => {
@@ -4542,6 +4756,262 @@ suite("Branchwise workflow UI", function () {
       mobile: false
     });
     await openRepo(repo);
+  });
+
+  test("marks where each day's commits begin and names the topmost day while scrolled", async () => {
+    const dir = directory();
+    init(dir);
+    // Eight days of ten commits, at and after noon UTC, so each day is one day in any time zone
+    // within eleven hours of UTC. Newest first, a day begins every tenth row.
+    const days = 8;
+    const perDay = 10;
+    const first = Date.UTC(2026, 8, 1, 12) / 1000;
+    const stamps = [];
+    for (let day = 0; day < days; day++) {
+      for (let n = 0; n < perDay; n++) {
+        const seconds = first + day * 86400 + n * 60;
+        const date = `@${seconds} +0000`;
+        cp.execFileSync("git", ["commit", "--allow-empty", "-m", `day ${day} commit ${n}`], {
+          cwd: dir,
+          stdio: "pipe",
+          env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }
+        });
+        stamps.unshift(seconds);
+      }
+    }
+    await openRepo(dir);
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelectorAll('tr[data-commit-hash]').length === ${days * perDay}`
+        ),
+      "every dated commit loaded"
+    );
+    const marked = await graph.evaluate(
+      `[...document.querySelectorAll('tbody tr[data-commit-hash]')].flatMap((row, index) => row.hasAttribute('data-day-start') ? [index] : [])`
+    );
+    assert.deepEqual(
+      marked,
+      Array.from({ length: days - 1 }, (_, day) => (day + 1) * perDay)
+    );
+    // The line is drawn without changing the row's height.
+    assert.deepEqual(
+      await graph.evaluate(`(() => {
+        const row = document.querySelector('tbody tr[data-day-start]');
+        return [row.getBoundingClientRect().height, getComputedStyle(row.cells[1]).backgroundImage.includes('gradient')];
+      })()`),
+      [24, true]
+    );
+
+    await graph.evaluate("window.scrollTo(0, 0)");
+    await until(
+      () => graph.evaluate("!document.querySelector('[data-day-pill]')"),
+      "no day label at the top"
+    );
+    // Bring the middle of a day under the headings.
+    const target = 3 * perDay + perDay / 2;
+    const scrollable = await graph.evaluate(`(() => {
+      const row = document.querySelectorAll('tbody tr[data-commit-hash]')[${target}];
+      window.scrollBy(0, row.getBoundingClientRect().top - document.querySelector('thead').getBoundingClientRect().bottom + 2);
+      return scrollY > 0;
+    })()`);
+    assert.ok(scrollable, "the history is taller than the window");
+    const expected = new Intl.DateTimeFormat("en", { dateStyle: "full" }).format(
+      new Date(stamps[target] * 1000)
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('[data-day-pill]')?.textContent === ${JSON.stringify(expected)}`
+        ),
+      "day label names " + expected
+    );
+    const pill = await graph.evaluate(`(() => {
+      const pill = document.querySelector('[data-day-pill]');
+      const box = pill.getBoundingClientRect();
+      const under = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return {
+        hidden: pill.closest('[aria-hidden="true"]') !== null,
+        pointer: getComputedStyle(pill).pointerEvents,
+        below: box.top >= document.querySelector('thead').getBoundingClientRect().bottom,
+        under: under?.closest('tr')?.hasAttribute('data-commit-hash') ?? false
+      };
+    })()`);
+    assert.deepEqual(pill, { hidden: true, pointer: "none", below: true, under: true });
+
+    // The label reads like the page's menus in every kind of theme.
+    const workbench = vscode.workspace.getConfiguration("workbench");
+    const originalTheme = workbench.inspect("colorTheme").globalValue;
+    try {
+      for (const [theme, kind] of [
+        ["Light Modern", "vscode-light"],
+        ["Default High Contrast", "vscode-high-contrast"],
+        ["Default High Contrast Light", "vscode-high-contrast-light"],
+        ["Dark Modern", "vscode-dark"]
+      ]) {
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        const measured = await contrast("[data-day-pill]");
+        assert.ok(
+          measured.ratio >= 4.5,
+          `day label contrast in ${theme}: ${JSON.stringify(measured)}`
+        );
+        const shot = await connections[0].call("Page.captureScreenshot");
+        fs.writeFileSync(
+          path.join(artifacts, `day-separators-${kind}.png`),
+          Buffer.from(shot.data, "base64")
+        );
+      }
+    } finally {
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+    }
+
+    await graph.evaluate("window.scrollTo(0, 0)");
+    await until(
+      () => graph.evaluate("!document.querySelector('[data-day-pill]')"),
+      "day label gone back at the top"
+    );
+    await openRepo(repo);
+  });
+
+  test("marks HEAD, branches and tags on the overview strip and scrolls to where it is clicked", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "strip-base", dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    let parent = git(["rev-parse", "HEAD"], dir);
+    // A history far taller than the window, with a branch and a tag near its bottom.
+    for (let index = 1; index <= 150; index++) {
+      parent = git(["commit-tree", tree, "-p", parent, "-m", `strip-${index}`], dir);
+      if (index === 4) {
+        git(["tag", "strip-old-tag", parent], dir);
+      }
+      if (index === 8) {
+        git(["branch", "strip-old-branch", parent], dir);
+      }
+    }
+    git(["update-ref", "refs/heads/main", parent], dir);
+    const tagged = git(["rev-parse", "strip-old-tag"], dir);
+    const refsBefore = git(["show-ref"], dir);
+    await openRepo(dir);
+    await until(
+      () => graph.evaluate("document.querySelectorAll('tr[data-commit-hash]').length === 151"),
+      "long history"
+    );
+    await graph.evaluate("window.scrollTo(0, 0)");
+    const strip = () =>
+      graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip]:not([hidden]) canvas');
+      if (!canvas) return null;
+      const box = canvas.getBoundingClientRect();
+      const table = document.querySelector('main table').getBoundingClientRect();
+      const row = document.querySelector('tr[data-commit-hash="${tagged}"]').getBoundingClientRect();
+      return { kinds: canvas.dataset.markerKinds, count: Number(canvas.dataset.markerCount),
+        top: box.top, bottom: box.bottom, left: box.left, right: box.right,
+        tableRight: table.right, pageWidth: document.documentElement.clientWidth,
+        pixels: canvas.width, scale: devicePixelRatio, ariaHidden: canvas.getAttribute('aria-hidden'),
+        tabIndex: canvas.tabIndex, y: scrollY, height: innerHeight,
+        heading: document.querySelector('main thead').getBoundingClientRect().bottom,
+        rowTop: row.top, rowBottom: row.bottom };
+    })()`);
+    const before = await until(async () => {
+      const state = await strip();
+      return state?.kinds === "head branch tag" && state.y === 0 && state;
+    }, "overview strip with HEAD, branch and tag marks");
+    // HEAD and main on the newest commit, the old branch, and the old tag.
+    assert.equal(before.count, 4);
+    assert.equal(before.ariaHidden, "true");
+    assert.equal(before.tabIndex, -1, "the strip is not a tab stop");
+    assert.equal(before.pixels, Math.round(10 * before.scale));
+    assert.ok(
+      before.tableRight <= before.left + 0.5,
+      `beside the table: ${JSON.stringify(before)}`
+    );
+    assert.ok(before.right <= before.pageWidth + 0.5, "clear of the window's scrollbar");
+    assert.ok(before.rowTop > before.height, "the tagged commit starts out of sight");
+
+    // Every theme colours the marks: HEAD in the editor's cursor colour, tags in the left half.
+    const marks = () =>
+      graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip] canvas');
+      const scale = canvas.width / 10, height = canvas.height / scale;
+      const pixel = (x, y) => [...canvas.getContext('2d').getImageData(Math.floor(x * scale), Math.floor(y * scale), 1, 1).data];
+      const rowY = (row) => Math.min(height - 3, Math.max(1, Math.floor(((row + 0.5) / 151) * height)));
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--vscode-editorCursor-foreground)';
+      document.body.append(probe);
+      const cursor = getComputedStyle(probe).color.match(/\\d+/g).slice(0, 3).map(Number);
+      probe.remove();
+      return { head: pixel(5, rowY(0) + 1), tag: pixel(3, rowY(146) + 1), cursor };
+    })()`);
+    const workbench = vscode.workspace.getConfiguration("workbench");
+    const originalTheme = workbench.inspect("colorTheme").globalValue;
+    try {
+      for (const [theme, kind] of [
+        ["Light Modern", "vscode-light"],
+        ["Dark Modern", "vscode-dark"],
+        ["Default High Contrast", "vscode-high-contrast"],
+        ["Default High Contrast Light", "vscode-high-contrast-light"]
+      ]) {
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        await until(async () => {
+          const { head, tag, cursor } = await marks();
+          return (
+            head[3] === 255 &&
+            head.slice(0, 3).every((channel, index) => Math.abs(channel - cursor[index]) <= 2) &&
+            tag[3] > 0
+          );
+        }, `HEAD and tag marks in ${theme}`);
+        const screenshot = await connections[0].call("Page.captureScreenshot");
+        fs.writeFileSync(
+          path.join(artifacts, `overview-strip-${kind}.png`),
+          Buffer.from(screenshot.data, "base64")
+        );
+      }
+    } finally {
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+    }
+
+    // Near the bottom of the strip: the oldest commits come into view.
+    await graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip] canvas');
+      const box = canvas.getBoundingClientRect();
+      canvas.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true,
+        pointerId: 1, button: 0, clientX: box.left + 5, clientY: box.bottom - 3 }));
+      canvas.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, button: 0,
+        clientX: box.left + 5, clientY: box.bottom - 3 }));
+    })()`);
+    const after = await until(async () => {
+      const state = await strip();
+      return state && state.y > 1000 && state;
+    }, "table scrolled by the strip");
+    assert.ok(
+      after.rowTop >= after.heading - 1 && after.rowBottom <= after.height + 1,
+      `the tagged commit is on screen: ${JSON.stringify(after)}`
+    );
+
+    // Near the top: back to the newest commits.
+    await graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip] canvas');
+      const box = canvas.getBoundingClientRect();
+      canvas.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true,
+        pointerId: 1, button: 0, clientX: box.left + 5, clientY: box.top + 1 }));
+    })()`);
+    await until(async () => (await strip())?.y === 0, "table scrolled back to the top");
+    assert.equal(git(["show-ref"], dir), refsBefore);
+
+    await openRepo(repo);
+    await until(
+      () => graph.evaluate("document.querySelector('[data-overview-strip]')?.hidden !== false"),
+      "no strip beside a history that fits the window"
+    );
   });
 
   test("lists branches, remotes, tags and stashes beside the graph and switches the graph from them", async () => {

@@ -42,8 +42,11 @@ async function freshPanel() {
   const { initializeWebviewConfig } = await import("@/webview/lib/webview-config");
   initializeWebviewConfig({
     autoCenterCommitDetailsView: true,
+    branchHoverPreview: true,
+    commitHoverCards: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dateSeparators: true,
     dragAndDrop: true,
     graphColours: [],
     graphStyle: "rounded",
@@ -52,7 +55,10 @@ async function freshPanel() {
     loadMoreCommits: 100,
     markAppliedCommits: true,
     locale: "en",
+    overviewMarkers: true,
+    showChangesColumn: false,
     showCurrentBranchByDefault: false,
+    showNearestBranch: true,
     singleKeyShortcuts: true
   });
   function branches(names = ["main", "topic"], head: string | null = "main") {

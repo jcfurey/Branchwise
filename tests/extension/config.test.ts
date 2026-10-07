@@ -21,8 +21,11 @@ it("falls back to the defaults declared in package.json", () => {
   const declared = manifest.contributes.configuration.properties;
   const fallbacks = {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
+    branchHoverPreview: extConfig.branchHoverPreview(),
+    commitHoverCards: extConfig.commitHoverCards(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
+    dateSeparators: extConfig.dateSeparators(),
     dateType: extConfig.dateType(),
     dragAndDrop: extConfig.dragAndDrop(),
     graphStyle: extConfig.graphStyle(),
@@ -31,7 +34,10 @@ it("falls back to the defaults declared in package.json", () => {
     markAppliedCommits: extConfig.markAppliedCommits(),
     maxDepthOfRepoSearch: extConfig.maxDepthOfRepoSearch(),
     nestedRepoSearchDepth: extConfig.nestedRepoSearchDepth(),
+    overviewMarkers: extConfig.overviewMarkers(),
+    showChangesColumn: extConfig.showChangesColumn(),
     showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
+    showNearestBranch: extConfig.showNearestBranch(),
     showSignatures: extConfig.showSignatures(),
     showUncommittedChanges: extConfig.showUncommittedChanges(),
     singleKeyShortcuts: extConfig.singleKeyShortcuts(),

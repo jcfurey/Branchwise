@@ -21,6 +21,7 @@ export const PAGE_STRINGS = new Proxy({} as LocalizedStrings, {
 export const PAGE_CONFIG: WebviewConfig = {
   locale: "en",
   dateFormat: "Relative",
+  dateSeparators: true,
   dragAndDrop: true,
   graphStyle: "angular",
   graphColours: ["#0085d9"],
@@ -29,8 +30,13 @@ export const PAGE_CONFIG: WebviewConfig = {
   loadMoreCommits: 50,
   markAppliedCommits: true,
   autoCenterCommitDetailsView: false,
+  branchHoverPreview: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
+  overviewMarkers: true,
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
+  showNearestBranch: true,
   singleKeyShortcuts: true
 };
 

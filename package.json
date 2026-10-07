@@ -178,6 +178,16 @@
           "type": "boolean",
           "default": true
         },
+        "branchwise.branchHoverPreview": {
+          "description": "%config.branchHoverPreview%",
+          "type": "boolean",
+          "default": true
+        },
+        "branchwise.commitHoverCards": {
+          "description": "%config.commitHoverCards%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.conflictForecast": {
           "description": "%config.conflictForecast%",
           "type": "string",
@@ -207,6 +217,11 @@
             "%config.dateFormat.dateOnly%",
             "%config.dateFormat.relative%"
           ]
+        },
+        "branchwise.dateSeparators": {
+          "description": "%config.dateSeparators%",
+          "type": "boolean",
+          "default": true
         },
         "branchwise.dateType": {
           "description": "%config.dateType%",
@@ -323,10 +338,25 @@
           "default": 3,
           "minimum": 0
         },
+        "branchwise.overviewMarkers": {
+          "description": "%config.overviewMarkers%",
+          "type": "boolean",
+          "default": true
+        },
+        "branchwise.showChangesColumn": {
+          "description": "%config.showChangesColumn%",
+          "type": "boolean",
+          "default": false
+        },
         "branchwise.showCurrentBranchByDefault": {
           "description": "%config.showCurrentBranchByDefault%",
           "type": "boolean",
           "default": false
+        },
+        "branchwise.showNearestBranch": {
+          "description": "%config.showNearestBranch%",
+          "type": "boolean",
+          "default": true
         },
         "branchwise.showSignatures": {
           "description": "%config.showSignatures%",

@@ -222,6 +222,22 @@ export type EquivalentCommit = {
 };
 
 /**
+ * What a commit changed against its first parent, or against the empty tree for a commit without
+ * parents: the files its details list. It also carries the start of the message after the
+ * subject, for the hover card, as the same Git process reads both.
+ */
+export type CommitStats = {
+  /** Files changed, binary ones included. */
+  files: number;
+  /** Lines added and deleted in text files. A binary file counts as a file with neither. */
+  additions: number;
+  deletions: number;
+  /** The first lines of the message body, without the blank lines around it. */
+  body: string;
+  /** Whether the body goes on past `body`. */
+  bodyCut: boolean;
+};
+/**
  * Which branches a `containingRefs` query may name: those the graph shows, under the same
  * remote and hidden-branch choices as a `loadCommits` request.
  */
@@ -236,12 +252,15 @@ export type RepositoryQuery =
   | WorkflowQuery
   | HistoryQuery
   | { kind: "workingTree" }
-  | { kind: "branchFocus"; branch: string; hashes: string[] }
+  /** With `tag`, `branch` is a tag's name, for the preview of a tag label's history. */
+  | { kind: "branchFocus"; branch: string; hashes: string[]; tag?: boolean }
   | ({ kind: "containingRefs"; hash: string } & ContainingRefsScope)
   /** The commits of `branch`, spelt as in the branch list, whose change HEAD already has. */
   | { kind: "appliedCommits"; branch: string }
   /** HEAD's commit with the same change as the commit `hash` names in full. */
   | { kind: "equivalentCommit"; hash: string }
+  /** The change counts of the commits with these full IDs. */
+  | { kind: "commitStats"; hashes: string[] }
   | { kind: "pushStatus" }
   | {
       kind: "conflictForecast";
@@ -278,6 +297,8 @@ export type RepositoryQueryData =
   | ({ kind: "containingRefs" } & ContainingRefs)
   | ({ kind: "appliedCommits" } & AppliedCommits)
   | ({ kind: "equivalentCommit"; hash: string } & EquivalentCommit)
+  /** By commit ID. A commit Git does not have is left out. */
+  | { kind: "commitStats"; stats: Record<string, CommitStats> }
   | { kind: "pushStatus"; unpushed: string[]; unpulled: string[] }
   | { kind: "conflictForecast"; conflicts: ConflictForecastEntry[] }
   | { kind: "replayForecast"; forecast: ReplayForecast }

@@ -11,8 +11,11 @@ import { vscodeApi } from "@tests/webview/setup";
 beforeAll(() => {
   initializeWebviewConfig({
     autoCenterCommitDetailsView: true,
+    branchHoverPreview: true,
+    commitHoverCards: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dateSeparators: true,
     dragAndDrop: true,
     graphColours: [],
     graphStyle: "rounded",
@@ -21,7 +24,10 @@ beforeAll(() => {
     loadMoreCommits: 100,
     markAppliedCommits: true,
     locale: "en",
+    overviewMarkers: true,
+    showChangesColumn: false,
     showCurrentBranchByDefault: false,
+    showNearestBranch: true,
     singleKeyShortcuts: true
   });
   initRpcHandler(new Map());

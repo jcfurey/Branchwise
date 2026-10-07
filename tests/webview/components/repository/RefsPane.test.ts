@@ -413,3 +413,61 @@ describe("RefsPane", () => {
     ]);
   });
 });
+
+describe("RefsPane branch previews", () => {
+  let preview: typeof import("@/webview/lib/branch-preview");
+  beforeAll(async () => {
+    preview = await import("@/webview/lib/branch-preview");
+  });
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    act(() => preview.endPreview());
+    vi.useRealTimers();
+  });
+
+  const rest = () =>
+    act(() => {
+      vi.advanceTimersByTime(preview.PREVIEW_DELAY_MS);
+    });
+
+  it("previews a local or remote branch while the pointer rests on its row", () => {
+    const local = row("main").parentElement!;
+    act(() => {
+      local.dispatchEvent(new MouseEvent("mouseenter"));
+    });
+    rest();
+    expect(preview.previewTarget.value).toEqual({ name: "main", tag: false });
+    act(() => {
+      local.dispatchEvent(new MouseEvent("mouseleave"));
+    });
+    expect(preview.previewTarget.value).toBeNull();
+
+    act(() => {
+      row("origin/feature").parentElement!.dispatchEvent(new MouseEvent("mouseenter"));
+    });
+    rest();
+    expect(preview.previewTarget.value).toEqual({ name: "remotes/origin/feature", tag: false });
+    // The selection stays where it was.
+    expect(stores.selectedBranch.value).toBe("*");
+  });
+
+  it("previews a branch reached with the keyboard until the keyboard moves on", () => {
+    const label = row("main");
+    // jsdom does not tell keyboard focus from pointer focus, so the test says which it is.
+    const visible = vi
+      .spyOn(label, "matches")
+      .mockImplementation((selector) => selector === ":focus-visible");
+    act(() => label.focus());
+    rest();
+    expect(preview.previewTarget.value).toEqual({ name: "main", tag: false });
+    expect(document.activeElement).toBe(label);
+    act(() => label.blur());
+    expect(preview.previewTarget.value).toBeNull();
+
+    // A focus that a click gave is not shown as keyboard focus, and previews nothing.
+    visible.mockReturnValue(false);
+    act(() => label.focus());
+    rest();
+    expect(preview.previewTarget.value).toBeNull();
+  });
+});

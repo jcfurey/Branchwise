@@ -4,12 +4,13 @@ import { useMemo } from "preact/hooks";
 
 import type { ConflictForecastEntry, GitRef, HistoryEntry, SubjectedCommit } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
+import { ChangesCell } from "@/webview/components/commit/ChangeCounts";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
 import { SignedMark } from "@/webview/components/commit/SignatureBadge";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
 import { KebabIcon } from "@/webview/components/ui/Icons";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
-import { focusColour } from "@/webview/graph/focus";
+import { type Dimming, focusColour } from "@/webview/graph/focus";
 import type { BranchRelation } from "@/webview/graph/types";
 import { closeCommitDetails, openContextMenu } from "@/webview/lib/actions";
 import { appliedTitle } from "@/webview/lib/applied-commits";
@@ -30,7 +31,6 @@ import {
   selectedCommits
 } from "@/webview/lib/navigation";
 import { activeSource, contextMenu, uncommittedChanges } from "@/webview/lib/stores";
-import type { FocusDimming } from "@/webview/types";
 import { getCommitDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
 import { initials } from "@/webview/utils/initials";
@@ -53,7 +53,11 @@ type CommitRowProps = {
   relation?: BranchRelation;
   keepMergedBright?: boolean;
   /** How strongly the graph dims history away from the focused branch; the labels follow it. */
-  dimming?: FocusDimming;
+  dimming?: Dimming;
+  /** The ref whose preview holds this commit, as the branch list spells it, if one is shown. */
+  previewBranch?: string | undefined;
+  /** The nearest branch containing the commit, for a row without a branch label of its own. */
+  nearestBranch?: string | undefined;
   /** Whether only this computer, or only a remote, has the commit; undefined for neither. */
   push?: PushState | undefined;
   /**
@@ -68,9 +72,18 @@ type CommitRowProps = {
   applied?: SubjectedCommit | null | undefined;
   /** Whether the details of this row are open beneath it. */
   expanded: boolean;
+  /** Whether this commit is the first of its day, below a commit from another day. */
+  dayStart?: boolean;
   onSelect: (() => void) | undefined;
   /** Asks the table to scroll the graph sideways until this commit's dot shows. */
   onRevealLane?: (hash: string) => void;
+  /** Whether the row ends with a cell of the Changes column. */
+  showChanges?: boolean;
+  /**
+   * Whether a card about the commit shows when the pointer rests on its message. The message then
+   * has no tooltip of its own, which would cover the card.
+   */
+  hoverCards?: boolean;
 };
 
 /** Where a keyboard-opened menu hangs, from the row's left edge, in pixels. */
@@ -272,12 +285,17 @@ export function CommitRow({
   relation = "normal",
   keepMergedBright = false,
   dimming = "subtle",
+  previewBranch,
+  nearestBranch,
   push,
   conflicts,
   applied,
   expanded,
+  dayStart = false,
   onSelect,
-  onRevealLane
+  onRevealLane,
+  showChanges = false,
+  hoverCards = false
 }: CommitRowProps) {
   const { hash } = commit;
   const uncommitted = hash === UNCOMMITTED_CHANGES;
@@ -288,6 +306,10 @@ export function CommitRow({
 
   const message = uncommitted ? uncommittedText(uncommittedChanges.value) : commit.message;
   const labels = shownRefs(commit.refs, headBranch);
+  const nearest =
+    nearestBranch !== undefined && !uncommitted && labels.every(({ ref }) => ref.type === "tag")
+      ? nearestBranch
+      : undefined;
   const date = uncommitted ? null : getCommitDate(commit.date);
   const emphasized = isHead || uncommitted || expanded || selected || menuOpen;
   const background =
@@ -394,7 +416,9 @@ export function CommitRow({
       }}
       data-commit-hash={hash}
       data-branch-relation={relation === "merged" && keepMergedBright ? "direct" : relation}
+      data-preview-branch={previewBranch}
       data-emphasized={String(emphasized)}
+      data-day-start={dayStart ? "" : undefined}
       tabIndex={tabStop ? 0 : -1}
       draggable={uncommitted || !dragAndDropOn() ? undefined : true}
       aria-selected={uncommitted ? expanded : selected}
@@ -406,7 +430,8 @@ export function CommitRow({
         headBranch,
         push,
         conflicts,
-        applied: applied !== undefined
+        applied: applied !== undefined,
+        nearest
       })}
       title={uncommitted ? l10n.viewWorkingTreeChanges : l10n.selectCommitsHint}
       onFocus={(event) => {
@@ -459,10 +484,24 @@ export function CommitRow({
               )}
             </span>
           )}
-          <span class="min-w-0 flex-1 truncate" title={message}>
+          <span
+            class={`min-w-0 truncate ${nearest === undefined ? "flex-1" : ""}`}
+            data-commit-message={uncommitted ? undefined : true}
+            title={hoverCards && !uncommitted ? "" : message}
+          >
             {isHead || uncommitted ? <b>{message}</b> : message}
           </span>
           {applied !== undefined && <AppliedMark equivalent={applied} />}
+          {nearest !== undefined && (
+            // Takes the room the message leaves, so the controls after it stay at the row's end.
+            <span
+              data-nearest-branch={nearest}
+              class="mr-auto ml-2 max-w-1/3 shrink-0 truncate text-xs text-muted"
+              title={l10n.nearestBranchTitle.replace("{0}", () => nearest)}
+            >
+              {l10n.nearestBranch.replace("{0}", () => nearest)}
+            </span>
+          )}
           {commit.signed === true && <SignedMark />}
           {!uncommitted && (
             <button
@@ -505,6 +544,7 @@ export function CommitRow({
       <td class={`${CELL} font-mono`} title={uncommitted ? undefined : hash}>
         {uncommitted ? null : abbrevCommit(hash)}
       </td>
+      {showChanges && <ChangesCell hash={hash} class={CELL} />}
     </tr>
   );
 }
