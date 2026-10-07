@@ -80,6 +80,18 @@ describe("styles.css", () => {
     expect(utilities).not.toContain(".grid-cols-labelled {");
   });
 
+  it("sizes commit rows and branch labels from the row height of the table they are in", () => {
+    expect(ruleOf(utilities, ".h-\\(--row-height\\)")).toContain("height: var(--row-height);");
+    expect(ruleOf(utilities, ".leading-\\(--row-height\\)")).toContain(
+      "line-height: var(--row-height);"
+    );
+    // Written into the rule rather than read from the root, which has no row height of its own.
+    const label = "min(18px, calc(var(--row-height, 24px) - 4px))";
+    expect(ruleOf(utilities, ".h-ref-label")).toContain(`height: ${label};`);
+    expect(ruleOf(utilities, ".size-ref-label")).toContain(`width: ${label};`);
+    expect(theme).not.toContain("--spacing-ref-label");
+  });
+
   it("lets a caller's background replace a button's, and hovering replace both", () => {
     const own = ruleAt(utilities, ".bg-btn");
     const pressed = ruleAt(utilities, ".bg-row-selected");

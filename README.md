@@ -47,6 +47,7 @@ basics.
 - Branch focus dims unrelated history, without a checkout
 - Hide bot branches such as `dependabot/*` and `renovate/*` by name pattern
 - Hide remotes one at a time; [view choices](docs/preferences.md) are kept per repository
+- Compact, default or comfortable rows, and a choice of which columns show
 - Pin branches to the top, list them by latest commit, and spot merged, stale and gone ones
 
 ![Branch focus in VS Code's light theme: the focused branch's history in full colour, other history dimmed, and the Branches pane with ahead and behind counts](docs/images/branch-focus-light.png)
@@ -99,6 +100,7 @@ All settings start with `branchwise.`.
 | `loadMoreCommits`             | `100`              | Commits added by **Load Older Commits**                                  |
 | `maxDepthOfRepoSearch`        | `0`                | Folder depth searched for repositories                                   |
 | `nestedRepoSearchDepth`       | `3`                | Folder depth searched inside each repository for nested ones             |
+| `rowDensity`                  | `"default"`        | Row height: `"compact"`, `"default"` or `"comfortable"`                  |
 | `showCurrentBranchByDefault`  | `false`            | Open showing only the checked-out branch                                 |
 | `showSignatures`              | `true`             | Mark signed commits in the graph                                         |
 | `showUncommittedChanges`      | `true`             | Show the uncommitted changes row                                         |

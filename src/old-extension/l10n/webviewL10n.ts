@@ -70,6 +70,11 @@ export function getWebviewLocalizedStrings() {
     date: vscode.l10n.t("Date"),
     author: vscode.l10n.t("Author"),
     commit: vscode.l10n.t("ID"),
+    // The Settings & Tools entry, followed by "…", that opens the dialog below.
+    columns: vscode.l10n.t("Columns"),
+    columnsDialog: vscode.l10n.t(
+      "Columns to show in the graph. The graph and the message are always shown. You can also right-click the column headings."
+    ),
 
     // Pages shown instead of the graph
     noCommits: vscode.l10n.t("This repository has no commits yet"),

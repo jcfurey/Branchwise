@@ -32,6 +32,7 @@ const settings = (issueLinks: readonly IssueLink[]): WebviewConfig => ({
   issueLinks,
   loadMoreCommits: 100,
   locale: "en",
+  rowDensity: "default",
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true
 });

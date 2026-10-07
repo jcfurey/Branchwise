@@ -256,6 +256,22 @@ describe("scrolling the details into view", () => {
     }
   });
 
+  it("keeps clear a commit row as tall as the row density makes it", () => {
+    for (const [rowDensity, row] of [
+      ["compact", 20],
+      ["comfortable", 30]
+    ] as const) {
+      const restore = reconfigure({ autoCenterCommitDetailsView: false, rowDensity });
+      try {
+        // 32px of table heading and the commit row above the details.
+        expect(openAt(10)).toEqual([{ top: 10 - 32 - row }]);
+        expect(openAt(32 + row)).toEqual([]);
+      } finally {
+        restore();
+      }
+    }
+  });
+
   it("assumes the usual heading height in a table without one", () => {
     const restore = reconfigure({ autoCenterCommitDetailsView: false });
     try {

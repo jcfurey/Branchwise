@@ -147,6 +147,8 @@
   "Date": "Date",
   "Author": "Author",
   "ID": "ID",
+  "Columns": "Columns",
+  "Columns to show in the graph. The graph and the message are always shown. You can also right-click the column headings.": "Columns to show in the graph. The graph and the message are always shown. You can also right-click the column headings.",
   "This repository has no commits yet": "This repository has no commits yet",
   "The graph appears here once you make the first commit.": "The graph appears here once you make the first commit.",
   "No Git repository found in the open folders": "No Git repository found in the open folders",

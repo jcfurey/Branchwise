@@ -77,6 +77,12 @@ The column headings and graph scrollbar stay below the main controls as you scro
 
 Clicking or keyboard-navigating to a commit brings its lane into view with the smallest necessary horizontal movement. To find it again after panning, use the crosshair button beside **Message**, labelled **Reveal selected lane**. Refreshing or resizing keeps your manual position where the graph still fits; switching repositories resets it. Revealing a lane leaves the branch, checkout, focus mode, and commit text position unchanged.
 
+## Row height and columns
+
+The `branchwise.rowDensity` setting makes the rows `compact` (20 pixels), `default` (24 pixels) or `comfortable` (30 pixels). The graph is redrawn to the new height as soon as the setting changes, with no reload: dots stay in the middle of their rows, lines bend within one row, and opened details, **Go to**, keyboard navigation and drag and drop follow the new rows. In compact rows the branch and tag labels become 2 pixels shorter so that nothing is cut off; the buttons in a row keep the size they have at the default height.
+
+To choose which columns show, right-click the column headings and tick or untick **Date**, **Author** and **ID**. From the keyboard, **Settings & Tools → Columns…** opens the same choice as checkboxes. **Graph** and **Message** always show. A hidden column gives its room to **Message**, and comes back at the width it had when you show it again. The choice is kept per repository, like column widths. Hiding a column only changes what the table shows: a screen reader still hears each row's full summary, author and age included.
+
 ## Loading errors
 
 If Git cannot load the graph, the view shows the error and a **Retry** button. Repair the reported problem, such as an unavailable repository, Git executable, or invalid Git configuration, then retry. **This repository has no commits yet** is reserved for a successful load of a repository without commits.

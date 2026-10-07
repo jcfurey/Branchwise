@@ -25,6 +25,7 @@ const settings: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 50,
   locale: "en",
+  rowDensity: "default",
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true
 };

@@ -10,6 +10,7 @@ does not check out a branch or change Git refs.
 | Show Remote Branches in Graph and each remote's eye toggle | Restored for each repository                       | Restored                                 |
 | Hidden-branch patterns                                     | Restored for each repository                       | Restored                                 |
 | Column widths                                              | Restored for each repository                       | Restored                                 |
+| Hidden columns (Date, Author, ID)                          | Restored for each repository                       | Restored                                 |
 | Active search, named search filters, vertical position     | Restored for each repository within the open panel | Reset                                    |
 | Horizontal graph position                                  | Reset to the left edge                             | Reset to the left edge                   |
 | Selected commits and expanded details                      | Cleared                                            | Cleared                                  |
@@ -31,6 +32,9 @@ silently restore the old target. Renames are not inferred from matching commit h
 Hiding the focused remote clears its target. Selecting a hidden remote branch reveals its remote
 and enables **Show Remote Branches in Graph**; those updated choices are saved. Turning all remotes
 off and back on preserves each remote's individual eye setting.
+
+Hidden columns keep their widths, so a column shown again is as wide as before. Graph and Message
+cannot be hidden. See [row height and columns](git-actions.md#row-height-and-columns).
 
 Hidden-branch patterns never hide the checked-out branch or the selected one. Selecting or focusing
 a branch that a pattern matches shows it without changing the patterns, so it is hidden again once
@@ -66,6 +70,21 @@ reads the loaded commits once more; turning it off saves about 10 ms for 300 row
 branch labels in the graph and the Branches pane to cherry-pick, merge or rebase, each after a
 confirmation. Turn it off if you drag by accident; every action stays in the menus. See
 [drag and drop](git-actions.md#drag-and-drop).
+
+### Row density
+
+`branchwise.rowDensity` sets how tall the graph's rows are, the same in every repository:
+
+| Value               | Row height |
+| ------------------- | ---------- |
+| `compact`           | 20 pixels  |
+| `default` (default) | 24 pixels  |
+| `comfortable`       | 30 pixels  |
+
+The open graph is redrawn at the new height at once. Compact rows stop at 20 pixels, the height of
+the **⋯** button at the end of a row, so no control in a row gets smaller than it is by default;
+branch and tag labels shrink by 2 pixels to fit. See
+[row height and columns](git-actions.md#row-height-and-columns).
 
 ### Single-key shortcuts
 

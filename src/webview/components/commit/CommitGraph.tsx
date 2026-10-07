@@ -31,6 +31,8 @@ type CommitGraphProps = {
   /** Hash of the row under the pointer. Only this component reads it. */
   hovered: ReadonlySignal<string | null>;
   commitRows: ReadonlyMap<string, number>;
+  /** The height of the table's rows, which the dots and lines are spaced by. */
+  rowHeight: number;
 };
 
 /**
@@ -72,16 +74,17 @@ export function CommitGraph({
   dimming,
   revealed,
   hovered,
-  commitRows
+  commitRows,
+  rowHeight
 }: CommitGraphProps) {
   const angular = getWebviewConfig().graphStyle === "angular";
   // Building the paths walks every line of the layout, so a hover or a colour change reuses them.
   const strokes = useMemo(
     () =>
       layout.branches.flatMap((branch) =>
-        branchStrokes(branch, angular, expansion, relationForLine)
+        branchStrokes(branch, angular, expansion, relationForLine, rowHeight)
       ),
-    [layout, angular, expansion, relationForLine]
+    [layout, angular, expansion, relationForLine, rowHeight]
   );
 
   const hoveredHash = hovered.value;
@@ -102,7 +105,7 @@ export function CommitGraph({
     <svg
       class="block"
       width={graphWidth(layout)}
-      height={graphHeight(layout, expansion)}
+      height={graphHeight(layout, expansion, rowHeight)}
       aria-hidden="true"
     >
       {strokes.map((stroke, index) => (
@@ -122,7 +125,7 @@ export function CommitGraph({
         const relation = relations[vertex.y] ?? "normal";
         const colour = dotColour(vertex, relation);
         const cx = laneX(vertex.x);
-        const cy = rowY(vertex.y) + expandOffset(vertex.y, expansion);
+        const cy = rowY(vertex.y, rowHeight) + expandOffset(vertex.y, expansion);
         const kind = dotKind(vertex);
         // Each row has exactly one circle, which carries the dot's place and relation.
         switch (kind) {

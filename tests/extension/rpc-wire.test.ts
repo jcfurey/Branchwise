@@ -106,6 +106,7 @@ test("hands the page its strings and settings", async () => {
     issueLinks: [],
     loadMoreCommits: 100,
     locale: "en",
+    rowDensity: "default",
     showCurrentBranchByDefault: false,
     singleKeyShortcuts: true
   });

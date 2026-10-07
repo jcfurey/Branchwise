@@ -107,6 +107,8 @@
   "Date": "日期",
   "Author": "作者",
   "ID": "提交 ID",
+  "Columns": "列",
+  "Columns to show in the graph. The graph and the message are always shown. You can also right-click the column headings.": "分支图中要显示的列。分支图和消息列始终显示。也可以右键单击列标题进行选择。",
   "This repository has no commits yet": "此仓库还没有提交",
   "The graph appears here once you make the first commit.": "创建第一个提交后，分支图将显示在这里。",
   "No Git repository found in the open folders": "在打开的文件夹中未找到 Git 仓库",

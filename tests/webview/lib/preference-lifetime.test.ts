@@ -51,6 +51,7 @@ async function freshPanel() {
     issueLinks: [],
     loadMoreCommits: 100,
     locale: "en",
+    rowDensity: "default",
     showCurrentBranchByDefault: false,
     singleKeyShortcuts: true
   });

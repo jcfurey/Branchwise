@@ -4,7 +4,13 @@ import type { ComponentChildren } from "preact";
 import type { GitFileChange, GraphQueryCommand } from "@/backend/types";
 import { cleanPatterns } from "@/backend/utils/branchPatterns";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
-import type { BranchSort, GitRepoState, ResponseMessage, WebviewConfig } from "@/types";
+import type {
+  BranchSort,
+  GitRepoState,
+  OptionalColumn,
+  ResponseMessage,
+  WebviewConfig
+} from "@/types";
 import { SHOW_ALL_BRANCHES, UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { captureFocus, restoreFocus } from "@/webview/lib/focus";
 import {
@@ -42,6 +48,7 @@ import {
   graphErrors,
   headBranch,
   hiddenBranchPatterns,
+  hiddenColumns,
   hiddenRemotes,
   maxCommits,
   moreCommitsAvailable,
@@ -66,6 +73,7 @@ import type {
   DialogValues,
   FocusDimming
 } from "@/webview/types";
+import { hiddenColumnsOf } from "@/webview/utils/columns";
 
 // This module sits in import cycles with the panels that call it back, so its top level holds
 // plain counters only. Every imported binding is used inside the functions below.
@@ -365,6 +373,26 @@ export function saveColumnWidths(widths: Array<number>): void {
   }
   patchRepoState(repo, { columnWidths: widths });
   vscode.postMessage({ command: "saveRepoState", repo, state: { columnWidths: widths } });
+}
+
+/**
+ * Hide exactly the `columns` named, in the selected repository, and have the extension store the
+ * choice. Their widths stay stored, so a column shown again comes back as wide as it was.
+ */
+export function setHiddenColumns(columns: ReadonlyArray<OptionalColumn>): void {
+  const repo = selectedRepo.value;
+  const hidden = hiddenColumnsOf(columns);
+  if (repo === undefined || hidden.join() === hiddenColumns.value.join()) {
+    return;
+  }
+  patchRepoState(repo, { hiddenColumns: hidden });
+  vscode.postMessage({ command: "saveRepoState", repo, state: { hiddenColumns: hidden } });
+}
+
+/** Show or hide one column of the commit table, keeping the others as they are. */
+export function setColumnShown(column: OptionalColumn, shown: boolean): void {
+  const others = hiddenColumns.value.filter((name) => name !== column);
+  setHiddenColumns(shown ? others : [...others, column]);
 }
 
 /** The global remotes switch. Each remote's own choice is kept while it is off. */

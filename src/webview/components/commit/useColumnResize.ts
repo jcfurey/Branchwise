@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { DESCRIPTION_COLUMN, RESIZABLE_COLUMNS } from "@/webview/constants";
 import { saveColumnWidths, setColumnWidths } from "@/webview/lib/actions";
-import { columnWidths, repoStates, selectedRepo } from "@/webview/lib/stores";
+import { columnWidths, repoStates, selectedRepo, shownColumns } from "@/webview/lib/stores";
 import { MIN_COLUMN, moveBoundary } from "@/webview/utils/columns";
 
 export type ColumnResize = {
@@ -46,18 +46,38 @@ type Drag = {
   stop: () => void;
 };
 
-/** Width the browser gave a header cell, padding included. */
+/**
+ * Width stored for a hidden column when a resize stores the widths of a table that sized itself.
+ * The browser never laid that column out, so this stands in: about as wide as the commit column.
+ */
+const UNMEASURED_WIDTH = 80;
+
+/**
+ * Width the browser gave the header cell of column `index`, padding included, or `undefined`
+ * while that column is hidden. The header draws the shown columns only, in table order.
+ */
 function cellWidth(row: HTMLTableRowElement, index: number) {
-  const cell = row.cells.item(index);
+  const at = shownColumns.peek().indexOf(index);
+  if (at === -1) {
+    return undefined;
+  }
+  const cell = row.cells.item(at);
   if (cell === null) {
     throw new Error(`The commit table header has no column ${index}`);
   }
   return cell.clientWidth;
 }
 
+/** Width of the description's header cell. The description is never hidden. */
+function descriptionWidth(row: HTMLTableRowElement) {
+  return cellWidth(row, DESCRIPTION_COLUMN) ?? 0;
+}
+
 /** Widths a resize starts from: the stored ones, else the laid-out ones, in usable whole pixels. */
 function startingWidths(row: HTMLTableRowElement) {
-  const widths = columnWidths.peek() ?? RESIZABLE_COLUMNS.map((index) => cellWidth(row, index));
+  const widths =
+    columnWidths.peek() ??
+    RESIZABLE_COLUMNS.map((index) => cellWidth(row, index) ?? UNMEASURED_WIDTH);
   return widths.map((width) => Math.max(MIN_COLUMN, Math.round(width)));
 }
 
@@ -71,7 +91,8 @@ function sameWidths(a: Array<number>, b: Array<number>) {
  */
 function resized(widths: Array<number>, boundary: number, delta: number, description: number) {
   const request = Math.round(delta);
-  const { widths: next, moved } = moveBoundary(widths, boundary, request, description);
+  const shown = shownColumns.peek();
+  const { widths: next, moved } = moveBoundary(widths, boundary, request, description, shown);
   const whole = next.map((width) => Math.round(width));
   if (Math.sign(moved) !== Math.sign(request) || sameWidths(whole, widths)) {
     return null;
@@ -164,7 +185,7 @@ export function useColumnResize(graphColumn: number): ColumnResize {
     }
     const row = headRef.current;
     if (row !== null) {
-      const description = cellWidth(row, DESCRIPTION_COLUMN);
+      const description = descriptionWidth(row);
       const next = resized(
         current.widths,
         current.boundary,
@@ -231,7 +252,7 @@ export function useColumnResize(graphColumn: number): ColumnResize {
       return;
     }
     event.preventDefault();
-    const next = resized(startingWidths(row), boundary, delta, cellWidth(row, DESCRIPTION_COLUMN));
+    const next = resized(startingWidths(row), boundary, delta, descriptionWidth(row));
     if (next !== null) {
       saveColumnWidths(next.widths);
     }

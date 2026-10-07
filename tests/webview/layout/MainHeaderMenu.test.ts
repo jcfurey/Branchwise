@@ -104,6 +104,7 @@ describe("the Settings & Tools menu", () => {
       null,
       "✓ showRemoteBranches",
       "hiddenBranches…",
+      "columns…",
       "gettingStarted",
       "legend",
       "keyboardShortcuts",
@@ -310,6 +311,47 @@ describe("File History", () => {
     historyFilter.value = search;
     submitPath("   ");
     expect(historyFilter.value).toBe(search);
+    expect(stores.dialog.value).toBeNull();
+  });
+});
+
+describe("Columns", () => {
+  const checkboxes = () => [
+    ...document.querySelectorAll<HTMLInputElement>("[role=dialog] input[type=checkbox]")
+  ];
+
+  it("offers the optional columns as checkboxes and hides the ones left unchecked", () => {
+    stores.repoStates.value = { "/r/a": { columnWidths: null, hiddenColumns: ["commit"] } };
+    mount(h(Fragment, null, h(MainHeader, { repos: REPOS }), h(Dialog, {})));
+    runEntry("columns…");
+
+    expect(stores.dialog.value).toMatchObject({
+      kind: "form",
+      message: "columnsDialog",
+      action: "applyShort",
+      inputs: [
+        { kind: "checkbox", label: "date", value: true },
+        { kind: "checkbox", label: "author", value: true },
+        { kind: "checkbox", label: "commit", value: false }
+      ]
+    });
+    // Neither the graph nor the message is offered: they cannot be hidden.
+    expect(checkboxes().map((box) => box.checked)).toEqual([true, true, false]);
+
+    act(() => {
+      checkboxes()[1]!.click();
+      checkboxes()[2]!.click();
+    });
+    act(() => {
+      checkboxes()[0]!.form!.requestSubmit();
+    });
+
+    expect(stores.hiddenColumns.value).toEqual(["author"]);
+    expect(vscodeApi.postMessage).toHaveBeenCalledWith({
+      command: "saveRepoState",
+      repo: "/r/a",
+      state: { hiddenColumns: ["author"] }
+    });
     expect(stores.dialog.value).toBeNull();
   });
 });

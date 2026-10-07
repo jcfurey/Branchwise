@@ -43,6 +43,7 @@ type Options = {
   keepMergedBright?: boolean;
   dimming?: FocusDimming;
   revealed?: ReadonlySet<number>;
+  rowHeight?: number;
 };
 
 let host: HTMLDivElement;
@@ -56,7 +57,8 @@ function drawGraph({
   expansion = null,
   keepMergedBright = false,
   dimming = "subtle",
-  revealed = new Set()
+  revealed = new Set(),
+  rowHeight = 24
 }: Options = {}) {
   const layout = computeGraphLayout(rows, head);
   const relations = commitRelations(rows, focus);
@@ -71,7 +73,8 @@ function drawGraph({
         dimming,
         revealed,
         hovered,
-        commitRows: new Map(rows.map((row, index) => [row.hash, index]))
+        commitRows: new Map(rows.map((row, index) => [row.hash, index])),
+        rowHeight
       }),
       host
     )

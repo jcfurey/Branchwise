@@ -102,6 +102,16 @@
   --color-graph: var(--vscode-focusBorder);
 }
 
+/* Written into each utility rather than read from the root, as the row height differs per table. */
+@theme inline {
+  /*
+   * A branch label's height, border left out: 18px, or less in a row too short to hold that with
+   * the label's border and top margin, so that a compact row clips nothing. Outside the commit
+   * table, as in the legend, rows count as 24px tall.
+   */
+  --spacing-ref-label: min(18px, calc(var(--row-height, 24px) - 4px));
+}
+
 @layer components {
   /* The horizontal scroller under the graph column. */
   .graph-scrollbar::-webkit-scrollbar {
