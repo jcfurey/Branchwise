@@ -51,6 +51,11 @@ export type WebviewConfig = Readonly<{
   issueLinks: readonly IssueLink[];
   /** Rows added by each "load more", with the same bounds. */
   loadMoreCommits: number;
+  /**
+   * Mark the commits of a focused or shown branch whose change the checked-out branch already
+   * has, as after a cherry-pick or a rebase.
+   */
+  markAppliedCommits: boolean;
   /** Show the strip of marks for HEAD, refs and the selection beside the table. */
   overviewMarkers: boolean;
   /** VS Code's display language (`en`, `fr`, `zh-cn`, ...), used for every `Intl` format. */

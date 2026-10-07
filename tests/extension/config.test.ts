@@ -31,6 +31,7 @@ it("falls back to the defaults declared in package.json", () => {
     graphStyle: extConfig.graphStyle(),
     initialLoadCommits: extConfig.initialLoadCommits(),
     loadMoreCommits: extConfig.loadMoreCommits(),
+    markAppliedCommits: extConfig.markAppliedCommits(),
     maxDepthOfRepoSearch: extConfig.maxDepthOfRepoSearch(),
     nestedRepoSearchDepth: extConfig.nestedRepoSearchDepth(),
     overviewMarkers: extConfig.overviewMarkers(),

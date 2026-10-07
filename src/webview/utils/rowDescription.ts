@@ -18,6 +18,11 @@ export type RowFacts = {
    * forecast marks one; otherwise `null`.
    */
   conflictsWith: string | null;
+  /**
+   * The checked-out branch, such as `main`, when it already has the commit's change under another
+   * commit; otherwise absent or `null`.
+   */
+  appliedIn?: string | null;
   /** The row's branches and tags, in the order they are shown. */
   refs: ReadonlyArray<GitRef>;
   /** The nearest branch containing the commit, when the row names one after its message. */
@@ -27,7 +32,8 @@ export type RowFacts = {
 /**
  * One line that says what a commit row shows, for screen readers, which otherwise hear the cells
  * but nothing of the dot, the markers or the labels' kinds: "Fix the parser, Ann Lee, 3 days
- * ago, merge of 2 parents, unpushed, has conflicts with main, branch topic, tag v1.0".
+ * ago, merge of 2 parents, unpushed, has conflicts with main, already in main, branch topic,
+ * tag v1.0".
  */
 export function describeCommitRow(facts: RowFacts): string {
   const l10n = window.l10n;
@@ -45,6 +51,10 @@ export function describeCommitRow(facts: RowFacts): string {
     // Function replacements insert names as written, even when they contain `$`.
     const into = facts.conflictsWith;
     parts.push(l10n.rowConflictsWith.replace("{0}", () => into));
+  }
+  if (facts.appliedIn !== undefined && facts.appliedIn !== null) {
+    const into = facts.appliedIn;
+    parts.push(l10n.rowApplied.replace("{0}", () => into));
   }
   for (const ref of facts.refs) {
     const kind =
@@ -75,6 +85,7 @@ export function commitRowLabel({
   headBranch,
   push,
   conflicts,
+  applied = false,
   nearest
 }: {
   commit: HistoryEntry;
@@ -84,6 +95,8 @@ export function commitRowLabel({
   push: RowFacts["push"];
   /** The conflict forecast by branch, a remote one under `remotes/`, as the table holds it. */
   conflicts: ReadonlyMap<string, ConflictForecastEntry> | undefined;
+  /** Whether the checked-out branch already has the commit's change under another commit. */
+  applied?: boolean;
   /** The nearest branch the row names after its message, if it names one. */
   nearest?: string | undefined;
 }): string {
@@ -111,6 +124,7 @@ export function commitRowLabel({
     isHead,
     push,
     conflictsWith: conflicting ? repositoryState.value?.head || "HEAD" : null,
+    appliedIn: applied ? headBranch || "HEAD" : null,
     refs,
     nearest
   });

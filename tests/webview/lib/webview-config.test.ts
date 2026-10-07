@@ -16,6 +16,7 @@ const first: WebviewConfig = {
   initialLoadCommits: 250,
   issueLinks: [],
   loadMoreCommits: 75,
+  markAppliedCommits: true,
   locale: "de",
   overviewMarkers: true,
   showChangesColumn: false,

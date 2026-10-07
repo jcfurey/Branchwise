@@ -33,6 +33,7 @@ const changed: WebviewConfig = {
   initialLoadCommits: 500,
   issueLinks: [],
   loadMoreCommits: 100,
+  markAppliedCommits: true,
   locale: "en",
   overviewMarkers: true,
   showChangesColumn: false,

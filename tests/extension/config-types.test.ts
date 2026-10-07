@@ -26,6 +26,7 @@ const settings: WebviewConfig = {
   initialLoadCommits: 50,
   issueLinks: [],
   loadMoreCommits: 25,
+  markAppliedCommits: true,
   locale: "de",
   overviewMarkers: true,
   showChangesColumn: false,
@@ -51,7 +52,7 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the eighteen display settings", () => {
+  it("holds exactly the nineteen display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
       | "branchHoverPreview"
@@ -66,13 +67,14 @@ describe("WebviewConfig", () => {
       | "issueLinks"
       | "loadMoreCommits"
       | "locale"
+      | "markAppliedCommits"
       | "overviewMarkers"
       | "showChangesColumn"
       | "showCurrentBranchByDefault"
       | "showNearestBranch"
       | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(18);
+    expect(Object.keys(settings)).toHaveLength(19);
   });
 });
 

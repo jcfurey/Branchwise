@@ -41,6 +41,7 @@ const DEFAULT_CONFIG = {
   initialLoadCommits: 300,
   issueLinks: [],
   loadMoreCommits: 100,
+  markAppliedCommits: true,
   locale: "fr",
   overviewMarkers: true,
   showChangesColumn: false,

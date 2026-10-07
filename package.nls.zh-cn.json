@@ -29,6 +29,7 @@
   "config.issueLinks.pattern": "最多 200 个字符且不能匹配空文本的 JavaScript 正则表达式",
   "config.issueLinks.url": "链接的 http: 或 https: 地址；$0 为整个匹配，$1 到 $9 为各个分组",
   "config.loadMoreCommits": "每次按下“加载更早的提交”按钮时额外加载的提交数量。仅当仓库还有更多提交时，该按钮才会显示在最后一个提交下方。",
+  "config.markAppliedCommits": "当聚焦某个分支或分支图只显示一个分支时，通过比较补丁 ID，标记该分支中其更改已包含在已检出分支中的提交（例如拣选或变基之后）。如果该分支有超过 2,000 个已检出分支没有的提交，则不进行比较。",
   "config.maxDepthOfRepoSearch": "在每个工作区文件夹下搜索 Git 仓库的子文件夹层数。为 0 时仅检查工作区文件夹本身（位于仓库内的文件夹会找到该仓库）。已找到的仓库中已初始化的子模块始终会列出。",
   "config.nestedRepoSearchDepth": "在已找到的每个仓库内搜索其中克隆的仓库的子文件夹层数，这些仓库会在工作区窗格中列于其下。会跳过隐藏文件夹和 node_modules。为 0 时，位于其他仓库内的仓库仅作为子模块列出。",
   "config.overviewMarkers": "在分支图右侧显示一条窄带，在整个已加载的历史中标出 HEAD、分支和标签、所选提交、已打开详情的提交和未推送的提交，并用一段色带表示当前屏幕上的行。单击或拖动它即可滚动到相应位置。",
@@ -75,5 +76,5 @@
   "colors.graphLane11": "Branchwise 分支图第 11 条轨道的颜色，在未设置 branchwise.graphColours 时使用。",
   "colors.graphLane12": "Branchwise 分支图第 12 条轨道的颜色，在未设置 branchwise.graphColours 时使用。",
   "colors.unpushed": "Branchwise 分支图中尚无远程分支包含的提交前的圆点。",
-  "colors.conflict": "Branchwise 分支图中，将分支合并到当前检出分支会产生冲突时，分支标签上的标记。"
+  "colors.conflict": "Branchwise 分支图中，将分支合并到已检出分支会产生冲突时，分支标签上的标记。"
 }

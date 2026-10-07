@@ -313,6 +313,22 @@ export function getWebviewLocalizedStrings() {
     focusBranchChip: vscode.l10n.t("Focus {0} in the graph"),
     selectTaggedCommit: vscode.l10n.t("Select the commit tagged {0}"),
 
+    // Applied commits: a commit of the focused branch whose change the checked-out branch has
+    // already, as after a cherry-pick. "applied" is the short mark on its row. {0} is the
+    // checked-out branch, {1} the short ID of its commit with the same change, {2} that
+    // commit's subject.
+    appliedMark: vscode.l10n.t("applied"),
+    appliedAs: vscode.l10n.t("Already in {0} as {1}: {2}"),
+    appliedSomewhere: vscode.l10n.t("Already in {0}"),
+    rowApplied: vscode.l10n.t("already in {0}"),
+    findEquivalentCommit: vscode.l10n.t("Find Equivalent Commit"),
+    // {0} is the short ID of the commit looked for, {1} the checked-out branch.
+    equivalentNotFound: vscode.l10n.t("No commit on {1} makes the same change as {0}."),
+    equivalentNotFoundLimited: vscode.l10n.t(
+      "None of the newest commits on {1} that change the same files makes the same change as {0}. Older commits were not compared."
+    ),
+    equivalentOnBranch: vscode.l10n.t("{0} is on {1} already."),
+
     // Commit signatures: the mark on a signed commit's row, then the verdicts in its details.
     // {0} in signatureGoodBy and signatureSigner is the signer's name, or an SSH principal such
     // as an email address. "gpg.ssh.allowedSignersFile" is a Git setting and stays as it is.

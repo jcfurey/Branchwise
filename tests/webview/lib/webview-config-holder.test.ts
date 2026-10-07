@@ -18,6 +18,7 @@ const settings = (overrides: Partial<WebviewConfig> = {}): WebviewConfig => ({
   initialLoadCommits: 50,
   issueLinks: [],
   loadMoreCommits: 25,
+  markAppliedCommits: true,
   locale: "fr",
   overviewMarkers: true,
   showChangesColumn: false,

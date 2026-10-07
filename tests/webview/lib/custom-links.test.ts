@@ -34,6 +34,7 @@ const settings = (issueLinks: readonly IssueLink[]): WebviewConfig => ({
   initialLoadCommits: 300,
   issueLinks,
   loadMoreCommits: 100,
+  markAppliedCommits: true,
   locale: "en",
   overviewMarkers: true,
   showChangesColumn: false,

@@ -2,7 +2,7 @@ import { computed } from "@preact/signals";
 import type { TargetedKeyboardEvent } from "preact";
 import { useMemo } from "preact/hooks";
 
-import type { ConflictForecastEntry, GitRef, HistoryEntry } from "@/backend/types";
+import type { ConflictForecastEntry, GitRef, HistoryEntry, SubjectedCommit } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
 import { ChangesCell } from "@/webview/components/commit/ChangeCounts";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
@@ -13,8 +13,10 @@ import { UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { type Dimming, focusColour } from "@/webview/graph/focus";
 import type { BranchRelation } from "@/webview/graph/types";
 import { closeCommitDetails, openContextMenu } from "@/webview/lib/actions";
+import { appliedTitle } from "@/webview/lib/applied-commits";
 import { runRowShortcut } from "@/webview/lib/commit-shortcuts";
 import { dragAndDropOn } from "@/webview/lib/drag-drop";
+import { revealCommit } from "@/webview/lib/jump-to-head";
 import {
   commitMenu,
   commitMenuSource,
@@ -63,6 +65,11 @@ type CommitRowProps = {
    * remote one as `remotes/<remote>/<branch>`.
    */
   conflicts?: ReadonlyMap<string, ConflictForecastEntry>;
+  /**
+   * Set when the checked-out branch already has this commit's change: its commit with the same
+   * change, or `null` when that is not known.
+   */
+  applied?: SubjectedCommit | null | undefined;
   /** Whether the details of this row are open beneath it. */
   expanded: boolean;
   /** Whether this commit is the first of its day, below a commit from another day. */
@@ -222,6 +229,41 @@ export function PushDot({ state }: { state: PushState }) {
   );
 }
 
+/**
+ * A muted "applied" after the description of a commit whose change the checked-out branch already
+ * has. It is a word rather than a colour, and its tooltip names the commit with the same change,
+ * which a click selects as the containing-refs chips select theirs.
+ */
+export function AppliedMark({ equivalent }: { equivalent: SubjectedCommit | null }) {
+  const title = appliedTitle(equivalent);
+  const look =
+    "ml-1 h-4 shrink-0 rounded-sm border border-line-soft px-1 text-xs leading-3.5 text-muted";
+  if (equivalent === null) {
+    return (
+      <span data-applied-as="" title={title} aria-label={title} class={look}>
+        {window.l10n.appliedMark}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      data-applied-as={equivalent.hash}
+      title={title}
+      aria-label={title}
+      class={`${look} cursor-pointer hover:bg-btn-hover`}
+      onClick={(event) => {
+        // The row would select itself otherwise.
+        event.stopPropagation();
+        revealCommit(equivalent.hash);
+      }}
+    >
+      {window.l10n.appliedMark}
+    </button>
+  );
+}
+
 /** Every cell is one 24px line, which is the grid the graph is drawn on. */
 const LINE = "h-6 truncate leading-6";
 const CELL = `${LINE} px-1`;
@@ -247,6 +289,7 @@ export function CommitRow({
   nearestBranch,
   push,
   conflicts,
+  applied,
   expanded,
   dayStart = false,
   onSelect,
@@ -380,7 +423,16 @@ export function CommitRow({
       draggable={uncommitted || !dragAndDropOn() ? undefined : true}
       aria-selected={uncommitted ? expanded : selected}
       aria-expanded={expanded}
-      aria-label={commitRowLabel({ commit, message, isHead, headBranch, push, conflicts, nearest })}
+      aria-label={commitRowLabel({
+        commit,
+        message,
+        isHead,
+        headBranch,
+        push,
+        conflicts,
+        applied: applied !== undefined,
+        nearest
+      })}
       title={uncommitted ? l10n.viewWorkingTreeChanges : l10n.selectCommitsHint}
       onFocus={(event) => {
         if (event.target === event.currentTarget) {
@@ -439,6 +491,7 @@ export function CommitRow({
           >
             {isHead || uncommitted ? <b>{message}</b> : message}
           </span>
+          {applied !== undefined && <AppliedMark equivalent={applied} />}
           {nearest !== undefined && (
             // Takes the room the message leaves, so the controls after it stay at the row's end.
             <span

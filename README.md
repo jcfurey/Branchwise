@@ -48,6 +48,7 @@ basics.
 **Focus**
 
 - Branch focus dims unrelated history, without a checkout
+- A focused branch's commits that yours already has under another ID, as after a cherry-pick, are marked **applied**
 - Hover a branch label to preview its history; unlabelled commits name their nearest branch
 - Hide bot branches such as `dependabot/*` and `renovate/*` by name pattern
 - Hide remotes one at a time; [view choices](docs/preferences.md) are kept per repository
@@ -104,6 +105,7 @@ All settings start with `branchwise.`.
 | `initialLoadCommits`          | `300`              | Commits first loaded for a repository or branch                          |
 | `issueLinks`                  | `[]`               | Link issue keys, such as Jira or Linear ones, in commit messages         |
 | `loadMoreCommits`             | `100`              | Commits added by **Load Older Commits**                                  |
+| `markAppliedCommits`          | `true`             | Mark a focused branch's commits whose change the checked-out branch has  |
 | `maxDepthOfRepoSearch`        | `0`                | Folder depth searched for repositories                                   |
 | `nestedRepoSearchDepth`       | `3`                | Folder depth searched inside each repository for nested ones             |
 | `overviewMarkers`             | `true`             | Show the strip of HEAD, branch, tag and selection marks beside the graph |
