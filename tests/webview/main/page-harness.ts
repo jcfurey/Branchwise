@@ -25,6 +25,7 @@ export const PAGE_CONFIG: WebviewConfig = {
   graphStyle: "angular",
   graphColours: ["#0085d9"],
   initialLoadCommits: 123,
+  issueLinks: [],
   loadMoreCommits: 50,
   autoCenterCommitDetailsView: false,
   conflictForecast: "localAndRemote",

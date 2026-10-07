@@ -21,6 +21,7 @@ const settings: WebviewConfig = {
   graphColours: ["#123456"],
   graphStyle: "angular",
   initialLoadCommits: 50,
+  issueLinks: [],
   loadMoreCommits: 25,
   locale: "de",
   showCurrentBranchByDefault: true,
@@ -44,7 +45,7 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the eleven display settings", () => {
+  it("holds exactly the twelve display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
       | "conflictForecast"
@@ -53,12 +54,13 @@ describe("WebviewConfig", () => {
       | "graphColours"
       | "graphStyle"
       | "initialLoadCommits"
+      | "issueLinks"
       | "loadMoreCommits"
       | "locale"
       | "showCurrentBranchByDefault"
       | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(11);
+    expect(Object.keys(settings)).toHaveLength(12);
   });
 });
 

@@ -440,6 +440,7 @@ it("delivers every notification in the form the webview accepts", async () => {
     graphColours: ["#0085d9"],
     graphStyle: "rounded",
     initialLoadCommits: 300,
+    issueLinks: [],
     loadMoreCommits: 100,
     locale: "en",
     showCurrentBranchByDefault: false,

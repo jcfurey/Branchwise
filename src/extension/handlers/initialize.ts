@@ -14,6 +14,7 @@ export function webviewConfig(): WebviewConfig {
     graphColours: extConfig.graphColours(),
     graphStyle: extConfig.graphStyle(),
     initialLoadCommits: extConfig.initialLoadCommits(),
+    issueLinks: extConfig.issueLinks(),
     loadMoreCommits: extConfig.loadMoreCommits(),
     // Dates are formatted for VS Code's display language.
     locale: vscode.env.language,

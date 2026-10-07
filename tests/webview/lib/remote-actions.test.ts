@@ -16,6 +16,7 @@ import { dialog, selectedRepo } from "@/webview/lib/stores";
 const mocks = vi.hoisted(() => {
   vi.stubGlobal("viewState", {
     initialLoadCommits: 300,
+    issueLinks: [],
     lastActiveRepo: null,
     repos: {},
     showCurrentBranchByDefault: false

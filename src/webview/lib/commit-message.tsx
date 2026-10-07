@@ -1,6 +1,7 @@
 import type { ComponentChildren } from "preact";
 
 import type { RemoteDetails, RepositoryState } from "@/backend/types";
+import { type CustomLink, useCustomLinks } from "@/webview/lib/custom-links";
 
 /** Where a remote's issues and merge requests live, for the hosts whose links are known. */
 export type IssueTracker = { kind: "github" | "gitlab"; host: string; base: string };
@@ -143,53 +144,97 @@ const RULES: Rule[] = [
   }
 ];
 
-/** `text` with its inline code, links, emphasis and issue references made into elements. */
-function inline(text: string, tracker: IssueTracker | null): ComponentChildren[] {
+/**
+ * `text` with its inline code, links, emphasis and issue references made into elements, and
+ * `custom` links, given by their place in `text` and earliest first, made into links. Whatever
+ * starts first wins, a built-in form on a tie, and anything it covers stays inside it as text,
+ * so links never nest.
+ */
+function inline(
+  text: string,
+  tracker: IssueTracker | null,
+  custom: readonly CustomLink[] = []
+): ComponentChildren[] {
   const out: ComponentChildren[] = [];
   let at = 0;
+  let next = 0;
   while (at < text.length) {
-    let best: { match: RegExpExecArray; node: ComponentChildren } | null = null;
+    let best: { index: number; length: number; node: ComponentChildren } | null = null;
     for (const rule of RULES) {
       rule.pattern.lastIndex = at;
       // Later matches of a rule whose earliest one renders nothing are still worth trying.
       for (let match = rule.pattern.exec(text); match !== null; match = rule.pattern.exec(text)) {
-        if (best !== null && match.index >= best.match.index) {
+        if (best !== null && match.index >= best.index) {
           break;
         }
         const node = rule.render(match, tracker);
         if (node !== null) {
-          best = { match, node };
+          best = { index: match.index, length: match[0].length, node };
           break;
         }
       }
+    }
+    // Custom links that start inside what came before are covered by it.
+    while (next < custom.length && custom[next]!.start < at) {
+      next++;
+    }
+    const link = custom[next];
+    if (link !== undefined && (best === null || link.start < best.index)) {
+      const label = text.slice(link.start, link.end);
+      best = {
+        index: link.start,
+        length: label.length,
+        node: <Link href={link.url}>{label}</Link>
+      };
     }
     if (best === null) {
       out.push(text.slice(at));
       break;
     }
-    if (best.match.index > at) {
-      out.push(text.slice(at, best.match.index));
+    if (best.index > at) {
+      out.push(text.slice(at, best.index));
     }
     out.push(best.node);
-    at = best.match.index + best.match[0].length;
+    at = best.index + best.length;
   }
   return out;
+}
+
+/** The custom links that lie wholly inside `text`, which starts at `offset` of the message. */
+function linksWithin(custom: readonly CustomLink[], offset: number, text: string) {
+  const end = offset + text.length;
+  return custom
+    .filter((link) => link.start >= offset && link.end <= end)
+    .map((link) => ({ start: link.start - offset, end: link.end - offset, url: link.url }));
 }
 
 /**
  * A commit message as the details show it: line breaks kept, fenced code blocks set apart,
  * inline code, `**bold**` and `*italic*` styled, and web addresses and issue or merge request
- * references, such as `#12`, `GH-12`, `!12` or `owner/repo#12`, linked to `tracker`. Nothing in
- * the message is read as markup.
+ * references, such as `#12`, `GH-12`, `!12` or `owner/repo#12`, linked to `tracker`. References
+ * that the `branchwise.issueLinks` patterns match are linked too, once they have been found, but
+ * never inside code. Nothing in the message is read as markup.
  */
 export function CommitMessage({ body, tracker }: { body: string; tracker: IssueTracker | null }) {
+  const custom = useCustomLinks(body);
   const blocks: ComponentChildren[] = [];
   const lines = body.split("\n");
+  // Where each line starts in `body`, so custom links can be placed in the paragraph holding them.
+  const starts: number[] = [];
+  let offset = 0;
+  for (const line of lines) {
+    starts.push(offset);
+    offset += line.length + 1;
+  }
   let text: string[] = [];
+  let first = 0;
   const flush = () => {
     if (text.length > 0) {
+      const paragraph = text.join("\n");
       blocks.push(
-        <p class="break-words whitespace-pre-wrap">{inline(text.join("\n"), tracker)}</p>
+        <p class="break-words whitespace-pre-wrap">
+          {inline(paragraph, tracker, linksWithin(custom, starts[first]!, paragraph))}
+        </p>
       );
       text = [];
     }
@@ -200,6 +245,9 @@ export function CommitMessage({ body, tracker }: { body: string; tracker: IssueT
       ? lines.findIndex((line, at) => at > index && line.trimStart().startsWith(fence[1]!))
       : -1;
     if (fence === null || end < 0) {
+      if (text.length === 0) {
+        first = index;
+      }
       text.push(lines[index]!);
       continue;
     }

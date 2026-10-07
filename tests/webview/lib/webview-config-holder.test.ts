@@ -13,6 +13,7 @@ const settings = (overrides: Partial<WebviewConfig> = {}): WebviewConfig => ({
   graphColours: ["#123456"],
   graphStyle: "angular",
   initialLoadCommits: 50,
+  issueLinks: [],
   loadMoreCommits: 25,
   locale: "fr",
   showCurrentBranchByDefault: true,

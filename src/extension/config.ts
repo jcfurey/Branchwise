@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import * as vscode from "vscode";
 
 import type { ConflictForecastScope, DateType } from "@/backend/types";
+import { readIssueLinks } from "@/extension/issue-links";
 import type { DateFormat, GraphStyle } from "@/types";
 
 type TabIconColourTheme = "colour" | "grey";
@@ -149,6 +150,8 @@ export const extConfig = {
   graphColours,
   graphStyle: () => setting<GraphStyle>("graphStyle", "rounded"),
   initialLoadCommits: () => wholeNumberSetting("initialLoadCommits", 1, 300),
+  /** The valid entries of `branchwise.issueLinks`; the others are reported in the log. */
+  issueLinks: () => readIssueLinks(setting<unknown>("issueLinks", [])),
   loadMoreCommits: () => wholeNumberSetting("loadMoreCommits", 1, 100),
   maxDepthOfRepoSearch: () => wholeNumberSetting("maxDepthOfRepoSearch", 0, 0),
   nestedRepoSearchDepth: () => wholeNumberSetting("nestedRepoSearchDepth", 0, 3),

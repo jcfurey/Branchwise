@@ -33,7 +33,9 @@ export function createWebviewHtml(ctx: vscode.ExtensionContext, webview: vscode.
     `style-src ${source} 'unsafe-inline'`,
     `script-src ${source} 'nonce-${nonce}'`,
     "img-src data:",
-    `connect-src ${source}`
+    `connect-src ${source}`,
+    // The worker that matches custom issue-link patterns away from the page (custom-links.ts).
+    "worker-src blob:"
   ]
     .map((directive) => `${directive};`)
     .join(" ");

@@ -235,6 +235,7 @@ describe("settings passed through", () => {
       "graphColours",
       "graphStyle",
       "initialLoadCommits",
+      "issueLinks",
       "loadMoreCommits",
       "maxDepthOfRepoSearch",
       "nestedRepoSearchDepth",

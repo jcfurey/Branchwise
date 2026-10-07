@@ -274,6 +274,32 @@
           "default": 300,
           "minimum": 1
         },
+        "branchwise.issueLinks": {
+          "description": "%config.issueLinks%",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": [
+              "pattern",
+              "url"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "pattern": {
+                "description": "%config.issueLinks.pattern%",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "url": {
+                "description": "%config.issueLinks.url%",
+                "type": "string",
+                "pattern": "^[hH][tT][tT][pP][sS]?://[^/\\s]"
+              }
+            }
+          }
+        },
         "branchwise.loadMoreCommits": {
           "description": "%config.loadMoreCommits%",
           "type": "integer",

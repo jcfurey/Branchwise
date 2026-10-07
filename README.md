@@ -95,6 +95,7 @@ All settings start with `branchwise.`.
 | `graphColours`                | 12 colours         | Colours of the graph's lanes, in order                                   |
 | `graphStyle`                  | `"rounded"`        | Lines that change lanes: `"rounded"` or `"angular"`                      |
 | `initialLoadCommits`          | `300`              | Commits first loaded for a repository or branch                          |
+| `issueLinks`                  | `[]`               | Link issue keys, such as Jira or Linear ones, in commit messages         |
 | `loadMoreCommits`             | `100`              | Commits added by **Load Older Commits**                                  |
 | `maxDepthOfRepoSearch`        | `0`                | Folder depth searched for repositories                                   |
 | `nestedRepoSearchDepth`       | `3`                | Folder depth searched inside each repository for nested ones             |
