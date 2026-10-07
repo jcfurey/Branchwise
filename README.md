@@ -31,6 +31,7 @@ basics.
 
 - One graph of branches, tags, remotes, stashes and uncommitted changes
 - Commit details with formatted messages, linked issues, a file tree and per-file diffs
+- See which branches and tags contain a commit, and the first release it shipped in
 - Search by message, ID, author, committer, branch, tag, date or path, or for the commits that added or removed a piece of text
 - A legend of every graph symbol, and one-click ways to widen a search that finds nothing
 - Go to any branch, tag or commit from the keyboard, or open it on GitHub or GitLab

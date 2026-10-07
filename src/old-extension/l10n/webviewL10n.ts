@@ -280,6 +280,18 @@ export function getWebviewLocalizedStrings() {
     detailCommitter: vscode.l10n.t("Committer: {0}"),
     detailSignature: vscode.l10n.t("Signature: {0}"),
 
+    // The branches and tags that contain the commit, loaded after the rest of the details.
+    // {0} is a tag, shown as a button that selects its commit.
+    checkingRefs: vscode.l10n.t("Checking…"),
+    detailContainedIn: vscode.l10n.t("Contained in:"),
+    moreBranches: vscode.l10n.t("and {0} more"),
+    firstReleasedIn: vscode.l10n.t("First released in {0}"),
+    laterTag: vscode.l10n.t("also in {0} later tag"),
+    laterTags: vscode.l10n.t("also in {0} later tags"),
+    followsTag: vscode.l10n.t("Follows {0}"),
+    focusBranchChip: vscode.l10n.t("Focus {0} in the graph"),
+    selectTaggedCommit: vscode.l10n.t("Select the commit tagged {0}"),
+
     // Commit signatures: the mark on a signed commit's row, then the verdicts in its details.
     // {0} in signatureGoodBy and signatureSigner is the signer's name, or an SSH principal such
     // as an email address. "gpg.ssh.allowedSignersFile" is a Git setting and stays as it is.

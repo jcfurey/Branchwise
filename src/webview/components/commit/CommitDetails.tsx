@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import type { GitCommitDetails } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
+import { ContainingRefs } from "@/webview/components/commit/ContainingRefs";
 import { FileTree } from "@/webview/components/commit/FileTree";
 import { SignatureLine } from "@/webview/components/commit/SignatureBadge";
 import { onCheckedOutLine, openEditMessage } from "@/webview/components/repository/EditCommit";
@@ -248,6 +249,7 @@ export function CommitDetails({ details }: { details: GitCommitDetails | null })
           </Fact>
           <Fact template={l10n.detailDate}>{getFullDate(details.date)}</Fact>
           <Fact template={l10n.detailCommitter}>{details.committer}</Fact>
+          <ContainingRefs hash={details.hash} />
           <SignatureLine hash={details.hash} />
           <CommitMessage body={details.body} tracker={repositoryTracker(repositoryState.value)} />
         </div>

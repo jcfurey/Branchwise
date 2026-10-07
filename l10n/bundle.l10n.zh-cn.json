@@ -890,5 +890,15 @@
   "Rebase {0} onto {1}": "将 {0} 变基到 {1}",
   "Check out {0} first: a cherry-pick applies to the checked-out branch": "请先检出 {0}：拣选只作用于已检出的分支",
   "Check out {0} to merge {1} into it, or check out {1} to rebase it onto {0}": "检出 {0} 即可将 {1} 合并到其中，或检出 {1} 即可将其变基到 {0}",
-  "Check out {0} to rebase it onto {1}": "检出 {0} 即可将其变基到 {1}"
+  "Check out {0} to rebase it onto {1}": "检出 {0} 即可将其变基到 {1}",
+  "Checking…": "正在检查…",
+  "Contained in:": "包含于：",
+  "and {0} more": "及另外 {0} 个",
+  "First released in {0}": "首次发布于 {0}",
+  "also in {0} later tag": "还包含在之后的 {0} 个标签中",
+  "also in {0} later tags": "还包含在之后的 {0} 个标签中",
+  "Follows {0}": "位于 {0} 之后",
+  "Focus {0} in the graph": "在提交图中聚焦 {0}",
+  "Select the commit tagged {0}": "选择标签 {0} 所在的提交",
+  "{0} is not a full commit ID.": "{0} 不是完整的提交 ID。"
 }
