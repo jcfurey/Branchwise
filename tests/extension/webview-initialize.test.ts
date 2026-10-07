@@ -47,6 +47,7 @@ const DEFAULT_CONFIG = {
   showChangesColumn: false,
   showCurrentBranchByDefault: false,
   showNearestBranch: true,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 

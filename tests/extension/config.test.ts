@@ -40,6 +40,7 @@ it("falls back to the defaults declared in package.json", () => {
     showNearestBranch: extConfig.showNearestBranch(),
     showSignatures: extConfig.showSignatures(),
     showUncommittedChanges: extConfig.showUncommittedChanges(),
+    showWorktrees: extConfig.showWorktrees(),
     singleKeyShortcuts: extConfig.singleKeyShortcuts(),
     tabIconColourTheme: extConfig.tabIconColourTheme()
   };

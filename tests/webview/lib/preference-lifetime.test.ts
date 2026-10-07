@@ -59,6 +59,7 @@ async function freshPanel() {
     showChangesColumn: false,
     showCurrentBranchByDefault: false,
     showNearestBranch: true,
+    showWorktrees: true,
     singleKeyShortcuts: true
   });
   function branches(names = ["main", "topic"], head: string | null = "main") {

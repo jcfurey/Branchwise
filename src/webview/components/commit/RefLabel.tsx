@@ -3,6 +3,7 @@ import { useMemo } from "preact/hooks";
 
 import type { ConflictForecastEntry, GitRef } from "@/backend/types";
 import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
+import { WorktreeBadge } from "@/webview/components/commit/WorktreeMarker";
 import { BranchIcon, ConflictIcon, RemoteIcon, TagIcon } from "@/webview/components/ui/Icons";
 import { openContextMenu } from "@/webview/lib/actions";
 import { refPreviewTarget, usePreviewHandlers } from "@/webview/lib/branch-preview";
@@ -10,6 +11,7 @@ import { DROP_TARGET_CLASS, refDragAttributes } from "@/webview/lib/drag-drop";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
 import { repositoryState } from "@/webview/lib/repository-actions";
 import { activeSource } from "@/webview/lib/stores";
+import { branchWorktree } from "@/webview/lib/worktrees";
 import { getRelativeDate } from "@/webview/utils/date";
 
 /** What the repository state says about a local branch: its tracking and where it is checked out. */
@@ -92,6 +94,8 @@ export function RefLabel({
   // Every label of the ref shares the key, so all of them light up while its menu is open.
   const menuOpen = useMemo(() => computed(() => activeSource.value === source), [source]).value;
   const { branch, worktree } = localBranchFacts(gitRef);
+  // Another worktree's mark, while the setting shows them.
+  const held = gitRef.type === "head" ? branchWorktree(gitRef.name) : undefined;
   const preview = usePreviewHandlers(refPreviewTarget(gitRef));
   const l10n = window.l10n;
 
@@ -146,7 +150,11 @@ export function RefLabel({
       {tracking && (
         <span class="ml-1 whitespace-nowrap">{`↑${branch.ahead} ↓${branch.behind}`}</span>
       )}
-      {worktree !== undefined && !active && <span class="ml-1">↗</span>}
+      {held !== undefined ? (
+        <WorktreeBadge marker={held} />
+      ) : (
+        worktree !== undefined && !active && <span class="ml-1">↗</span>
+      )}
       {conflict !== undefined && conflict.files.length > 0 && <ConflictBadge entry={conflict} />}
       {remotes.length > 0 && (
         <span

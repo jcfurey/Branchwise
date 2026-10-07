@@ -19,7 +19,8 @@ import {
   RevealIcon,
   SearchIcon,
   StashIcon,
-  TagIcon
+  TagIcon,
+  WorktreeIcon
 } from "@/webview/components/ui/Icons";
 
 type Named = FunctionComponent<Record<string, string>>;
@@ -40,7 +41,8 @@ const NAMED = {
   RevealIcon,
   SearchIcon,
   StashIcon,
-  TagIcon
+  TagIcon,
+  WorktreeIcon
 } as Record<string, Named>;
 
 let host: HTMLDivElement;

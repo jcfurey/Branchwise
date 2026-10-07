@@ -42,6 +42,7 @@ const expectedSettings: WebviewConfig = {
   showChangesColumn: false,
   showCurrentBranchByDefault: false,
   showNearestBranch: true,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 

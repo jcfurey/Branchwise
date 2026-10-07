@@ -32,6 +32,7 @@ const settings: WebviewConfig = {
   showChangesColumn: false,
   showCurrentBranchByDefault: true,
   showNearestBranch: true,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 
@@ -52,7 +53,7 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the nineteen display settings", () => {
+  it("holds exactly the twenty display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
       | "branchHoverPreview"
@@ -72,9 +73,10 @@ describe("WebviewConfig", () => {
       | "showChangesColumn"
       | "showCurrentBranchByDefault"
       | "showNearestBranch"
+      | "showWorktrees"
       | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(19);
+    expect(Object.keys(settings)).toHaveLength(20);
   });
 });
 

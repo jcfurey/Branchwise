@@ -32,6 +32,14 @@ export type WorktreeDetails = {
   locked: boolean;
   prunable: boolean;
 };
+/**
+ * What a check of another worktree found: uncommitted changes to tracked files or none, a folder
+ * that is gone, or no answer, because the check timed out, failed or was over the limit.
+ */
+export type WorktreeChange = {
+  path: string;
+  state: "dirty" | "clean" | "missing" | "unchecked";
+};
 /** Values of the `branchwise.conflictForecast` setting: which branches the forecast tries. */
 export type ConflictForecastScope = "local" | "localAndRemote" | "off";
 /**
@@ -262,6 +270,8 @@ export type RepositoryQuery =
   /** The change counts of the commits with these full IDs. */
   | { kind: "commitStats"; hashes: string[] }
   | { kind: "pushStatus" }
+  /** Whether each worktree other than the one shown has uncommitted changes. */
+  | { kind: "worktreeChanges" }
   | {
       kind: "conflictForecast";
       scope: ConflictForecastScope;
@@ -300,6 +310,7 @@ export type RepositoryQueryData =
   /** By commit ID. A commit Git does not have is left out. */
   | { kind: "commitStats"; stats: Record<string, CommitStats> }
   | { kind: "pushStatus"; unpushed: string[]; unpulled: string[] }
+  | { kind: "worktreeChanges"; worktrees: WorktreeChange[] }
   | { kind: "conflictForecast"; conflicts: ConflictForecastEntry[] }
   | { kind: "replayForecast"; forecast: ReplayForecast }
   | { kind: "state"; state: RepositoryState }
@@ -342,6 +353,8 @@ export type RepositoryAction =
   | { kind: "addWorktree"; path: string; branch: string; newBranch: boolean; startPoint: string }
   | { kind: "removeWorktree"; path: string; expectedHead: string }
   | { kind: "openWorktree"; path: string }
+  /** Show a worktree's folder in the system's file manager. */
+  | { kind: "revealWorktree"; path: string }
   | { kind: "undoSafetyNet"; id: string };
 import type { GitRef, SignatureCheck } from "./git.types";
 import type { HistoryAction, HistoryQuery, HistoryQueryData, StagedPlan } from "./history.types";

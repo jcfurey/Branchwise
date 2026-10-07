@@ -69,6 +69,11 @@ commits the checked-out branch lacks. Turn it off to leave the marks out and sta
 **Find Equivalent Commit** stays in the commit menu. See
 [commits the checked-out branch already has](git-actions.md#commits-the-checked-out-branch-already-has).
 
+`branchwise.showWorktrees` (default `true`) marks the commits your other worktrees have checked
+out, with a dot for those with uncommitted changes. The dots come from a quick `git status` in up
+to 20 worktrees, at most 3 seconds each; turning the setting off skips them. See
+[worktrees in the graph](git-actions.md#worktrees-in-the-graph).
+
 `branchwise.dragAndDrop` (default `true`) lets commit rows and local branches be dragged onto
 branch labels in the graph and the Branches pane to cherry-pick, merge or rebase, each after a
 confirmation. Turn it off if you drag by accident; every action stays in the menus. See

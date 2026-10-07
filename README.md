@@ -38,6 +38,7 @@ basics.
 - A legend of every graph symbol, and one-click ways to widen a search that finds nothing
 - Go to any branch, tag or commit from the keyboard, or open it on GitHub or GitLab
 - Dots and rings mark unpushed and unpulled commits
+- See where your other worktrees are checked out, and which have uncommitted changes
 - A faint line where each day's commits begin, and the topmost day named as you scroll
 - An overview strip beside the scrollbar marks HEAD, branches, tags and the selection across the whole history; click it to jump there
 - A mark on each branch that would conflict if merged into yours, naming the files
@@ -114,6 +115,7 @@ All settings start with `branchwise.`.
 | `showNearestBranch`           | `true`             | Name the nearest branch after commits without a branch label             |
 | `showSignatures`              | `true`             | Mark signed commits in the graph                                         |
 | `showUncommittedChanges`      | `true`             | Show the uncommitted changes row                                         |
+| `showWorktrees`               | `true`             | Mark the commits other worktrees have checked out                        |
 | `singleKeyShortcuts`          | `true`             | Let single keys act on the focused commit row                            |
 | `tabIconColourTheme`          | `"colour"`         | Graph tab icon in `"colour"` or `"grey"`                                 |
 

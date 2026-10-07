@@ -37,6 +37,7 @@ export const PAGE_CONFIG: WebviewConfig = {
   showChangesColumn: false,
   showCurrentBranchByDefault: false,
   showNearestBranch: true,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 

@@ -1035,6 +1035,61 @@ suite("Branchwise workflow UI", function () {
     assert.equal(fs.existsSync(worktree), false);
   });
 
+  test("marks the branch another worktree has checked out, with a dot for its changes", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "worktree base", dir);
+    // Beside the main worktree, so the tooltip names it relative to it, and with a space.
+    const linked = dir + "-feature x";
+    dirs.push(linked);
+    git(["worktree", "add", "-b", "ui-feature", linked], dir);
+    commit("g", "worktree feature", linked);
+    fs.writeFileSync(path.join(linked, "f"), "changed in the worktree");
+    await openRepo(dir);
+    const badge = () =>
+      graph.evaluate(`(() => {
+        const label = [...document.querySelectorAll("tr[data-commit-hash] [data-ref]")].find(
+          (span) => span.title.split("\\n")[0] === "ui-feature"
+        );
+        const mark = label?.querySelector("[data-worktree]");
+        return mark
+          ? { path: mark.dataset.worktree, dirty: mark.hasAttribute("data-worktree-dirty"), title: mark.title }
+          : null;
+      })()`);
+    await until(async () => (await badge())?.dirty === true, "worktree badge with a dot");
+    assert.deepEqual(await badge(), {
+      path: repoKey(linked),
+      dirty: true,
+      title: `Worktree: ../${path.basename(linked)}\nui-feature\nHas uncommitted changes`
+    });
+    // The graph's own worktree is not marked; its changes have their own row.
+    assert.equal(await graph.evaluate('document.querySelectorAll("[data-worktree]").length'), 1);
+
+    await contextRef("ui-feature");
+    const entries = await until(
+      () =>
+        graph.evaluate(
+          `(() => { const items = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent.trim()); return items.length > 0 && items; })()`
+        ),
+      "menu of ui-feature"
+    );
+    assert.ok(entries.includes("Open Worktree in New Window"), entries.join(", "));
+    // Named as VS Code names it on the platform the window runs on.
+    const reveal =
+      process.platform === "win32"
+        ? "Reveal in File Explorer"
+        : process.platform === "darwin"
+          ? "Reveal in Finder"
+          : "Open Containing Folder";
+    assert.ok(entries.includes(reveal), entries.join(", "));
+    await keypress("Escape");
+
+    // Once the change is undone, a refresh takes the dot away and keeps the badge.
+    git(["checkout", "--", "f"], linked);
+    await button("Refresh");
+    await until(async () => (await badge())?.dirty === false, "worktree badge without a dot");
+  });
+
   test("never confirms a destructive dialog while Enter is held", async () => {
     const dir = directory();
     init(dir);

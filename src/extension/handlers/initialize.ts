@@ -26,6 +26,7 @@ export function webviewConfig(): WebviewConfig {
     showChangesColumn: extConfig.showChangesColumn(),
     showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
     showNearestBranch: extConfig.showNearestBranch(),
+    showWorktrees: extConfig.showWorktrees(),
     singleKeyShortcuts: extConfig.singleKeyShortcuts()
   };
 }

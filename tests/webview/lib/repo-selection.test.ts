@@ -28,6 +28,7 @@ beforeAll(() => {
     showChangesColumn: false,
     showCurrentBranchByDefault: false,
     showNearestBranch: true,
+    showWorktrees: true,
     singleKeyShortcuts: true
   });
   initRpcHandler(new Map());

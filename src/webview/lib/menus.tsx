@@ -38,11 +38,13 @@ import {
   type ReviewRequest,
   tagPage
 } from "@/webview/lib/host-links";
+import { revealFolderTitle } from "@/webview/lib/platform";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
-import { repositoryState } from "@/webview/lib/repository-actions";
+import { repositoryState, sendRepositoryAction } from "@/webview/lib/repository-actions";
 import type { ShortcutId } from "@/webview/lib/shortcuts";
 import { commitHead } from "@/webview/lib/stores";
 import { patternLike } from "@/webview/lib/stores/hidden-branches.store";
+import { branchWorktree, type WorktreeMarker } from "@/webview/lib/worktrees";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
 
@@ -188,6 +190,34 @@ function hideLikeEntry(gitRef: GitRef): Entry {
     title: more(window.l10n.hideBranchesLikeThis),
     onClick: () => openHiddenBranches(patternLike(gitRef))
   };
+}
+
+// Worktree menu
+
+/** The key of a worktree's own label, as for a worktree on a detached HEAD. */
+export function worktreeMenuSource(marker: WorktreeMarker) {
+  return "worktree:" + marker.path;
+}
+
+/**
+ * Open another worktree in a new window, or show its folder in the file manager. A worktree whose
+ * folder is gone has nothing to open, so it gets neither.
+ */
+export function worktreeEntries(marker: WorktreeMarker): Array<Entry> {
+  if (marker.change === "missing") {
+    return [];
+  }
+  const { path } = marker;
+  return [
+    {
+      title: window.l10n.openWorktreeWindow,
+      onClick: () => sendRepositoryAction({ kind: "openWorktree", path })
+    },
+    {
+      title: revealFolderTitle(),
+      onClick: () => sendRepositoryAction({ kind: "revealWorktree", path })
+    }
+  ];
 }
 
 // Commit menu
@@ -527,12 +557,18 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean) {
         { title: more(l10n.deleteBranch), onClick: () => deleteBranch(gitRef) },
         { title: more(l10n.merge), onClick: () => mergeBranch(gitRef), shortcut: "merge" }
       ];
-  return grouped([focusEntry(name), compareEntry(gitRef.hash)], tools, [
-    ...hostEntry(l10n.openBranchOnHost, branchPage(repositoryState.peek(), name)),
-    ...localReviewEntry(name),
-    copyBranchEntry(name),
-    hideLikeEntry(gitRef)
-  ]);
+  const held = branchWorktree(name);
+  return grouped(
+    [focusEntry(name), compareEntry(gitRef.hash)],
+    tools,
+    held === undefined ? [] : worktreeEntries(held),
+    [
+      ...hostEntry(l10n.openBranchOnHost, branchPage(repositoryState.peek(), name)),
+      ...localReviewEntry(name),
+      copyBranchEntry(name),
+      hideLikeEntry(gitRef)
+    ]
+  );
 }
 
 function remoteBranchMenu(gitRef: GitRef) {

@@ -18,6 +18,7 @@ import {
 import { sendRemoteAction } from "@/webview/lib/remote-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
+import { requestWorktreeChanges } from "@/webview/lib/worktrees";
 import type { DialogState } from "@/webview/types";
 
 // Every `repositoryQuery` the page makes starts and ends here. There are three kinds of read:
@@ -230,6 +231,8 @@ function answerState(message: Answer) {
     repositoryStateError.value = status;
     repositoryState.value = data?.kind === "state" ? data.state : null;
   });
+  // Changes in other worktrees are checked apart, so a slow folder never holds up the state.
+  requestWorktreeChanges(repositoryState.peek());
 }
 
 function answerDialog(read: DialogRead, message: Answer) {

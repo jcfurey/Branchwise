@@ -24,6 +24,7 @@ const settings = (overrides: Partial<WebviewConfig> = {}): WebviewConfig => ({
   showChangesColumn: false,
   showCurrentBranchByDefault: true,
   showNearestBranch: true,
+  showWorktrees: true,
   singleKeyShortcuts: true,
   ...overrides
 });

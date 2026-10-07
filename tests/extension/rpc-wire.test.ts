@@ -114,6 +114,7 @@ test("hands the page its strings and settings", async () => {
     showChangesColumn: false,
     showCurrentBranchByDefault: false,
     showNearestBranch: true,
+    showWorktrees: true,
     singleKeyShortcuts: true
   });
 });

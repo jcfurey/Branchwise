@@ -22,6 +22,7 @@ const first: WebviewConfig = {
   showChangesColumn: false,
   showCurrentBranchByDefault: true,
   showNearestBranch: true,
+  showWorktrees: true,
   singleKeyShortcuts: true
 };
 

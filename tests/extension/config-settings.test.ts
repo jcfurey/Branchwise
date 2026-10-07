@@ -224,7 +224,7 @@ describe("settings passed through", () => {
     expect(sections).toEqual(["branchwise", "branchwise"]);
   });
 
-  test("offers exactly the twenty-five getters", () => {
+  test("offers exactly the twenty-six getters", () => {
     expect(Object.keys(extConfig).toSorted()).toEqual([
       "autoCenterCommitDetailsView",
       "branchHoverPreview",
@@ -249,6 +249,7 @@ describe("settings passed through", () => {
       "showNearestBranch",
       "showSignatures",
       "showUncommittedChanges",
+      "showWorktrees",
       "singleKeyShortcuts",
       "tabIconColourTheme"
     ]);

@@ -66,6 +66,11 @@ export type WebviewConfig = Readonly<{
   showCurrentBranchByDefault: boolean;
   /** After a commit without a branch label of its own, name the nearest branch containing it. */
   showNearestBranch: boolean;
+  /**
+   * Mark the commits other worktrees have checked out, with a dot for those with uncommitted
+   * changes, which the page then asks the extension to check.
+   */
+  showWorktrees: boolean;
   /** Let single keys, such as `b` for Create Branch, act on the focused commit row. */
   singleKeyShortcuts: boolean;
 }>;
