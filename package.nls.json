@@ -10,6 +10,7 @@
   "config.dateFormat.dateTime": "Show the day and a 24-hour time (for example: Mar 15, 2024 14:30)",
   "config.dateFormat.dateOnly": "Show the day only (for example: Mar 15, 2024)",
   "config.dateFormat.relative": "Show how long ago each commit was made (for example: 5 minutes ago); the tooltip keeps the exact day and time",
+  "config.dateSeparators": "Draw a faint line in the graph where one day's commits end and the previous day's begin, and, while the graph is scrolled, show the day of the topmost commit in a small label near the top. Days follow the date type setting, in your local time zone.",
   "config.dateType": "Specifies the date type to be displayed throughout Branchwise.",
   "config.dateType.authorDate": "Show each commit's author date, when its changes were first recorded, in the date column and the details panel",
   "config.dateType.commitDate": "Show each commit's committer date instead, when the commit itself was last made; rebasing, amending or cherry-picking a commit changes it",

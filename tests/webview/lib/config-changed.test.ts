@@ -24,6 +24,7 @@ const changed: WebviewConfig = {
   autoCenterCommitDetailsView: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: ["#ff0000"],
   graphStyle: "angular",
