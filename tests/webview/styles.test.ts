@@ -206,6 +206,12 @@ describe("styles.css", () => {
     const cap = ruleOf(forced, "[data-ref] > svg:first-child");
     expect(cap).toContain("background-color: CanvasText;");
     expect(cap).toContain("color: Canvas;");
+    const splitter = ruleOf(forced, "[data-details-splitter]");
+    expect(splitter).toContain("forced-color-adjust: none;");
+    expect(splitter).toContain("background-color: CanvasText;");
+    expect(
+      ruleOf(forced, "[data-details-splitter]:hover, [data-details-splitter]:focus")
+    ).toContain("background-color: Highlight;");
   });
 
   it("fades the scroll shade in over the first pixel of scrolling", () => {

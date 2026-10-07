@@ -13,6 +13,7 @@ import { vscodeApi } from "@tests/webview/setup";
  */
 const settings: WebviewConfig = {
   autoCenterCommitDetailsView: true,
+  commitDetailsPosition: "inline",
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   dragAndDrop: true,

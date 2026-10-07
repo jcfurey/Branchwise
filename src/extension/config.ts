@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import type { ConflictForecastScope, DateType } from "@/backend/types";
 import { readIssueLinks } from "@/extension/issue-links";
-import type { DateFormat, GraphStyle } from "@/types";
+import type { CommitDetailsPosition, DateFormat, GraphStyle } from "@/types";
 
 type TabIconColourTheme = "colour" | "grey";
 
@@ -140,6 +140,7 @@ function graphColours(): string[] {
  */
 export const extConfig = {
   autoCenterCommitDetailsView: () => setting<boolean>("autoCenterCommitDetailsView", true),
+  commitDetailsPosition: () => setting<CommitDetailsPosition>("commitDetailsPosition", "inline"),
   conflictForecast: () => setting<ConflictForecastScope>("conflictForecast", "localAndRemote"),
   dateFormat: () => setting<DateFormat>("dateFormat", "Date & Time"),
   dateType: () => setting<DateType>("dateType", "Author Date"),

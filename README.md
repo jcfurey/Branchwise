@@ -31,6 +31,7 @@ basics.
 
 - One graph of branches, tags, remotes, stashes and uncommitted changes
 - Commit details with formatted messages, linked issues, a file tree and per-file diffs
+- Open details under the commit, or in a resizable pane docked below or beside the graph
 - See which branches and tags contain a commit, and the first release it shipped in
 - Open all of a commit's or a comparison's changes in one multi-file diff editor
 - Search by message, ID, author, committer, branch, tag, date or path, or for the commits that added or removed a piece of text
@@ -88,6 +89,7 @@ All settings start with `branchwise.`.
 | Setting                       | Default            | Description                                                              |
 | ----------------------------- | ------------------ | ------------------------------------------------------------------------ |
 | `autoCenterCommitDetailsView` | `true`             | Centre an opened commit's details vertically                             |
+| `commitDetailsPosition`       | `"inline"`         | Open details `"inline"` under the row, or docked `"bottom"` or `"right"` |
 | `conflictForecast`            | `"localAndRemote"` | Branches checked for conflicts: `"localAndRemote"`, `"local"` or `"off"` |
 | `dateFormat`                  | `"Date & Time"`    | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"`             |
 | `dateType`                    | `"Author Date"`    | Show each commit's `"Author Date"` or `"Commit Date"`                    |

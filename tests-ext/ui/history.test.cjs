@@ -2121,6 +2121,140 @@ suite("Branchwise workflow UI", function () {
     await button("Clear focus");
   });
 
+  test("docks commit details below or beside the graph in a resizable pane", async () => {
+    const dir = directory();
+    init(dir);
+    for (let index = 1; index <= 60; index++) {
+      commit("f", `dock ${index}`, dir);
+    }
+    const first = git(["rev-parse", "HEAD~3"], dir);
+    const second = git(["rev-parse", "HEAD~4"], dir);
+    const config = vscode.workspace.getConfiguration("branchwise");
+    const original = config.inspect("commitDetailsPosition").globalValue;
+    const workbench = vscode.workspace.getConfiguration("workbench");
+    const originalTheme = workbench.inspect("colorTheme").globalValue;
+    const row = (hash) => `document.querySelector('tr[data-commit-hash="${hash}"]')`;
+    const pane = 'document.querySelector("[data-details-pane]")';
+    const splitter = 'document.querySelector("[data-details-splitter]")';
+    const box = (element) =>
+      graph.evaluate(
+        `(() => { const b = ${element}.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, width: b.width, height: b.height }; })()`
+      );
+    const paneShows = (hash) =>
+      until(
+        () => graph.evaluate(`${pane}?.innerText.includes(${JSON.stringify(hash)}) ?? false`),
+        "details of " + hash.slice(0, 8)
+      );
+    /** Puts the keyboard on the splitter and presses `key` there. */
+    const onSplitter = async (key) => {
+      await graph.evaluate(`${splitter}.focus()`);
+      await until(() => graph.evaluate(`document.activeElement === ${splitter}`), "splitter");
+      await keypress(key);
+    };
+    const valueNow = () => graph.evaluate(`Number(${splitter}.getAttribute("aria-valuenow"))`);
+    try {
+      await config.update("commitDetailsPosition", "bottom", vscode.ConfigurationTarget.Global);
+      await openRepo(dir);
+      await until(
+        () => graph.evaluate('!!document.querySelector("[data-details-dock=bottom]")'),
+        "bottom layout"
+      );
+      await graph.evaluate(`${row(first)}.click()`);
+      await paneShows(first);
+      assert.equal(await graph.evaluate(`${pane}.dataset.detailsPane`), "bottom");
+      assert.equal(await graph.evaluate('!!document.querySelector("[data-details-row]")'), false);
+
+      // Below the graph, across the whole window, with the graph scrolling on its own above it.
+      const scroller = 'document.querySelector("[data-graph-scroller]")';
+      const [graphBox, paneBox] = [await box(scroller), await box(pane)];
+      assert.ok(paneBox.top >= graphBox.bottom, JSON.stringify({ graphBox, paneBox }));
+      assert.equal(paneBox.width, await graph.evaluate("document.documentElement.clientWidth"));
+      assert.ok(
+        await graph.evaluate(
+          "document.scrollingElement.scrollHeight <= document.scrollingElement.clientHeight"
+        ),
+        "the window itself does not scroll"
+      );
+      assert.ok(await graph.evaluate(`${scroller}.scrollHeight > ${scroller}.clientHeight`));
+      await graph.evaluate(`${scroller}.scrollTop = 200`);
+      await until(
+        async () =>
+          Math.abs((await box('document.querySelector("thead")')).top - (await box(scroller)).top) <
+          1,
+        "table heading stuck to the top of the graph"
+      );
+
+      // The arrow keys resize the pane in steps, and it stays open for another commit.
+      const before = await valueNow();
+      const height = paneBox.height;
+      await onSplitter("ArrowUp");
+      await onSplitter("ArrowUp");
+      await until(async () => (await valueNow()) === before + 10, "splitter moved up");
+      assert.ok((await box(pane)).height > height + 10);
+      // Its focus shows in the default theme and in both high contrast themes.
+      await visibleKeyboardFocus("[data-details-splitter]");
+      for (const [theme, kind] of [
+        ["Default High Contrast", "vscode-high-contrast"],
+        ["Default High Contrast Light", "vscode-high-contrast-light"]
+      ]) {
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        await onSplitter("ArrowDown");
+        await visibleKeyboardFocus("[data-details-splitter]");
+        await onSplitter("ArrowUp");
+      }
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+      assert.equal(await valueNow(), before + 10);
+      // The graph has scrolled past the next commit; choosing it brings its row back into sight.
+      await graph.evaluate(`${row(second)}.click()`);
+      await paneShows(second);
+      assert.equal(
+        await graph.evaluate(`${pane}.innerText.includes(${JSON.stringify(first)})`),
+        false
+      );
+      await until(async () => {
+        const [chosen, view] = [await box(row(second)), await box(scroller)];
+        return chosen.top >= view.top && chosen.bottom <= view.bottom;
+      }, "chosen row in sight");
+
+      // Escape in the pane closes it and gives the keyboard back to the row.
+      await graph.evaluate(`${pane}.querySelector("button").focus()`);
+      await keypress("Escape");
+      await until(() => graph.evaluate(`!${pane}`), "bottom pane closed");
+      await until(() => graph.evaluate(`document.activeElement === ${row(second)}`), "row focused");
+
+      // On the right: the whole height below the header, and the keyboard widens it.
+      await config.update("commitDetailsPosition", "right", vscode.ConfigurationTarget.Global);
+      await until(
+        () => graph.evaluate('!!document.querySelector("[data-details-dock=right]")'),
+        "right layout"
+      );
+      await graph.evaluate(`${row(first)}.click()`);
+      await paneShows(first);
+      assert.equal(await graph.evaluate(`${pane}.dataset.detailsPane`), "right");
+      const [besideBox, rightBox] = [await box(scroller), await box(pane)];
+      assert.ok(rightBox.left >= besideBox.right, JSON.stringify({ besideBox, rightBox }));
+      const header = await box('document.querySelector("header")');
+      assert.ok(Math.abs(rightBox.top - header.bottom) <= 1, JSON.stringify({ header, rightBox }));
+      assert.ok(Math.abs(rightBox.bottom - (await graph.evaluate("innerHeight"))) <= 1);
+      const width = rightBox.width;
+      await onSplitter("ArrowLeft");
+      await until(async () => (await box(pane)).width > width + 10, "pane widened");
+      await keypress("Escape");
+      await until(() => graph.evaluate(`!${pane}`), "right pane closed");
+    } finally {
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+      await config.update("commitDetailsPosition", original, vscode.ConfigurationTarget.Global);
+    }
+    await until(
+      () => graph.evaluate('!document.querySelector("[data-graph-scroller]")'),
+      "details back under the rows"
+    );
+  });
+
   test("acts on the focused commit with single keys and lists them on the shortcut sheet", async () => {
     const dir = directory();
     init(dir);

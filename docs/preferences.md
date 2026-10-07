@@ -13,6 +13,7 @@ does not check out a branch or change Git refs.
 | Active search, named search filters, vertical position     | Restored for each repository within the open panel | Reset                                    |
 | Horizontal graph position                                  | Reset to the left edge                             | Reset to the left edge                   |
 | Selected commits and expanded details                      | Cleared                                            | Cleared                                  |
+| Size of docked commit details                              | Kept: one size for every repository                | Reset                                    |
 
 Reloading an existing webview retains its search filters and vertical position as well as durable
 preferences. Horizontal panning resets on reload; refreshing loaded history or resizing the graph
@@ -66,6 +67,23 @@ reads the loaded commits once more; turning it off saves about 10 ms for 300 row
 branch labels in the graph and the Branches pane to cherry-pick, merge or rebase, each after a
 confirmation. Turn it off if you drag by accident; every action stays in the menus. See
 [drag and drop](git-actions.md#drag-and-drop).
+
+### Commit details position
+
+`branchwise.commitDetailsPosition` chooses where a commit's details open:
+
+| Value              | Where                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------- |
+| `inline` (default) | Under the commit's row, moving the rows below it down                                   |
+| `bottom`           | In a pane docked below the graph, across the whole width of the panel                   |
+| `right`            | In a pane docked to the right of the graph, from the toolbar to the bottom of the panel |
+
+With `bottom` or `right`, the graph scrolls on its own beside the pane, and the pane stays open
+while you choose other commits. Drag the bar between them, or use its arrow keys, to resize the
+pane; the size is a share of the window, kept separately for the two positions and for every
+repository while the panel stays open. Changing the setting moves open details at once.
+`branchwise.autoCenterCommitDetailsView` applies only to `inline`. See
+[where the details open](git-actions.md#where-the-details-open).
 
 ### Single-key shortcuts
 

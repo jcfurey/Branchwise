@@ -97,6 +97,7 @@ test("hands the page its strings and settings", async () => {
   expect(Object.keys(response.result.l10n).length).toBeGreaterThan(100);
   expect(response.result.config).toEqual({
     autoCenterCommitDetailsView: true,
+    commitDetailsPosition: "inline",
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
     dragAndDrop: true,

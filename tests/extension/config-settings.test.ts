@@ -224,9 +224,10 @@ describe("settings passed through", () => {
     expect(sections).toEqual(["branchwise", "branchwise"]);
   });
 
-  test("offers exactly the fifteen getters", () => {
+  test("offers exactly the sixteen getters", () => {
     expect(Object.keys(extConfig).toSorted()).toEqual([
       "autoCenterCommitDetailsView",
+      "commitDetailsPosition",
       "conflictForecast",
       "dateFormat",
       "dateType",

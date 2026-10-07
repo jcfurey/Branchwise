@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 import type { ConflictForecastScope } from "@/backend/types";
-import type { DateFormat, GraphStyle, WebviewConfig } from "@/types";
+import type { CommitDetailsPosition, DateFormat, GraphStyle, WebviewConfig } from "@/types";
 
 /** The `enum` that package.json declares for the setting `branchwise.<key>`. */
 function manifestChoices(key: string): Array<string> {
@@ -15,6 +15,7 @@ function manifestChoices(key: string): Array<string> {
 
 const settings: WebviewConfig = {
   autoCenterCommitDetailsView: false,
+  commitDetailsPosition: "inline",
   conflictForecast: "localAndRemote",
   dateFormat: "Relative",
   dragAndDrop: true,
@@ -45,9 +46,10 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the twelve display settings", () => {
+  it("holds exactly the thirteen display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
+      | "commitDetailsPosition"
       | "conflictForecast"
       | "dateFormat"
       | "dragAndDrop"
@@ -60,7 +62,7 @@ describe("WebviewConfig", () => {
       | "showCurrentBranchByDefault"
       | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(12);
+    expect(Object.keys(settings)).toHaveLength(13);
   });
 });
 
@@ -72,6 +74,11 @@ describe("setting choices", () => {
     Relative: true
   };
   const graphStyles: Record<GraphStyle, true> = { rounded: true, angular: true };
+  const detailsPositions: Record<CommitDetailsPosition, true> = {
+    inline: true,
+    bottom: true,
+    right: true
+  };
   const forecastScopes: Record<ConflictForecastScope, true> = {
     localAndRemote: true,
     local: true,
@@ -90,6 +97,13 @@ describe("setting choices", () => {
 
     expect(offered).toEqual(["angular", "rounded"]);
     expect(Object.keys(graphStyles).toSorted()).toEqual(offered);
+  });
+
+  it("match the commit details positions package.json offers", () => {
+    const offered = manifestChoices("commitDetailsPosition").toSorted();
+
+    expect(offered).toEqual(["bottom", "inline", "right"]);
+    expect(Object.keys(detailsPositions).toSorted()).toEqual(offered);
   });
 
   it("match the conflict forecast scopes package.json offers", () => {

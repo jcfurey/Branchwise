@@ -1,6 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
+import { detailsPosition, paneSizes } from "@/webview/lib/details-pane";
 import {
   emptyFilter,
   focusHistory,
@@ -10,7 +11,8 @@ import {
   setHistoryFilter,
   showTab
 } from "@/webview/lib/navigation";
-import { commitHead, commitList } from "@/webview/lib/stores";
+import { onPageScroll, pageViewport } from "@/webview/lib/page-scroll";
+import { commitHead, commitList, expandedCommit } from "@/webview/lib/stores";
 
 /** The table row of a commit, while it is on the page. */
 function rowOf(hash: string) {
@@ -63,14 +65,18 @@ export function revealCommit(hash: string) {
 
 /**
  * Whether the checked-out commit's row is out of sight: behind the sticky header, past the bottom
- * of the window, or not among the rows shown. False while there is no HEAD to jump to, and while
- * the graph is still loading.
+ * of the window or behind docked details, or not among the rows shown. False while there is no
+ * HEAD to jump to, and while the graph is still loading.
  */
 export function useHeadOutOfSight() {
   const [hidden, setHidden] = useState(false);
   const head = commitHead.value;
   const rows = commitList.value;
   const searching = historyActive.value;
+  // Opening, moving or resizing docked details changes how much of the graph shows.
+  const position = detailsPosition();
+  const open = expandedCommit.value !== null;
+  const sizes = paneSizes.value;
   useEffect(() => {
     if (head === null || head === UNCOMMITTED_CHANGES) {
       setHidden(false);
@@ -87,20 +93,18 @@ export function useHeadOutOfSight() {
           return;
         }
         const box = row.getBoundingClientRect();
-        const top = Number.parseFloat(
-          getComputedStyle(document.documentElement).getPropertyValue("--main-header-height")
-        );
-        setHidden(box.bottom <= (Number.isNaN(top) ? 0 : top) || box.top >= window.innerHeight);
+        const { top, bottom } = pageViewport();
+        setHidden(box.bottom <= top || box.top >= bottom);
       });
     };
     check();
-    window.addEventListener("scroll", check, { passive: true });
+    const stopScroll = onPageScroll(check);
     window.addEventListener("resize", check);
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", check);
+      stopScroll();
       window.removeEventListener("resize", check);
     };
-  }, [head, rows, searching]);
+  }, [head, rows, searching, position, open, sizes]);
   return hidden;
 }

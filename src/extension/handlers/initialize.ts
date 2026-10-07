@@ -8,6 +8,7 @@ import type { WebviewConfig, WebviewInitialize } from "@/types";
 export function webviewConfig(): WebviewConfig {
   return {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
+    commitDetailsPosition: extConfig.commitDetailsPosition(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
     dragAndDrop: extConfig.dragAndDrop(),

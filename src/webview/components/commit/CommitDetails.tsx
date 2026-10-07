@@ -56,6 +56,24 @@ function bringIntoView(row: HTMLElement) {
   }
 }
 
+/** The button in the top right corner of the details, under the row or docked. */
+export function CloseDetailsButton({ onClick }: { onClick: () => void }) {
+  const label = window.l10n.close;
+  return (
+    <button
+      type="button"
+      class="absolute top-1 right-1 cursor-pointer opacity-60 hover:opacity-100"
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+    >
+      <Icon width="24" height="24">
+        <path d="M4.2 3.5 8 7.3l3.8-3.8.7.7L8.7 8l3.8 3.8-.7.7L8 8.7l-3.8 3.8-.7-.7L7.3 8 3.5 4.2z" />
+      </Icon>
+    </button>
+  );
+}
+
 /**
  * The frame that opens under a table row: a fixed-height cell with a close button. The graph is
  * stretched by exactly its height, so the height never follows the content.
@@ -79,7 +97,6 @@ export function DetailsRow({ children }: { children: ComponentChildren }) {
     }
   }
 
-  const label = window.l10n.close;
   return (
     <tr
       ref={row}
@@ -103,17 +120,7 @@ export function DetailsRow({ children }: { children: ComponentChildren }) {
         <div class="overflow-hidden" style={{ height: `${COMMIT_DETAILS_HEIGHT - BOTTOM_LINE}px` }}>
           {children}
         </div>
-        <button
-          type="button"
-          class="absolute top-1 right-1 cursor-pointer opacity-60 hover:opacity-100"
-          title={label}
-          aria-label={label}
-          onClick={close}
-        >
-          <Icon width="24" height="24">
-            <path d="M4.2 3.5 8 7.3l3.8-3.8.7.7L8.7 8l3.8 3.8-.7.7L8 8.7l-3.8 3.8-.7-.7L7.3 8 3.5 4.2z" />
-          </Icon>
-        </button>
+        <CloseDetailsButton onClick={close} />
       </td>
     </tr>
   );
@@ -196,8 +203,26 @@ function CopyButton({ label, text }: { label: string; text: string }) {
   );
 }
 
-/** A commit's facts and message beside the tree of the files it changed. */
+/** A commit's details under its row in the table. */
 export function CommitDetails({ details }: { details: GitCommitDetails | null }) {
+  return (
+    <DetailsRow>
+      <CommitDetailsContent details={details} />
+    </DetailsRow>
+  );
+}
+
+/**
+ * A commit's facts and message beside the tree of the files it changed, or, when `stacked`, above
+ * it, for a pane taller than it is wide. It fills its frame, which gives it its size.
+ */
+export function CommitDetailsContent({
+  details,
+  stacked = false
+}: {
+  details: GitCommitDetails | null;
+  stacked?: boolean;
+}) {
   // A new reply for the same commit builds the tree again; the tree keeps its folders by hash.
   const nodes = useMemo(
     () => (details === null ? null : buildFileTree(details.fileChanges)),
@@ -205,77 +230,77 @@ export function CommitDetails({ details }: { details: GitCommitDetails | null })
   );
 
   if (details === null || nodes === null) {
-    return (
-      <DetailsRow>
-        <Loading class="h-full" />
-      </DetailsRow>
-    );
+    return <Loading class="h-full" />;
   }
 
   const l10n = window.l10n;
   return (
-    <DetailsRow>
-      <div class="flex h-full">
-        <div class="w-9/20 shrink-0 overflow-auto border-x border-line p-2.5 select-text">
-          {/* The buttons stay in view when a narrow panel cuts the ID short. */}
-          <div class="flex items-center">
-            <div class="min-w-0">
-              <Fact template={l10n.detailCommit}>{details.hash}</Fact>
-            </div>
-            <CopyButton label={l10n.copyCommitHashShort} text={abbrevCommit(details.hash)} />
-            <CopyButton label={l10n.copyCommitHashFull} text={details.hash} />
-            {onCheckedOutLine(details.hash) && (
-              <button
-                type="button"
-                class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
-                onClick={() => openEditMessage(details.hash)}
-              >
-                {l10n.editMessage + "…"}
-              </button>
-            )}
-            {onCheckedOutLine(details.hash) && details.parents.length < 2 && (
-              <button
-                type="button"
-                class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
-                onClick={() => openSplitCommit(details.hash)}
-              >
-                {l10n.splitCommit + "…"}
-              </button>
-            )}
+    <div class={stacked ? "flex h-full flex-col" : "flex h-full"}>
+      <div
+        class={`shrink-0 overflow-auto border-line p-2.5 select-text ${
+          stacked ? "max-h-1/2 border-b pr-8" : "w-9/20 border-x"
+        }`}
+      >
+        {/* The buttons stay in view when a narrow panel cuts the ID short. */}
+        <div class="flex items-center">
+          <div class="min-w-0">
+            <Fact template={l10n.detailCommit}>{details.hash}</Fact>
           </div>
-          <Fact template={l10n.detailParents}>{details.parents.join(", ")}</Fact>
-          <Fact template={l10n.detailAuthor}>
-            <Author name={details.author} email={details.email} />
-          </Fact>
-          <Fact template={l10n.detailDate}>{getFullDate(details.date)}</Fact>
-          <Fact template={l10n.detailCommitter}>{details.committer}</Fact>
-          <ContainingRefs hash={details.hash} />
-          <SignatureLine hash={details.hash} />
-          <CommitMessage body={details.body} tracker={repositoryTracker(repositoryState.value)} />
-        </div>
-        <div class="mr-8 flex min-w-0 flex-1 flex-col border-r border-line">
-          {details.fileChanges.length > 0 && (
-            <div
-              class="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-2 py-0.5 text-xs"
-              data-file-list-header
+          <CopyButton label={l10n.copyCommitHashShort} text={abbrevCommit(details.hash)} />
+          <CopyButton label={l10n.copyCommitHashFull} text={details.hash} />
+          {onCheckedOutLine(details.hash) && (
+            <button
+              type="button"
+              class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
+              onClick={() => openEditMessage(details.hash)}
             >
-              <span class="truncate text-muted">
-                {l10n.comparedFiles} ({details.fileChanges.length})
-              </span>
-              <button
-                type="button"
-                class="shrink-0 cursor-pointer rounded-sm px-1 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
-                onClick={() => openAllCommitChanges(details.hash)}
-              >
-                {l10n.openAllChanges}
-              </button>
-            </div>
+              {l10n.editMessage + "…"}
+            </button>
           )}
-          <div class="min-h-0 flex-1 overflow-x-hidden overflow-y-scroll py-1">
-            <FileTree nodes={nodes} commitHash={details.hash} />
+          {onCheckedOutLine(details.hash) && details.parents.length < 2 && (
+            <button
+              type="button"
+              class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
+              onClick={() => openSplitCommit(details.hash)}
+            >
+              {l10n.splitCommit + "…"}
+            </button>
+          )}
+        </div>
+        <Fact template={l10n.detailParents}>{details.parents.join(", ")}</Fact>
+        <Fact template={l10n.detailAuthor}>
+          <Author name={details.author} email={details.email} />
+        </Fact>
+        <Fact template={l10n.detailDate}>{getFullDate(details.date)}</Fact>
+        <Fact template={l10n.detailCommitter}>{details.committer}</Fact>
+        <ContainingRefs hash={details.hash} />
+        <SignatureLine hash={details.hash} />
+        <CommitMessage body={details.body} tracker={repositoryTracker(repositoryState.value)} />
+      </div>
+      <div
+        class={`flex min-w-0 flex-1 flex-col ${stacked ? "min-h-0" : "mr-8 border-r border-line"}`}
+      >
+        {details.fileChanges.length > 0 && (
+          <div
+            class="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-2 py-0.5 text-xs"
+            data-file-list-header
+          >
+            <span class="truncate text-muted">
+              {l10n.comparedFiles} ({details.fileChanges.length})
+            </span>
+            <button
+              type="button"
+              class="shrink-0 cursor-pointer rounded-sm px-1 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
+              onClick={() => openAllCommitChanges(details.hash)}
+            >
+              {l10n.openAllChanges}
+            </button>
           </div>
+        )}
+        <div class="min-h-0 flex-1 overflow-x-hidden overflow-y-scroll py-1">
+          <FileTree nodes={nodes} commitHash={details.hash} />
         </div>
       </div>
-    </DetailsRow>
+    </div>
   );
 }

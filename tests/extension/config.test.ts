@@ -21,6 +21,7 @@ it("falls back to the defaults declared in package.json", () => {
   const declared = manifest.contributes.configuration.properties;
   const fallbacks = {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
+    commitDetailsPosition: extConfig.commitDetailsPosition(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
     dateType: extConfig.dateType(),

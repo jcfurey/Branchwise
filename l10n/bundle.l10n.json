@@ -296,6 +296,8 @@
   "Date: {0}": "Date: {0}",
   "Committer: {0}": "Committer: {0}",
   "Signature: {0}": "Signature: {0}",
+  "Commit details": "Commit details",
+  "Resize commit details": "Resize commit details",
   "Checking…": "Checking…",
   "Contained in:": "Contained in:",
   "and {0} more": "and {0} more",

@@ -28,6 +28,7 @@ export const PAGE_CONFIG: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 50,
   autoCenterCommitDetailsView: false,
+  commitDetailsPosition: "inline",
   conflictForecast: "localAndRemote",
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true

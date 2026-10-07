@@ -229,6 +229,8 @@
   "Date: {0}": "日期：{0}",
   "Committer: {0}": "提交者：{0}",
   "Signature: {0}": "签名：{0}",
+  "Commit details": "提交详情",
+  "Resize commit details": "调整提交详情大小",
   "Signed — open the details to verify": "已签名 — 打开详细信息以验证",
   "Checking the signature…": "正在检查签名…",
   "Good signature by {0}": "{0} 的有效签名",

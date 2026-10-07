@@ -5,6 +5,7 @@ import type { WebviewConfig } from "@/types";
 
 const first: WebviewConfig = {
   autoCenterCommitDetailsView: false,
+  commitDetailsPosition: "inline",
   conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
   dragAndDrop: true,
