@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import path from "node:path";
 
 import * as l10n from "@vscode/l10n";
@@ -27,6 +28,8 @@ import { requireBranchName, resolveCommit } from "@/backend/utils/validation";
 
 export type RepositoryEffect =
   | { kind: "worktree"; path: string }
+  /** A folder to show in the system's file manager. */
+  | { kind: "reveal"; path: string }
   /** `status` is the conflict's two-letter code from `git status`, such as `UU` or `DD`. */
   | { kind: "conflict"; path: string; status: string }
   | { kind: "document"; text: string }
@@ -66,6 +69,13 @@ async function findStash(git: SimpleGit, stash: StashDetails) {
     throw new Error(l10n.t("The stash list changed. Reload it before continuing."));
   }
   return matches[0]!;
+}
+
+async function isFolder(folder: string) {
+  return stat(folder).then(
+    (entry) => entry.isDirectory(),
+    () => false
+  );
 }
 
 export async function runRepositoryAction(
@@ -208,14 +218,24 @@ export async function runRepositoryAction(
     case "undoSafetyNet":
       return undoSafetyRecord(git, action.id);
     case "openWorktree":
+    case "revealWorktree":
     case "removeWorktree": {
       const worktrees = await loadWorktrees(git);
       const worktree = worktrees.find((entry) => entry.path === normalizeRepoPath(action.path));
       if (worktree === undefined || worktree.bare || worktree.prunable) {
         throw new Error(l10n.t("This worktree is no longer available. Refresh the worktree list."));
       }
-      if (action.kind === "openWorktree") {
-        return { kind: "worktree", path: worktree.path };
+      if (action.kind !== "removeWorktree") {
+        // Git counts a folder as missing only once it looks; it may have gone since.
+        if (!(await isFolder(worktree.path))) {
+          throw new Error(
+            l10n.t("This worktree is no longer available. Refresh the worktree list.")
+          );
+        }
+        return {
+          kind: action.kind === "openWorktree" ? "worktree" : "reveal",
+          path: worktree.path
+        };
       }
       const current = normalizeRepoPath((await git.revparse(["--show-toplevel"])).trim());
       if (worktree.path === current || worktrees[0]?.path === worktree.path) {

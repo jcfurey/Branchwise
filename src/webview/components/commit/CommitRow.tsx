@@ -2,18 +2,22 @@ import { computed } from "@preact/signals";
 import type { TargetedKeyboardEvent } from "preact";
 import { useMemo } from "preact/hooks";
 
-import type { ConflictForecastEntry, GitRef, HistoryEntry } from "@/backend/types";
+import type { ConflictForecastEntry, GitRef, HistoryEntry, SubjectedCommit } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
+import { ChangesCell } from "@/webview/components/commit/ChangeCounts";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
 import { SignedMark } from "@/webview/components/commit/SignatureBadge";
+import { WorktreeLabel } from "@/webview/components/commit/WorktreeMarker";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
 import { KebabIcon } from "@/webview/components/ui/Icons";
 import { OPTIONAL_COLUMNS, UNCOMMITTED_CHANGES } from "@/webview/constants";
-import { focusColour } from "@/webview/graph/focus";
+import { type Dimming, focusColour } from "@/webview/graph/focus";
 import type { BranchRelation } from "@/webview/graph/types";
 import { closeCommitDetails, openContextMenu } from "@/webview/lib/actions";
+import { appliedTitle } from "@/webview/lib/applied-commits";
 import { runRowShortcut } from "@/webview/lib/commit-shortcuts";
 import { dragAndDropOn } from "@/webview/lib/drag-drop";
+import { revealCommit } from "@/webview/lib/jump-to-head";
 import {
   commitMenu,
   commitMenuSource,
@@ -28,7 +32,7 @@ import {
   selectedCommits
 } from "@/webview/lib/navigation";
 import { activeSource, contextMenu, shownColumns, uncommittedChanges } from "@/webview/lib/stores";
-import type { FocusDimming } from "@/webview/types";
+import { type WorktreeMarker, worktreeMarkers } from "@/webview/lib/worktrees";
 import { getCommitDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
 import { initials } from "@/webview/utils/initials";
@@ -51,7 +55,11 @@ type CommitRowProps = {
   relation?: BranchRelation;
   keepMergedBright?: boolean;
   /** How strongly the graph dims history away from the focused branch; the labels follow it. */
-  dimming?: FocusDimming;
+  dimming?: Dimming;
+  /** The ref whose preview holds this commit, as the branch list spells it, if one is shown. */
+  previewBranch?: string | undefined;
+  /** The nearest branch containing the commit, for a row without a branch label of its own. */
+  nearestBranch?: string | undefined;
   /** Whether only this computer, or only a remote, has the commit; undefined for neither. */
   push?: PushState | undefined;
   /**
@@ -59,11 +67,25 @@ type CommitRowProps = {
    * remote one as `remotes/<remote>/<branch>`.
    */
   conflicts?: ReadonlyMap<string, ConflictForecastEntry>;
+  /**
+   * Set when the checked-out branch already has this commit's change: its commit with the same
+   * change, or `null` when that is not known.
+   */
+  applied?: SubjectedCommit | null | undefined;
   /** Whether the details of this row are open beneath it. */
   expanded: boolean;
+  /** Whether this commit is the first of its day, below a commit from another day. */
+  dayStart?: boolean;
   onSelect: (() => void) | undefined;
   /** Asks the table to scroll the graph sideways until this commit's dot shows. */
   onRevealLane?: (hash: string) => void;
+  /** Whether the row ends with a cell of the Changes column. */
+  showChanges?: boolean;
+  /**
+   * Whether a card about the commit shows when the pointer rests on its message. The message then
+   * has no tooltip of its own, which would cover the card.
+   */
+  hoverCards?: boolean;
 };
 
 /** Where a keyboard-opened menu hangs, from the row's left edge, in pixels. */
@@ -133,6 +155,18 @@ function remoteBranchName(ref: GitRef) {
 
 /** Labels shown in full on a row before the rest fold into a "+N" button. */
 const LABELS_SHOWN = 2;
+
+/**
+ * The worktrees on a row whose branch has no label of its own there to carry their mark: one on
+ * a detached HEAD, or one whose branch label is folded into "+N".
+ */
+export function worktreesWithoutLabel(
+  markers: ReadonlyArray<WorktreeMarker> | undefined,
+  visible: ReadonlyArray<ShownRef>
+): Array<WorktreeMarker> {
+  const branches = new Set(visible.flatMap(({ ref }) => (ref.type === "head" ? [ref.name] : [])));
+  return (markers ?? []).filter((marker) => !branches.has(marker.branch));
+}
 
 /**
  * The labels that do not fit on a row, as a "+N" button. Its tooltip lists them, and it opens a
@@ -210,6 +244,41 @@ export function PushDot({ state }: { state: PushState }) {
 }
 
 /**
+ * A muted "applied" after the description of a commit whose change the checked-out branch already
+ * has. It is a word rather than a colour, and its tooltip names the commit with the same change,
+ * which a click selects as the containing-refs chips select theirs.
+ */
+export function AppliedMark({ equivalent }: { equivalent: SubjectedCommit | null }) {
+  const title = appliedTitle(equivalent);
+  const look =
+    "ml-1 h-4 shrink-0 rounded-sm border border-line-soft px-1 text-xs leading-3.5 text-muted";
+  if (equivalent === null) {
+    return (
+      <span data-applied-as="" title={title} aria-label={title} class={look}>
+        {window.l10n.appliedMark}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      data-applied-as={equivalent.hash}
+      title={title}
+      aria-label={title}
+      class={`${look} cursor-pointer hover:bg-btn-hover`}
+      onClick={(event) => {
+        // The row would select itself otherwise.
+        event.stopPropagation();
+        revealCommit(equivalent.hash);
+      }}
+    >
+      {window.l10n.appliedMark}
+    </button>
+  );
+}
+
+/**
  * Every cell is one line as tall as the table's rows, which is the grid the graph is drawn on. The
  * table sets `--row-height` from the `rowDensity` setting.
  */
@@ -233,11 +302,17 @@ export function CommitRow({
   relation = "normal",
   keepMergedBright = false,
   dimming = "subtle",
+  previewBranch,
+  nearestBranch,
   push,
   conflicts,
+  applied,
   expanded,
+  dayStart = false,
   onSelect,
-  onRevealLane
+  onRevealLane,
+  showChanges = false,
+  hoverCards = false
 }: CommitRowProps) {
   const { hash } = commit;
   const uncommitted = hash === UNCOMMITTED_CHANGES;
@@ -249,6 +324,12 @@ export function CommitRow({
 
   const message = uncommitted ? uncommittedText(uncommittedChanges.value) : commit.message;
   const labels = shownRefs(commit.refs, headBranch);
+  const visible = labels.length > LABELS_SHOWN ? labels.slice(0, 1) : labels;
+  const unlabelled = worktreesWithoutLabel(worktreeMarkers.value.get(hash), visible);
+  const nearest =
+    nearestBranch !== undefined && !uncommitted && labels.every(({ ref }) => ref.type === "tag")
+      ? nearestBranch
+      : undefined;
   const date = uncommitted ? null : getCommitDate(commit.date);
   const emphasized = isHead || uncommitted || expanded || selected || menuOpen;
   const background =
@@ -355,12 +436,23 @@ export function CommitRow({
       }}
       data-commit-hash={hash}
       data-branch-relation={relation === "merged" && keepMergedBright ? "direct" : relation}
+      data-preview-branch={previewBranch}
       data-emphasized={String(emphasized)}
+      data-day-start={dayStart ? "" : undefined}
       tabIndex={tabStop ? 0 : -1}
       draggable={uncommitted || !dragAndDropOn() ? undefined : true}
       aria-selected={uncommitted ? expanded : selected}
       aria-expanded={expanded}
-      aria-label={commitRowLabel({ commit, message, isHead, headBranch, push, conflicts })}
+      aria-label={commitRowLabel({
+        commit,
+        message,
+        isHead,
+        headBranch,
+        push,
+        conflicts,
+        applied: applied !== undefined,
+        nearest
+      })}
       title={uncommitted ? l10n.viewWorkingTreeChanges : l10n.selectCommitsHint}
       onFocus={(event) => {
         if (event.target === event.currentTarget) {
@@ -390,31 +482,47 @@ export function CommitRow({
         <div class="flex min-w-0 items-center">
           {isHead && <span class="mr-1.25 size-2.5 shrink-0 rounded-full border-2 border-graph" />}
           {push !== undefined && <PushDot state={push} />}
-          {labels.length > 0 && (
+          {labels.length + unlabelled.length > 0 && (
             <span class="flex max-w-1/2 shrink-0 overflow-hidden">
-              {(labels.length > LABELS_SHOWN ? labels.slice(0, 1) : labels).map(
-                ({ ref, remotes }) => (
-                  <RefLabel
-                    key={`${ref.type}:${ref.name}`}
-                    gitRef={ref}
-                    active={ref.type === "head" && ref.name === headBranch}
-                    remotes={remotes}
-                    conflict={
-                      ref.type === "tag"
-                        ? undefined
-                        : conflicts?.get(ref.type === "remote" ? `remotes/${ref.name}` : ref.name)
-                    }
-                  />
-                )
-              )}
+              {visible.map(({ ref, remotes }) => (
+                <RefLabel
+                  key={`${ref.type}:${ref.name}`}
+                  gitRef={ref}
+                  active={ref.type === "head" && ref.name === headBranch}
+                  remotes={remotes}
+                  conflict={
+                    ref.type === "tag"
+                      ? undefined
+                      : conflicts?.get(ref.type === "remote" ? `remotes/${ref.name}` : ref.name)
+                  }
+                />
+              ))}
               {labels.length > LABELS_SHOWN && (
                 <MoreRefs hidden={labels.slice(1)} headBranch={headBranch} />
               )}
+              {unlabelled.map((marker) => (
+                <WorktreeLabel key={marker.path} marker={marker} />
+              ))}
             </span>
           )}
-          <span class="min-w-0 flex-1 truncate" title={message}>
+          <span
+            class={`min-w-0 truncate ${nearest === undefined ? "flex-1" : ""}`}
+            data-commit-message={uncommitted ? undefined : true}
+            title={hoverCards && !uncommitted ? "" : message}
+          >
             {isHead || uncommitted ? <b>{message}</b> : message}
           </span>
+          {applied !== undefined && <AppliedMark equivalent={applied} />}
+          {nearest !== undefined && (
+            // Takes the room the message leaves, so the controls after it stay at the row's end.
+            <span
+              data-nearest-branch={nearest}
+              class="mr-auto ml-2 max-w-1/3 shrink-0 truncate text-xs text-muted"
+              title={l10n.nearestBranchTitle.replace("{0}", () => nearest)}
+            >
+              {l10n.nearestBranch.replace("{0}", () => nearest)}
+            </span>
+          )}
           {commit.signed === true && <SignedMark />}
           {!uncommitted && (
             <button
@@ -463,6 +571,7 @@ export function CommitRow({
           {uncommitted ? null : abbrevCommit(hash)}
         </td>
       )}
+      {showChanges && <ChangesCell hash={hash} class={CELL} />}
     </tr>
   );
 }

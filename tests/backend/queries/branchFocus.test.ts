@@ -7,7 +7,7 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { createGit } from "@/backend/gitClient";
 import { repositoryQuery } from "@/backend/queries/repository";
 
-import { git, makeRepo } from "@tests/backend/helpers";
+import { git, gitOutput, makeRepo } from "@tests/backend/helpers";
 
 let repo: string;
 let base: string;
@@ -62,6 +62,33 @@ it("handles remote refs and changes the direct line when focusing a merged branc
       hashes: [tip, main, base, merged, side]
     })
   ).toEqual({ kind: "branchFocus", tip: merged, direct: [merged, base], merged: [] });
+});
+
+it("follows a tag, annotated or not, and names no branch of the same name", async () => {
+  git(["tag", "-a", "-m", "annotated", "annotated-side", side], repo);
+  const status = () => gitOutput(["status", "--porcelain"], repo);
+  const refs = () => gitOutput(["for-each-ref"], repo);
+  const before = [status(), refs()];
+  const hashes = [tip, main, base, merged, side];
+  // The tag `main` names `side`, not the branch of the same name.
+  const answers = await Promise.all(
+    ["main", "annotated-side"].map((branch) =>
+      repositoryQuery(createGit(repo, "git"), { kind: "branchFocus", branch, hashes, tag: true })
+    )
+  );
+  for (const answer of answers) {
+    expect(answer).toEqual({ kind: "branchFocus", tip: side, direct: [side, base], merged: [] });
+  }
+  await expect(
+    repositoryQuery(createGit(repo, "git"), {
+      kind: "branchFocus",
+      branch: "merged",
+      hashes,
+      tag: true
+    })
+  ).rejects.toThrow();
+  expect([status(), refs()]).toEqual(before);
+  git(["tag", "-d", "annotated-side"], repo);
 });
 
 it.each(["missing", "main~1", "--all"])(

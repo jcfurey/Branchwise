@@ -140,8 +140,11 @@ function graphColours(): string[] {
  */
 export const extConfig = {
   autoCenterCommitDetailsView: () => setting<boolean>("autoCenterCommitDetailsView", true),
+  branchHoverPreview: () => setting<boolean>("branchHoverPreview", true),
+  commitHoverCards: () => setting<boolean>("commitHoverCards", true),
   conflictForecast: () => setting<ConflictForecastScope>("conflictForecast", "localAndRemote"),
   dateFormat: () => setting<DateFormat>("dateFormat", "Date & Time"),
+  dateSeparators: () => setting<boolean>("dateSeparators", true),
   dateType: () => setting<DateType>("dateType", "Author Date"),
   dragAndDrop: () => setting<boolean>("dragAndDrop", true),
   /** The built-in Git extension's executable when known, otherwise the `git.path` setting. */
@@ -153,12 +156,17 @@ export const extConfig = {
   /** The valid entries of `branchwise.issueLinks`; the others are reported in the log. */
   issueLinks: () => readIssueLinks(setting<unknown>("issueLinks", [])),
   loadMoreCommits: () => wholeNumberSetting("loadMoreCommits", 1, 100),
+  markAppliedCommits: () => setting<boolean>("markAppliedCommits", true),
   maxDepthOfRepoSearch: () => wholeNumberSetting("maxDepthOfRepoSearch", 0, 0),
   nestedRepoSearchDepth: () => wholeNumberSetting("nestedRepoSearchDepth", 0, 3),
   rowDensity: () => setting<RowDensity>("rowDensity", "default"),
+  overviewMarkers: () => setting<boolean>("overviewMarkers", true),
+  showChangesColumn: () => setting<boolean>("showChangesColumn", false),
   showCurrentBranchByDefault: () => setting<boolean>("showCurrentBranchByDefault", false),
+  showNearestBranch: () => setting<boolean>("showNearestBranch", true),
   showSignatures: () => setting<boolean>("showSignatures", true),
   showUncommittedChanges: () => setting<boolean>("showUncommittedChanges", true),
+  showWorktrees: () => setting<boolean>("showWorktrees", true),
   singleKeyShortcuts: () => setting<boolean>("singleKeyShortcuts", true),
   tabIconColourTheme: () => setting<TabIconColourTheme>("tabIconColourTheme", "colour")
 };

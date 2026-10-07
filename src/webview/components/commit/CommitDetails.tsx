@@ -98,7 +98,7 @@ export function DetailsRow({ children }: { children: ComponentChildren }) {
       {/* Under the graph column, left empty so the lanes show through. */}
       <td />
       <td
-        colSpan={shownColumns.value.length - 1}
+        colSpan={shownColumns.value.length - 1 + (getWebviewConfig().showChangesColumn ? 1 : 0)}
         class="relative bg-btn p-0 align-top text-ui leading-4.5 whitespace-normal after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-line"
       >
         <div class="overflow-hidden" style={{ height: `${COMMIT_DETAILS_HEIGHT - BOTTOM_LINE}px` }}>

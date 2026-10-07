@@ -54,6 +54,7 @@ describe("styles.css", () => {
       "--color-line: rgba(128, 128, 128, 0.5);",
       "--color-focus: var(--vscode-focusBorder);",
       "--color-drop: var(--vscode-list-dropBackground);",
+      "--color-card: var(--vscode-editorHoverWidget-background, var(--vscode-editor-background));",
       "--color-graph: var(--vscode-focusBorder);",
       "--color-git-deleted: var(--vscode-gitDecoration-deletedResourceForeground);",
       "--default-font-family: var(--vscode-font-family);"
@@ -129,6 +130,18 @@ describe("styles.css", () => {
     expect(ruleOf(components, '.branch-focus-row[data-branch-relation="unrelated"]')).toContain(
       "color: var(--color-muted);"
     );
+  });
+
+  it("draws a day's first row with a themed line that leaves the row's height alone", () => {
+    expect(theme).toContain(
+      "--color-day-line: var(--vscode-tree-indentGuidesStroke, rgba(128, 128, 128, 0.4));"
+    );
+    const rule = ruleOf(components, ".branch-focus-row[data-day-start] > td");
+    expect(rule).toContain(
+      "background-image: linear-gradient(var(--color-day-line), var(--color-day-line));"
+    );
+    expect(rule).toContain("background-size: 100% 1px;");
+    expect(rule).not.toContain("border");
   });
 
   it("shows a row in use in full, whatever its relation", () => {
@@ -215,9 +228,40 @@ describe("styles.css", () => {
     expect(unpushed).toContain("background-color: CanvasText;");
     expect(ruleOf(forced, '[data-push="unpulled"]')).toContain("border-color: CanvasText;");
     expect(ruleOf(forced, "[data-ref], [data-more-refs]")).toContain("border-color: CanvasText;");
+    expect(ruleOf(forced, "[data-hover-card]")).toContain("border-color: CanvasText;");
     const cap = ruleOf(forced, "[data-ref] > svg:first-child");
     expect(cap).toContain("background-color: CanvasText;");
     expect(cap).toContain("color: Canvas;");
+  });
+
+  it("colours the overview strip from the theme, and from system colours when forced", () => {
+    expect(theme).toContain(
+      "--color-overview-band: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));"
+    );
+    expect(theme).toContain("--color-overview-unpushed: var(--color-unpushed);");
+    // The canvas reads its colours from probes, which the utilities colour.
+    for (const kind of ["head", "selected", "details", "branch", "tag", "unpushed"]) {
+      expect(ruleOf(utilities, `.text-overview-${kind}`)).toContain(
+        `color: var(--color-overview-${kind});`
+      );
+    }
+    expect(css).not.toContain("overview-match");
+    const strip = ruleOf(components, ".overview-strip");
+    expect(strip).toContain("forced-color-adjust: none;");
+    expect(strip).toContain("--overview-tag-alpha: 0.55;");
+    expect(
+      ruleOf(
+        components,
+        ".vscode-high-contrast .overview-strip, .vscode-high-contrast-light .overview-strip"
+      )
+    ).toContain("--overview-tag-alpha: 1;");
+    const forced = ruleOf(
+      css.slice(css.indexOf("@media (forced-colors: active) {")),
+      ".overview-strip"
+    );
+    expect(forced).toContain("--color-overview-head: CanvasText;");
+    expect(forced).toContain("--color-overview-selected: Highlight;");
+    expect(forced).toContain("--overview-band-alpha: 0.4;");
   });
 
   it("fades the scroll shade in over the first pixel of scrolling", () => {
@@ -237,5 +281,12 @@ describe("styles.css", () => {
     expect(components).toMatch(/@keyframes skeleton-shimmer \{\s+from \{\s+background-position/);
     const reduced = components.slice(components.indexOf("@media (prefers-reduced-motion: reduce)"));
     expect(ruleOf(reduced, ".skeleton-shimmer")).toContain("animation: none;");
+  });
+
+  it("eases a branch preview in, and not at all for less motion", () => {
+    const selector = ":where([data-branch-preview]) :is(.branch-focus-row, [data-branch-relation])";
+    expect(ruleOf(components, selector)).toContain("color 150ms ease-out");
+    const reduced = components.slice(components.lastIndexOf("@media (prefers-reduced-motion"));
+    expect(ruleOf(reduced, selector)).toContain("transition: none;");
   });
 });

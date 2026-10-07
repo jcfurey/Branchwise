@@ -5,6 +5,7 @@ import type { GitCommitNode, GitRef } from "@/backend/types";
 import { CommitGraph } from "@/webview/components/commit/CommitGraph";
 import { MoreRefs, PushDot } from "@/webview/components/commit/CommitRow";
 import { ConflictBadge, RefLabel } from "@/webview/components/commit/RefLabel";
+import { WorktreeBadge } from "@/webview/components/commit/WorktreeMarker";
 import { HiddenBranchesStrip } from "@/webview/components/repository/HiddenBranches";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { computeGraphLayout } from "@/webview/graph/layout";
@@ -161,6 +162,25 @@ function entries(): Array<Entry> {
             { ref: sampleRef("tag", "v1.2"), remotes: [] }
           ]}
           headBranch={null}
+        />
+      )
+    },
+    {
+      key: "worktree",
+      term: l10n.legendWorktree,
+      description: l10n.legendWorktreeHint,
+      symbol: (
+        <WorktreeBadge
+          marker={{
+            path: "",
+            name: "",
+            head: "",
+            branch: branch.name,
+            bare: false,
+            locked: false,
+            prunable: false,
+            change: "dirty"
+          }}
         />
       )
     },

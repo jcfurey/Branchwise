@@ -30,12 +30,18 @@ export type IssueLink = Readonly<{ pattern: string; url: string }>;
 export type WebviewConfig = Readonly<{
   /** Centre the opened commit details in the window, rather than scroll only as far as needed. */
   autoCenterCommitDetailsView: boolean;
+  /** Show a branch or tag label's history lightly while the pointer rests on it. */
+  branchHoverPreview: boolean;
+  /** Show a card about a commit when the pointer or the keyboard rests on its row. */
+  commitHoverCards: boolean;
   /**
    * Which branches the conflict forecast tries. The page reads anything but `local` and `off` as
    * `localAndRemote`, the default.
    */
   conflictForecast: ConflictForecastScope;
   dateFormat: DateFormat;
+  /** Mark where each day's commits begin, and name the day of the topmost row while scrolled. */
+  dateSeparators: boolean;
   /** Let commits and branches be dragged onto branch labels to start an action. */
   dragAndDrop: boolean;
   /**
@@ -51,11 +57,27 @@ export type WebviewConfig = Readonly<{
   issueLinks: readonly IssueLink[];
   /** Rows added by each "load more", with the same bounds. */
   loadMoreCommits: number;
+  /**
+   * Mark the commits of a focused or shown branch whose change the checked-out branch already
+   * has, as after a cherry-pick or a rebase.
+   */
+  markAppliedCommits: boolean;
+  /** Show the strip of marks for HEAD, refs and the selection beside the table. */
+  overviewMarkers: boolean;
   /** VS Code's display language (`en`, `fr`, `zh-cn`, ...), used for every `Intl` format. */
   locale: string;
   rowDensity: RowDensity;
+  /** Add the Changes column, with the lines each commit added and deleted, to the graph. */
+  showChangesColumn: boolean;
   /** In filter mode, open a repository on its checked-out branch rather than on every branch. */
   showCurrentBranchByDefault: boolean;
+  /** After a commit without a branch label of its own, name the nearest branch containing it. */
+  showNearestBranch: boolean;
+  /**
+   * Mark the commits other worktrees have checked out, with a dot for those with uncommitted
+   * changes, which the page then asks the extension to check.
+   */
+  showWorktrees: boolean;
   /** Let single keys, such as `b` for Create Branch, act on the focused commit row. */
   singleKeyShortcuts: boolean;
 }>;

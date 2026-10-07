@@ -68,6 +68,7 @@ describe("the legend", () => {
       "remote",
       "tag",
       "more",
+      "worktree",
       "dimmed",
       "focus",
       "hidden"
@@ -121,6 +122,7 @@ describe("the legend", () => {
     expect(sample("conflict").querySelector("[data-conflicts]")?.textContent).toBe("2");
     expect(sample("branch").querySelector("[data-remote-refs]")).not.toBeNull();
     expect(sample("more").querySelector("[data-more-refs]")?.textContent).toBe("+2");
+    expect(sample("worktree").querySelector("[data-worktree-dirty]")).not.toBeNull();
     expect(sample("focus").querySelector("[role=status]")?.textContent).toContain("branchFocus");
     expect(sample("hidden").querySelector("[data-hidden-branches]")).not.toBeNull();
   });
