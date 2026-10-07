@@ -67,6 +67,12 @@ branch labels in the graph and the Branches pane to cherry-pick, merge or rebase
 confirmation. Turn it off if you drag by accident; every action stays in the menus. See
 [drag and drop](git-actions.md#drag-and-drop).
 
+`branchwise.overviewMarkers` (default `true`) shows the strip beside the commit table that marks
+HEAD, branch tips and tags, search results, the selection, the open commit and unpushed commits
+across the whole loaded history, with a band for the rows on screen; click or drag on it to scroll.
+Turn it off to give the table those 10 pixels back. See
+[overview strip](git-actions.md#overview-strip).
+
 ### Single-key shortcuts
 
 `branchwise.singleKeyShortcuts` (default `true`) lets single keys act on the focused commit row,

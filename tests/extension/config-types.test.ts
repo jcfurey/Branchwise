@@ -24,6 +24,7 @@ const settings: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 25,
   locale: "de",
+  overviewMarkers: true,
   showCurrentBranchByDefault: true,
   singleKeyShortcuts: true
 };
@@ -45,7 +46,7 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the twelve display settings", () => {
+  it("holds exactly the thirteen display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
       | "conflictForecast"
@@ -57,10 +58,11 @@ describe("WebviewConfig", () => {
       | "issueLinks"
       | "loadMoreCommits"
       | "locale"
+      | "overviewMarkers"
       | "showCurrentBranchByDefault"
       | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(12);
+    expect(Object.keys(settings)).toHaveLength(13);
   });
 });
 

@@ -6,6 +6,7 @@ import type { ConflictForecastEntry, HistoryEntry } from "@/backend/types";
 import { CommitDetails } from "@/webview/components/commit/CommitDetails";
 import { CommitGraph } from "@/webview/components/commit/CommitGraph";
 import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
+import { OverviewStrip } from "@/webview/components/commit/OverviewStrip";
 import { type ColumnResize, useColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useGraphScroll } from "@/webview/components/commit/useGraphScroll";
 import { WorkingTreeDetails } from "@/webview/components/commit/WorkingTreeDetails";
@@ -31,7 +32,9 @@ import {
   selectCommitRows,
   selectedCommits
 } from "@/webview/lib/navigation";
+import { collectMarkers } from "@/webview/lib/overview-markers";
 import { activeSource, columnWidths, commitDetails, expandedCommit } from "@/webview/lib/stores";
+import { getWebviewConfig } from "@/webview/lib/webview-config";
 import type { FocusDimming } from "@/webview/types";
 
 type CommitTableProps = {
@@ -45,6 +48,8 @@ type CommitTableProps = {
   pushStatus?: { unpushed: Array<string>; unpulled: Array<string> } | null;
   /** Branches that would not merge cleanly into HEAD, with the files in conflict. */
   conflicts?: Array<ConflictForecastEntry> | undefined;
+  /** Every row is a result of the active search or filter, which the overview strip marks. */
+  searchResults?: boolean;
   keepMergedBright?: boolean;
   dimming?: FocusDimming;
 };
@@ -181,6 +186,7 @@ export function CommitTable({
   focus = null,
   pushStatus = null,
   conflicts,
+  searchResults = false,
   keepMergedBright = false,
   dimming = "subtle"
 }: CommitTableProps) {
@@ -226,6 +232,23 @@ export function CommitTable({
       revealed.add(row);
     }
   }
+
+  const overview = getWebviewConfig().overviewMarkers;
+  const selection = selectedCommits.value;
+  const markers = useMemo(
+    () =>
+      overview
+        ? collectMarkers({
+            commits,
+            head,
+            matches: searchResults,
+            selected: new Set(selection.map((commit) => commit.hash)),
+            details: expandedHash,
+            unpushed: new Set(pushStatus?.unpushed)
+          })
+        : [],
+    [overview, commits, head, searchResults, selection, expandedHash, pushStatus]
+  );
 
   // Rows get the same callbacks on every render, so a row whose own props did not change skips.
   const reveal = useRef<(hash: string) => void>(() => {});
@@ -287,7 +310,7 @@ export function CommitTable({
   const heading = "relative h-8 truncate border-b border-line px-3 text-left font-semibold";
 
   return (
-    <div ref={containerRef} class="relative">
+    <div ref={containerRef} class="relative pr-[var(--overview-gutter,0px)]">
       <div
         ref={scroll.viewportRef}
         data-graph-viewport
@@ -410,6 +433,14 @@ export function CommitTable({
           ))}
         </tbody>
       </table>
+      {overview && (
+        <OverviewStrip
+          containerRef={containerRef}
+          markers={markers}
+          rows={commits.length}
+          expandedRow={expandedRow}
+        />
+      )}
     </div>
   );
 }

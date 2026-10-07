@@ -155,6 +155,7 @@ export const extConfig = {
   loadMoreCommits: () => wholeNumberSetting("loadMoreCommits", 1, 100),
   maxDepthOfRepoSearch: () => wholeNumberSetting("maxDepthOfRepoSearch", 0, 0),
   nestedRepoSearchDepth: () => wholeNumberSetting("nestedRepoSearchDepth", 0, 3),
+  overviewMarkers: () => setting<boolean>("overviewMarkers", true),
   showCurrentBranchByDefault: () => setting<boolean>("showCurrentBranchByDefault", false),
   showSignatures: () => setting<boolean>("showSignatures", true),
   showUncommittedChanges: () => setting<boolean>("showUncommittedChanges", true),

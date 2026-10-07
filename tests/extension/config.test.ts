@@ -30,6 +30,7 @@ it("falls back to the defaults declared in package.json", () => {
     loadMoreCommits: extConfig.loadMoreCommits(),
     maxDepthOfRepoSearch: extConfig.maxDepthOfRepoSearch(),
     nestedRepoSearchDepth: extConfig.nestedRepoSearchDepth(),
+    overviewMarkers: extConfig.overviewMarkers(),
     showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
     showSignatures: extConfig.showSignatures(),
     showUncommittedChanges: extConfig.showUncommittedChanges(),

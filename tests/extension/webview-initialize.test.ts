@@ -39,6 +39,7 @@ const DEFAULT_CONFIG = {
   issueLinks: [],
   loadMoreCommits: 100,
   locale: "fr",
+  overviewMarkers: true,
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true
 };

@@ -22,6 +22,7 @@ const settings: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 100,
   locale: "en",
+  overviewMarkers: true,
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true
 };

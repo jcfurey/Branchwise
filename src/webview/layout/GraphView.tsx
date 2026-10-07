@@ -78,6 +78,16 @@ function historyQueryFilter(filter: HistoryFilter): HistoryFilter {
   return { ...filter, revision: branch === "" ? "" : branchListRef(branch) };
 }
 
+/**
+ * Whether every row is a result of a search or filter, rather than plain history from the one
+ * revision that Go to or a matching branch opened.
+ */
+function searchFound(filter: HistoryFilter) {
+  return Object.entries(filter).some(
+    ([field, value]) => field !== "revision" && typeof value === "string" && value !== ""
+  );
+}
+
 /** What the filtered-history banner says the rows are. */
 function historyScope(filter: HistoryFilter) {
   if (filter.path !== "") {
@@ -365,6 +375,7 @@ export function GraphView() {
         focus={focusData}
         pushStatus={pushStatus.data}
         conflicts={conflictForecast.data?.conflicts}
+        searchResults={inHistory && searchFound(filter)}
         keepMergedBright={branchDisplay.value === "ancestors"}
         dimming={focusDimming.value}
       />

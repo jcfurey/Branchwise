@@ -443,6 +443,7 @@ it("delivers every notification in the form the webview accepts", async () => {
     issueLinks: [],
     loadMoreCommits: 100,
     locale: "en",
+    overviewMarkers: true,
     showCurrentBranchByDefault: false,
     singleKeyShortcuts: true
   };
