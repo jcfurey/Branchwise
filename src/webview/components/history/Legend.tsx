@@ -5,6 +5,7 @@ import type { GitCommitNode, GitRef } from "@/backend/types";
 import { CommitGraph } from "@/webview/components/commit/CommitGraph";
 import { MoreRefs, PushDot } from "@/webview/components/commit/CommitRow";
 import { ConflictBadge, RefLabel } from "@/webview/components/commit/RefLabel";
+import { WorktreeBadge } from "@/webview/components/commit/WorktreeMarker";
 import { HiddenBranchesStrip } from "@/webview/components/repository/HiddenBranches";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { computeGraphLayout } from "@/webview/graph/layout";
@@ -12,6 +13,7 @@ import type { BranchRelation } from "@/webview/graph/types";
 import { FocusBanner } from "@/webview/layout/GraphView";
 import { openContentDialog } from "@/webview/lib/actions";
 import { focusDimming } from "@/webview/lib/stores";
+import { rowHeight } from "@/webview/lib/webview-config";
 
 /** A commit of the legend's small graphs; only its place in the history matters. */
 function sample(hash: string, parentHashes: Array<string> = []): GitCommitNode {
@@ -50,6 +52,7 @@ function GraphSample({
       revealed={NONE_REVEALED}
       hovered={NOT_HOVERED}
       commitRows={NO_ROWS}
+      rowHeight={rowHeight()}
     />
   );
 }
@@ -159,6 +162,25 @@ function entries(): Array<Entry> {
             { ref: sampleRef("tag", "v1.2"), remotes: [] }
           ]}
           headBranch={null}
+        />
+      )
+    },
+    {
+      key: "worktree",
+      term: l10n.legendWorktree,
+      description: l10n.legendWorktreeHint,
+      symbol: (
+        <WorktreeBadge
+          marker={{
+            path: "",
+            name: "",
+            head: "",
+            branch: branch.name,
+            bare: false,
+            locked: false,
+            prunable: false,
+            change: "dirty"
+          }}
         />
       )
     },

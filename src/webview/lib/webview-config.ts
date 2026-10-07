@@ -1,6 +1,7 @@
 import { signal } from "@preact/signals";
 
 import type { WebviewConfig } from "@/types";
+import { ROW_HEIGHT, ROW_HEIGHTS } from "@/webview/constants";
 
 /**
  * The extension's settings, absent until the page is initialised. The object is the one the
@@ -39,4 +40,14 @@ export function getWebviewConfig(): WebviewConfig {
     throw new Error("Webview configuration is not initialized");
   }
   return value;
+}
+
+/**
+ * The height of a commit row, in pixels, at the current `rowDensity`. A value the page does not
+ * know, such as one from a newer extension, gets the default height. Like `getWebviewConfig`, a
+ * render that calls this runs again when the settings change.
+ */
+export function rowHeight(): number {
+  const density = getWebviewConfig().rowDensity;
+  return Object.hasOwn(ROW_HEIGHTS, density) ? ROW_HEIGHTS[density] : ROW_HEIGHT;
 }

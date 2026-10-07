@@ -822,6 +822,95 @@ suite("Branchwise workflow UI", function () {
     await openRepo(repo);
   });
 
+  test("previews a branch's history while the pointer rests on its label, and names nearest branches", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "preview-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    commit("main", "preview-main-older", dir);
+    const older = git(["rev-parse", "HEAD"], dir);
+    commit("main", "preview-main-tip", dir);
+    const tip = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "-b", "preview-topic", base], dir);
+    commit("topic", "preview-topic-work", dir);
+    const work = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    await openRepo(dir);
+    await until(() => graph.evaluate(visible(work)), "preview fixture rows");
+
+    // Nearest branch: the unlabelled commit under main's tip names main.
+    const nearest = (hash) =>
+      graph.evaluate(`(() => {
+        const label = document.querySelector('tr[data-commit-hash="${hash}"] [data-nearest-branch]');
+        return label ? [label.textContent, label.title] : null;
+      })()`);
+    await until(async () => (await nearest(older)) !== null, "nearest branch label");
+    assert.deepEqual(await nearest(older), [
+      "on main",
+      "Nearest branch containing this commit: main"
+    ]);
+    assert.equal(await nearest(tip), null);
+    assert.equal(await nearest(work), null);
+
+    const previewed = () =>
+      graph.evaluate(
+        `[...document.querySelectorAll('tr[data-preview-branch]')].map(row => [row.dataset.commitHash, row.dataset.previewBranch])`
+      );
+    const state = () =>
+      graph.evaluate(`({
+        active: document.activeElement?.outerHTML.slice(0, 120) ?? null,
+        scroll: window.scrollY,
+        selected: [...document.querySelectorAll('tr[aria-selected="true"]')].length,
+        focus: document.querySelectorAll('[data-focus-branch]').length
+      })`);
+    const before = await state();
+    const hover = (type) =>
+      graph.evaluate(`(() => {
+        const label = [...document.querySelectorAll('tbody span[title]')].find(e => e.title.split(String.fromCharCode(10))[0] === "preview-topic" && e.querySelector('svg'));
+        if (!label) return false;
+        for (const event of ${JSON.stringify(type === "enter" ? ["mouseover", "mouseenter"] : ["mouseout", "mouseleave"])}) {
+          label.dispatchEvent(new MouseEvent(event, { bubbles: event.startsWith("mouseo") }));
+        }
+        return true;
+      })()`);
+    await until(() => hover("enter"), "hover the topic label");
+    await until(async () => (await previewed()).length === 2, "branch preview");
+    assert.deepEqual(
+      (await previewed()).toSorted(),
+      [
+        [base, "preview-topic"],
+        [work, "preview-topic"]
+      ].toSorted()
+    );
+    assert.equal(
+      await graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${tip}"]').dataset.branchRelation`
+      ),
+      "unrelated"
+    );
+    assert.deepEqual(await state(), before);
+
+    await hover("leave");
+    await until(async () => (await previewed()).length === 0, "preview ends on leave");
+    assert.equal(
+      await graph.evaluate(
+        `[...document.querySelectorAll('tr[data-commit-hash]')].every(row => row.dataset.branchRelation === 'normal')`
+      ),
+      true
+    );
+
+    // Escape ends a preview while the pointer is still on the label.
+    await hover("enter");
+    await until(async () => (await previewed()).length === 2, "branch preview again");
+    await graph.evaluate(
+      `document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`
+    );
+    await until(async () => (await previewed()).length === 0, "preview ends on Escape");
+    await hover("leave");
+    assert.deepEqual(await state(), before);
+    await openRepo(repo);
+  });
+
   test("opens uncommitted files from the graph with separate staged and working diffs", async () => {
     const dir = directory();
     init(dir);
@@ -944,6 +1033,61 @@ suite("Branchwise workflow UI", function () {
     await button("Remove Worktree");
     await finished();
     assert.equal(fs.existsSync(worktree), false);
+  });
+
+  test("marks the branch another worktree has checked out, with a dot for its changes", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "worktree base", dir);
+    // Beside the main worktree, so the tooltip names it relative to it, and with a space.
+    const linked = dir + "-feature x";
+    dirs.push(linked);
+    git(["worktree", "add", "-b", "ui-feature", linked], dir);
+    commit("g", "worktree feature", linked);
+    fs.writeFileSync(path.join(linked, "f"), "changed in the worktree");
+    await openRepo(dir);
+    const badge = () =>
+      graph.evaluate(`(() => {
+        const label = [...document.querySelectorAll("tr[data-commit-hash] [data-ref]")].find(
+          (span) => span.title.split("\\n")[0] === "ui-feature"
+        );
+        const mark = label?.querySelector("[data-worktree]");
+        return mark
+          ? { path: mark.dataset.worktree, dirty: mark.hasAttribute("data-worktree-dirty"), title: mark.title }
+          : null;
+      })()`);
+    await until(async () => (await badge())?.dirty === true, "worktree badge with a dot");
+    assert.deepEqual(await badge(), {
+      path: repoKey(linked),
+      dirty: true,
+      title: `Worktree: ../${path.basename(linked)}\nui-feature\nHas uncommitted changes`
+    });
+    // The graph's own worktree is not marked; its changes have their own row.
+    assert.equal(await graph.evaluate('document.querySelectorAll("[data-worktree]").length'), 1);
+
+    await contextRef("ui-feature");
+    const entries = await until(
+      () =>
+        graph.evaluate(
+          `(() => { const items = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent.trim()); return items.length > 0 && items; })()`
+        ),
+      "menu of ui-feature"
+    );
+    assert.ok(entries.includes("Open Worktree in New Window"), entries.join(", "));
+    // Named as VS Code names it on the platform the window runs on.
+    const reveal =
+      process.platform === "win32"
+        ? "Reveal in File Explorer"
+        : process.platform === "darwin"
+          ? "Reveal in Finder"
+          : "Open Containing Folder";
+    assert.ok(entries.includes(reveal), entries.join(", "));
+    await keypress("Escape");
+
+    // Once the change is undone, a refresh takes the dot away and keeps the badge.
+    git(["checkout", "--", "f"], linked);
+    await button("Refresh");
+    await until(async () => (await badge())?.dirty === false, "worktree badge without a dot");
   });
 
   test("never confirms a destructive dialog while Enter is held", async () => {
@@ -2008,6 +2152,93 @@ suite("Branchwise workflow UI", function () {
     }
   });
 
+  test("redraws compact rows at once and hides a column from the headings' menu", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "density one", dir);
+    commit("f", "density two", dir);
+    commit("f", "density three", dir);
+    const config = vscode.workspace.getConfiguration("branchwise");
+    const original = config.inspect("rowDensity").globalValue;
+    const measure = () =>
+      graph.evaluate(`(() => {
+        const rows = [...document.querySelectorAll('tbody tr[data-commit-hash]')];
+        const first = rows[0].getBoundingClientRect();
+        const dot = document.querySelector('[data-graph-viewport] circle').getBoundingClientRect();
+        const label = rows[0].querySelector('[data-ref]').getBoundingClientRect();
+        return {
+          heights: rows.map((row) => row.getBoundingClientRect().height),
+          top: first.top,
+          bottom: first.bottom,
+          dot: dot.top + dot.height / 2,
+          label: [label.top, label.bottom],
+          headings: [...document.querySelectorAll('thead th')].map((th) => th.textContent.trim()),
+          cells: rows[0].cells.length
+        };
+      })()`);
+    /** Right-click the headings and choose `title` from the menu of columns. */
+    const toggleColumn = (title) =>
+      until(
+        () =>
+          graph.evaluate(`(() => {
+            const item = [...document.querySelectorAll('[role="menuitemcheckbox"]')].find(e => e.textContent.trim() === ${JSON.stringify(title)});
+            if (item) { item.click(); return true; }
+            document.querySelector('thead th').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 60 }));
+            return false;
+          })()`),
+        "column menu " + title
+      );
+    // The first row also holds half of the heading's bottom border, as tables with collapsed
+    // borders share a border between the rows on either side of it.
+    const rowsAre = (height) =>
+      state.heights.length === 3 &&
+      state.heights[0] >= height &&
+      state.heights[0] <= height + 0.5 &&
+      state.heights.slice(1).every((each) => each === height);
+    let state;
+    try {
+      await openRepo(dir);
+      await until(async () => {
+        state = await measure();
+        return rowsAre(24);
+      }, "rows of the default density").catch((error) => {
+        throw new Error(`${error.message} ${JSON.stringify(state)}`);
+      });
+
+      await config.update("rowDensity", "compact", vscode.ConfigurationTarget.Global);
+      await until(async () => {
+        state = await measure();
+        return rowsAre(20);
+      }, "compact rows").catch((error) => {
+        throw new Error(`${error.message} ${JSON.stringify(state)}`);
+      });
+      // The first dot sits in the middle of the first row, and the branch label fits inside it.
+      assert.ok(Math.abs(state.dot - (state.top + 10)) <= 1, JSON.stringify(state));
+      assert.ok(
+        state.label[0] >= state.top && state.label[1] <= state.bottom,
+        JSON.stringify(state)
+      );
+
+      await toggleColumn("Author");
+      await until(async () => {
+        state = await measure();
+        return !state.headings.includes("Author");
+      }, "author column hidden");
+      assert.deepEqual(state.headings, ["Graph", "Message", "Date", "ID"]);
+      assert.equal(state.cells, 4);
+    } finally {
+      await config.update("rowDensity", original, vscode.ConfigurationTarget.Global);
+      if (state !== undefined && !state.headings.includes("Author")) {
+        await toggleColumn("Author");
+        await until(async () => (await measure()).headings.includes("Author"), "author shown");
+      }
+      await until(async () => {
+        state = await measure();
+        return rowsAre(24);
+      }, "rows back at the default density");
+    }
+  });
+
   test("opens a merge request page for a branch, pushing one without an upstream first", async () => {
     const dir = directory();
     init(dir);
@@ -2119,6 +2350,319 @@ suite("Branchwise workflow UI", function () {
       "tagged commit selected from its chip"
     );
     await button("Clear focus");
+  });
+
+  test("marks a focused branch's commits that main already has, and jumps to main's copy", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "applied base", dir);
+    git(["checkout", "-b", "applied-topic"], dir);
+    commit("picked", "applied picked", dir);
+    const picked = git(["rev-parse", "HEAD"], dir);
+    commit("kept", "applied kept", dir);
+    const kept = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    commit("m", "applied main", dir);
+    git(["cherry-pick", picked], dir);
+    const copy = git(["rev-parse", "HEAD"], dir);
+    const refs = () => git(["for-each-ref", "--format=%(refname) %(objectname)"], dir);
+    const before = [
+      refs(),
+      git(["symbolic-ref", "HEAD"], dir),
+      git(["status", "--porcelain"], dir)
+    ];
+    await openRepo(dir);
+    await refMenuEntry("applied-topic", "Focus this branch");
+    const mark = (hash) =>
+      graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${hash}"] [data-applied-as]')?.dataset.appliedAs ?? null`
+      );
+    await until(async () => (await mark(picked)) === copy, "applied mark on the picked commit");
+    assert.equal(await mark(kept), null);
+    assert.equal(await mark(copy), null);
+    assert.equal(
+      await graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${picked}"] [data-applied-as]').title`
+      ),
+      `Already in main as ${copy.slice(0, 8)}: applied picked`
+    );
+    await graph.evaluate(
+      `document.querySelector('tr[data-commit-hash="${picked}"] [data-applied-as]').click()`
+    );
+    const selected = (hash) =>
+      graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${hash}"]')?.getAttribute('aria-selected')`
+      );
+    await until(
+      async () => (await selected(copy)) === "true",
+      "main's copy selected from the mark"
+    );
+    assert.equal(await selected(picked), "false");
+    // Looking changed nothing: the refs, the checked-out branch and the work tree are as they were.
+    assert.deepEqual(
+      [refs(), git(["symbolic-ref", "HEAD"], dir), git(["status", "--porcelain"], dir)],
+      before
+    );
+    await button("Clear focus");
+  });
+
+  test("counts a commit's changes in the Changes column and shows its card on hover", async () => {
+    const dir = directory();
+    init(dir);
+    fs.writeFileSync(path.join(dir, "notes.txt"), "a\nb\nc\n");
+    git(["add", "--", "notes.txt"], dir);
+    git(["commit", "-m", "stats base"], dir);
+    fs.writeFileSync(path.join(dir, "notes.txt"), "a\nB\nc\nd\n");
+    fs.writeFileSync(path.join(dir, "extra.txt"), "x\n");
+    git(["add", "-A"], dir);
+    git(["commit", "-m", "Count these changes", "-m", "Why it changed.\nSecond line."], dir);
+    const target = git(["rev-parse", "HEAD"], dir);
+    // A later commit, so that the row measured has no checked-out highlight behind it.
+    commit("later.txt", "stats later", dir);
+    const config = vscode.workspace.getConfiguration("branchwise");
+    const original = config.inspect("showChangesColumn").globalValue;
+    const workbench = vscode.workspace.getConfiguration("workbench");
+    const originalTheme = workbench.inspect("colorTheme").globalValue;
+    try {
+      await config.update("showChangesColumn", true, vscode.ConfigurationTarget.Global);
+      await openRepo(dir);
+      const cell = `document.querySelector('tr[data-commit-hash="${target}"] [data-changes]')`;
+      // notes.txt: one line changed and one added; extra.txt: one line added.
+      await until(
+        async () => (await graph.evaluate(`${cell}?.innerText ?? null`)) === "+3 −1",
+        "change counts in the Changes column"
+      );
+      assert.equal(
+        await graph.evaluate(`${cell}.title`),
+        "2 files changed, 3 insertions, 1 deletion"
+      );
+      assert.equal(
+        await graph.evaluate(
+          `[...document.querySelectorAll('thead th')].map(th => th.innerText.trim()).at(-1)`
+        ),
+        "Changes"
+      );
+
+      await graph.evaluate(`(() => {
+        const message = document.querySelector('tr[data-commit-hash="${target}"] [data-commit-message]');
+        const box = message.getBoundingClientRect();
+        for (const type of ['mouseenter', 'mouseover']) {
+          message.dispatchEvent(new MouseEvent(type, { bubbles: type === 'mouseover', clientX: box.left + 8, clientY: box.top + 6 }));
+        }
+      })()`);
+      const card = `document.querySelector('[data-hover-card="${target}"]')`;
+      const text = await until(
+        () =>
+          graph.evaluate(
+            `(() => { const text = ${card}?.innerText ?? ''; return text.includes('2 files changed') ? text : null; })()`
+          ),
+        "commit card with its change counts"
+      );
+      for (const part of [
+        "Count these changes",
+        "Why it changed.\nSecond line.",
+        "UI Test <ui@test>",
+        target.slice(0, 8),
+        target,
+        "+3 −1"
+      ]) {
+        assert.ok(text.includes(part), `card shows ${JSON.stringify(part)}:\n${text}`);
+      }
+      assert.deepEqual(
+        await graph.evaluate(
+          `(() => { const element = ${card}; const box = element.getBoundingClientRect(); return [element.getAttribute('aria-hidden'), getComputedStyle(element).pointerEvents, box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight, element.contains(document.activeElement)]; })()`
+        ),
+        ["true", "none", true, false]
+      );
+
+      // Moving off the message takes the card away.
+      const leave = `document.querySelector('tr[data-commit-hash="${target}"]').cells[2].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))`;
+      await graph.evaluate(leave);
+      await until(() => graph.evaluate(`${card} === null`), "card hidden");
+
+      // The card and the counts stay readable in light, dark and high contrast themes.
+      for (const [theme, kind] of [
+        ["Light Modern", "vscode-light"],
+        ["Dark Modern", "vscode-dark"],
+        ["Default High Contrast", "vscode-high-contrast"],
+        ["Default High Contrast Light", "vscode-high-contrast-light"]
+      ]) {
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        await graph.evaluate(`(() => {
+          const message = document.querySelector('tr[data-commit-hash="${target}"] [data-commit-message]');
+          const box = message.getBoundingClientRect();
+          message.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, clientX: box.left + 8, clientY: box.top + 6 }));
+        })()`);
+        await until(
+          () => graph.evaluate(`!!${card}?.querySelector('[data-hover-changes] .text-git-added')`),
+          `card in ${theme}`
+        );
+        // Text needs 4.5:1. The counts are in the theme's own added and deleted colours, which
+        // VS Code draws file names in, and their + and − signs say what the colour says: 3:1.
+        const readable = [
+          [4.5, "subject", `[data-hover-card] [data-hover-subject]`],
+          [4.5, "author", `[data-hover-card] [data-hover-author]`],
+          [3, "added", `[data-hover-card] .text-git-added`],
+          [3, "deleted", `[data-hover-card] .text-git-deleted`],
+          [3, "cell added", `tr[data-commit-hash="${target}"] [data-changes] .text-git-added`],
+          [3, "cell deleted", `tr[data-commit-hash="${target}"] [data-changes] .text-git-deleted`]
+        ];
+        for (const [minimum, part, selector] of readable) {
+          const measured = await contrast(selector);
+          assert.ok(
+            measured.ratio >= minimum,
+            `${part} contrast in ${theme}: ${JSON.stringify(measured)}`
+          );
+        }
+        await graph.evaluate(leave);
+        await until(() => graph.evaluate(`${card} === null`), `card hidden in ${theme}`);
+      }
+    } finally {
+      await config.update("showChangesColumn", original, vscode.ConfigurationTarget.Global);
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+    }
+    await until(
+      () => graph.evaluate(`document.querySelector('[data-changes]') === null`),
+      "Changes column turned off again"
+    );
+  });
+
+  test("docks commit details below or beside the graph in a resizable pane", async () => {
+    const dir = directory();
+    init(dir);
+    for (let index = 1; index <= 60; index++) {
+      commit("f", `dock ${index}`, dir);
+    }
+    const first = git(["rev-parse", "HEAD~3"], dir);
+    const second = git(["rev-parse", "HEAD~4"], dir);
+    const config = vscode.workspace.getConfiguration("branchwise");
+    const original = config.inspect("commitDetailsPosition").globalValue;
+    const workbench = vscode.workspace.getConfiguration("workbench");
+    const originalTheme = workbench.inspect("colorTheme").globalValue;
+    const row = (hash) => `document.querySelector('tr[data-commit-hash="${hash}"]')`;
+    const pane = 'document.querySelector("[data-details-pane]")';
+    const splitter = 'document.querySelector("[data-details-splitter]")';
+    const box = (element) =>
+      graph.evaluate(
+        `(() => { const b = ${element}.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, width: b.width, height: b.height }; })()`
+      );
+    const paneShows = (hash) =>
+      until(
+        () => graph.evaluate(`${pane}?.innerText.includes(${JSON.stringify(hash)}) ?? false`),
+        "details of " + hash.slice(0, 8)
+      );
+    /** Puts the keyboard on the splitter and presses `key` there. */
+    const onSplitter = async (key) => {
+      await graph.evaluate(`${splitter}.focus()`);
+      await until(() => graph.evaluate(`document.activeElement === ${splitter}`), "splitter");
+      await keypress(key);
+    };
+    const valueNow = () => graph.evaluate(`Number(${splitter}.getAttribute("aria-valuenow"))`);
+    try {
+      await config.update("commitDetailsPosition", "bottom", vscode.ConfigurationTarget.Global);
+      await openRepo(dir);
+      await until(
+        () => graph.evaluate('!!document.querySelector("[data-details-dock=bottom]")'),
+        "bottom layout"
+      );
+      await graph.evaluate(`${row(first)}.click()`);
+      await paneShows(first);
+      assert.equal(await graph.evaluate(`${pane}.dataset.detailsPane`), "bottom");
+      assert.equal(await graph.evaluate('!!document.querySelector("[data-details-row]")'), false);
+
+      // Below the graph, across the whole window, with the graph scrolling on its own above it.
+      const scroller = 'document.querySelector("[data-graph-scroller]")';
+      const [graphBox, paneBox] = [await box(scroller), await box(pane)];
+      assert.ok(paneBox.top >= graphBox.bottom, JSON.stringify({ graphBox, paneBox }));
+      assert.equal(paneBox.width, await graph.evaluate("document.documentElement.clientWidth"));
+      assert.ok(
+        await graph.evaluate(
+          "document.scrollingElement.scrollHeight <= document.scrollingElement.clientHeight"
+        ),
+        "the window itself does not scroll"
+      );
+      assert.ok(await graph.evaluate(`${scroller}.scrollHeight > ${scroller}.clientHeight`));
+      await graph.evaluate(`${scroller}.scrollTop = 200`);
+      await until(
+        async () =>
+          Math.abs((await box('document.querySelector("thead")')).top - (await box(scroller)).top) <
+          1,
+        "table heading stuck to the top of the graph"
+      );
+
+      // The arrow keys resize the pane in steps, and it stays open for another commit.
+      const before = await valueNow();
+      const height = paneBox.height;
+      await onSplitter("ArrowUp");
+      await onSplitter("ArrowUp");
+      await until(async () => (await valueNow()) === before + 10, "splitter moved up");
+      assert.ok((await box(pane)).height > height + 10);
+      // Its focus shows in the default theme and in both high contrast themes.
+      await visibleKeyboardFocus("[data-details-splitter]");
+      for (const [theme, kind] of [
+        ["Default High Contrast", "vscode-high-contrast"],
+        ["Default High Contrast Light", "vscode-high-contrast-light"]
+      ]) {
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        await onSplitter("ArrowDown");
+        await visibleKeyboardFocus("[data-details-splitter]");
+        await onSplitter("ArrowUp");
+      }
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+      assert.equal(await valueNow(), before + 10);
+      // The graph has scrolled past the next commit; choosing it brings its row back into sight.
+      await graph.evaluate(`${row(second)}.click()`);
+      await paneShows(second);
+      assert.equal(
+        await graph.evaluate(`${pane}.innerText.includes(${JSON.stringify(first)})`),
+        false
+      );
+      await until(async () => {
+        const [chosen, view] = [await box(row(second)), await box(scroller)];
+        return chosen.top >= view.top && chosen.bottom <= view.bottom;
+      }, "chosen row in sight");
+
+      // Escape in the pane closes it and gives the keyboard back to the row.
+      await graph.evaluate(`${pane}.querySelector("button").focus()`);
+      await keypress("Escape");
+      await until(() => graph.evaluate(`!${pane}`), "bottom pane closed");
+      await until(() => graph.evaluate(`document.activeElement === ${row(second)}`), "row focused");
+
+      // On the right: the whole height below the header, and the keyboard widens it.
+      await config.update("commitDetailsPosition", "right", vscode.ConfigurationTarget.Global);
+      await until(
+        () => graph.evaluate('!!document.querySelector("[data-details-dock=right]")'),
+        "right layout"
+      );
+      await graph.evaluate(`${row(first)}.click()`);
+      await paneShows(first);
+      assert.equal(await graph.evaluate(`${pane}.dataset.detailsPane`), "right");
+      const [besideBox, rightBox] = [await box(scroller), await box(pane)];
+      assert.ok(rightBox.left >= besideBox.right, JSON.stringify({ besideBox, rightBox }));
+      const header = await box('document.querySelector("header")');
+      assert.ok(Math.abs(rightBox.top - header.bottom) <= 1, JSON.stringify({ header, rightBox }));
+      assert.ok(Math.abs(rightBox.bottom - (await graph.evaluate("innerHeight"))) <= 1);
+      const width = rightBox.width;
+      await onSplitter("ArrowLeft");
+      await until(async () => (await box(pane)).width > width + 10, "pane widened");
+      await keypress("Escape");
+      await until(() => graph.evaluate(`!${pane}`), "right pane closed");
+    } finally {
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+      await config.update("commitDetailsPosition", original, vscode.ConfigurationTarget.Global);
+    }
+    await until(
+      () => graph.evaluate('!document.querySelector("[data-graph-scroller]")'),
+      "details back under the rows"
+    );
   });
 
   test("acts on the focused commit with single keys and lists them on the shortcut sheet", async () => {
@@ -4606,6 +5150,143 @@ suite("Branchwise workflow UI", function () {
       "day label gone back at the top"
     );
     await openRepo(repo);
+  });
+
+  test("marks HEAD, branches and tags on the overview strip and scrolls to where it is clicked", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "strip-base", dir);
+    const tree = git(["rev-parse", "HEAD^{tree}"], dir);
+    let parent = git(["rev-parse", "HEAD"], dir);
+    // A history far taller than the window, with a branch and a tag near its bottom.
+    for (let index = 1; index <= 150; index++) {
+      parent = git(["commit-tree", tree, "-p", parent, "-m", `strip-${index}`], dir);
+      if (index === 4) {
+        git(["tag", "strip-old-tag", parent], dir);
+      }
+      if (index === 8) {
+        git(["branch", "strip-old-branch", parent], dir);
+      }
+    }
+    git(["update-ref", "refs/heads/main", parent], dir);
+    const tagged = git(["rev-parse", "strip-old-tag"], dir);
+    const refsBefore = git(["show-ref"], dir);
+    await openRepo(dir);
+    await until(
+      () => graph.evaluate("document.querySelectorAll('tr[data-commit-hash]').length === 151"),
+      "long history"
+    );
+    await graph.evaluate("window.scrollTo(0, 0)");
+    const strip = () =>
+      graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip]:not([hidden]) canvas');
+      if (!canvas) return null;
+      const box = canvas.getBoundingClientRect();
+      const table = document.querySelector('main table').getBoundingClientRect();
+      const row = document.querySelector('tr[data-commit-hash="${tagged}"]').getBoundingClientRect();
+      return { kinds: canvas.dataset.markerKinds, count: Number(canvas.dataset.markerCount),
+        top: box.top, bottom: box.bottom, left: box.left, right: box.right,
+        tableRight: table.right, pageWidth: document.documentElement.clientWidth,
+        pixels: canvas.width, scale: devicePixelRatio, ariaHidden: canvas.getAttribute('aria-hidden'),
+        tabIndex: canvas.tabIndex, y: scrollY, height: innerHeight,
+        heading: document.querySelector('main thead').getBoundingClientRect().bottom,
+        rowTop: row.top, rowBottom: row.bottom };
+    })()`);
+    const before = await until(async () => {
+      const state = await strip();
+      return state?.kinds === "head branch tag" && state.y === 0 && state;
+    }, "overview strip with HEAD, branch and tag marks");
+    // HEAD and main on the newest commit, the old branch, and the old tag.
+    assert.equal(before.count, 4);
+    assert.equal(before.ariaHidden, "true");
+    assert.equal(before.tabIndex, -1, "the strip is not a tab stop");
+    assert.equal(before.pixels, Math.round(10 * before.scale));
+    assert.ok(
+      before.tableRight <= before.left + 0.5,
+      `beside the table: ${JSON.stringify(before)}`
+    );
+    assert.ok(before.right <= before.pageWidth + 0.5, "clear of the window's scrollbar");
+    assert.ok(before.rowTop > before.height, "the tagged commit starts out of sight");
+
+    // Every theme colours the marks: HEAD in the editor's cursor colour, tags in the left half.
+    const marks = () =>
+      graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip] canvas');
+      const scale = canvas.width / 10, height = canvas.height / scale;
+      const pixel = (x, y) => [...canvas.getContext('2d').getImageData(Math.floor(x * scale), Math.floor(y * scale), 1, 1).data];
+      const rowY = (row) => Math.min(height - 3, Math.max(1, Math.floor(((row + 0.5) / 151) * height)));
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--vscode-editorCursor-foreground)';
+      document.body.append(probe);
+      const cursor = getComputedStyle(probe).color.match(/\\d+/g).slice(0, 3).map(Number);
+      probe.remove();
+      return { head: pixel(5, rowY(0) + 1), tag: pixel(3, rowY(146) + 1), cursor };
+    })()`);
+    const workbench = vscode.workspace.getConfiguration("workbench");
+    const originalTheme = workbench.inspect("colorTheme").globalValue;
+    try {
+      for (const [theme, kind] of [
+        ["Light Modern", "vscode-light"],
+        ["Dark Modern", "vscode-dark"],
+        ["Default High Contrast", "vscode-high-contrast"],
+        ["Default High Contrast Light", "vscode-high-contrast-light"]
+      ]) {
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        await until(async () => {
+          const { head, tag, cursor } = await marks();
+          return (
+            head[3] === 255 &&
+            head.slice(0, 3).every((channel, index) => Math.abs(channel - cursor[index]) <= 2) &&
+            tag[3] > 0
+          );
+        }, `HEAD and tag marks in ${theme}`);
+        const screenshot = await connections[0].call("Page.captureScreenshot");
+        fs.writeFileSync(
+          path.join(artifacts, `overview-strip-${kind}.png`),
+          Buffer.from(screenshot.data, "base64")
+        );
+      }
+    } finally {
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+    }
+
+    // Near the bottom of the strip: the oldest commits come into view.
+    await graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip] canvas');
+      const box = canvas.getBoundingClientRect();
+      canvas.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true,
+        pointerId: 1, button: 0, clientX: box.left + 5, clientY: box.bottom - 3 }));
+      canvas.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, button: 0,
+        clientX: box.left + 5, clientY: box.bottom - 3 }));
+    })()`);
+    const after = await until(async () => {
+      const state = await strip();
+      return state && state.y > 1000 && state;
+    }, "table scrolled by the strip");
+    assert.ok(
+      after.rowTop >= after.heading - 1 && after.rowBottom <= after.height + 1,
+      `the tagged commit is on screen: ${JSON.stringify(after)}`
+    );
+
+    // Near the top: back to the newest commits.
+    await graph.evaluate(`(() => {
+      const canvas = document.querySelector('[data-overview-strip] canvas');
+      const box = canvas.getBoundingClientRect();
+      canvas.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true,
+        pointerId: 1, button: 0, clientX: box.left + 5, clientY: box.top + 1 }));
+    })()`);
+    await until(async () => (await strip())?.y === 0, "table scrolled back to the top");
+    assert.equal(git(["show-ref"], dir), refsBefore);
+
+    await openRepo(repo);
+    await until(
+      () => graph.evaluate("document.querySelector('[data-overview-strip]')?.hidden !== false"),
+      "no strip beside a history that fits the window"
+    );
   });
 
   test("lists branches, remotes, tags and stashes beside the graph and switches the graph from them", async () => {

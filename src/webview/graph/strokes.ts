@@ -8,11 +8,11 @@ import type {
 } from "@/webview/graph/types";
 import { expandOffset, laneX, rowY } from "@/webview/graph/utils";
 
-/** How far the control points of a rounded bend reach from its ends, in pixels. */
-const CURVE_REACH = 0.8 * ROW_HEIGHT;
+/** How far the control points of a rounded bend reach from its ends, in rows. */
+const CURVE_REACH = 0.8;
 
-/** Length of the straight stub beside the corner of an angular bend, in pixels. */
-const CORNER_STUB = 0.38 * ROW_HEIGHT;
+/** Length of the straight stub beside the corner of an angular bend, in rows. */
+const CORNER_STUB = 0.38;
 
 type Pixel = { x: number; y: number };
 type Span = { from: Pixel; to: Pixel };
@@ -43,27 +43,36 @@ type Pen = {
  * keeps its bend one row high, at the end `lockedFirst` names, and a straight
  * stretch in the other lane spans the rest of the gap.
  */
-function piecesOf(line: GraphLine, expansion: GraphExpansion | null): Array<Piece> {
+function piecesOf(
+  line: GraphLine,
+  expansion: GraphExpansion | null,
+  rowHeight: number
+): Array<Piece> {
   const { p1, p2, lockedFirst } = line;
   const lowerShift = expandOffset(p2.y, expansion);
   // A line that ends above the details stays where it is, even if it starts below them.
   const upperShift = lowerShift === 0 ? 0 : expandOffset(p1.y, expansion);
-  const start = { x: laneX(p1.x), y: rowY(p1.y) + upperShift };
-  const end = { x: laneX(p2.x), y: rowY(p2.y) + lowerShift };
+  const start = { x: laneX(p1.x), y: rowY(p1.y, rowHeight) + upperShift };
+  const end = { x: laneX(p2.x), y: rowY(p2.y, rowHeight) + lowerShift };
 
   const pieces: Array<Piece> =
     upperShift === lowerShift || start.x === end.x
       ? [{ from: start, to: end, lockedFirst }]
-      : splitAround(start, end, lockedFirst);
+      : splitAround(start, end, lockedFirst, rowHeight);
   // Nothing is drawn for a piece that goes nowhere, such as beside details of no height.
   return pieces.filter(({ from, to }) => !samePixel(from, to));
 }
 
 /** The two pieces of a lane change across the details, top first. */
-function splitAround(start: Pixel, end: Pixel, lockedFirst: boolean): Array<Piece> {
+function splitAround(
+  start: Pixel,
+  end: Pixel,
+  lockedFirst: boolean,
+  rowHeight: number
+): Array<Piece> {
   const joint = lockedFirst
-    ? { x: end.x, y: start.y + ROW_HEIGHT }
-    : { x: start.x, y: end.y - ROW_HEIGHT };
+    ? { x: end.x, y: start.y + rowHeight }
+    : { x: start.x, y: end.y - rowHeight };
   return [
     { from: start, to: joint, lockedFirst },
     { from: joint, to: end, lockedFirst }
@@ -80,15 +89,19 @@ function coords({ x, y }: Pixel): string {
 }
 
 /** The commands of a bend, from wherever the pen is to the end of the piece. */
-function bendCommands({ from, to, lockedFirst }: Piece, angular: boolean): string {
+function bendCommands(
+  { from, to, lockedFirst }: Piece,
+  angular: boolean,
+  rowHeight: number
+): string {
   if (!angular) {
-    const leave = { x: from.x, y: from.y + CURVE_REACH };
-    const arrive = { x: to.x, y: to.y - CURVE_REACH };
+    const reach = CURVE_REACH * rowHeight;
+    const leave = { x: from.x, y: from.y + reach };
+    const arrive = { x: to.x, y: to.y - reach };
     return `C${coords(leave)} ${coords(arrive)} ${coords(to)}`;
   }
-  const corner = lockedFirst
-    ? { x: to.x, y: to.y - CORNER_STUB }
-    : { x: from.x, y: from.y + CORNER_STUB };
+  const stub = CORNER_STUB * rowHeight;
+  const corner = lockedFirst ? { x: to.x, y: to.y - stub } : { x: from.x, y: from.y + stub };
   return `L${coords(corner)}L${coords(to)}`;
 }
 
@@ -110,7 +123,7 @@ function releaseStraight(pen: Pen) {
   }
 }
 
-function draw(pen: Pen, piece: Piece, angular: boolean) {
+function draw(pen: Pen, piece: Piece, angular: boolean, rowHeight: number) {
   const straight = piece.from.x === piece.to.x;
   if (straight && pen.straight !== null && carriesOn(pen.straight, piece)) {
     pen.straight.to = piece.to;
@@ -124,7 +137,7 @@ function draw(pen: Pen, piece: Piece, angular: boolean) {
   if (straight) {
     pen.straight = { from: piece.from, to: piece.to };
   } else {
-    pen.commands.push(bendCommands(piece, angular));
+    pen.commands.push(bendCommands(piece, angular, rowHeight));
   }
   pen.at = piece.to;
 }
@@ -144,13 +157,15 @@ function finish(pen: Pen, colour: number): GraphStroke {
  * stroke only where its lines change between committed and uncommitted, or
  * change relation to the focused branch; within a stroke, straight lines along
  * one lane are drawn as a single segment. Without `relationForLine`, every
- * line is "normal". A missing `expansion` means no details are open.
+ * line is "normal". A missing `expansion` means no details are open. Rows are `rowHeight` tall,
+ * and bends keep their shape in proportion to it.
  */
 export function branchStrokes(
   branch: GraphBranch,
   angular: boolean,
   expansion: GraphExpansion | null,
-  relationForLine?: (line: GraphLine) => BranchRelation
+  relationForLine?: (line: GraphLine) => BranchRelation,
+  rowHeight: number = ROW_HEIGHT
 ): Array<GraphStroke> {
   const details = expansion ?? null;
   const strokes: Array<GraphStroke> = [];
@@ -158,14 +173,14 @@ export function branchStrokes(
 
   for (const line of branch.lines) {
     const relation = relationForLine === undefined ? "normal" : relationForLine(line);
-    for (const piece of piecesOf(line, details)) {
+    for (const piece of piecesOf(line, details, rowHeight)) {
       if (pen === null || pen.isCommitted !== line.isCommitted || pen.relation !== relation) {
         if (pen !== null) {
           strokes.push(finish(pen, branch.colour));
         }
         pen = { isCommitted: line.isCommitted, relation, commands: [], at: null, straight: null };
       }
-      draw(pen, piece, angular);
+      draw(pen, piece, angular, rowHeight);
     }
   }
 

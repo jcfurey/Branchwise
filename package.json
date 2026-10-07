@@ -178,6 +178,31 @@
           "type": "boolean",
           "default": true
         },
+        "branchwise.branchHoverPreview": {
+          "description": "%config.branchHoverPreview%",
+          "type": "boolean",
+          "default": true
+        },
+        "branchwise.commitHoverCards": {
+          "description": "%config.commitHoverCards%",
+          "type": "boolean",
+          "default": true
+        },
+        "branchwise.commitDetailsPosition": {
+          "description": "%config.commitDetailsPosition%",
+          "type": "string",
+          "default": "inline",
+          "enum": [
+            "inline",
+            "bottom",
+            "right"
+          ],
+          "enumDescriptions": [
+            "%config.commitDetailsPosition.inline%",
+            "%config.commitDetailsPosition.bottom%",
+            "%config.commitDetailsPosition.right%"
+          ]
+        },
         "branchwise.conflictForecast": {
           "description": "%config.conflictForecast%",
           "type": "string",
@@ -311,6 +336,11 @@
           "default": 100,
           "minimum": 1
         },
+        "branchwise.markAppliedCommits": {
+          "description": "%config.markAppliedCommits%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.maxDepthOfRepoSearch": {
           "description": "%config.maxDepthOfRepoSearch%",
           "type": "integer",
@@ -323,10 +353,40 @@
           "default": 3,
           "minimum": 0
         },
+        "branchwise.rowDensity": {
+          "description": "%config.rowDensity%",
+          "type": "string",
+          "default": "default",
+          "enum": [
+            "compact",
+            "default",
+            "comfortable"
+          ],
+          "enumDescriptions": [
+            "%config.rowDensity.compact%",
+            "%config.rowDensity.default%",
+            "%config.rowDensity.comfortable%"
+          ]
+        },
+        "branchwise.overviewMarkers": {
+          "description": "%config.overviewMarkers%",
+          "type": "boolean",
+          "default": true
+        },
+        "branchwise.showChangesColumn": {
+          "description": "%config.showChangesColumn%",
+          "type": "boolean",
+          "default": false
+        },
         "branchwise.showCurrentBranchByDefault": {
           "description": "%config.showCurrentBranchByDefault%",
           "type": "boolean",
           "default": false
+        },
+        "branchwise.showNearestBranch": {
+          "description": "%config.showNearestBranch%",
+          "type": "boolean",
+          "default": true
         },
         "branchwise.showSignatures": {
           "description": "%config.showSignatures%",
@@ -335,6 +395,11 @@
         },
         "branchwise.showUncommittedChanges": {
           "description": "%config.showUncommittedChanges%",
+          "type": "boolean",
+          "default": true
+        },
+        "branchwise.showWorktrees": {
+          "description": "%config.showWorktrees%",
           "type": "boolean",
           "default": true
         },

@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => {
     issueLinks: [],
     lastActiveRepo: null,
     repos: {},
+    rowDensity: "default",
     showCurrentBranchByDefault: false
   });
   return { postMessage: vi.fn() };

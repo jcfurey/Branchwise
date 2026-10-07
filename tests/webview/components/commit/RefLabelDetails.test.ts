@@ -131,7 +131,8 @@ describe("RefLabel", () => {
     ["head", "main", false, ["main", "origin/main", "worktreeAt"], ["↑2 ↓0", "↗"]],
     ["head", "feat", false, ["feat", "origin/feat"], []],
     ["head", "gone", false, ["gone", "origin/gone", "upstreamGone"], []],
-    ["head", "wt", false, ["wt", "worktreeAt"], ["↗"]],
+    // Another worktree's branch carries its worktree badge, which is an icon, in place of ↗.
+    ["head", "wt", false, ["wt", "worktreeAt"], [""]],
     ["remote", "origin/main", false, ["origin/main"], []],
     ["tag", "main", false, ["main"], []]
   ] as const)("describes %s %s (active: %s)", (type, name, active, title, after) => {

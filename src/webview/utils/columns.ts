@@ -1,4 +1,5 @@
-import { RESIZABLE_COLUMNS } from "@/webview/constants";
+import type { OptionalColumn } from "@/types";
+import { ALL_COLUMNS, OPTIONAL_COLUMNS, RESIZABLE_COLUMNS } from "@/webview/constants";
 
 /** Narrowest, in pixels, a move may make a stored column: graph, date, author or commit. */
 export const MIN_COLUMN = 40;
@@ -29,26 +30,52 @@ export function isColumnWidths(widths: Array<number> | null): widths is Array<nu
   );
 }
 
+/** Whether `name` is a column the user can hide. Own keys only, so `"toString"` is not one. */
+function isOptionalColumn(name: unknown): name is OptionalColumn {
+  return typeof name === "string" && Object.hasOwn(OPTIONAL_COLUMNS, name);
+}
+
+/**
+ * The hidden columns a repository's record names, in table order and each once. The record comes
+ * back from workspace state as JSON, so anything but a list counts as none hidden, and entries
+ * that name no column the user can hide are dropped.
+ */
+export function hiddenColumnsOf(stored: unknown): Array<OptionalColumn> {
+  if (!Array.isArray(stored)) {
+    return [];
+  }
+  const names = new Set<unknown>(stored);
+  return (Object.keys(OPTIONAL_COLUMNS) as Array<OptionalColumn>).filter((name) => names.has(name));
+}
+
+/** The cells a row shows while the `hidden` columns are hidden, in table order. */
+export function shownCells(hidden: ReadonlyArray<string>): Array<number> {
+  const gone = new Set(hidden.filter(isOptionalColumn).map((name) => OPTIONAL_COLUMNS[name]));
+  return ALL_COLUMNS.filter((cell) => !gone.has(cell));
+}
+
 /**
  * Move `boundary` in `widths`, a copy owned by the caller, and return how far it went. Nothing
  * moves, and 0 comes back, when the request cannot be followed at all.
  */
-function shift(widths: Array<number>, boundary: number, delta: number, description: number) {
-  // The table has one column more than it stores widths for, so as many boundaries as widths.
-  const boundaries = RESIZABLE_COLUMNS.length;
-  if (
-    widths.length !== RESIZABLE_COLUMNS.length ||
-    !Number.isInteger(boundary) ||
-    boundary < 0 ||
-    boundary >= boundaries ||
-    !isFiniteNumber(delta)
-  ) {
+function shift(
+  widths: Array<number>,
+  boundary: number,
+  delta: number,
+  description: number,
+  shown: ReadonlyArray<number>
+) {
+  // Boundary n is the right edge of header cell n, where it meets the next cell shown. The last
+  // cell shown has no boundary to move, and neither has a hidden one.
+  const at = shown.indexOf(boundary);
+  const next = at === -1 ? undefined : shown[at + 1];
+  if (widths.length !== RESIZABLE_COLUMNS.length || next === undefined || !isFiniteNumber(delta)) {
     return 0;
   }
 
-  // Boundary n is the right edge of header cell n. A cell without a stored width is the description.
+  // A cell without a stored width is the description.
   const leftSlot = RESIZABLE_COLUMNS.indexOf(boundary);
-  const rightSlot = RESIZABLE_COLUMNS.indexOf(boundary + 1);
+  const rightSlot = RESIZABLE_COLUMNS.indexOf(next);
   const left = leftSlot === -1 ? description : widths[leftSlot];
   const right = rightSlot === -1 ? description : widths[rightSlot];
   if (!isFiniteNumber(left) || !isFiniteNumber(right)) {
@@ -79,7 +106,8 @@ function shift(widths: Array<number>, boundary: number, delta: number, descripti
  * Move the boundary on the right of header cell `boundary` by `delta` pixels, positive to the
  * right, taking width from the column on one side and giving it to the column on the other.
  * `widths` are the stored widths and `description` the measured width of the description
- * column, which has none stored.
+ * column, which has none stored. `shown` are the cells on screen, in table order: the column on
+ * the right is the next of them, and the stored widths of hidden columns are left alone.
  *
  * The boundary goes as far as asked unless that takes a column under its minimum, where it
  * stops. If a column is already under its minimum, the boundary moves far enough to restore it,
@@ -91,9 +119,10 @@ export function moveBoundary(
   widths: Array<number>,
   boundary: number,
   delta: number,
-  description: number
+  description: number,
+  shown: ReadonlyArray<number> = ALL_COLUMNS
 ): { widths: Array<number>; moved: number } {
   const next = [...widths];
-  const moved = shift(next, boundary, delta, description);
+  const moved = shift(next, boundary, delta, description, shown);
   return { widths: next, moved };
 }

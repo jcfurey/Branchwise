@@ -10,9 +10,11 @@ does not check out a branch or change Git refs.
 | Show Remote Branches in Graph and each remote's eye toggle | Restored for each repository                       | Restored                                 |
 | Hidden-branch patterns                                     | Restored for each repository                       | Restored                                 |
 | Column widths                                              | Restored for each repository                       | Restored                                 |
+| Hidden columns (Date, Author, ID)                          | Restored for each repository                       | Restored                                 |
 | Active search, named search filters, vertical position     | Restored for each repository within the open panel | Reset                                    |
 | Horizontal graph position                                  | Reset to the left edge                             | Reset to the left edge                   |
 | Selected commits and expanded details                      | Cleared                                            | Cleared                                  |
+| Size of docked commit details                              | Kept: one size for every repository                | Reset                                    |
 
 Reloading an existing webview retains its search filters and vertical position as well as durable
 preferences. Horizontal panning resets on reload; refreshing loaded history or resizing the graph
@@ -31,6 +33,9 @@ silently restore the old target. Renames are not inferred from matching commit h
 Hiding the focused remote clears its target. Selecting a hidden remote branch reveals its remote
 and enables **Show Remote Branches in Graph**; those updated choices are saved. Turning all remotes
 off and back on preserves each remote's individual eye setting.
+
+Hidden columns keep their widths, so a column shown again is as wide as before. Graph and Message
+cannot be hidden. See [row height and columns](git-actions.md#row-height-and-columns).
 
 Hidden-branch patterns never hide the checked-out branch or the selected one. Selecting or focusing
 a branch that a pattern matches shows it without changing the patterns, so it is hidden again once
@@ -62,6 +67,18 @@ tree. `branchwise.showSignatures` (on by default) marks signed commits with a sm
 reads the loaded commits once more; turning it off saves about 10 ms for 300 rows and 40 ms for
 3,000 (see [performance](performance.md)). The commit details still check signatures. See [commit signatures](git-actions.md#commit-signatures).
 
+`branchwise.markAppliedCommits` (default `true`) marks the commits of a focused or filtered branch
+whose change the checked-out branch already has, as after a cherry-pick or a rebase, with a muted
+**applied**. Git compares patch IDs for that branch alone, and skips one with more than 2,000
+commits the checked-out branch lacks. Turn it off to leave the marks out and start no comparison;
+**Find Equivalent Commit** stays in the commit menu. See
+[commits the checked-out branch already has](git-actions.md#commits-the-checked-out-branch-already-has).
+
+`branchwise.showWorktrees` (default `true`) marks the commits your other worktrees have checked
+out, with a dot for those with uncommitted changes. The dots come from a quick `git status` in up
+to 20 worktrees, at most 3 seconds each; turning the setting off skips them. See
+[worktrees in the graph](git-actions.md#worktrees-in-the-graph).
+
 `branchwise.dragAndDrop` (default `true`) lets commit rows and local branches be dragged onto
 branch labels in the graph and the Branches pane to cherry-pick, merge or rebase, each after a
 confirmation. Turn it off if you drag by accident; every action stays in the menus. See
@@ -72,6 +89,65 @@ day and, once you scroll down, names the day of the topmost commit in a small la
 column headings. Days follow `branchwise.dateType` and your local time zone. Turn it off for a
 plainer graph; the date column is unchanged either way. See
 [days in the graph](git-actions.md#days-in-the-graph).
+
+`branchwise.commitHoverCards` (default `true`) shows a card with a commit's whole message, author,
+date, IDs and change counts when the pointer rests on its message, or when the keyboard rests on
+its row. Turn it off if the card gets in the way; the commit details hold the same information.
+With it on, the message has no tooltip of its own.
+
+`branchwise.showChangesColumn` (default `false`) adds a **Changes** column, such as **+12 −3**,
+with the number of files in its tooltip. The counts are read only for the rows in sight, as you
+scroll, so a long history costs no more than a short one. See
+[commit cards and change counts](git-actions.md#commit-cards-and-change-counts).
+
+`branchwise.overviewMarkers` (default `true`) shows the strip beside the commit table that marks
+HEAD, branch tips and tags, the selection, the open commit and unpushed commits across
+the whole loaded history, with a band for the rows on screen; click or drag on it to scroll.
+Turn it off to give the table those 10 pixels back. See
+[overview strip](git-actions.md#overview-strip).
+
+### Branch previews and nearest branches
+
+`branchwise.branchHoverPreview` (default `true`) highlights a branch's or tag's commits, more
+lightly than branch focus, while the pointer rests on its label in the graph or its row in the
+Branches pane. Turn it off if the highlight distracts you; **Focus this branch** still works.
+
+`branchwise.showNearestBranch` (default `true`) names, in faint text after the message of a commit
+without a branch label of its own, the nearest branch that contains it, such as "on main". It is
+worked out from the loaded rows and costs no Git calls. See
+[the Branches pane and branch focus](git-actions.md#branches-pane).
+
+### Row density
+
+`branchwise.rowDensity` sets how tall the graph's rows are, the same in every repository:
+
+| Value               | Row height |
+| ------------------- | ---------- |
+| `compact`           | 20 pixels  |
+| `default` (default) | 24 pixels  |
+| `comfortable`       | 30 pixels  |
+
+The open graph is redrawn at the new height at once. Compact rows stop at 20 pixels, the height of
+the **⋯** button at the end of a row, so no control in a row gets smaller than it is by default;
+branch and tag labels shrink by 2 pixels to fit. See
+[row height and columns](git-actions.md#row-height-and-columns).
+
+### Commit details position
+
+`branchwise.commitDetailsPosition` chooses where a commit's details open:
+
+| Value              | Where                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------- |
+| `inline` (default) | Under the commit's row, moving the rows below it down                                   |
+| `bottom`           | In a pane docked below the graph, across the whole width of the panel                   |
+| `right`            | In a pane docked to the right of the graph, from the toolbar to the bottom of the panel |
+
+With `bottom` or `right`, the graph scrolls on its own beside the pane, and the pane stays open
+while you choose other commits. Drag the bar between them, or use its arrow keys, to resize the
+pane; the size is a share of the window, kept separately for the two positions and for every
+repository while the panel stays open. Changing the setting moves open details at once.
+`branchwise.autoCenterCommitDetailsView` applies only to `inline`. See
+[where the details open](git-actions.md#where-the-details-open).
 
 ### Single-key shortcuts
 
