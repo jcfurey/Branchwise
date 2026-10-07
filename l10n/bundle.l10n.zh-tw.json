@@ -948,5 +948,7 @@
   "Create Pull Request": "建立提取要求",
   "Create Merge Request": "建立合併要求",
   "Push and Create Pull Request": "推送並建立提取要求",
-  "Push and Create Merge Request": "推送並建立合併要求"
+  "Push and Create Merge Request": "推送並建立合併要求",
+  "Columns": "欄",
+  "Columns to show in the graph. The graph and the message are always shown. You can also right-click the column headings.": "分支圖中要顯示的欄。分支圖和訊息欄一律顯示。也可以在欄標題上按一下滑鼠右鍵進行選擇。"
 }

@@ -73,6 +73,11 @@ export function getWebviewLocalizedStrings() {
     date: vscode.l10n.t("Date"),
     author: vscode.l10n.t("Author"),
     commit: vscode.l10n.t("ID"),
+    // The Settings & Tools entry, followed by "…", that opens the dialog below.
+    columns: vscode.l10n.t("Columns"),
+    columnsDialog: vscode.l10n.t(
+      "Columns to show in the graph. The graph and the message are always shown. You can also right-click the column headings."
+    ),
     // The optional column of lines added and deleted, shown as "+12 −3".
     changesColumn: vscode.l10n.t("Changes"),
     // A commit's change counts: {0}, {1} and {2} are the three phrases below, in that order.

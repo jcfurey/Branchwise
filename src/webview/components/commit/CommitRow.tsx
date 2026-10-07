@@ -10,7 +10,7 @@ import { SignedMark } from "@/webview/components/commit/SignatureBadge";
 import { WorktreeLabel } from "@/webview/components/commit/WorktreeMarker";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
 import { KebabIcon } from "@/webview/components/ui/Icons";
-import { UNCOMMITTED_CHANGES } from "@/webview/constants";
+import { OPTIONAL_COLUMNS, UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { type Dimming, focusColour } from "@/webview/graph/focus";
 import type { BranchRelation } from "@/webview/graph/types";
 import { closeCommitDetails, openContextMenu } from "@/webview/lib/actions";
@@ -31,7 +31,7 @@ import {
   selectCommitRows,
   selectedCommits
 } from "@/webview/lib/navigation";
-import { activeSource, contextMenu, uncommittedChanges } from "@/webview/lib/stores";
+import { activeSource, contextMenu, shownColumns, uncommittedChanges } from "@/webview/lib/stores";
 import { type WorktreeMarker, worktreeMarkers } from "@/webview/lib/worktrees";
 import { getCommitDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
@@ -186,7 +186,7 @@ export function MoreRefs({
       type="button"
       tabIndex={-1}
       data-more-refs={hidden.length}
-      class="mt-0.5 mr-1.25 box-content inline-flex h-4.5 shrink-0 cursor-pointer items-center rounded-md border border-line bg-btn px-1.25 align-top text-xs hover:bg-btn-hover"
+      class="mt-0.5 mr-1.25 box-content inline-flex h-ref-label shrink-0 cursor-pointer items-center rounded-md border border-line bg-btn px-1.25 align-top text-xs hover:bg-btn-hover"
       title={names.join("\n")}
       aria-label={window.l10n.moreRefs.replace("{0}", () => names.join(", "))}
       onClick={(event) => {
@@ -278,8 +278,11 @@ export function AppliedMark({ equivalent }: { equivalent: SubjectedCommit | null
   );
 }
 
-/** Every cell is one 24px line, which is the grid the graph is drawn on. */
-const LINE = "h-6 truncate leading-6";
+/**
+ * Every cell is one line as tall as the table's rows, which is the grid the graph is drawn on. The
+ * table sets `--row-height` from the `rowDensity` setting.
+ */
+const LINE = "h-(--row-height) truncate leading-(--row-height)";
 const CELL = `${LINE} px-1`;
 
 /**
@@ -316,6 +319,7 @@ export function CommitRow({
   const source = commitMenuSource(hash);
   const menuOpen = useWatch(() => activeSource.value === source, source);
   const selected = useWatch(() => selectedCommits.value.some((entry) => entry.hash === hash), hash);
+  const shown = shownColumns.value;
   const l10n = window.l10n;
 
   const message = uncommitted ? uncommittedText(uncommittedChanges.value) : commit.message;
@@ -539,28 +543,34 @@ export function CommitRow({
           )}
         </div>
       </td>
-      <td class={CELL} title={date?.title}>
-        {date?.value}
-      </td>
-      <td
-        class={`${CELL} max-w-31`}
-        title={uncommitted ? undefined : `${commit.author} <${commit.email}>`}
-      >
-        {uncommitted ? null : (
-          <span class="flex min-w-0 items-center gap-1.5">
-            <span
-              aria-hidden="true"
-              class="grid size-4 shrink-0 place-items-center rounded-full bg-btn-hover text-[9px] leading-none font-semibold"
-            >
-              {initials(commit.author)}
+      {shown.includes(OPTIONAL_COLUMNS.date) && (
+        <td class={CELL} title={date?.title}>
+          {date?.value}
+        </td>
+      )}
+      {shown.includes(OPTIONAL_COLUMNS.author) && (
+        <td
+          class={`${CELL} max-w-31`}
+          title={uncommitted ? undefined : `${commit.author} <${commit.email}>`}
+        >
+          {uncommitted ? null : (
+            <span class="flex min-w-0 items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                class="grid size-4 shrink-0 place-items-center rounded-full bg-btn-hover text-[9px] leading-none font-semibold"
+              >
+                {initials(commit.author)}
+              </span>
+              <span class="truncate">{commit.author}</span>
             </span>
-            <span class="truncate">{commit.author}</span>
-          </span>
-        )}
-      </td>
-      <td class={`${CELL} font-mono`} title={uncommitted ? undefined : hash}>
-        {uncommitted ? null : abbrevCommit(hash)}
-      </td>
+          )}
+        </td>
+      )}
+      {shown.includes(OPTIONAL_COLUMNS.commit) && (
+        <td class={`${CELL} font-mono`} title={uncommitted ? undefined : hash}>
+          {uncommitted ? null : abbrevCommit(hash)}
+        </td>
+      )}
       {showChanges && <ChangesCell hash={hash} class={CELL} />}
     </tr>
   );

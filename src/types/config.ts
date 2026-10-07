@@ -10,6 +10,12 @@ export type DateFormat = "Date & Time" | "Date Only" | "Relative";
 export type GraphStyle = "rounded" | "angular";
 
 /**
+ * Values of the `branchwise.rowDensity` setting, which sets how tall the commit rows are. Readers
+ * use the default height for anything they do not recognise.
+ */
+export type RowDensity = "compact" | "default" | "comfortable";
+
+/**
  * An entry of `branchwise.issueLinks` that the extension accepted: a regular expression of at
  * most 200 characters that compiles and cannot match empty text, and an `http:` or `https:`
  * address in which `$0` stands for the whole match and `$1` to `$9` for its groups.
@@ -60,6 +66,7 @@ export type WebviewConfig = Readonly<{
   overviewMarkers: boolean;
   /** VS Code's display language (`en`, `fr`, `zh-cn`, ...), used for every `Intl` format. */
   locale: string;
+  rowDensity: RowDensity;
   /** Add the Changes column, with the lines each commit added and deleted, to the graph. */
   showChangesColumn: boolean;
   /** In filter mode, open a repository on its checked-out branch rather than on every branch. */

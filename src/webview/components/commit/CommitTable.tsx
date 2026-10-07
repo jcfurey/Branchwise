@@ -3,6 +3,7 @@ import { type ComponentProps, Fragment } from "preact";
 import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 
 import type { AppliedCommits, ConflictForecastEntry, HistoryEntry } from "@/backend/types";
+import { columnMenu, COLUMNS_MENU } from "@/webview/components/commit/column-choice";
 import { CommitDetails } from "@/webview/components/commit/CommitDetails";
 import { CommitGraph } from "@/webview/components/commit/CommitGraph";
 import { CommitHoverCard } from "@/webview/components/commit/CommitHoverCard";
@@ -25,7 +26,7 @@ import { nearestBranches } from "@/webview/graph/nearest";
 import { branchColour } from "@/webview/graph/palette";
 import type { BranchRelation, GraphExpansion, GraphLine } from "@/webview/graph/types";
 import { graphWidth, laneX } from "@/webview/graph/utils";
-import { toggleCommitDetails } from "@/webview/lib/actions";
+import { openContextMenu, toggleCommitDetails } from "@/webview/lib/actions";
 import type { Membership } from "@/webview/lib/branch-preview";
 import { useCommitStatsLoader } from "@/webview/lib/commit-stats";
 import { conflictsByBranch } from "@/webview/lib/conflict-forecast";
@@ -44,10 +45,11 @@ import {
   columnWidths,
   commitDetails,
   expandedCommit,
-  selectedRepo
+  selectedRepo,
+  shownColumns
 } from "@/webview/lib/stores";
 import { hiddenBranchMatcher, isBranchHidden } from "@/webview/lib/stores/hidden-branches.store";
-import { getWebviewConfig } from "@/webview/lib/webview-config";
+import { getWebviewConfig, rowHeight } from "@/webview/lib/webview-config";
 import type { FocusDimming } from "@/webview/types";
 import { commitDays } from "@/webview/utils/date";
 
@@ -85,6 +87,9 @@ const inPreview = (relation: BranchRelation | undefined) =>
 /** Bounds of the graph column's width while the browser sizes the table, in pixels. */
 const NARROWEST_GRAPH = 64;
 const WIDEST_GRAPH = 240;
+
+/** The custom property each cell's `<col>` takes its width from; the description has none. */
+const COLUMN_WIDTHS = ["--col-graph", undefined, "--col-date", "--col-author", "--col-commit"];
 
 /** The width of the Changes column, in pixels: room for `+12345 −12345`. It cannot be resized. */
 const CHANGES_COLUMN = 104;
@@ -270,6 +275,9 @@ export function CommitTable({
   const scroll = useGraphScroll(containerRef, headRef, contentWidth);
   // Written by the table's handlers and read by the graph alone, so hovering redraws only dots.
   const hovered = useSignal<string | null>(null);
+  // Read here, so that a new density or column choice redraws the open graph at once.
+  const height = rowHeight();
+  const shown = shownColumns.value;
 
   const expandedHash = expandedCommit.value;
   const expandedRow = expandedHash === null ? -1 : (rowOf.get(expandedHash) ?? -1);
@@ -370,11 +378,60 @@ export function CommitTable({
     />
   );
   const heading = "relative h-8 truncate border-b border-line px-3 text-left font-semibold";
+  const last = shown.at(-1);
+
+  /** What a heading holds besides its grips: its title, and the graph's and message's controls. */
+  function headingContent(column: number) {
+    if (column === 0) {
+      return (
+        <>
+          {titles[0]}
+          <div
+            ref={scroll.scrollRef}
+            data-graph-scroll
+            role="region"
+            aria-label={l10n.scrollGraphHorizontally}
+            tabIndex={scroll.overflow ? 0 : undefined}
+            class={`graph-scrollbar absolute bottom-0 left-0 h-2.5 w-full overflow-x-auto overflow-y-hidden focus:outline-1 focus:-outline-offset-1 focus:outline-focus ${
+              scroll.overflow ? "" : "invisible"
+            }`}
+            onScroll={scroll.syncScroll}
+          >
+            <div style={{ width: `${contentWidth}px`, height: "1px" }} />
+          </div>
+        </>
+      );
+    }
+    if (column === 1 && scroll.overflow) {
+      return (
+        <>
+          {titles[1]}
+          <button
+            type="button"
+            class="ml-2 inline-flex cursor-pointer items-center rounded-sm p-1 align-middle hover:bg-btn-hover focus:outline-1 focus:outline-focus disabled:cursor-default disabled:opacity-50"
+            aria-label={l10n.revealSelectedLane}
+            title={l10n.revealSelectedLane}
+            disabled={!focusedLoaded}
+            onClick={() => {
+              const hash = focusedCommit.peek();
+              if (hash !== null) {
+                reveal.current(hash);
+              }
+            }}
+          >
+            <RevealIcon class="size-3.5" />
+          </button>
+        </>
+      );
+    }
+    return titles[column];
+  }
 
   return (
     <div
       ref={containerRef}
       class="relative pr-[var(--overview-gutter,0px)]"
+      style={{ "--row-height": `${height}px` }}
       data-branch-preview={preview?.name}
     >
       <div
@@ -394,6 +451,7 @@ export function CommitTable({
             revealed={revealed}
             hovered={hovered}
             commitRows={rowOf}
+            rowHeight={height}
           />
         </div>
       </div>
@@ -414,61 +472,34 @@ export function CommitTable({
         {...drag}
       >
         <colgroup>
-          <col style="width: var(--col-graph)" />
-          <col />
-          <col style="width: var(--col-date)" />
-          <col style="width: var(--col-author)" />
-          <col style="width: var(--col-commit)" />
+          {shown.map((column) => {
+            const width = COLUMN_WIDTHS[column];
+            return (
+              <col key={column} style={width === undefined ? undefined : `width: var(${width})`} />
+            );
+          })}
           {showChangesColumn && <col style={{ width: `${CHANGES_COLUMN}px` }} />}
         </colgroup>
-        <thead class="sticky z-10 bg-editor" style="top: var(--main-header-height, 0px)">
+        <thead
+          class="sticky z-10 bg-editor"
+          style="top: var(--main-header-height, 0px)"
+          // Choosing the columns. Keyboard users find the same choice under Settings & Tools.
+          onContextMenu={(event) => openContextMenu(event, COLUMNS_MENU, columnMenu())}
+        >
           <tr ref={headRef} class={resizing ? "cursor-col-resize" : ""}>
-            <th class={`${heading} ${scroll.overflow ? "pb-2" : ""}`}>
-              {titles[0]}
-              <div
-                ref={scroll.scrollRef}
-                data-graph-scroll
-                role="region"
-                aria-label={l10n.scrollGraphHorizontally}
-                tabIndex={scroll.overflow ? 0 : undefined}
-                class={`graph-scrollbar absolute bottom-0 left-0 h-2.5 w-full overflow-x-auto overflow-y-hidden focus:outline-1 focus:-outline-offset-1 focus:outline-focus ${
-                  scroll.overflow ? "" : "invisible"
-                }`}
-                onScroll={scroll.syncScroll}
-              >
-                <div style={{ width: `${contentWidth}px`, height: "1px" }} />
-              </div>
-              {grip(0, "right")}
-            </th>
-            <th class={heading}>
-              {grip(0, "left")}
-              {titles[1]}
-              {scroll.overflow && (
-                <button
-                  type="button"
-                  class="ml-2 inline-flex cursor-pointer items-center rounded-sm p-1 align-middle hover:bg-btn-hover focus:outline-1 focus:outline-focus disabled:cursor-default disabled:opacity-50"
-                  aria-label={l10n.revealSelectedLane}
-                  title={l10n.revealSelectedLane}
-                  disabled={!focusedLoaded}
-                  onClick={() => {
-                    const hash = focusedCommit.peek();
-                    if (hash !== null) {
-                      reveal.current(hash);
-                    }
-                  }}
+            {shown.map((column, at) => {
+              const before = shown[at - 1];
+              return (
+                <th
+                  key={column}
+                  class={column === 0 && scroll.overflow ? `${heading} pb-2` : heading}
                 >
-                  <RevealIcon class="size-3.5" />
-                </button>
-              )}
-              {grip(1, "right")}
-            </th>
-            {[2, 3, 4].map((column) => (
-              <th key={column} class={heading}>
-                {grip(column - 1, "left")}
-                {titles[column]}
-                {column < 4 && grip(column, "right")}
-              </th>
-            ))}
+                  {before !== undefined && grip(before, "left")}
+                  {headingContent(column)}
+                  {column !== last && grip(column, "right")}
+                </th>
+              );
+            })}
             {showChangesColumn && (
               <th class={heading}>
                 {/* The divider the grips draw elsewhere: this column keeps its width. */}

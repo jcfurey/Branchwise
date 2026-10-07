@@ -447,6 +447,7 @@ it("delivers every notification in the form the webview accepts", async () => {
     loadMoreCommits: 100,
     markAppliedCommits: true,
     locale: "en",
+    rowDensity: "default",
     overviewMarkers: true,
     showChangesColumn: false,
     showCurrentBranchByDefault: false,

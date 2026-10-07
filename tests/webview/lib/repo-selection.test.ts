@@ -24,6 +24,7 @@ beforeAll(() => {
     loadMoreCommits: 100,
     markAppliedCommits: true,
     locale: "en",
+    rowDensity: "default",
     overviewMarkers: true,
     showChangesColumn: false,
     showCurrentBranchByDefault: false,

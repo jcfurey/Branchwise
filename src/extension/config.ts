@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import type { ConflictForecastScope, DateType } from "@/backend/types";
 import { readIssueLinks } from "@/extension/issue-links";
-import type { DateFormat, GraphStyle } from "@/types";
+import type { DateFormat, GraphStyle, RowDensity } from "@/types";
 
 type TabIconColourTheme = "colour" | "grey";
 
@@ -159,6 +159,7 @@ export const extConfig = {
   markAppliedCommits: () => setting<boolean>("markAppliedCommits", true),
   maxDepthOfRepoSearch: () => wholeNumberSetting("maxDepthOfRepoSearch", 0, 0),
   nestedRepoSearchDepth: () => wholeNumberSetting("nestedRepoSearchDepth", 0, 3),
+  rowDensity: () => setting<RowDensity>("rowDensity", "default"),
   overviewMarkers: () => setting<boolean>("overviewMarkers", true),
   showChangesColumn: () => setting<boolean>("showChangesColumn", false),
   showCurrentBranchByDefault: () => setting<boolean>("showCurrentBranchByDefault", false),

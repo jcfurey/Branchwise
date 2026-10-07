@@ -2152,6 +2152,93 @@ suite("Branchwise workflow UI", function () {
     }
   });
 
+  test("redraws compact rows at once and hides a column from the headings' menu", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "density one", dir);
+    commit("f", "density two", dir);
+    commit("f", "density three", dir);
+    const config = vscode.workspace.getConfiguration("branchwise");
+    const original = config.inspect("rowDensity").globalValue;
+    const measure = () =>
+      graph.evaluate(`(() => {
+        const rows = [...document.querySelectorAll('tbody tr[data-commit-hash]')];
+        const first = rows[0].getBoundingClientRect();
+        const dot = document.querySelector('[data-graph-viewport] circle').getBoundingClientRect();
+        const label = rows[0].querySelector('[data-ref]').getBoundingClientRect();
+        return {
+          heights: rows.map((row) => row.getBoundingClientRect().height),
+          top: first.top,
+          bottom: first.bottom,
+          dot: dot.top + dot.height / 2,
+          label: [label.top, label.bottom],
+          headings: [...document.querySelectorAll('thead th')].map((th) => th.textContent.trim()),
+          cells: rows[0].cells.length
+        };
+      })()`);
+    /** Right-click the headings and choose `title` from the menu of columns. */
+    const toggleColumn = (title) =>
+      until(
+        () =>
+          graph.evaluate(`(() => {
+            const item = [...document.querySelectorAll('[role="menuitemcheckbox"]')].find(e => e.textContent.trim() === ${JSON.stringify(title)});
+            if (item) { item.click(); return true; }
+            document.querySelector('thead th').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 120, clientY: 60 }));
+            return false;
+          })()`),
+        "column menu " + title
+      );
+    // The first row also holds half of the heading's bottom border, as tables with collapsed
+    // borders share a border between the rows on either side of it.
+    const rowsAre = (height) =>
+      state.heights.length === 3 &&
+      state.heights[0] >= height &&
+      state.heights[0] <= height + 0.5 &&
+      state.heights.slice(1).every((each) => each === height);
+    let state;
+    try {
+      await openRepo(dir);
+      await until(async () => {
+        state = await measure();
+        return rowsAre(24);
+      }, "rows of the default density").catch((error) => {
+        throw new Error(`${error.message} ${JSON.stringify(state)}`);
+      });
+
+      await config.update("rowDensity", "compact", vscode.ConfigurationTarget.Global);
+      await until(async () => {
+        state = await measure();
+        return rowsAre(20);
+      }, "compact rows").catch((error) => {
+        throw new Error(`${error.message} ${JSON.stringify(state)}`);
+      });
+      // The first dot sits in the middle of the first row, and the branch label fits inside it.
+      assert.ok(Math.abs(state.dot - (state.top + 10)) <= 1, JSON.stringify(state));
+      assert.ok(
+        state.label[0] >= state.top && state.label[1] <= state.bottom,
+        JSON.stringify(state)
+      );
+
+      await toggleColumn("Author");
+      await until(async () => {
+        state = await measure();
+        return !state.headings.includes("Author");
+      }, "author column hidden");
+      assert.deepEqual(state.headings, ["Graph", "Message", "Date", "ID"]);
+      assert.equal(state.cells, 4);
+    } finally {
+      await config.update("rowDensity", original, vscode.ConfigurationTarget.Global);
+      if (state !== undefined && !state.headings.includes("Author")) {
+        await toggleColumn("Author");
+        await until(async () => (await measure()).headings.includes("Author"), "author shown");
+      }
+      await until(async () => {
+        state = await measure();
+        return rowsAre(24);
+      }, "rows back at the default density");
+    }
+  });
+
   test("opens a merge request page for a branch, pushing one without an upstream first", async () => {
     const dir = directory();
     init(dir);

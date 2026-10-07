@@ -13,6 +13,7 @@ import type { BranchRelation } from "@/webview/graph/types";
 import { FocusBanner } from "@/webview/layout/GraphView";
 import { openContentDialog } from "@/webview/lib/actions";
 import { focusDimming } from "@/webview/lib/stores";
+import { rowHeight } from "@/webview/lib/webview-config";
 
 /** A commit of the legend's small graphs; only its place in the history matters. */
 function sample(hash: string, parentHashes: Array<string> = []): GitCommitNode {
@@ -51,6 +52,7 @@ function GraphSample({
       revealed={NONE_REVEALED}
       hovered={NOT_HOVERED}
       commitRows={NO_ROWS}
+      rowHeight={rowHeight()}
     />
   );
 }

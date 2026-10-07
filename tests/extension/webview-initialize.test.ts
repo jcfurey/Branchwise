@@ -43,6 +43,7 @@ const DEFAULT_CONFIG = {
   loadMoreCommits: 100,
   markAppliedCommits: true,
   locale: "fr",
+  rowDensity: "default",
   overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: false,

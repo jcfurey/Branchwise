@@ -20,6 +20,7 @@ const settings = (overrides: Partial<WebviewConfig> = {}): WebviewConfig => ({
   loadMoreCommits: 25,
   markAppliedCommits: true,
   locale: "fr",
+  rowDensity: "compact",
   overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: true,

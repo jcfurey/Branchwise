@@ -948,5 +948,7 @@
   "Create Pull Request": "创建拉取请求",
   "Create Merge Request": "创建合并请求",
   "Push and Create Pull Request": "推送并创建拉取请求",
-  "Push and Create Merge Request": "推送并创建合并请求"
+  "Push and Create Merge Request": "推送并创建合并请求",
+  "Columns": "列",
+  "Columns to show in the graph. The graph and the message are always shown. You can also right-click the column headings.": "分支图中要显示的列。分支图和消息列始终显示。也可以右键单击列标题进行选择。"
 }

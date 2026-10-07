@@ -338,6 +338,21 @@
           "default": 3,
           "minimum": 0
         },
+        "branchwise.rowDensity": {
+          "description": "%config.rowDensity%",
+          "type": "string",
+          "default": "default",
+          "enum": [
+            "compact",
+            "default",
+            "comfortable"
+          ],
+          "enumDescriptions": [
+            "%config.rowDensity.compact%",
+            "%config.rowDensity.default%",
+            "%config.rowDensity.comfortable%"
+          ]
+        },
         "branchwise.overviewMarkers": {
           "description": "%config.overviewMarkers%",
           "type": "boolean",

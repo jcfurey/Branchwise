@@ -110,6 +110,14 @@ describe("rowsInSight", () => {
     const [open] = rowsInSight(-100 * ROW_HEIGHT, 480, 1000, true);
     expect(open).toBeLessThan(plain);
   });
+
+  it("counts rows of the height the density setting gives them", () => {
+    // Compact rows are 20 pixels: the same 400 pixels hold 20 of them, not 16 or 17.
+    expect(rowsInSight(-100 * 20, 400, 1000, false, 20)).toEqual([
+      100 - STATS_MARGIN,
+      120 + STATS_MARGIN
+    ]);
+  });
 });
 
 describe("requestCommitStats", () => {

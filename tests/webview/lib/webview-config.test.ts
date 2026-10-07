@@ -18,6 +18,7 @@ const first: WebviewConfig = {
   loadMoreCommits: 75,
   markAppliedCommits: true,
   locale: "de",
+  rowDensity: "compact",
   overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: true,

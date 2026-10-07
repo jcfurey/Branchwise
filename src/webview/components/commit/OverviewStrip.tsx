@@ -1,7 +1,7 @@
 import type { RefObject } from "preact";
 import { useLayoutEffect, useRef } from "preact/hooks";
 
-import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT, TABLE_HEADER_HEIGHT } from "@/webview/constants";
+import { COMMIT_DETAILS_HEIGHT, TABLE_HEADER_HEIGHT } from "@/webview/constants";
 import {
   type BodyGeometry,
   collapseMarkers,
@@ -14,6 +14,7 @@ import {
   type StripMark,
   visibleBand
 } from "@/webview/lib/overview-markers";
+import { rowHeight } from "@/webview/lib/webview-config";
 
 /** The strip's width, in CSS pixels. The table gives up this much on its right. */
 export const STRIP_WIDTH = 10;
@@ -178,7 +179,7 @@ export function OverviewStrip({ containerRef, markers, rows, expandedRow }: Over
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const body: BodyGeometry = {
     rows,
-    rowHeight: ROW_HEIGHT,
+    rowHeight: rowHeight(),
     expandedRow,
     expansionHeight: COMMIT_DETAILS_HEIGHT
   };

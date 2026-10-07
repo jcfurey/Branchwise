@@ -149,6 +149,8 @@
   "Date": "Date",
   "Author": "Author",
   "ID": "ID",
+  "Columns": "Columns",
+  "Columns to show in the graph. The graph and the message are always shown. You can also right-click the column headings.": "Columns to show in the graph. The graph and the message are always shown. You can also right-click the column headings.",
   "Changes": "Changes",
   "{0}, {1}, {2}": "{0}, {1}, {2}",
   "{0} file changed": "{0} file changed",

@@ -34,6 +34,7 @@ it("falls back to the defaults declared in package.json", () => {
     markAppliedCommits: extConfig.markAppliedCommits(),
     maxDepthOfRepoSearch: extConfig.maxDepthOfRepoSearch(),
     nestedRepoSearchDepth: extConfig.nestedRepoSearchDepth(),
+    rowDensity: extConfig.rowDensity(),
     overviewMarkers: extConfig.overviewMarkers(),
     showChangesColumn: extConfig.showChangesColumn(),
     showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),

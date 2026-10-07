@@ -77,6 +77,10 @@ function parentCount(parentHashes: ReadonlyArray<string>) {
  * The spoken summary of a row of the commit table. `message` is the text the row shows, which
  * for the uncommitted changes is all there is to say. A remote's `HEAD`, such as `origin/HEAD`,
  * only names the remote's default branch and is left out, as the row's labels leave it out.
+ *
+ * The summary stays whole when the user hides columns. Hiding one only makes room on screen, and
+ * a screen reader hears this summary in place of the row's cells, so leaving the author or the
+ * age out would take them from its user with nothing gained.
  */
 export function commitRowLabel({
   commit,

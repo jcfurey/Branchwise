@@ -606,6 +606,29 @@ describe("moving a boundary with the keyboard", () => {
     nudge(0, "ArrowRight");
     expect(savedWidths()).toEqual([[128, 90, 100, 71]]);
   });
+
+  it("moves the boundary against the next column shown while one is hidden", () => {
+    // The date is hidden, so the header has four cells: graph, description, author, commit.
+    repoStates.value = { "/repo": { columnWidths: null, hiddenColumns: ["date"] } };
+    cellWidths = [100, 400, 120, 90];
+    mount({ cells: 4 });
+
+    nudge(1, "ArrowRight");
+    // The description gives 8 pixels to the author. The date was never laid out, so it is
+    // stored at 80 pixels, to show at that width if it comes back.
+    expect(savedWidths()).toEqual([[100, 80, 112, 90]]);
+
+    // The hidden date has no boundary, and nothing follows the commit column.
+    nudge(2, "ArrowRight");
+    nudge(4, "ArrowRight");
+    expect(savedWidths()).toHaveLength(1);
+    // The author's right edge now meets the commit column.
+    nudge(3, "ArrowLeft");
+    expect(savedWidths()).toEqual([
+      [100, 80, 112, 90],
+      [100, 80, 104, 98]
+    ]);
+  });
 });
 
 describe("in the commit table", () => {

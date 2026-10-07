@@ -33,6 +33,7 @@ export const PAGE_CONFIG: WebviewConfig = {
   branchHoverPreview: true,
   commitHoverCards: true,
   conflictForecast: "localAndRemote",
+  rowDensity: "default",
   overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: false,
