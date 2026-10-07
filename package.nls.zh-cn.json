@@ -2,6 +2,8 @@
   "description": "可视化 Git 历史记录，提供分支操作、仓库工作流和开发容器支持。",
   "command.view": "查看分支图 (git log)",
   "config.autoCenterCommitDetailsView": "打开提交详情面板时，滚动分支图使面板垂直居中。关闭此项时，仅滚动到刚好显示面板的位置。",
+  "config.branchHoverPreview": "指针停留在分支图中的分支或标签上，或停留在“分支”窗格中的分支行上时，以比“聚焦此分支”更浅的方式突出显示其提交。指针移开、按 Esc、滚动或任意点击时，突出显示即结束。",
+  "config.commitHoverCards": "当指针停留在分支图中某个提交的消息上，或键盘焦点在其行上停留片刻时，显示一张卡片，列出该提交的完整消息、作者、日期、ID 和更改计数。提交详情中包含相同的信息。",
   "config.conflictForecast": "分支图检查哪些分支与当前签出的分支合并时会冲突。Git 在内存中尝试每次合并，不会改动工作树、暂存区或任何引用；需要 Git 2.38 或更高版本。",
   "config.conflictForecast.localAndRemote": "检查本地分支，以及最近 30 天内有提交的远程分支，这样在你或队友打开拉取请求之前，就能标出会与你的分支冲突的队友分支",
   "config.conflictForecast.local": "仅检查本地分支",
@@ -10,6 +12,7 @@
   "config.dateFormat.dateTime": "显示日期和 24 小时制时间（例如：2024年3月15日 14:30）",
   "config.dateFormat.dateOnly": "仅显示日期（例如：2024年3月15日）",
   "config.dateFormat.relative": "显示每个提交距今多久（例如：5分钟前）；工具提示中保留确切的日期和时间",
+  "config.dateSeparators": "在分支图中某一天的提交结束、前一天的提交开始之处画一条淡淡的线；滚动分支图时，在靠近顶部的小标签中显示最上方提交所在的日期。日期依照日期类型设置，并使用你的本地时区。",
   "config.dateType": "指定在 Branchwise 各处显示的日期类型。",
   "config.dateType.authorDate": "在日期列和详情面板中显示每个提交的作者日期，即其更改最初被记录的时间",
   "config.dateType.commitDate": "改为显示每个提交的提交者日期，即该提交本身最后一次生成的时间；变基、修订或拣选提交都会改变它",
@@ -26,9 +29,13 @@
   "config.issueLinks.pattern": "最多 200 个字符且不能匹配空文本的 JavaScript 正则表达式",
   "config.issueLinks.url": "链接的 http: 或 https: 地址；$0 为整个匹配，$1 到 $9 为各个分组",
   "config.loadMoreCommits": "每次按下“加载更早的提交”按钮时额外加载的提交数量。仅当仓库还有更多提交时，该按钮才会显示在最后一个提交下方。",
+  "config.markAppliedCommits": "当聚焦某个分支或分支图只显示一个分支时，通过比较补丁 ID，标记该分支中其更改已包含在已检出分支中的提交（例如拣选或变基之后）。如果该分支有超过 2,000 个已检出分支没有的提交，则不进行比较。",
   "config.maxDepthOfRepoSearch": "在每个工作区文件夹下搜索 Git 仓库的子文件夹层数。为 0 时仅检查工作区文件夹本身（位于仓库内的文件夹会找到该仓库）。已找到的仓库中已初始化的子模块始终会列出。",
   "config.nestedRepoSearchDepth": "在已找到的每个仓库内搜索其中克隆的仓库的子文件夹层数，这些仓库会在工作区窗格中列于其下。会跳过隐藏文件夹和 node_modules。为 0 时，位于其他仓库内的仓库仅作为子模块列出。",
+  "config.overviewMarkers": "在分支图右侧显示一条窄带，在整个已加载的历史中标出 HEAD、分支和标签、所选提交、已打开详情的提交和未推送的提交，并用一段色带表示当前屏幕上的行。单击或拖动它即可滚动到相应位置。",
+  "config.showChangesColumn": "在分支图中添加“更改”列，显示每个提交添加和删除的行数，例如 +12 −3，其工具提示中显示文件数。滚动时会读取可见行的计数。",
   "config.showCurrentBranchByDefault": "打开 Branchwise 时默认显示当前分支。默认值：false（显示所有分支）",
+  "config.showNearestBranch": "在没有自己分支标签的提交消息后，以淡色文字显示包含该提交的最近分支，例如“位于 main”。只根据已加载的行计算，不会再向 Git 查询。",
   "config.showSignatures": "在分支图中标记已签名的提交。查找它们需要再读取一次每个已加载的提交，因此关闭此项可略微加快大型仓库的加载速度。打开提交的详细信息时仍会检查其签名。",
   "config.showUncommittedChanges": "在分支图顶部显示一行未提交的更改。关闭此项会跳过对工作区的扫描，可加快大型仓库的加载速度。",
   "config.showWorktrees": "标记其他工作树已检出的提交，并在有未提交更改的工作树上显示圆点。查找圆点需要在最多 20 个工作树中运行快速状态检查；关闭此项会跳过该检查。",
@@ -70,5 +77,5 @@
   "colors.graphLane11": "Branchwise 分支图第 11 条轨道的颜色，在未设置 branchwise.graphColours 时使用。",
   "colors.graphLane12": "Branchwise 分支图第 12 条轨道的颜色，在未设置 branchwise.graphColours 时使用。",
   "colors.unpushed": "Branchwise 分支图中尚无远程分支包含的提交前的圆点。",
-  "colors.conflict": "Branchwise 分支图中，将分支合并到当前检出分支会产生冲突时，分支标签上的标记。"
+  "colors.conflict": "Branchwise 分支图中，将分支合并到已检出分支会产生冲突时，分支标签上的标记。"
 }

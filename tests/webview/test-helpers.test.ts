@@ -25,16 +25,23 @@ type DispatcherModule = typeof import("@/webview/lib/dispatcher");
 /** The settings the helper must hand over; other tests assert on each of these values. */
 const expectedSettings: WebviewConfig = {
   autoCenterCommitDetailsView: true,
+  branchHoverPreview: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: [],
   graphStyle: "rounded",
   initialLoadCommits: 300,
   issueLinks: [],
   loadMoreCommits: 100,
+  markAppliedCommits: true,
   locale: "en",
+  overviewMarkers: true,
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
+  showNearestBranch: true,
   showWorktrees: true,
   singleKeyShortcuts: true
 };

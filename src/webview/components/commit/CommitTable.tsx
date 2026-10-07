@@ -2,10 +2,13 @@ import { useComputed, useSignal } from "@preact/signals";
 import { type ComponentProps, Fragment } from "preact";
 import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 
-import type { ConflictForecastEntry, HistoryEntry } from "@/backend/types";
+import type { AppliedCommits, ConflictForecastEntry, HistoryEntry } from "@/backend/types";
 import { CommitDetails } from "@/webview/components/commit/CommitDetails";
 import { CommitGraph } from "@/webview/components/commit/CommitGraph";
+import { CommitHoverCard } from "@/webview/components/commit/CommitHoverCard";
 import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
+import { DayPill } from "@/webview/components/commit/DayPill";
+import { OverviewStrip } from "@/webview/components/commit/OverviewStrip";
 import { type ColumnResize, useColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useGraphScroll } from "@/webview/components/commit/useGraphScroll";
 import { WorkingTreeDetails } from "@/webview/components/commit/WorkingTreeDetails";
@@ -18,12 +21,16 @@ import {
 import { GRAPH_PADDING } from "@/webview/graph/constants";
 import { commitRelations, lineRelation } from "@/webview/graph/focus";
 import { computeGraphLayout } from "@/webview/graph/layout";
+import { nearestBranches } from "@/webview/graph/nearest";
 import { branchColour } from "@/webview/graph/palette";
-import type { GraphExpansion, GraphLine } from "@/webview/graph/types";
+import type { BranchRelation, GraphExpansion, GraphLine } from "@/webview/graph/types";
 import { graphWidth, laneX } from "@/webview/graph/utils";
 import { toggleCommitDetails } from "@/webview/lib/actions";
+import type { Membership } from "@/webview/lib/branch-preview";
+import { useCommitStatsLoader } from "@/webview/lib/commit-stats";
 import { conflictsByBranch } from "@/webview/lib/conflict-forecast";
 import { type CommitLookup, dragHandlers } from "@/webview/lib/drag-drop";
+import { useHoverCards } from "@/webview/lib/hover-card";
 import { commitMenuSource } from "@/webview/lib/menus";
 import {
   focusedCommit,
@@ -31,8 +38,18 @@ import {
   selectCommitRows,
   selectedCommits
 } from "@/webview/lib/navigation";
-import { activeSource, columnWidths, commitDetails, expandedCommit } from "@/webview/lib/stores";
+import { collectMarkers } from "@/webview/lib/overview-markers";
+import {
+  activeSource,
+  columnWidths,
+  commitDetails,
+  expandedCommit,
+  selectedRepo
+} from "@/webview/lib/stores";
+import { hiddenBranchMatcher, isBranchHidden } from "@/webview/lib/stores/hidden-branches.store";
+import { getWebviewConfig } from "@/webview/lib/webview-config";
 import type { FocusDimming } from "@/webview/types";
+import { commitDays } from "@/webview/utils/date";
 
 type CommitTableProps = {
   /** The rows in graph order. An uncommitted-changes row, when present, comes first. */
@@ -45,23 +62,44 @@ type CommitTableProps = {
   pushStatus?: { unpushed: Array<string>; unpulled: Array<string> } | null;
   /** Branches that would not merge cleanly into HEAD, with the files in conflict. */
   conflicts?: Array<ConflictForecastEntry> | undefined;
+  /** Commits of the focused or shown branch whose change the checked-out branch already has. */
+  applied?: AppliedCommits["applied"] | undefined;
   keepMergedBright?: boolean;
   dimming?: FocusDimming;
+  /**
+   * The history of the ref the pointer rests on, shown over any focus until it moves on, and
+   * the ref's name as the branch list spells it.
+   */
+  preview?: { name: string; membership: Membership } | null;
+  /** Name the nearest branch after the message of each commit without a branch label. */
+  showNearestBranch?: boolean;
 };
+
+/** Stands for "no nearest branches", so rows are not told of a change each time. */
+const NO_NEAREST: ReadonlyMap<string, string> = new Map();
+
+/** Whether a row with this relation to the previewed ref holds one of its commits. */
+const inPreview = (relation: BranchRelation | undefined) =>
+  relation === "direct" || relation === "merged";
 
 /** Bounds of the graph column's width while the browser sizes the table, in pixels. */
 const NARROWEST_GRAPH = 64;
 const WIDEST_GRAPH = 240;
 
-/** Index of each row by hash, and the subject lines the commit menu shows. */
+/** The width of the Changes column, in pixels: room for `+12345 −12345`. It cannot be resized. */
+const CHANGES_COLUMN = 104;
+
+/** Index of each row by hash, the rows themselves, and the subject lines the commit menu shows. */
 function indexRows(commits: Array<HistoryEntry>) {
   const rowOf = new Map<string, number>();
+  const byHash = new Map<string, HistoryEntry>();
   const messages = new Map<string, string>();
   commits.forEach((commit, index) => {
     rowOf.set(commit.hash, index);
+    byHash.set(commit.hash, commit);
     messages.set(commit.hash, commit.message);
   });
-  return { rowOf, messages };
+  return { rowOf, byHash, messages, hashes: commits.map((commit) => commit.hash) };
 }
 
 /** How long after Go to the revealed row takes the keyboard back if the workbench drops it. */
@@ -181,8 +219,11 @@ export function CommitTable({
   focus = null,
   pushStatus = null,
   conflicts,
+  applied,
   keepMergedBright = false,
-  dimming = "subtle"
+  dimming = "subtle",
+  preview = null,
+  showNearestBranch = false
 }: CommitTableProps) {
   const pushOf = useMemo(() => {
     const status = new Map<string, PushState>();
@@ -191,13 +232,36 @@ export function CommitTable({
     return status;
   }, [pushStatus]);
   const conflictsOf = useMemo(() => conflictsByBranch(conflicts), [conflicts]);
+  const appliedOf = useMemo(
+    () => new Map(applied?.map((commit) => [commit.hash, commit.equivalent])),
+    [applied]
+  );
   const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);
-  const relations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
-  const { rowOf, messages } = useMemo(() => indexRows(commits), [commits]);
+  const focusRelations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
+  // A preview is drawn over the focus; once it ends, the focus's relations are shown unchanged.
+  const membership = preview?.membership ?? null;
+  const previewRelations = useMemo(
+    () => (membership === null ? null : commitRelations(commits, membership)),
+    [commits, membership]
+  );
+  const relations = previewRelations ?? focusRelations;
+  const shownDimming = previewRelations === null ? dimming : "preview";
+  const shownMergedBright = previewRelations === null && keepMergedBright;
+  const { rowOf, byHash, messages, hashes } = useMemo(() => indexRows(commits), [commits]);
+  // Worked out once for each list of rows, never for each row as it draws.
+  const separators = getWebviewConfig().dateSeparators;
+  const days = useMemo(() => (separators ? commitDays(commits) : null), [commits, separators]);
   // Kept while the rows and their relations stay the same, so the graph keeps its paths.
   const relationForLine = useCallback(
     (line: GraphLine) => lineRelation(line, commits, relations),
     [commits, relations]
+  );
+  // Once per list of rows, not per render. The hidden-branch patterns are read here so that a
+  // change to them works it out again.
+  const hiddenMatcher = hiddenBranchMatcher.value;
+  const nearest = useMemo(
+    () => (showNearestBranch ? nearestBranches(commits, headBranch, isBranchHidden) : NO_NEAREST),
+    [commits, headBranch, showNearestBranch, hiddenMatcher]
   );
 
   const contentWidth = graphWidth(layout) + GRAPH_PADDING;
@@ -217,6 +281,11 @@ export function CommitTable({
   const focusedLoaded = focusedHash !== null && rowOf.has(focusedHash);
   const tabStop = focusedLoaded ? focusedHash : commits[0]?.hash;
 
+  const { showChangesColumn, commitHoverCards } = getWebviewConfig();
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  useCommitStatsLoader(bodyRef, hashes, expandedRow >= 0, selectedRepo.value, showChangesColumn);
+  useHoverCards(containerRef);
+
   // Dots that keep their full colour whatever the focus: the commits the user is on or chose.
   const revealed = new Set<number>();
   const chosen = selectedCommits.value.map((commit) => commit.hash);
@@ -226,6 +295,22 @@ export function CommitTable({
       revealed.add(row);
     }
   }
+
+  const overview = getWebviewConfig().overviewMarkers;
+  const selection = selectedCommits.value;
+  const markers = useMemo(
+    () =>
+      overview
+        ? collectMarkers({
+            commits,
+            head,
+            selected: new Set(selection.map((commit) => commit.hash)),
+            details: expandedHash,
+            unpushed: new Set(pushStatus?.unpushed)
+          })
+        : [],
+    [overview, commits, head, selection, expandedHash, pushStatus]
+  );
 
   // Rows get the same callbacks on every render, so a row whose own props did not change skips.
   const reveal = useRef<(hash: string) => void>(() => {});
@@ -287,7 +372,11 @@ export function CommitTable({
   const heading = "relative h-8 truncate border-b border-line px-3 text-left font-semibold";
 
   return (
-    <div ref={containerRef} class="relative">
+    <div
+      ref={containerRef}
+      class="relative pr-[var(--overview-gutter,0px)]"
+      data-branch-preview={preview?.name}
+    >
       <div
         ref={scroll.viewportRef}
         data-graph-viewport
@@ -300,14 +389,15 @@ export function CommitTable({
             expansion={expansion}
             relations={relations}
             relationForLine={relationForLine}
-            keepMergedBright={keepMergedBright}
-            dimming={dimming}
+            keepMergedBright={shownMergedBright}
+            dimming={shownDimming}
             revealed={revealed}
             hovered={hovered}
             commitRows={rowOf}
           />
         </div>
       </div>
+      {days !== null && <DayPill containerRef={containerRef} rowOf={rowOf} days={days} />}
       <table
         aria-label={l10n.graphKeyboardHint}
         class={`w-full cursor-default border-collapse text-ui select-none ${
@@ -329,6 +419,7 @@ export function CommitTable({
           <col style="width: var(--col-date)" />
           <col style="width: var(--col-author)" />
           <col style="width: var(--col-commit)" />
+          {showChangesColumn && <col style={{ width: `${CHANGES_COLUMN}px` }} />}
         </colgroup>
         <thead class="sticky z-10 bg-editor" style="top: var(--main-header-height, 0px)">
           <tr ref={headRef} class={resizing ? "cursor-col-resize" : ""}>
@@ -378,9 +469,16 @@ export function CommitTable({
                 {column < 4 && grip(column, "right")}
               </th>
             ))}
+            {showChangesColumn && (
+              <th class={heading}>
+                {/* The divider the grips draw elsewhere: this column keeps its width. */}
+                <span class="absolute top-0 left-0 h-full border-l border-line-soft" />
+                {l10n.changesColumn}
+              </th>
+            )}
           </tr>
         </thead>
-        <tbody>
+        <tbody ref={bodyRef}>
           {commits.map((commit, index) => (
             <Fragment key={commit.hash}>
               <CommitRow
@@ -392,13 +490,23 @@ export function CommitTable({
                 messages={messages}
                 colour={branchColour(layout.vertices[index]?.colour ?? 0)}
                 relation={relations[index] ?? "normal"}
-                keepMergedBright={keepMergedBright}
-                dimming={dimming}
+                keepMergedBright={shownMergedBright}
+                dimming={shownDimming}
+                previewBranch={
+                  preview !== null && inPreview(previewRelations?.[index])
+                    ? preview.name
+                    : undefined
+                }
+                nearestBranch={nearest.get(commit.hash)}
                 push={pushOf.get(commit.hash)}
                 conflicts={conflictsOf}
+                applied={appliedOf.get(commit.hash)}
                 expanded={index === expandedRow}
+                dayStart={days?.starts.has(index) ?? false}
                 onSelect={toggles.get(commit.hash)}
                 onRevealLane={onRevealLane}
+                showChanges={showChangesColumn}
+                hoverCards={commitHoverCards}
               />
               {index === expandedRow &&
                 (commit.hash === UNCOMMITTED_CHANGES ? (
@@ -410,6 +518,15 @@ export function CommitTable({
           ))}
         </tbody>
       </table>
+      {overview && (
+        <OverviewStrip
+          containerRef={containerRef}
+          markers={markers}
+          rows={commits.length}
+          expandedRow={expandedRow}
+        />
+      )}
+      <CommitHoverCard rows={byHash} />
     </div>
   );
 }

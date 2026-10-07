@@ -4,7 +4,7 @@ import type { FocusDimming } from "@/webview/types";
 
 export function commitRelations(
   commits: GitCommitNode[],
-  focus: { direct: string[]; merged: string[] } | null
+  focus: { direct: ReadonlyArray<string>; merged: ReadonlyArray<string> } | null
 ): BranchRelation[] {
   if (focus === null) {
     return commits.map(() => "normal");
@@ -35,23 +35,33 @@ export function lineRelation(
   return commits[line.child]?.parentHashes[0] === commits[line.parent]?.hash ? "direct" : "merged";
 }
 
+/**
+ * How far history outside the emphasis fades: a focus's chosen dimming, or the lighter fade of
+ * a branch preview, which keeps some of each lane's own colour so the graph still reads as it
+ * did while the pointer rests on a label.
+ */
+export type Dimming = FocusDimming | "preview";
+
 export function focusColour(
   colour: string | undefined,
   relation: BranchRelation,
   keepMergedBright = false,
-  dimming: FocusDimming = "subtle"
+  dimming: Dimming = "subtle"
 ): string {
   const base = colour ?? "var(--vscode-focusBorder)";
   const gray = "var(--vscode-descriptionForeground, #808080)";
   const muted =
     dimming === "strong"
       ? `color-mix(in srgb, ${gray} 45%, var(--vscode-editor-background))`
-      : gray;
+      : dimming === "preview"
+        ? `color-mix(in srgb, ${base} 35%, ${gray})`
+        : gray;
   if (relation === "unrelated") {
     return muted;
   }
   if (relation === "merged" && !keepMergedBright) {
-    return `color-mix(in srgb, ${base} ${dimming === "strong" ? 25 : 40}%, ${muted})`;
+    const share = dimming === "strong" ? 25 : dimming === "preview" ? 70 : 40;
+    return `color-mix(in srgb, ${base} ${share}%, ${muted})`;
   }
   return base;
 }

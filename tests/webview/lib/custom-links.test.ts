@@ -23,16 +23,23 @@ const LINEAR: IssueLink = {
 
 const settings = (issueLinks: readonly IssueLink[]): WebviewConfig => ({
   autoCenterCommitDetailsView: true,
+  branchHoverPreview: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: [],
   graphStyle: "rounded",
   initialLoadCommits: 300,
   issueLinks,
   loadMoreCommits: 100,
+  markAppliedCommits: true,
   locale: "en",
+  overviewMarkers: true,
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
+  showNearestBranch: true,
   showWorktrees: true,
   singleKeyShortcuts: true
 });

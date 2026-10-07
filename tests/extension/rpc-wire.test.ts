@@ -97,16 +97,23 @@ test("hands the page its strings and settings", async () => {
   expect(Object.keys(response.result.l10n).length).toBeGreaterThan(100);
   expect(response.result.config).toEqual({
     autoCenterCommitDetailsView: true,
+    branchHoverPreview: true,
+    commitHoverCards: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dateSeparators: true,
     dragAndDrop: true,
     graphColours: themeGraphColours,
     graphStyle: "rounded",
     initialLoadCommits: 300,
     issueLinks: [],
     loadMoreCommits: 100,
+    markAppliedCommits: true,
     locale: "en",
+    overviewMarkers: true,
+    showChangesColumn: false,
     showCurrentBranchByDefault: false,
+    showNearestBranch: true,
     showWorktrees: true,
     singleKeyShortcuts: true
   });

@@ -6,6 +6,7 @@ import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
 import { WorktreeBadge } from "@/webview/components/commit/WorktreeMarker";
 import { BranchIcon, ConflictIcon, RemoteIcon, TagIcon } from "@/webview/components/ui/Icons";
 import { openContextMenu } from "@/webview/lib/actions";
+import { refPreviewTarget, usePreviewHandlers } from "@/webview/lib/branch-preview";
 import { DROP_TARGET_CLASS, refDragAttributes } from "@/webview/lib/drag-drop";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
 import { repositoryState } from "@/webview/lib/repository-actions";
@@ -75,7 +76,8 @@ export function ConflictBadge({ entry }: { entry: ConflictForecastEntry }) {
  * repository state knows about a local branch: its upstream and the worktree holding it.
  * `remotes` are remote branches of the same name on the same commit, shown as a cloud at the
  * end of the label, with their own tooltip and menu. `conflict` is the forecast of merging the
- * branch into HEAD, when that would leave files in conflict.
+ * branch into HEAD, when that would leave files in conflict. Resting the pointer on the label
+ * previews the ref's history in the graph.
  */
 export function RefLabel({
   gitRef,
@@ -94,6 +96,7 @@ export function RefLabel({
   const { branch, worktree } = localBranchFacts(gitRef);
   // Another worktree's mark, while the setting shows them.
   const held = gitRef.type === "head" ? branchWorktree(gitRef.name) : undefined;
+  const preview = usePreviewHandlers(refPreviewTarget(gitRef));
   const l10n = window.l10n;
 
   const lines = [gitRef.name];
@@ -126,6 +129,7 @@ export function RefLabel({
       data-ref={gitRef.type}
       title={lines.join("\n")}
       {...refDragAttributes(gitRef)}
+      {...preview}
       onContextMenu={(event) => openContextMenu(event, source, refMenu(gitRef, active))}
       onClick={(event) => event.stopPropagation()}
       onDblClick={(event) => {
