@@ -25,6 +25,7 @@ type DispatcherModule = typeof import("@/webview/lib/dispatcher");
 /** The settings the helper must hand over; other tests assert on each of these values. */
 const expectedSettings: WebviewConfig = {
   autoCenterCommitDetailsView: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   dragAndDrop: true,
@@ -34,6 +35,7 @@ const expectedSettings: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 100,
   locale: "en",
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true
 };

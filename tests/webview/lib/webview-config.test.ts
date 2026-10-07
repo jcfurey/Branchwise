@@ -5,6 +5,7 @@ import type { WebviewConfig } from "@/types";
 
 const first: WebviewConfig = {
   autoCenterCommitDetailsView: false,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
   dragAndDrop: true,
@@ -14,6 +15,7 @@ const first: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 75,
   locale: "de",
+  showChangesColumn: false,
   showCurrentBranchByDefault: true,
   singleKeyShortcuts: true
 };

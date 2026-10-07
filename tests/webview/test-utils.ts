@@ -13,6 +13,7 @@ import { vscodeApi } from "@tests/webview/setup";
  */
 const settings: WebviewConfig = {
   autoCenterCommitDetailsView: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   dragAndDrop: true,
@@ -22,6 +23,7 @@ const settings: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 100,
   locale: "en",
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true
 };

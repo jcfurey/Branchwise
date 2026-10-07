@@ -28,7 +28,9 @@ export const PAGE_CONFIG: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 50,
   autoCenterCommitDetailsView: false,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true
 };

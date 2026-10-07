@@ -178,6 +178,11 @@
           "type": "boolean",
           "default": true
         },
+        "branchwise.commitHoverCards": {
+          "description": "%config.commitHoverCards%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.conflictForecast": {
           "description": "%config.conflictForecast%",
           "type": "string",
@@ -317,6 +322,11 @@
           "type": "integer",
           "default": 3,
           "minimum": 0
+        },
+        "branchwise.showChangesColumn": {
+          "description": "%config.showChangesColumn%",
+          "type": "boolean",
+          "default": false
         },
         "branchwise.showCurrentBranchByDefault": {
           "description": "%config.showCurrentBranchByDefault%",

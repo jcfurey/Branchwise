@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 import type { ConflictForecastEntry, HistoryEntry } from "@/backend/types";
 import { CommitDetails } from "@/webview/components/commit/CommitDetails";
 import { CommitGraph } from "@/webview/components/commit/CommitGraph";
+import { CommitHoverCard } from "@/webview/components/commit/CommitHoverCard";
 import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
 import { type ColumnResize, useColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useGraphScroll } from "@/webview/components/commit/useGraphScroll";
@@ -22,8 +23,10 @@ import { branchColour } from "@/webview/graph/palette";
 import type { GraphExpansion, GraphLine } from "@/webview/graph/types";
 import { graphWidth, laneX } from "@/webview/graph/utils";
 import { toggleCommitDetails } from "@/webview/lib/actions";
+import { useCommitStatsLoader } from "@/webview/lib/commit-stats";
 import { conflictsByBranch } from "@/webview/lib/conflict-forecast";
 import { type CommitLookup, dragHandlers } from "@/webview/lib/drag-drop";
+import { useHoverCards } from "@/webview/lib/hover-card";
 import { commitMenuSource } from "@/webview/lib/menus";
 import {
   focusedCommit,
@@ -31,7 +34,14 @@ import {
   selectCommitRows,
   selectedCommits
 } from "@/webview/lib/navigation";
-import { activeSource, columnWidths, commitDetails, expandedCommit } from "@/webview/lib/stores";
+import {
+  activeSource,
+  columnWidths,
+  commitDetails,
+  expandedCommit,
+  selectedRepo
+} from "@/webview/lib/stores";
+import { getWebviewConfig } from "@/webview/lib/webview-config";
 import type { FocusDimming } from "@/webview/types";
 
 type CommitTableProps = {
@@ -53,15 +63,20 @@ type CommitTableProps = {
 const NARROWEST_GRAPH = 64;
 const WIDEST_GRAPH = 240;
 
-/** Index of each row by hash, and the subject lines the commit menu shows. */
+/** The width of the Changes column, in pixels: room for `+12345 −12345`. It cannot be resized. */
+const CHANGES_COLUMN = 104;
+
+/** Index of each row by hash, the rows themselves, and the subject lines the commit menu shows. */
 function indexRows(commits: Array<HistoryEntry>) {
   const rowOf = new Map<string, number>();
+  const byHash = new Map<string, HistoryEntry>();
   const messages = new Map<string, string>();
   commits.forEach((commit, index) => {
     rowOf.set(commit.hash, index);
+    byHash.set(commit.hash, commit);
     messages.set(commit.hash, commit.message);
   });
-  return { rowOf, messages };
+  return { rowOf, byHash, messages, hashes: commits.map((commit) => commit.hash) };
 }
 
 /** How long after Go to the revealed row takes the keyboard back if the workbench drops it. */
@@ -193,7 +208,7 @@ export function CommitTable({
   const conflictsOf = useMemo(() => conflictsByBranch(conflicts), [conflicts]);
   const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);
   const relations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
-  const { rowOf, messages } = useMemo(() => indexRows(commits), [commits]);
+  const { rowOf, byHash, messages, hashes } = useMemo(() => indexRows(commits), [commits]);
   // Kept while the rows and their relations stay the same, so the graph keeps its paths.
   const relationForLine = useCallback(
     (line: GraphLine) => lineRelation(line, commits, relations),
@@ -216,6 +231,11 @@ export function CommitTable({
   const focusedHash = focusedCommit.value;
   const focusedLoaded = focusedHash !== null && rowOf.has(focusedHash);
   const tabStop = focusedLoaded ? focusedHash : commits[0]?.hash;
+
+  const { showChangesColumn, commitHoverCards } = getWebviewConfig();
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  useCommitStatsLoader(bodyRef, hashes, expandedRow >= 0, selectedRepo.value, showChangesColumn);
+  useHoverCards(containerRef);
 
   // Dots that keep their full colour whatever the focus: the commits the user is on or chose.
   const revealed = new Set<number>();
@@ -329,6 +349,7 @@ export function CommitTable({
           <col style="width: var(--col-date)" />
           <col style="width: var(--col-author)" />
           <col style="width: var(--col-commit)" />
+          {showChangesColumn && <col style={{ width: `${CHANGES_COLUMN}px` }} />}
         </colgroup>
         <thead class="sticky z-10 bg-editor" style="top: var(--main-header-height, 0px)">
           <tr ref={headRef} class={resizing ? "cursor-col-resize" : ""}>
@@ -378,9 +399,16 @@ export function CommitTable({
                 {column < 4 && grip(column, "right")}
               </th>
             ))}
+            {showChangesColumn && (
+              <th class={heading}>
+                {/* The divider the grips draw elsewhere: this column keeps its width. */}
+                <span class="absolute top-0 left-0 h-full border-l border-line-soft" />
+                {l10n.changesColumn}
+              </th>
+            )}
           </tr>
         </thead>
-        <tbody>
+        <tbody ref={bodyRef}>
           {commits.map((commit, index) => (
             <Fragment key={commit.hash}>
               <CommitRow
@@ -399,6 +427,8 @@ export function CommitTable({
                 expanded={index === expandedRow}
                 onSelect={toggles.get(commit.hash)}
                 onRevealLane={onRevealLane}
+                showChanges={showChangesColumn}
+                hoverCards={commitHoverCards}
               />
               {index === expandedRow &&
                 (commit.hash === UNCOMMITTED_CHANGES ? (
@@ -410,6 +440,7 @@ export function CommitTable({
           ))}
         </tbody>
       </table>
+      <CommitHoverCard rows={byHash} />
     </div>
   );
 }

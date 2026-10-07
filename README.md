@@ -32,6 +32,7 @@ basics.
 - One graph of branches, tags, remotes, stashes and uncommitted changes
 - Commit details with formatted messages, linked issues, a file tree and per-file diffs
 - See which branches and tags contain a commit, and the first release it shipped in
+- Hover a commit for a card with its message, author, date and change counts, or add a **+12 −3** Changes column
 - Open all of a commit's or a comparison's changes in one multi-file diff editor
 - Search by message, ID, author, committer, branch, tag, date or path, or for the commits that added or removed a piece of text
 - A legend of every graph symbol, and one-click ways to widen a search that finds nothing
@@ -88,6 +89,7 @@ All settings start with `branchwise.`.
 | Setting                       | Default            | Description                                                              |
 | ----------------------------- | ------------------ | ------------------------------------------------------------------------ |
 | `autoCenterCommitDetailsView` | `true`             | Centre an opened commit's details vertically                             |
+| `commitHoverCards`            | `true`             | Show a card about a commit when the pointer or keyboard rests on it      |
 | `conflictForecast`            | `"localAndRemote"` | Branches checked for conflicts: `"localAndRemote"`, `"local"` or `"off"` |
 | `dateFormat`                  | `"Date & Time"`    | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"`             |
 | `dateType`                    | `"Author Date"`    | Show each commit's `"Author Date"` or `"Commit Date"`                    |
@@ -99,6 +101,7 @@ All settings start with `branchwise.`.
 | `loadMoreCommits`             | `100`              | Commits added by **Load Older Commits**                                  |
 | `maxDepthOfRepoSearch`        | `0`                | Folder depth searched for repositories                                   |
 | `nestedRepoSearchDepth`       | `3`                | Folder depth searched inside each repository for nested ones             |
+| `showChangesColumn`           | `false`            | Add a column of the lines each commit added and deleted                  |
 | `showCurrentBranchByDefault`  | `false`            | Open showing only the checked-out branch                                 |
 | `showSignatures`              | `true`             | Mark signed commits in the graph                                         |
 | `showUncommittedChanges`      | `true`             | Show the uncommitted changes row                                         |

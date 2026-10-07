@@ -4,6 +4,7 @@ import { useMemo } from "preact/hooks";
 
 import type { ConflictForecastEntry, GitRef, HistoryEntry } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
+import { ChangesCell } from "@/webview/components/commit/ChangeCounts";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
 import { SignedMark } from "@/webview/components/commit/SignatureBadge";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
@@ -64,6 +65,13 @@ type CommitRowProps = {
   onSelect: (() => void) | undefined;
   /** Asks the table to scroll the graph sideways until this commit's dot shows. */
   onRevealLane?: (hash: string) => void;
+  /** Whether the row ends with a cell of the Changes column. */
+  showChanges?: boolean;
+  /**
+   * Whether a card about the commit shows when the pointer rests on its message. The message then
+   * has no tooltip of its own, which would cover the card.
+   */
+  hoverCards?: boolean;
 };
 
 /** Where a keyboard-opened menu hangs, from the row's left edge, in pixels. */
@@ -234,7 +242,9 @@ export function CommitRow({
   conflicts,
   expanded,
   onSelect,
-  onRevealLane
+  onRevealLane,
+  showChanges = false,
+  hoverCards = false
 }: CommitRowProps) {
   const { hash } = commit;
   const uncommitted = hash === UNCOMMITTED_CHANGES;
@@ -408,7 +418,11 @@ export function CommitRow({
               )}
             </span>
           )}
-          <span class="min-w-0 flex-1 truncate" title={message}>
+          <span
+            class="min-w-0 flex-1 truncate"
+            data-commit-message={uncommitted ? undefined : true}
+            title={hoverCards && !uncommitted ? "" : message}
+          >
             {isHead || uncommitted ? <b>{message}</b> : message}
           </span>
           {commit.signed === true && <SignedMark />}
@@ -453,6 +467,7 @@ export function CommitRow({
       <td class={`${CELL} font-mono`} title={uncommitted ? undefined : hash}>
         {uncommitted ? null : abbrevCommit(hash)}
       </td>
+      {showChanges && <ChangesCell hash={hash} class={CELL} />}
     </tr>
   );
 }
