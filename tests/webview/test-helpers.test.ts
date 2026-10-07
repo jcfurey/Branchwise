@@ -25,6 +25,7 @@ type DispatcherModule = typeof import("@/webview/lib/dispatcher");
 /** The settings the helper must hand over; other tests assert on each of these values. */
 const expectedSettings: WebviewConfig = {
   autoCenterCommitDetailsView: true,
+  branchHoverPreview: true,
   commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
@@ -39,6 +40,7 @@ const expectedSettings: WebviewConfig = {
   overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: false,
+  showNearestBranch: true,
   singleKeyShortcuts: true
 };
 

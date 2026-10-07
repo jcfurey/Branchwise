@@ -270,4 +270,11 @@ describe("styles.css", () => {
     const reduced = components.slice(components.indexOf("@media (prefers-reduced-motion: reduce)"));
     expect(ruleOf(reduced, ".skeleton-shimmer")).toContain("animation: none;");
   });
+
+  it("eases a branch preview in, and not at all for less motion", () => {
+    const selector = ":where([data-branch-preview]) :is(.branch-focus-row, [data-branch-relation])";
+    expect(ruleOf(components, selector)).toContain("color 150ms ease-out");
+    const reduced = components.slice(components.lastIndexOf("@media (prefers-reduced-motion"));
+    expect(ruleOf(reduced, selector)).toContain("transition: none;");
+  });
 });

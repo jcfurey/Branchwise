@@ -178,6 +178,11 @@
           "type": "boolean",
           "default": true
         },
+        "branchwise.branchHoverPreview": {
+          "description": "%config.branchHoverPreview%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.commitHoverCards": {
           "description": "%config.commitHoverCards%",
           "type": "boolean",
@@ -342,6 +347,11 @@
           "description": "%config.showCurrentBranchByDefault%",
           "type": "boolean",
           "default": false
+        },
+        "branchwise.showNearestBranch": {
+          "description": "%config.showNearestBranch%",
+          "type": "boolean",
+          "default": true
         },
         "branchwise.showSignatures": {
           "description": "%config.showSignatures%",

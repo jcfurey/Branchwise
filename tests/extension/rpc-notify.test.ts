@@ -434,6 +434,7 @@ it("logs the notification's name but not its payload", async () => {
 it("delivers every notification in the form the webview accepts", async () => {
   const config: WebviewConfig = {
     autoCenterCommitDetailsView: true,
+    branchHoverPreview: true,
     commitHoverCards: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
@@ -448,6 +449,7 @@ it("delivers every notification in the form the webview accepts", async () => {
     overviewMarkers: true,
     showChangesColumn: false,
     showCurrentBranchByDefault: false,
+    showNearestBranch: true,
     singleKeyShortcuts: true
   };
   const repo: GitRepo = { name: "app", path: "/work/app" };

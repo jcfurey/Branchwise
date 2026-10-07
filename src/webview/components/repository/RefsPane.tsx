@@ -47,6 +47,13 @@ import {
   setShowRemoteBranch
 } from "@/webview/lib/actions";
 import { branchHealth, orderBranches } from "@/webview/lib/branch-health";
+import {
+  endPreview,
+  type PreviewTarget,
+  refPreviewTarget,
+  schedulePreview,
+  usePreviewHandlers
+} from "@/webview/lib/branch-preview";
 import { conflictForecastQuery, conflictsByBranch } from "@/webview/lib/conflict-forecast";
 import { DROP_TARGET_CLASS, dragHandlers, refDragAttributes } from "@/webview/lib/drag-drop";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
@@ -153,7 +160,9 @@ function Flag({ kind, label, title }: { kind: string; label: string; title: stri
  * the context menu carry its actions. `depth` indents rows under a remote.
  * `name` identifies the row in its controls' names, such as `refs/remotes/origin/main` for a
  * row labelled `main`, so rows with the same label stay distinct. A branch row names its
- * `gitRef`, which makes it a drop target and, for a local branch, something to drag.
+ * `gitRef`, which makes it a drop target and, for a local branch, something to drag. A row with
+ * a `preview` previews that branch's history in the graph while the pointer rests on the row or
+ * the keyboard on its label.
  */
 function Row({
   source,
@@ -170,7 +179,8 @@ function Row({
   flags,
   actions,
   onSelect,
-  menu
+  menu,
+  preview
 }: {
   source: string;
   label: string;
@@ -188,9 +198,11 @@ function Row({
   actions?: ComponentChildren;
   onSelect: () => void;
   menu?: () => Array<ContextMenuEntry>;
+  preview?: PreviewTarget;
 }) {
   // Only the rows whose menu opens or closes re-render, however many refs are listed.
   const menuOpen = useComputed(() => activeSource.value === source).value;
+  const hover = usePreviewHandlers(preview);
   return (
     <div
       class={`group flex items-center gap-1 pr-1 ${
@@ -198,6 +210,7 @@ function Row({
       } ${dimmed ? "text-muted" : ""} ${gitRef === undefined ? "" : DROP_TARGET_CLASS}`}
       style={{ paddingLeft: 8 + depth * 12 }}
       {...(gitRef === undefined ? {} : refDragAttributes(gitRef))}
+      {...hover}
       onContextMenu={menu && ((event) => openContextMenu(event, source, menu()))}
     >
       <button
@@ -206,6 +219,16 @@ function Row({
         title={title ?? label}
         aria-current={active ? "true" : undefined}
         onClick={onSelect}
+        // Only a keyboard arrival previews: a click selects the branch, which shows it anyway.
+        onFocus={
+          preview &&
+          ((event) => {
+            if (event.currentTarget.matches(":focus-visible")) {
+              schedulePreview(preview);
+            }
+          })
+        }
+        onBlur={preview && endPreview}
       >
         {icon}
         <span class={`truncate ${bold ? "font-bold" : ""}`}>{label}</span>
@@ -311,6 +334,7 @@ function RemoteBranches({
             flags={conflicted === undefined ? undefined : <ConflictBadge entry={conflicted} />}
             onSelect={() => selectBranch(value)}
             menu={() => refMenu(gitRef, false)}
+            preview={refPreviewTarget(gitRef)}
             actions={
               <button
                 type="button"
@@ -522,6 +546,7 @@ export function RefsPane() {
                   }
                   onSelect={() => selectBranch(branch.name)}
                   menu={() => refMenu(gitRef, isHead)}
+                  preview={refPreviewTarget(gitRef)}
                   actions={
                     <>
                       <button

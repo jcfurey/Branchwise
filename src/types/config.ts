@@ -24,6 +24,8 @@ export type IssueLink = Readonly<{ pattern: string; url: string }>;
 export type WebviewConfig = Readonly<{
   /** Centre the opened commit details in the window, rather than scroll only as far as needed. */
   autoCenterCommitDetailsView: boolean;
+  /** Show a branch or tag label's history lightly while the pointer rests on it. */
+  branchHoverPreview: boolean;
   /** Show a card about a commit when the pointer or the keyboard rests on its row. */
   commitHoverCards: boolean;
   /**
@@ -57,6 +59,8 @@ export type WebviewConfig = Readonly<{
   showChangesColumn: boolean;
   /** In filter mode, open a repository on its checked-out branch rather than on every branch. */
   showCurrentBranchByDefault: boolean;
+  /** After a commit without a branch label of its own, name the nearest branch containing it. */
+  showNearestBranch: boolean;
   /** Let single keys, such as `b` for Create Branch, act on the focused commit row. */
   singleKeyShortcuts: boolean;
 }>;

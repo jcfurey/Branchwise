@@ -11,6 +11,7 @@ import { vscodeApi } from "@tests/webview/setup";
 beforeAll(() => {
   initializeWebviewConfig({
     autoCenterCommitDetailsView: true,
+    branchHoverPreview: true,
     commitHoverCards: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
@@ -25,6 +26,7 @@ beforeAll(() => {
     overviewMarkers: true,
     showChangesColumn: false,
     showCurrentBranchByDefault: false,
+    showNearestBranch: true,
     singleKeyShortcuts: true
   });
   initRpcHandler(new Map());

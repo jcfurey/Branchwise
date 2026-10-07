@@ -29,11 +29,13 @@ export const PAGE_CONFIG: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 50,
   autoCenterCommitDetailsView: false,
+  branchHoverPreview: true,
   commitHoverCards: true,
   conflictForecast: "localAndRemote",
   overviewMarkers: true,
   showChangesColumn: false,
   showCurrentBranchByDefault: false,
+  showNearestBranch: true,
   singleKeyShortcuts: true
 };
 

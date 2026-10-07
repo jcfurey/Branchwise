@@ -224,9 +224,10 @@ describe("settings passed through", () => {
     expect(sections).toEqual(["branchwise", "branchwise"]);
   });
 
-  test("offers exactly the twenty-two getters", () => {
+  test("offers exactly the twenty-four getters", () => {
     expect(Object.keys(extConfig).toSorted()).toEqual([
       "autoCenterCommitDetailsView",
+      "branchHoverPreview",
       "commitHoverCards",
       "conflictForecast",
       "dateFormat",
@@ -244,6 +245,7 @@ describe("settings passed through", () => {
       "overviewMarkers",
       "showChangesColumn",
       "showCurrentBranchByDefault",
+      "showNearestBranch",
       "showSignatures",
       "showUncommittedChanges",
       "singleKeyShortcuts",

@@ -89,6 +89,17 @@ the whole loaded history, with a band for the rows on screen; click or drag on i
 Turn it off to give the table those 10 pixels back. See
 [overview strip](git-actions.md#overview-strip).
 
+### Branch previews and nearest branches
+
+`branchwise.branchHoverPreview` (default `true`) highlights a branch's or tag's commits, more
+lightly than branch focus, while the pointer rests on its label in the graph or its row in the
+Branches pane. Turn it off if the highlight distracts you; **Focus this branch** still works.
+
+`branchwise.showNearestBranch` (default `true`) names, in faint text after the message of a commit
+without a branch label of its own, the nearest branch that contains it, such as "on main". It is
+worked out from the loaded rows and costs no Git calls. See
+[the Branches pane and branch focus](git-actions.md#branches-pane).
+
 ### Single-key shortcuts
 
 `branchwise.singleKeyShortcuts` (default `true`) lets single keys act on the focused commit row,

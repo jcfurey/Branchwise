@@ -8,6 +8,7 @@ import type { WebviewConfig, WebviewInitialize } from "@/types";
 export function webviewConfig(): WebviewConfig {
   return {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
+    branchHoverPreview: extConfig.branchHoverPreview(),
     commitHoverCards: extConfig.commitHoverCards(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
@@ -23,6 +24,7 @@ export function webviewConfig(): WebviewConfig {
     overviewMarkers: extConfig.overviewMarkers(),
     showChangesColumn: extConfig.showChangesColumn(),
     showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
+    showNearestBranch: extConfig.showNearestBranch(),
     singleKeyShortcuts: extConfig.singleKeyShortcuts()
   };
 }

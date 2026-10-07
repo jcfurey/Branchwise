@@ -90,6 +90,8 @@
   "Branch focus unavailable. Refresh or select another branch.": "無法聚焦分支。請重新整理或選擇其他分支。",
   "Direct history: full colour · Merged history: muted · Other commits: grey": "主線歷史：原色 · 已合併歷史：淡色 · 其他提交：灰色",
   "All ancestors: full colour · Other commits: grey": "所有祖先提交：原色 · 其他提交：灰色",
+  "on {0}": "位於 {0}",
+  "Nearest branch containing this commit: {0}": "包含此提交的最近分支：{0}",
   "Show Remote Branches in Graph": "在分支圖中顯示遠端分支",
   "Refresh": "重新整理",
   "Retry": "重試",

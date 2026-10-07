@@ -21,10 +21,12 @@ import {
 import { GRAPH_PADDING } from "@/webview/graph/constants";
 import { commitRelations, lineRelation } from "@/webview/graph/focus";
 import { computeGraphLayout } from "@/webview/graph/layout";
+import { nearestBranches } from "@/webview/graph/nearest";
 import { branchColour } from "@/webview/graph/palette";
-import type { GraphExpansion, GraphLine } from "@/webview/graph/types";
+import type { BranchRelation, GraphExpansion, GraphLine } from "@/webview/graph/types";
 import { graphWidth, laneX } from "@/webview/graph/utils";
 import { toggleCommitDetails } from "@/webview/lib/actions";
+import type { Membership } from "@/webview/lib/branch-preview";
 import { useCommitStatsLoader } from "@/webview/lib/commit-stats";
 import { conflictsByBranch } from "@/webview/lib/conflict-forecast";
 import { type CommitLookup, dragHandlers } from "@/webview/lib/drag-drop";
@@ -44,6 +46,7 @@ import {
   expandedCommit,
   selectedRepo
 } from "@/webview/lib/stores";
+import { hiddenBranchMatcher, isBranchHidden } from "@/webview/lib/stores/hidden-branches.store";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 import type { FocusDimming } from "@/webview/types";
 import { commitDays } from "@/webview/utils/date";
@@ -61,7 +64,21 @@ type CommitTableProps = {
   conflicts?: Array<ConflictForecastEntry> | undefined;
   keepMergedBright?: boolean;
   dimming?: FocusDimming;
+  /**
+   * The history of the ref the pointer rests on, shown over any focus until it moves on, and
+   * the ref's name as the branch list spells it.
+   */
+  preview?: { name: string; membership: Membership } | null;
+  /** Name the nearest branch after the message of each commit without a branch label. */
+  showNearestBranch?: boolean;
 };
+
+/** Stands for "no nearest branches", so rows are not told of a change each time. */
+const NO_NEAREST: ReadonlyMap<string, string> = new Map();
+
+/** Whether a row with this relation to the previewed ref holds one of its commits. */
+const inPreview = (relation: BranchRelation | undefined) =>
+  relation === "direct" || relation === "merged";
 
 /** Bounds of the graph column's width while the browser sizes the table, in pixels. */
 const NARROWEST_GRAPH = 64;
@@ -201,7 +218,9 @@ export function CommitTable({
   pushStatus = null,
   conflicts,
   keepMergedBright = false,
-  dimming = "subtle"
+  dimming = "subtle",
+  preview = null,
+  showNearestBranch = false
 }: CommitTableProps) {
   const pushOf = useMemo(() => {
     const status = new Map<string, PushState>();
@@ -211,7 +230,16 @@ export function CommitTable({
   }, [pushStatus]);
   const conflictsOf = useMemo(() => conflictsByBranch(conflicts), [conflicts]);
   const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);
-  const relations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
+  const focusRelations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
+  // A preview is drawn over the focus; once it ends, the focus's relations are shown unchanged.
+  const membership = preview?.membership ?? null;
+  const previewRelations = useMemo(
+    () => (membership === null ? null : commitRelations(commits, membership)),
+    [commits, membership]
+  );
+  const relations = previewRelations ?? focusRelations;
+  const shownDimming = previewRelations === null ? dimming : "preview";
+  const shownMergedBright = previewRelations === null && keepMergedBright;
   const { rowOf, byHash, messages, hashes } = useMemo(() => indexRows(commits), [commits]);
   // Worked out once for each list of rows, never for each row as it draws.
   const separators = getWebviewConfig().dateSeparators;
@@ -220,6 +248,13 @@ export function CommitTable({
   const relationForLine = useCallback(
     (line: GraphLine) => lineRelation(line, commits, relations),
     [commits, relations]
+  );
+  // Once per list of rows, not per render. The hidden-branch patterns are read here so that a
+  // change to them works it out again.
+  const hiddenMatcher = hiddenBranchMatcher.value;
+  const nearest = useMemo(
+    () => (showNearestBranch ? nearestBranches(commits, headBranch, isBranchHidden) : NO_NEAREST),
+    [commits, headBranch, showNearestBranch, hiddenMatcher]
   );
 
   const contentWidth = graphWidth(layout) + GRAPH_PADDING;
@@ -330,7 +365,11 @@ export function CommitTable({
   const heading = "relative h-8 truncate border-b border-line px-3 text-left font-semibold";
 
   return (
-    <div ref={containerRef} class="relative pr-[var(--overview-gutter,0px)]">
+    <div
+      ref={containerRef}
+      class="relative pr-[var(--overview-gutter,0px)]"
+      data-branch-preview={preview?.name}
+    >
       <div
         ref={scroll.viewportRef}
         data-graph-viewport
@@ -343,8 +382,8 @@ export function CommitTable({
             expansion={expansion}
             relations={relations}
             relationForLine={relationForLine}
-            keepMergedBright={keepMergedBright}
-            dimming={dimming}
+            keepMergedBright={shownMergedBright}
+            dimming={shownDimming}
             revealed={revealed}
             hovered={hovered}
             commitRows={rowOf}
@@ -444,8 +483,14 @@ export function CommitTable({
                 messages={messages}
                 colour={branchColour(layout.vertices[index]?.colour ?? 0)}
                 relation={relations[index] ?? "normal"}
-                keepMergedBright={keepMergedBright}
-                dimming={dimming}
+                keepMergedBright={shownMergedBright}
+                dimming={shownDimming}
+                previewBranch={
+                  preview !== null && inPreview(previewRelations?.[index])
+                    ? preview.name
+                    : undefined
+                }
+                nearestBranch={nearest.get(commit.hash)}
                 push={pushOf.get(commit.hash)}
                 conflicts={conflictsOf}
                 expanded={index === expandedRow}

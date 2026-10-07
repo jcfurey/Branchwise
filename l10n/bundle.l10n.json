@@ -130,6 +130,8 @@
   "Branch focus unavailable. Refresh or select another branch.": "Branch focus unavailable. Refresh or select another branch.",
   "Direct history: full colour · Merged history: muted · Other commits: grey": "Direct history: full colour · Merged history: muted · Other commits: grey",
   "All ancestors: full colour · Other commits: grey": "All ancestors: full colour · Other commits: grey",
+  "on {0}": "on {0}",
+  "Nearest branch containing this commit: {0}": "Nearest branch containing this commit: {0}",
   "Show Remote Branches in Graph": "Show Remote Branches in Graph",
   "Refresh": "Refresh",
   "Retry": "Retry",
