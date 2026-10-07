@@ -146,6 +146,16 @@
     color: var(--color-muted);
   }
 
+  /*
+   * A branch preview (data-branch-preview on the table) fades the rest of the history less than
+   * a focus does. `:where` keeps it as specific as the relations, so a row in use still wins.
+   */
+  @supports (color: color-mix(in srgb, red, blue)) {
+    :where([data-branch-preview]) .branch-focus-row[data-branch-relation="unrelated"] {
+      color: color-mix(in srgb, var(--color-fg) 45%, var(--color-muted));
+    }
+  }
+
   /* Same specificity as the relations, and later, so a row in use always shows in full. */
   .branch-focus-row:hover,
   .branch-focus-row:focus-within,
@@ -182,6 +192,20 @@
 
     to {
       background-position: -100% 0;
+    }
+  }
+
+  /* A branch preview eases in, unless the user prefers less motion. */
+  :where([data-branch-preview]) :is(.branch-focus-row, [data-branch-relation]) {
+    transition:
+      color 150ms ease-out,
+      fill 150ms ease-out,
+      stroke 150ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-branch-preview]) :is(.branch-focus-row, [data-branch-relation]) {
+      transition: none;
     }
   }
 

@@ -13,6 +13,7 @@ import { vscodeApi } from "@tests/webview/setup";
  */
 const settings: WebviewConfig = {
   autoCenterCommitDetailsView: true,
+  branchHoverPreview: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   dragAndDrop: true,
@@ -23,6 +24,7 @@ const settings: WebviewConfig = {
   loadMoreCommits: 100,
   locale: "en",
   showCurrentBranchByDefault: false,
+  showNearestBranch: true,
   singleKeyShortcuts: true
 };
 

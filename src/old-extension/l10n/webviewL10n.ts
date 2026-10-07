@@ -50,6 +50,9 @@ export function getWebviewLocalizedStrings() {
       "Direct history: full colour · Merged history: muted · Other commits: grey"
     ),
     focusAncestorsHint: vscode.l10n.t("All ancestors: full colour · Other commits: grey"),
+    // After the message of a commit without a branch label: "on main". {0} is a branch name.
+    nearestBranch: vscode.l10n.t("on {0}"),
+    nearestBranchTitle: vscode.l10n.t("Nearest branch containing this commit: {0}"),
     showRemoteBranches: vscode.l10n.t("Show Remote Branches in Graph"),
     refresh: vscode.l10n.t("Refresh"),
     retry: vscode.l10n.t("Retry"),

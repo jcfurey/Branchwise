@@ -208,7 +208,8 @@ export type RepositoryQuery =
   | WorkflowQuery
   | HistoryQuery
   | { kind: "workingTree" }
-  | { kind: "branchFocus"; branch: string; hashes: string[] }
+  /** With `tag`, `branch` is a tag's name, for the preview of a tag label's history. */
+  | { kind: "branchFocus"; branch: string; hashes: string[]; tag?: boolean }
   | ({ kind: "containingRefs"; hash: string } & ContainingRefsScope)
   | { kind: "pushStatus" }
   | {

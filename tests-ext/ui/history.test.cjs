@@ -805,6 +805,95 @@ suite("Branchwise workflow UI", function () {
     await openRepo(repo);
   });
 
+  test("previews a branch's history while the pointer rests on its label, and names nearest branches", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "preview-base", dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    commit("main", "preview-main-older", dir);
+    const older = git(["rev-parse", "HEAD"], dir);
+    commit("main", "preview-main-tip", dir);
+    const tip = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "-b", "preview-topic", base], dir);
+    commit("topic", "preview-topic-work", dir);
+    const work = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    await openRepo(dir);
+    await until(() => graph.evaluate(visible(work)), "preview fixture rows");
+
+    // Nearest branch: the unlabelled commit under main's tip names main.
+    const nearest = (hash) =>
+      graph.evaluate(`(() => {
+        const label = document.querySelector('tr[data-commit-hash="${hash}"] [data-nearest-branch]');
+        return label ? [label.textContent, label.title] : null;
+      })()`);
+    await until(async () => (await nearest(older)) !== null, "nearest branch label");
+    assert.deepEqual(await nearest(older), [
+      "on main",
+      "Nearest branch containing this commit: main"
+    ]);
+    assert.equal(await nearest(tip), null);
+    assert.equal(await nearest(work), null);
+
+    const previewed = () =>
+      graph.evaluate(
+        `[...document.querySelectorAll('tr[data-preview-branch]')].map(row => [row.dataset.commitHash, row.dataset.previewBranch])`
+      );
+    const state = () =>
+      graph.evaluate(`({
+        active: document.activeElement?.outerHTML.slice(0, 120) ?? null,
+        scroll: window.scrollY,
+        selected: [...document.querySelectorAll('tr[aria-selected="true"]')].length,
+        focus: document.querySelectorAll('[data-focus-branch]').length
+      })`);
+    const before = await state();
+    const hover = (type) =>
+      graph.evaluate(`(() => {
+        const label = [...document.querySelectorAll('tbody span[title]')].find(e => e.title.split(String.fromCharCode(10))[0] === "preview-topic" && e.querySelector('svg'));
+        if (!label) return false;
+        for (const event of ${JSON.stringify(type === "enter" ? ["mouseover", "mouseenter"] : ["mouseout", "mouseleave"])}) {
+          label.dispatchEvent(new MouseEvent(event, { bubbles: event.startsWith("mouseo") }));
+        }
+        return true;
+      })()`);
+    await until(() => hover("enter"), "hover the topic label");
+    await until(async () => (await previewed()).length === 2, "branch preview");
+    assert.deepEqual(
+      (await previewed()).toSorted(),
+      [
+        [base, "preview-topic"],
+        [work, "preview-topic"]
+      ].toSorted()
+    );
+    assert.equal(
+      await graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${tip}"]').dataset.branchRelation`
+      ),
+      "unrelated"
+    );
+    assert.deepEqual(await state(), before);
+
+    await hover("leave");
+    await until(async () => (await previewed()).length === 0, "preview ends on leave");
+    assert.equal(
+      await graph.evaluate(
+        `[...document.querySelectorAll('tr[data-commit-hash]')].every(row => row.dataset.branchRelation === 'normal')`
+      ),
+      true
+    );
+
+    // Escape ends a preview while the pointer is still on the label.
+    await hover("enter");
+    await until(async () => (await previewed()).length === 2, "branch preview again");
+    await graph.evaluate(
+      `document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`
+    );
+    await until(async () => (await previewed()).length === 0, "preview ends on Escape");
+    await hover("leave");
+    assert.deepEqual(await state(), before);
+    await openRepo(repo);
+  });
+
   test("opens uncommitted files from the graph with separate staged and working diffs", async () => {
     const dir = directory();
     init(dir);

@@ -363,7 +363,10 @@ export async function repositoryQuery(
     case "workingTree":
       return { kind: "workingTree", files: await loadWorkingTree(git) };
     case "branchFocus":
-      return { kind: "branchFocus", ...(await loadBranchFocus(git, query.branch, query.hashes)) };
+      return {
+        kind: "branchFocus",
+        ...(await loadBranchFocus(git, query.branch, query.hashes, query.tag === true))
+      };
     case "containingRefs": {
       const { kind, hash, ...visibility } = query;
       return { kind, ...(await loadContainingRefs(git, hash, visibility)) };

@@ -20,6 +20,8 @@ export type RowFacts = {
   conflictsWith: string | null;
   /** The row's branches and tags, in the order they are shown. */
   refs: ReadonlyArray<GitRef>;
+  /** The nearest branch containing the commit, when the row names one after its message. */
+  nearest?: string | undefined;
 };
 
 /**
@@ -49,6 +51,10 @@ export function describeCommitRow(facts: RowFacts): string {
       ref.type === "head" ? l10n.rowBranch : ref.type === "tag" ? l10n.rowTag : l10n.rowRemote;
     parts.push(kind.replace("{0}", () => ref.name));
   }
+  const nearest = facts.nearest;
+  if (nearest !== undefined) {
+    parts.push(l10n.nearestBranch.replace("{0}", () => nearest));
+  }
   return parts.filter((part) => part !== "").join(", ");
 }
 
@@ -68,7 +74,8 @@ export function commitRowLabel({
   isHead,
   headBranch,
   push,
-  conflicts
+  conflicts,
+  nearest
 }: {
   commit: HistoryEntry;
   message: string;
@@ -77,6 +84,8 @@ export function commitRowLabel({
   push: RowFacts["push"];
   /** The conflict forecast by branch, a remote one under `remotes/`, as the table holds it. */
   conflicts: ReadonlyMap<string, ConflictForecastEntry> | undefined;
+  /** The nearest branch the row names after its message, if it names one. */
+  nearest?: string | undefined;
 }): string {
   if (commit.hash === UNCOMMITTED_CHANGES) {
     return message;
@@ -102,6 +111,7 @@ export function commitRowLabel({
     isHead,
     push,
     conflictsWith: conflicting ? repositoryState.value?.head || "HEAD" : null,
-    refs
+    refs,
+    nearest
   });
 }

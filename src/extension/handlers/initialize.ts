@@ -8,6 +8,7 @@ import type { WebviewConfig, WebviewInitialize } from "@/types";
 export function webviewConfig(): WebviewConfig {
   return {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
+    branchHoverPreview: extConfig.branchHoverPreview(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
     dragAndDrop: extConfig.dragAndDrop(),
@@ -19,6 +20,7 @@ export function webviewConfig(): WebviewConfig {
     // Dates are formatted for VS Code's display language.
     locale: vscode.env.language,
     showCurrentBranchByDefault: extConfig.showCurrentBranchByDefault(),
+    showNearestBranch: extConfig.showNearestBranch(),
     singleKeyShortcuts: extConfig.singleKeyShortcuts()
   };
 }

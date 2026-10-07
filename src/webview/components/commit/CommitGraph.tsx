@@ -3,7 +3,7 @@ import { Fragment } from "preact";
 import { useMemo } from "preact/hooks";
 
 import { VERTEX_RADIUS } from "@/webview/graph/constants";
-import { focusColour } from "@/webview/graph/focus";
+import { type Dimming, focusColour } from "@/webview/graph/focus";
 import { branchColour, UNCOMMITTED_COLOUR } from "@/webview/graph/palette";
 import { branchStrokes } from "@/webview/graph/strokes";
 import type {
@@ -15,7 +15,6 @@ import type {
 } from "@/webview/graph/types";
 import { expandOffset, graphHeight, graphWidth, laneX, rowY } from "@/webview/graph/utils";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
-import type { FocusDimming } from "@/webview/types";
 
 type CommitGraphProps = {
   layout: GraphLayout;
@@ -25,7 +24,7 @@ type CommitGraphProps = {
   relations: Array<BranchRelation>;
   relationForLine: (line: GraphLine) => BranchRelation;
   keepMergedBright: boolean;
-  dimming: FocusDimming;
+  dimming: Dimming;
   /** Rows whose dot keeps its full colour whatever their relation. */
   revealed: ReadonlySet<number>;
   /** Hash of the row under the pointer. Only this component reads it. */

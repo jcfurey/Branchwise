@@ -24,6 +24,8 @@ export type IssueLink = Readonly<{ pattern: string; url: string }>;
 export type WebviewConfig = Readonly<{
   /** Centre the opened commit details in the window, rather than scroll only as far as needed. */
   autoCenterCommitDetailsView: boolean;
+  /** Show a branch or tag label's history lightly while the pointer rests on it. */
+  branchHoverPreview: boolean;
   /**
    * Which branches the conflict forecast tries. The page reads anything but `local` and `off` as
    * `localAndRemote`, the default.
@@ -49,6 +51,8 @@ export type WebviewConfig = Readonly<{
   locale: string;
   /** In filter mode, open a repository on its checked-out branch rather than on every branch. */
   showCurrentBranchByDefault: boolean;
+  /** After a commit without a branch label of its own, name the nearest branch containing it. */
+  showNearestBranch: boolean;
   /** Let single keys, such as `b` for Create Branch, act on the focused commit row. */
   singleKeyShortcuts: boolean;
 }>;

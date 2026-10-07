@@ -28,8 +28,10 @@ export const PAGE_CONFIG: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 50,
   autoCenterCommitDetailsView: false,
+  branchHoverPreview: true,
   conflictForecast: "localAndRemote",
   showCurrentBranchByDefault: false,
+  showNearestBranch: true,
   singleKeyShortcuts: true
 };
 

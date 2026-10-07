@@ -30,6 +30,7 @@ vi.mock("@/old-extension/l10n/webviewL10n", () => ({
 
 const DEFAULT_CONFIG = {
   autoCenterCommitDetailsView: true,
+  branchHoverPreview: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   dragAndDrop: true,
@@ -40,6 +41,7 @@ const DEFAULT_CONFIG = {
   loadMoreCommits: 100,
   locale: "fr",
   showCurrentBranchByDefault: false,
+  showNearestBranch: true,
   singleKeyShortcuts: true
 };
 

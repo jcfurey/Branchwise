@@ -9,7 +9,7 @@ import { SignedMark } from "@/webview/components/commit/SignatureBadge";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
 import { KebabIcon } from "@/webview/components/ui/Icons";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
-import { focusColour } from "@/webview/graph/focus";
+import { type Dimming, focusColour } from "@/webview/graph/focus";
 import type { BranchRelation } from "@/webview/graph/types";
 import { closeCommitDetails, openContextMenu } from "@/webview/lib/actions";
 import { runRowShortcut } from "@/webview/lib/commit-shortcuts";
@@ -28,7 +28,6 @@ import {
   selectedCommits
 } from "@/webview/lib/navigation";
 import { activeSource, contextMenu, uncommittedChanges } from "@/webview/lib/stores";
-import type { FocusDimming } from "@/webview/types";
 import { getCommitDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
 import { initials } from "@/webview/utils/initials";
@@ -51,7 +50,11 @@ type CommitRowProps = {
   relation?: BranchRelation;
   keepMergedBright?: boolean;
   /** How strongly the graph dims history away from the focused branch; the labels follow it. */
-  dimming?: FocusDimming;
+  dimming?: Dimming;
+  /** The ref whose preview holds this commit, as the branch list spells it, if one is shown. */
+  previewBranch?: string | undefined;
+  /** The nearest branch containing the commit, for a row without a branch label of its own. */
+  nearestBranch?: string | undefined;
   /** Whether only this computer, or only a remote, has the commit; undefined for neither. */
   push?: PushState | undefined;
   /**
@@ -230,6 +233,8 @@ export function CommitRow({
   relation = "normal",
   keepMergedBright = false,
   dimming = "subtle",
+  previewBranch,
+  nearestBranch,
   push,
   conflicts,
   expanded,
@@ -245,6 +250,10 @@ export function CommitRow({
 
   const message = uncommitted ? uncommittedText(uncommittedChanges.value) : commit.message;
   const labels = shownRefs(commit.refs, headBranch);
+  const nearest =
+    nearestBranch !== undefined && !uncommitted && labels.every(({ ref }) => ref.type === "tag")
+      ? nearestBranch
+      : undefined;
   const date = uncommitted ? null : getCommitDate(commit.date);
   const emphasized = isHead || uncommitted || expanded || selected || menuOpen;
   const background =
@@ -351,12 +360,13 @@ export function CommitRow({
       }}
       data-commit-hash={hash}
       data-branch-relation={relation === "merged" && keepMergedBright ? "direct" : relation}
+      data-preview-branch={previewBranch}
       data-emphasized={String(emphasized)}
       tabIndex={tabStop ? 0 : -1}
       draggable={uncommitted || !dragAndDropOn() ? undefined : true}
       aria-selected={uncommitted ? expanded : selected}
       aria-expanded={expanded}
-      aria-label={commitRowLabel({ commit, message, isHead, headBranch, push, conflicts })}
+      aria-label={commitRowLabel({ commit, message, isHead, headBranch, push, conflicts, nearest })}
       title={uncommitted ? l10n.viewWorkingTreeChanges : l10n.selectCommitsHint}
       onFocus={(event) => {
         if (event.target === event.currentTarget) {
@@ -408,9 +418,19 @@ export function CommitRow({
               )}
             </span>
           )}
-          <span class="min-w-0 flex-1 truncate" title={message}>
+          <span class={`min-w-0 truncate ${nearest === undefined ? "flex-1" : ""}`} title={message}>
             {isHead || uncommitted ? <b>{message}</b> : message}
           </span>
+          {nearest !== undefined && (
+            // Takes the room the message leaves, so the controls after it stay at the row's end.
+            <span
+              data-nearest-branch={nearest}
+              class="mr-auto ml-2 max-w-1/3 shrink-0 truncate text-xs text-muted"
+              title={l10n.nearestBranchTitle.replace("{0}", () => nearest)}
+            >
+              {l10n.nearestBranch.replace("{0}", () => nearest)}
+            </span>
+          )}
           {commit.signed === true && <SignedMark />}
           {!uncommitted && (
             <button

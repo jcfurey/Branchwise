@@ -45,6 +45,7 @@ basics.
 **Focus**
 
 - Branch focus dims unrelated history, without a checkout
+- Hover a branch label to preview its history; unlabelled commits name their nearest branch
 - Hide bot branches such as `dependabot/*` and `renovate/*` by name pattern
 - Hide remotes one at a time; [view choices](docs/preferences.md) are kept per repository
 - Pin branches to the top, list them by latest commit, and spot merged, stale and gone ones
@@ -88,6 +89,7 @@ All settings start with `branchwise.`.
 | Setting                       | Default            | Description                                                              |
 | ----------------------------- | ------------------ | ------------------------------------------------------------------------ |
 | `autoCenterCommitDetailsView` | `true`             | Centre an opened commit's details vertically                             |
+| `branchHoverPreview`          | `true`             | Preview a branch's history while the pointer rests on its label          |
 | `conflictForecast`            | `"localAndRemote"` | Branches checked for conflicts: `"localAndRemote"`, `"local"` or `"off"` |
 | `dateFormat`                  | `"Date & Time"`    | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"`             |
 | `dateType`                    | `"Author Date"`    | Show each commit's `"Author Date"` or `"Commit Date"`                    |
@@ -100,6 +102,7 @@ All settings start with `branchwise.`.
 | `maxDepthOfRepoSearch`        | `0`                | Folder depth searched for repositories                                   |
 | `nestedRepoSearchDepth`       | `3`                | Folder depth searched inside each repository for nested ones             |
 | `showCurrentBranchByDefault`  | `false`            | Open showing only the checked-out branch                                 |
+| `showNearestBranch`           | `true`             | Name the nearest branch after commits without a branch label             |
 | `showSignatures`              | `true`             | Mark signed commits in the graph                                         |
 | `showUncommittedChanges`      | `true`             | Show the uncommitted changes row                                         |
 | `singleKeyShortcuts`          | `true`             | Let single keys act on the focused commit row                            |

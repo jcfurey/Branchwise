@@ -140,6 +140,7 @@ function graphColours(): string[] {
  */
 export const extConfig = {
   autoCenterCommitDetailsView: () => setting<boolean>("autoCenterCommitDetailsView", true),
+  branchHoverPreview: () => setting<boolean>("branchHoverPreview", true),
   conflictForecast: () => setting<ConflictForecastScope>("conflictForecast", "localAndRemote"),
   dateFormat: () => setting<DateFormat>("dateFormat", "Date & Time"),
   dateType: () => setting<DateType>("dateType", "Author Date"),
@@ -156,6 +157,7 @@ export const extConfig = {
   maxDepthOfRepoSearch: () => wholeNumberSetting("maxDepthOfRepoSearch", 0, 0),
   nestedRepoSearchDepth: () => wholeNumberSetting("nestedRepoSearchDepth", 0, 3),
   showCurrentBranchByDefault: () => setting<boolean>("showCurrentBranchByDefault", false),
+  showNearestBranch: () => setting<boolean>("showNearestBranch", true),
   showSignatures: () => setting<boolean>("showSignatures", true),
   showUncommittedChanges: () => setting<boolean>("showUncommittedChanges", true),
   singleKeyShortcuts: () => setting<boolean>("singleKeyShortcuts", true),
