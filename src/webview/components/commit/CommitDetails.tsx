@@ -3,12 +3,15 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import type { GitCommitDetails } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
+import { ContainingRefs } from "@/webview/components/commit/ContainingRefs";
 import { FileTree } from "@/webview/components/commit/FileTree";
+import { SignatureLine } from "@/webview/components/commit/SignatureBadge";
 import { onCheckedOutLine, openEditMessage } from "@/webview/components/repository/EditCommit";
+import { openSplitCommit } from "@/webview/components/repository/SplitCommit";
 import { Icon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
 import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT, TABLE_HEADER_HEIGHT } from "@/webview/constants";
-import { closeCommitDetails } from "@/webview/lib/actions";
+import { closeCommitDetails, openAllCommitChanges } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { CommitMessage, repositoryTracker } from "@/webview/lib/commit-message";
 import { repositoryState } from "@/webview/lib/repository-actions";
@@ -230,6 +233,15 @@ export function CommitDetails({ details }: { details: GitCommitDetails | null })
                 {l10n.editMessage + "…"}
               </button>
             )}
+            {onCheckedOutLine(details.hash) && details.parents.length < 2 && (
+              <button
+                type="button"
+                class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
+                onClick={() => openSplitCommit(details.hash)}
+              >
+                {l10n.splitCommit + "…"}
+              </button>
+            )}
           </div>
           <Fact template={l10n.detailParents}>{details.parents.join(", ")}</Fact>
           <Fact template={l10n.detailAuthor}>
@@ -237,10 +249,31 @@ export function CommitDetails({ details }: { details: GitCommitDetails | null })
           </Fact>
           <Fact template={l10n.detailDate}>{getFullDate(details.date)}</Fact>
           <Fact template={l10n.detailCommitter}>{details.committer}</Fact>
+          <ContainingRefs hash={details.hash} />
+          <SignatureLine hash={details.hash} />
           <CommitMessage body={details.body} tracker={repositoryTracker(repositoryState.value)} />
         </div>
-        <div class="mr-8 min-w-0 flex-1 overflow-x-hidden overflow-y-scroll border-r border-line py-1">
-          <FileTree nodes={nodes} commitHash={details.hash} />
+        <div class="mr-8 flex min-w-0 flex-1 flex-col border-r border-line">
+          {details.fileChanges.length > 0 && (
+            <div
+              class="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-2 py-0.5 text-xs"
+              data-file-list-header
+            >
+              <span class="truncate text-muted">
+                {l10n.comparedFiles} ({details.fileChanges.length})
+              </span>
+              <button
+                type="button"
+                class="shrink-0 cursor-pointer rounded-sm px-1 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
+                onClick={() => openAllCommitChanges(details.hash)}
+              >
+                {l10n.openAllChanges}
+              </button>
+            </div>
+          )}
+          <div class="min-h-0 flex-1 overflow-x-hidden overflow-y-scroll py-1">
+            <FileTree nodes={nodes} commitHash={details.hash} />
+          </div>
         </div>
       </div>
     </DetailsRow>

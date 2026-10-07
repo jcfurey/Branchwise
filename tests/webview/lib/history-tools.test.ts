@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { HistoryEntry, RepositoryQueryData } from "@/backend/types";
 import { CommitRow } from "@/webview/components/commit/CommitRow";
-import { openBatch, openRestoreFile } from "@/webview/components/history/HistoryTools";
+import { CompareView, openBatch, openRestoreFile } from "@/webview/components/history/HistoryTools";
 import { SearchBar } from "@/webview/components/history/SearchBar";
 import { RebaseEditor } from "@/webview/components/repository/RebaseEditor";
 import { Dialog } from "@/webview/components/ui/Dialog";
@@ -324,6 +324,51 @@ describe("previews, background actions and progress", () => {
       status: null
     });
     expect(dialog.value).toBe(original);
+  });
+
+  it("opens every compared file in one editor, keeping the comparison open", () => {
+    act(() => render(h(CompareView, { left: "main", right: "topic" }), container));
+    const files = [
+      { status: "A", before: "new.txt", after: "new.txt" },
+      { status: "R100", before: "a.txt", after: "b.txt" }
+    ];
+    const page = { entries: [], more: false };
+    respond({
+      kind: "compare",
+      comparison: {
+        left: "l".repeat(40),
+        right: "r".repeat(40),
+        base: "b".repeat(40),
+        files,
+        leftOnly: page,
+        rightOnly: page
+      }
+    });
+    click("openAllChanges");
+    expect(lastRequest()).toMatchObject({
+      command: "repositoryAction",
+      repo: "/history-test",
+      action: { kind: "viewRangeChanges", base: "b".repeat(40), right: "r".repeat(40), files }
+    });
+  });
+
+  it("offers no Open All Changes for revisions without file differences", () => {
+    act(() => render(h(CompareView, { left: "main", right: "main" }), container));
+    const page = { entries: [], more: false };
+    const same = "s".repeat(40);
+    respond({
+      kind: "compare",
+      comparison: {
+        left: same,
+        right: same,
+        base: same,
+        files: [],
+        leftOnly: page,
+        rightOnly: page
+      }
+    });
+    expect(container.textContent).toContain("identicalFiles");
+    expect(() => click("openAllChanges")).toThrow("Missing openAllChanges");
   });
 
   it("runs a submodule action in its parent while retaining the viewed repository", () => {

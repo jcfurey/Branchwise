@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { closeContextMenu } from "@/webview/lib/actions";
+import { menuHint } from "@/webview/lib/shortcuts";
 import { contextMenu } from "@/webview/lib/stores";
 import type { ContextMenuEntry, ContextMenuState } from "@/webview/types";
 
@@ -16,7 +17,7 @@ const MENU_CLASS = [
   "fixed z-20 w-max max-w-[calc(100vw-1rem)] max-h-[calc(100vh-1rem)] overflow-auto py-1",
   "rounded-md border border-line bg-menu text-menu-fg shadow-md outline-none"
 ].join(" ");
-const ITEM_CLASS = "cursor-pointer px-5 py-1.5 break-words";
+const ITEM_CLASS = "flex cursor-pointer items-baseline gap-8 px-5 py-1.5";
 const SEPARATOR_CLASS = "mx-2.5 my-1 border-t border-line";
 
 /**
@@ -227,24 +228,35 @@ function Menu({ state, serial }: { state: ContextMenuState; serial: number }) {
       // The host's own menu would open on top of this one.
       onContextMenu={(event) => event.preventDefault()}
     >
-      {rows.map((row, order) =>
-        row === null ? (
-          <div key={order} role="separator" class={SEPARATOR_CLASS} />
-        ) : (
+      {rows.map((row, order) => {
+        if (row === null) {
+          return <div key={order} role="separator" class={SEPARATOR_CLASS} />;
+        }
+        const hint = row.item.shortcut === undefined ? null : menuHint(row.item.shortcut);
+        return (
           <div
             key={order}
             id={itemId(row.index)}
             role="menuitem"
+            aria-keyshortcuts={hint?.aria}
             class={
               row.index === active ? `${ITEM_CLASS} bg-menu-active text-menu-active-fg` : ITEM_CLASS
             }
             onPointerMove={() => highlight(row.index)}
             onClick={() => choose(row.item)}
           >
-            {row.item.title}
+            <span class="min-w-0 flex-1 break-words">{row.item.title}</span>
+            {/* Drawn from an attribute, so the item's text and name stay its title alone. */}
+            {hint !== null && (
+              <span
+                aria-hidden="true"
+                data-shortcut={hint.label}
+                class="shrink-0 whitespace-nowrap opacity-70 after:content-[attr(data-shortcut)]"
+              />
+            )}
           </div>
-        )
-      )}
+        );
+      })}
     </div>
   );
 }

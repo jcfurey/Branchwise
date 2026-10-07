@@ -66,6 +66,7 @@ const COMMIT_TITLES = [
   null,
   "interactiveRebase…",
   "createFixupMenu…",
+  "openAllChanges",
   "compareWith",
   "bisectChooseGood",
   "bisectChooseBad",
@@ -683,8 +684,9 @@ describe("opening a commit, branch or tag on the repository's host", () => {
       "copyCommitHash",
       "copyShortCommitHash"
     ]);
-    expect(titles(refMenu(LOCAL, false)).slice(-3)).toEqual([
+    expect(titles(refMenu(LOCAL, false)).slice(-4)).toEqual([
       "openBranchOnHost",
+      "createPullRequest…",
       "copyBranchName",
       "hideBranchesLikeThis…"
     ]);
@@ -750,7 +752,116 @@ describe("opening a commit, branch or tag on the repository's host", () => {
 
   it("hides the branch entry for a branch without an upstream, and for remote branches", () => {
     repositoryState.value = hostedAt("https://github.com/owner/repo.git");
-    expect(titles(refMenu(CURRENT, true))).toEqual(CHECKED_OUT_TITLES);
+    // A branch without an upstream is offered for review only after a push.
+    expect(titles(refMenu(CURRENT, true))).toEqual(
+      CHECKED_OUT_TITLES.toSpliced(-2, 0, "pushAndCreatePullRequest…")
+    );
     expect(titles(refMenu(REMOTE, false))).toEqual(REMOTE_TITLES);
+  });
+});
+
+describe("proposing a branch for review on its host", () => {
+  const remote = (name: string, url: string, defaultBranch?: string) => ({
+    name,
+    fetchUrls: [url],
+    pushUrls: [],
+    ...(defaultBranch === undefined ? {} : { defaultBranch })
+  });
+  const details = (name: string, upstream: string, gone = false) => ({
+    name,
+    hash: H,
+    upstream,
+    ahead: 0,
+    behind: 0,
+    gone,
+    date: 0,
+    merged: false
+  });
+
+  /** `wip` tracks `origin/wip`, `trunk` has no upstream and `old` lost its upstream. */
+  function hosted(url: string, defaultBranch?: string): RepositoryState {
+    return {
+      remotes: [remote("origin", url, defaultBranch)],
+      pushDefault: null,
+      branches: [
+        details("wip", "origin/wip"),
+        details("trunk", ""),
+        details("old", "origin/old", true),
+        details("main", "origin/main")
+      ],
+      remoteBranches: [],
+      tags: [],
+      worktrees: [],
+      head: "trunk",
+      operation: null,
+      conflicts: [],
+      staged: 0
+    };
+  }
+  const ref = (name: string): GitRef => ({ type: "head", name, hash: H });
+
+  afterEach(() => {
+    repositoryState.value = null;
+  });
+
+  it("opens GitHub's compare page against the remote's default branch", () => {
+    repositoryState.value = hosted("git@github.com:owner/repo.git", "main");
+    choose(refMenu(LOCAL, false), "createPullRequest…");
+    expect(lastPosted()).toMatchObject({
+      method: "url.open",
+      params: "https://github.com/owner/repo/compare/main...wip?expand=1"
+    });
+    choose(refMenu(remoteRef("origin/wip"), false), "createPullRequest…");
+    expect(lastPosted()).toMatchObject({
+      params: "https://github.com/owner/repo/compare/main...wip?expand=1"
+    });
+  });
+
+  it("names merge requests on GitLab", () => {
+    repositoryState.value = hosted("https://gitlab.example.com/team/project.git");
+    expect(titles(refMenu(LOCAL, false))).toContain("createMergeRequest…");
+    expect(titles(refMenu(remoteRef("origin/wip"), false))).toContain("createMergeRequest…");
+    expect(titles(refMenu(CURRENT, true))).toContain("pushAndCreateMergeRequest…");
+    choose(refMenu(LOCAL, false), "createMergeRequest…");
+    expect(lastPosted()).toMatchObject({
+      params:
+        "https://gitlab.example.com/team/project/-/merge_requests/new?merge_request[source_branch]=wip"
+    });
+  });
+
+  it("offers nothing for the default branch itself, a remote's HEAD or an unknown host", () => {
+    repositoryState.value = hosted("git@github.com:owner/repo.git", "main");
+    const offered = (gitRef: GitRef) =>
+      titles(refMenu(gitRef, false)).filter((title) => /Request/.test(title ?? ""));
+    expect(offered(ref("main"))).toEqual([]);
+    expect(offered(remoteRef("origin/main"))).toEqual([]);
+    expect(offered(remoteRef("origin/HEAD"))).toEqual([]);
+    repositoryState.value = hosted("https://bitbucket.org/owner/repo.git", "main");
+    expect(offered(LOCAL)).toEqual([]);
+    expect(offered(CURRENT)).toEqual([]);
+    expect(offered(remoteRef("origin/wip"))).toEqual([]);
+  });
+
+  it("pushes a branch without an upstream first, with set upstream ticked, then opens the page", () => {
+    repositoryState.value = hosted("git@github.com:owner/repo.git", "main");
+    for (const name of ["trunk", "old"]) {
+      dialog.value = null;
+      choose(refMenu(ref(name), name === "trunk"), "pushAndCreatePullRequest…");
+      const load = lastPosted() as { command: string; requestId: string };
+      expect(load).toMatchObject({ command: "loadRemotes", repo: REPO, branchName: name });
+      handleLoadRemotes({
+        repo: REPO,
+        requestId: load.requestId,
+        remotes: ["origin"],
+        upstream: name === "old" ? { remote: "origin", branchName: "old" } : null,
+        pushRemote: null,
+        status: null
+      });
+      expect(shownForm().inputs[2]).toMatchObject({
+        kind: "checkbox",
+        label: "setUpstream",
+        value: true
+      });
+    }
   });
 });

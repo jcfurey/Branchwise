@@ -27,13 +27,15 @@ const expectedSettings: WebviewConfig = {
   autoCenterCommitDetailsView: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dragAndDrop: true,
   graphColours: [],
   graphStyle: "rounded",
   initialLoadCommits: 300,
   issueLinks: [],
   loadMoreCommits: 100,
   locale: "en",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 // The global as the setup file installed it for this file, put back after every test.

@@ -7,6 +7,7 @@ import { StatisticsView } from "./components/history/StatisticsView";
 import { WorkspacePane } from "./components/history/WorkspacePane";
 import { RefsPane } from "./components/repository/RefsPane";
 import { RepositoryStatus } from "./components/repository/RepositoryStatus";
+import { Announcer } from "./components/ui/Announcer";
 import { ContextMenu } from "./components/ui/ContextMenu";
 import { Dialog } from "./components/ui/Dialog";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
@@ -70,6 +71,7 @@ export function App({ repos }: { repos: Array<GitRepo> }) {
       <NavigationEffects />
       <ScrollShadow />
       <ContextMenu />
+      <Announcer />
       <ErrorBoundary>
         <Dialog />
       </ErrorBoundary>

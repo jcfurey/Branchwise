@@ -9,9 +9,14 @@ import { loadAbsorbPlan } from "@/backend/queries/absorb";
 import { loadBisect } from "@/backend/queries/bisect";
 import { loadBranchFocus } from "@/backend/queries/branchFocus";
 import { loadConflictForecast } from "@/backend/queries/conflictForecast";
+import { loadContainingRefs } from "@/backend/queries/containingRefs";
 import { loadAmendPlan, loadRewordPlan } from "@/backend/queries/editCommit";
 import { historyQuery } from "@/backend/queries/history";
 import { loadPushStatus } from "@/backend/queries/pushStatus";
+import { loadReplayForecast } from "@/backend/queries/replayForecast";
+import { loadSafetyNet, loadSafetyUndo } from "@/backend/queries/safetyNet";
+import { verifySignature } from "@/backend/queries/signatures";
+import { loadSplitPlan } from "@/backend/queries/splitCommit";
 import {
   loadBulkSyncPlan,
   loadSyncPlan,
@@ -28,6 +33,7 @@ import type {
   OperationState,
   RebasePlan,
   RefDetails,
+  RemoteDetails,
   RepositoryQuery,
   RepositoryQueryData,
   RepositoryState,
@@ -150,6 +156,26 @@ function parseRefs(text: string, extra: "symref" | "peeled"): RefDetails[] {
 }
 
 /**
+ * Each remote's default branch from the same `name NUL hash NUL symref` lines: `origin/HEAD`
+ * pointing at `refs/remotes/origin/main` makes `main` the default branch of `origin`.
+ */
+function parseDefaultBranches(text: string): Map<string, string> {
+  const defaults = new Map<string, string>();
+  for (const line of text.split("\n")) {
+    const [name = "", , target = ""] = line.split("\0");
+    if (!name.endsWith("/HEAD")) {
+      continue;
+    }
+    const remote = name.slice(0, -"/HEAD".length);
+    const prefix = `refs/remotes/${remote}/`;
+    if (target.startsWith(prefix) && target.length > prefix.length) {
+      defaults.set(remote, target.slice(prefix.length));
+    }
+  }
+  return defaults;
+}
+
+/**
  * Parses `name NUL upstream NUL tracking NUL hash NUL date` lines of local branches. `merged`
  * names the branches HEAD already contains.
  */
@@ -183,7 +209,8 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
     tagRefs,
     worktrees,
     status,
-    operation
+    operation,
+    undo
   ] = await Promise.all([
     git.getRemotes(),
     git.getConfig("remote.pushDefault"),
@@ -208,15 +235,25 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
     ]),
     loadWorktrees(git),
     git.status(),
-    loadOperation(git)
+    loadOperation(git),
+    // The header's Undo entry is a convenience; an unreadable journal only hides it.
+    loadSafetyUndo(git).catch(() => null)
   ]);
+  const defaultBranches = parseDefaultBranches(remoteRefs);
   return {
     remotes: await Promise.all(
-      remotes.map(async ({ name }) => ({
-        name,
-        fetchUrls: (await git.getConfig(`remote.${name}.url`)).values,
-        pushUrls: (await git.getConfig(`remote.${name}.pushurl`)).values
-      }))
+      remotes.map(async ({ name }) => {
+        const remote: RemoteDetails = {
+          name,
+          fetchUrls: (await git.getConfig(`remote.${name}.url`)).values,
+          pushUrls: (await git.getConfig(`remote.${name}.pushurl`)).values
+        };
+        const defaultBranch = defaultBranches.get(name);
+        if (defaultBranch !== undefined) {
+          remote.defaultBranch = defaultBranch;
+        }
+        return remote;
+      })
     ),
     pushDefault: pushDefault.value,
     branches: parseBranches(branches, new Set(mergedBranches.split("\n").filter(Boolean))),
@@ -227,7 +264,8 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
     operation,
     conflicts: status.conflicted,
     // The index column is blank for unstaged paths, `?` for untracked and `!` for ignored ones.
-    staged: status.files.filter((file) => !" ?!".includes(file.index)).length
+    staged: status.files.filter((file) => !" ?!".includes(file.index)).length,
+    undo
   };
 }
 
@@ -326,6 +364,10 @@ export async function repositoryQuery(
       return { kind: "workingTree", files: await loadWorkingTree(git) };
     case "branchFocus":
       return { kind: "branchFocus", ...(await loadBranchFocus(git, query.branch, query.hashes)) };
+    case "containingRefs": {
+      const { kind, hash, ...visibility } = query;
+      return { kind, ...(await loadContainingRefs(git, hash, visibility)) };
+    }
     case "pushStatus":
       return { kind: "pushStatus", ...(await loadPushStatus(git)) };
     case "conflictForecast":
@@ -334,6 +376,8 @@ export async function repositoryQuery(
         kind: "conflictForecast",
         conflicts: (await loadOperation(git)) === null ? await loadConflictForecast(git, query) : []
       };
+    case "replayForecast":
+      return { kind: "replayForecast", forecast: await loadReplayForecast(git, query) };
     case "bisect":
       return {
         kind: "bisect",
@@ -396,6 +440,10 @@ export async function repositoryQuery(
       return { kind: "editPlan", plan: await loadRewordPlan(git, query.target) };
     case "amendPlan":
       return { kind: "amendPlan", plan: await loadAmendPlan(git, query.target) };
+    case "splitPlan":
+      return { kind: "splitPlan", plan: await loadSplitPlan(git, query.target) };
+    case "signature":
+      return { kind: "signature", ...(await verifySignature(git, query.hash)) };
     case "absorbPlan":
       return { kind: "absorbPlan", plan: await loadAbsorbPlan(git) };
     case "lease": {
@@ -404,5 +452,7 @@ export async function repositoryQuery(
       const hash = await resolveCommit(git, `refs/remotes/${query.remote}/${query.branch}`);
       return { kind: "lease", hash };
     }
+    case "safetyNet":
+      return { kind: "safetyNet", entries: await loadSafetyNet(git) };
   }
 }

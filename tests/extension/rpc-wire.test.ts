@@ -2,7 +2,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 
 import { createRpcServer } from "@/extension/rpc/rpc-server";
 
-import { declaredGraphColours } from "./manifest";
+import { themeGraphColours } from "./manifest";
 
 const host = vi.hoisted(() => ({
   executeCommand: vi.fn(),
@@ -15,7 +15,10 @@ vi.mock("vscode", () => ({
   l10n: { t: (key: string) => key },
   workspace: {
     workspaceFolders: undefined,
-    getConfiguration: () => ({ get: (_key: string, fallback?: unknown) => fallback })
+    getConfiguration: () => ({
+      get: (_key: string, fallback?: unknown) => fallback,
+      inspect: () => undefined
+    })
   }
 }));
 
@@ -76,7 +79,9 @@ test("lists no repositories without workspace folders", async () => {
 test.each([
   ["settings.open", ["workbench.action.openSettings", "branchwise"]],
   ["docs.open", ["branchwise.openDocumentation"]],
-  ["walkthrough.open", ["branchwise.openWalkthrough"]]
+  ["walkthrough.open", ["branchwise.openWalkthrough"]],
+  ["git.clone", ["git.clone"]],
+  ["folder.open", ["vscode.openFolder"]]
 ])("opens what %s asks for", async (method, command) => {
   expect(await ask(method)).toEqual(success(true));
   expect(host.executeCommand).toHaveBeenCalledExactlyOnceWith(...command);
@@ -94,12 +99,14 @@ test("hands the page its strings and settings", async () => {
     autoCenterCommitDetailsView: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
-    graphColours: declaredGraphColours,
+    dragAndDrop: true,
+    graphColours: themeGraphColours,
     graphStyle: "rounded",
     initialLoadCommits: 300,
     issueLinks: [],
     loadMoreCommits: 100,
     locale: "en",
-    showCurrentBranchByDefault: false
+    showCurrentBranchByDefault: false,
+    singleKeyShortcuts: true
   });
 });

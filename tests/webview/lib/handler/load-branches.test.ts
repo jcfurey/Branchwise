@@ -18,13 +18,15 @@ const settings: WebviewConfig = {
   autoCenterCommitDetailsView: false,
   conflictForecast: "localAndRemote",
   dateFormat: "Relative",
+  dragAndDrop: true,
   graphColours: [],
   graphStyle: "angular",
   initialLoadCommits: 300,
   issueLinks: [],
   loadMoreCommits: 50,
   locale: "en",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 beforeAll(() => {

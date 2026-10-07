@@ -5,14 +5,16 @@ import type { HistoryEntry, HistoryFilter } from "@/backend/types";
 import { branchListRef } from "@/backend/utils/refs";
 import { CommitTable } from "@/webview/components/commit/CommitTable";
 import { openBatch, openCompare } from "@/webview/components/history/HistoryTools";
+import { NoMatches } from "@/webview/components/history/NoMatches";
 import { PageControls, QueryStatus } from "@/webview/components/history/QueryControls";
 import { HiddenBranchesHint } from "@/webview/components/repository/HiddenBranches";
 import { openInteractiveRebase } from "@/webview/components/repository/RebaseEditor";
 import { TeamOverlapSummary } from "@/webview/components/repository/TeamOverlap";
 import { Button } from "@/webview/components/ui/Button";
 import { BranchIcon, CloseIcon, TagIcon } from "@/webview/components/ui/Icons";
-import { Loading } from "@/webview/components/ui/Loading";
+import { GraphSkeleton, Loading } from "@/webview/components/ui/Loading";
 import { Select } from "@/webview/components/ui/Select";
+import { BATCH_LIMIT } from "@/webview/constants";
 import {
   loadMoreCommits,
   refresh,
@@ -52,9 +54,6 @@ import { branchPatternScope } from "@/webview/lib/stores/hidden-branches.store";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { NoCommitsPage } from "@/webview/pages/NoCommitsPage";
 import type { FocusDimming } from "@/webview/types";
-
-/** The batch dialogs refuse selections larger than this. */
-const BATCH_LIMIT = 100;
 
 /** A full object name: SHA-1 or SHA-256. Anything else is shown as typed. */
 const OBJECT_NAME = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;
@@ -108,7 +107,7 @@ function useScrollRestore(rows: Array<HistoryEntry> | undefined, repo: string | 
   }, [repo, rows]);
 }
 
-function FocusBanner({
+export function FocusBanner({
   target,
   loading,
   failed
@@ -316,9 +315,15 @@ export function GraphView() {
   }
 
   if (rows === undefined) {
-    return (
+    // The graph's first rows are drawn as placeholders in their shape. A refresh keeps the rows
+    // already shown, so only a repository's first load comes here.
+    return inHistory ? (
       <main class="grid flex-1 place-items-center">
         <Loading />
+      </main>
+    ) : (
+      <main class="flex-1">
+        <GraphSkeleton />
       </main>
     );
   }
@@ -351,7 +356,7 @@ export function GraphView() {
         <MatchingRefs refs={matchingRefs} />
       )}
       {selected.length > 1 && <SelectionBar selected={selected} />}
-      {inHistory && rows.length === 0 && <p class="p-6 text-muted">{l10n.noHistoryMatches}</p>}
+      {inHistory && rows.length === 0 && <NoMatches filter={filter} branch={displayedBranch()} />}
       {!inHistory && !commitMenuHintDismissed.value && <CommitMenuHint />}
       <CommitTable
         commits={rows}

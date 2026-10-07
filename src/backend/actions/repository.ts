@@ -13,6 +13,8 @@ import {
   withRecoveryEditor
 } from "@/backend/actions/rebase";
 import { manageRemote } from "@/backend/actions/remotes";
+import { undoSafetyRecord } from "@/backend/actions/safetyNet";
+import { splitCommit } from "@/backend/actions/splitCommit";
 import { runWorkflowAction } from "@/backend/actions/workflows";
 import { viewWorkingTreeFile } from "@/backend/actions/workingTree";
 import { loadOperation, loadStashes, loadWorktrees } from "@/backend/queries/repository";
@@ -29,6 +31,15 @@ export type RepositoryEffect =
   | { kind: "conflict"; path: string; status: string }
   | { kind: "document"; text: string }
   | { kind: "diff"; left: string | null; right: string | null; before: string; after: string }
+  /**
+   * Several diffs in one editor titled `title`, each as `diff` describes one, except that a side
+   * may also name a commit's first parent as `<commit>^`.
+   */
+  | {
+      kind: "changes";
+      title: string;
+      files: Array<{ left: string | null; right: string | null; before: string; after: string }>;
+    }
   | { kind: "historicalFile"; hash: string; path: string }
   | {
       kind: "workingTreeDiff";
@@ -82,6 +93,8 @@ export async function runRepositoryAction(
     case "recoverBranch":
     case "viewRangeFile":
     case "viewHistoricalFile":
+    case "viewCommitChanges":
+    case "viewRangeChanges":
       return runHistoryAction(git, action, binary);
     case "addRemote":
     case "editRemote":
@@ -140,6 +153,8 @@ export async function runRepositoryAction(
       return rewordCommit(git, action.plan, action.message, binary);
     case "amendCommit":
       return amendCommit(git, action.plan, binary);
+    case "splitCommit":
+      return splitCommit(git, action.plan, action.messages, action.assignment, binary);
     case "absorb":
       return absorbStaged(git, action.plan, binary);
     case "recover": {
@@ -190,6 +205,8 @@ export async function runRepositoryAction(
       ]);
       return;
     }
+    case "undoSafetyNet":
+      return undoSafetyRecord(git, action.id);
     case "openWorktree":
     case "removeWorktree": {
       const worktrees = await loadWorktrees(git);

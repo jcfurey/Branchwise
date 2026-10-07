@@ -23,7 +23,8 @@ import {
   repositoryRevision,
   repositoryState,
   requestRepositoryState,
-  resetRepositoryState
+  resetRepositoryState,
+  sendRepositoryAction
 } from "@/webview/lib/repository-actions";
 import {
   branchDisplay,
@@ -647,6 +648,11 @@ export function runAction(command: ActionCommand): void {
     repo,
     window.l10n.runningGitAction
   );
+}
+
+/** Open every file the commit changes, against its first parent, in one multi-file diff editor. */
+export function openAllCommitChanges(commitHash: string): void {
+  sendRepositoryAction({ kind: "viewCommitChanges", hash: commitHash });
 }
 
 export function viewDiff(commitHash: string, file: GitFileChange): void {

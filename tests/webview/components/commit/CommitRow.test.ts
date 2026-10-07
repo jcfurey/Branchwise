@@ -46,6 +46,7 @@ const COMMIT_MENU = [
   null,
   "interactiveRebase…",
   "createFixupMenu…",
+  "openAllChanges",
   "compareWith",
   "bisectChooseGood",
   "bisectChooseBad",

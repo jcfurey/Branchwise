@@ -2,7 +2,7 @@
 import { h, render } from "preact";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { Loading } from "@/webview/components/ui/Loading";
+import { GraphSkeleton, Loading } from "@/webview/components/ui/Loading";
 
 const html = document.documentElement;
 let host: HTMLDivElement;
@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 describe("Loading", () => {
-  it("is an inline status with its text in a span unless the page layout is asked for", () => {
+  it("is an inline status with its text in a span", () => {
     const status = show();
     expect(status.getAttribute("role")).toBe("status");
     expect(status.querySelector("span")?.textContent).toBe("Fetching…");
@@ -36,7 +36,6 @@ describe("Loading", () => {
   it("leaves polite announcing to the status role", () => {
     // The explicit aria-live was redundant with role="status" and has been dropped.
     expect(show().hasAttribute("aria-live")).toBe(false);
-    expect(show({ variant: "page" }).hasAttribute("aria-live")).toBe(false);
   });
 
   it("adds the caller's classes after its own, with no stray spaces", () => {
@@ -51,27 +50,19 @@ describe("Loading", () => {
 
   it("still draws, with no text, when the shell carries none", () => {
     delete html.dataset["loading"];
-    for (const variant of ["inline", "page"] as const) {
-      const status = show({ variant });
-      expect(status.getAttribute("role")).toBe("status");
-      expect(status.textContent).toBe("");
-    }
+    const status = show();
+    expect(status.getAttribute("role")).toBe("status");
+    expect(status.textContent).toBe("");
   });
 
   it("keeps its drawing silent and out of the tab order", () => {
-    const status = show({ variant: "page" });
+    const status = show();
     const glyphs = [...status.querySelectorAll("svg")];
     expect(glyphs.length).toBeGreaterThan(0);
     for (const glyph of glyphs) {
       expect(glyph.getAttribute("aria-hidden")).toBe("true");
       expect(glyph.getAttribute("focusable")).toBe("false");
     }
-
-    const heading = status.querySelector("h1")!;
-    expect(heading.textContent).toBe("Fetching…");
-    const track = heading.nextElementSibling!;
-    expect(track.getAttribute("aria-hidden")).toBe("true");
-    expect(track.textContent).toBe("");
     expect(status.textContent).toBe("Fetching…");
   });
 
@@ -80,5 +71,43 @@ describe("Loading", () => {
     expect(show().textContent).toBe("One moment");
     html.dataset["loading"] = "Almost there";
     expect(show().textContent).toBe("Almost there");
+  });
+});
+
+describe("GraphSkeleton", () => {
+  function skeleton() {
+    render(h(GraphSkeleton, null), host);
+    return host.firstElementChild as HTMLElement;
+  }
+
+  it("is a busy status that says only the loading text", () => {
+    const status = skeleton();
+    expect(status.getAttribute("role")).toBe("status");
+    expect(status.getAttribute("aria-busy")).toBe("true");
+    expect(status.textContent).toBe("Fetching…");
+    const text = status.querySelector("span")!;
+    expect(text.textContent).toBe("Fetching…");
+    expect(text.classList.contains("sr-only")).toBe(true);
+  });
+
+  it("draws eight to twelve placeholder rows on the table's grid, hidden from screen readers", () => {
+    const placeholders = skeleton().querySelector('[aria-hidden="true"]')!;
+    const rows = [...placeholders.children] as Array<HTMLElement>;
+    expect(rows.length).toBeGreaterThanOrEqual(8);
+    expect(rows.length).toBeLessThanOrEqual(12);
+    for (const row of rows) {
+      expect(row.classList.contains("h-6")).toBe(true);
+      expect(row.textContent).toBe("");
+      expect(row.querySelectorAll(".skeleton-shimmer").length).toBeGreaterThanOrEqual(4);
+    }
+    // Dots in more than one lane and descriptions of different lengths, as in a history.
+    const lanes = new Set(
+      rows.map((row) => (row.querySelector(".rounded-full") as HTMLElement).style.marginLeft)
+    );
+    expect(lanes.size).toBeGreaterThan(1);
+    const widths = new Set(
+      rows.map((row) => (row.querySelector(".flex-1 > span") as HTMLElement).style.width)
+    );
+    expect(widths.size).toBe(rows.length);
   });
 });

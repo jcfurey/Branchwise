@@ -30,9 +30,12 @@ export type WebviewConfig = Readonly<{
    */
   conflictForecast: ConflictForecastScope;
   dateFormat: DateFormat;
+  /** Let commits and branches be dragged onto branch labels to start an action. */
+  dragAndDrop: boolean;
   /**
    * The branch palette, in the order the graph hands colours out. Entries are kept exactly as
-   * written in the setting, and the list may be empty.
+   * written in the setting, and the list may be empty. While the user has not set it, the entries
+   * are CSS `var()` references to the theme colours `branchwise.graphLane1` and on.
    */
   graphColours: readonly string[];
   graphStyle: GraphStyle;
@@ -46,4 +49,6 @@ export type WebviewConfig = Readonly<{
   locale: string;
   /** In filter mode, open a repository on its checked-out branch rather than on every branch. */
   showCurrentBranchByDefault: boolean;
+  /** Let single keys, such as `b` for Create Branch, act on the focused commit row. */
+  singleKeyShortcuts: boolean;
 }>;

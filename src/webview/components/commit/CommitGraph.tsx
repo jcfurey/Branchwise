@@ -1,4 +1,5 @@
 import type { ReadonlySignal } from "@preact/signals";
+import { Fragment } from "preact";
 import { useMemo } from "preact/hooks";
 
 import { VERTEX_RADIUS } from "@/webview/graph/constants";
@@ -31,6 +32,32 @@ type CommitGraphProps = {
   hovered: ReadonlySignal<string | null>;
   commitRows: ReadonlyMap<string, number>;
 };
+
+/**
+ * How a dot is drawn, so that its shape and not only its colour tells commits apart: HEAD is a
+ * ring, the uncommitted changes a dashed ring, a merge a wider ring around a small dot, and any
+ * other commit a filled dot. The kind is also written on the dot as `data-dot`.
+ */
+type DotKind = "commit" | "head" | "uncommitted" | "merge";
+
+function dotKind(vertex: GraphVertex): DotKind {
+  if (!vertex.isCommitted) {
+    return "uncommitted";
+  }
+  if (vertex.isCurrent) {
+    return "head";
+  }
+  return vertex.isMerge ? "merge" : "commit";
+}
+
+/** A merge's ring: one pixel wider than a dot, and still well inside a row. */
+const MERGE_RADIUS = VERTEX_RADIUS + 1;
+
+/** The radius of the dot in the middle of a merge's ring. */
+const MERGE_CENTRE = 2;
+
+/** Twelve equal dashes and gaps round the uncommitted ring. */
+const UNCOMMITTED_DASHES = String((2 * Math.PI * VERTEX_RADIUS) / 12);
 
 /**
  * The lanes and dots drawn behind the commit table's first column. Lines come first so that the
@@ -94,31 +121,66 @@ export function CommitGraph({
       {layout.vertices.map((vertex) => {
         const relation = relations[vertex.y] ?? "normal";
         const colour = dotColour(vertex, relation);
-        const centre = {
-          cx: laneX(vertex.x),
-          cy: rowY(vertex.y) + expandOffset(vertex.y, expansion),
-          r: VERTEX_RADIUS
-        };
-        // HEAD is an open ring; every other commit a filled dot.
-        return vertex.isCurrent ? (
-          <circle
-            key={vertex.y}
-            {...centre}
-            data-branch-relation={relation}
-            stroke={colour}
-            stroke-width="2"
-            class="fill-editor"
-          />
-        ) : (
-          <circle
-            key={vertex.y}
-            {...centre}
-            data-branch-relation={relation}
-            fill={colour}
-            stroke-width="1"
-            class="stroke-editor/75"
-          />
-        );
+        const cx = laneX(vertex.x);
+        const cy = rowY(vertex.y) + expandOffset(vertex.y, expansion);
+        const kind = dotKind(vertex);
+        // Each row has exactly one circle, which carries the dot's place and relation.
+        switch (kind) {
+          case "head":
+          case "uncommitted":
+            return (
+              <circle
+                key={vertex.y}
+                cx={cx}
+                cy={cy}
+                r={VERTEX_RADIUS}
+                data-dot={kind}
+                data-branch-relation={relation}
+                stroke={colour}
+                stroke-width="2"
+                stroke-dasharray={kind === "uncommitted" ? UNCOMMITTED_DASHES : undefined}
+                class="fill-editor"
+              />
+            );
+          case "merge":
+            return (
+              <Fragment key={vertex.y}>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={MERGE_RADIUS}
+                  data-dot={kind}
+                  data-branch-relation={relation}
+                  stroke={colour}
+                  stroke-width="1.5"
+                  class="fill-editor"
+                />
+                {/* A rect with fully rounded corners, so the row still has one circle. */}
+                <rect
+                  x={cx - MERGE_CENTRE}
+                  y={cy - MERGE_CENTRE}
+                  width={MERGE_CENTRE * 2}
+                  height={MERGE_CENTRE * 2}
+                  rx={MERGE_CENTRE}
+                  fill={colour}
+                />
+              </Fragment>
+            );
+          default:
+            return (
+              <circle
+                key={vertex.y}
+                cx={cx}
+                cy={cy}
+                r={VERTEX_RADIUS}
+                data-dot={kind}
+                data-branch-relation={relation}
+                fill={colour}
+                stroke-width="1"
+                class="stroke-editor/75"
+              />
+            );
+        }
       })}
     </svg>
   );

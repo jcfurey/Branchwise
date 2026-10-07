@@ -6,7 +6,12 @@ import { afterAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { configuredGitPath, extConfig, wholeNumber } from "@/extension/config";
 
-import { declaredGraphColours, declaredSetting } from "./manifest";
+import {
+  declaredColours,
+  declaredGraphColours,
+  declaredSetting,
+  themeGraphColours
+} from "./manifest";
 
 /** What the user stored under `branchwise.*`; a missing key makes VS Code hand back the default. */
 const stored = vi.hoisted(() => new Map<string, unknown>());
@@ -17,7 +22,9 @@ vi.mock("vscode", () => ({
     getConfiguration(section: string) {
       sections.push(section);
       return {
-        get: (key: string, fallback?: unknown) => (stored.has(key) ? stored.get(key) : fallback)
+        get: (key: string, fallback?: unknown) => (stored.has(key) ? stored.get(key) : fallback),
+        // What the user stored is stored in the user settings.
+        inspect: (key: string) => (stored.has(key) ? { globalValue: stored.get(key) } : undefined)
       };
     }
   }
@@ -125,14 +132,76 @@ describe("graph colours", () => {
 
   // Decision config Q1: a value that is not a list counts as unset instead of throwing.
   test.each([["red"], [null], [{ 0: "#000000" }], [42], [true]])(
-    "falls back to the default colours when the setting holds %j",
+    "falls back to the theme's colours when the setting holds %j",
     (value) => {
       stored.set("graphColours", value);
       expect(() => extConfig.graphColours()).not.toThrow();
-      expect(extConfig.graphColours()).toEqual(declaredGraphColours);
+      expect(extConfig.graphColours()).toEqual(themeGraphColours);
       expect(declaredGraphColours).toHaveLength(12);
     }
   );
+
+  test("uses the theme's lane colours until the user sets a list anywhere", () => {
+    expect(extConfig.graphColours()).toEqual(themeGraphColours);
+    expect(themeGraphColours[0]).toBe("var(--vscode-branchwise-graphLane1, #0085d9)");
+    expect(themeGraphColours[11]).toBe("var(--vscode-branchwise-graphLane12, #ffcc00)");
+
+    // A list the user wrote is theirs, even when it is the default one.
+    stored.set("graphColours", [...declaredGraphColours]);
+    expect(extConfig.graphColours()).toEqual(declaredGraphColours);
+  });
+
+  test.each(["workspaceValue", "workspaceFolderValue"])(
+    "counts a list set as the %s as set",
+    async (scope) => {
+      const vscode = await import("vscode");
+      const spy = vi.spyOn(vscode.workspace, "getConfiguration").mockReturnValue({
+        get: () => ["#123456"],
+        inspect: () => ({ [scope]: ["#123456"] })
+      } as unknown as ReturnType<typeof vscode.workspace.getConfiguration>);
+      try {
+        expect(extConfig.graphColours()).toEqual(["#123456"]);
+      } finally {
+        spy.mockRestore();
+      }
+    }
+  );
+});
+
+describe("theme colours", () => {
+  const themes = ["dark", "light", "highContrast", "highContrastLight"] as const;
+  const byId = new Map(declaredColours.map((colour) => [colour.id, colour]));
+
+  test("contributes twelve lane colours, the unpushed dot and the conflict mark", () => {
+    expect(declaredColours.map((colour) => colour.id)).toEqual([
+      ...declaredGraphColours.map((_colour, index) => `branchwise.graphLane${index + 1}`),
+      "branchwise.unpushed",
+      "branchwise.conflict"
+    ]);
+    for (const colour of declaredColours) {
+      expect(colour.description).toBe(`%colors.${colour.id.slice("branchwise.".length)}%`);
+    }
+  });
+
+  test("defaults every lane, in every kind of theme, to the colour the graph always used", () => {
+    declaredGraphColours.forEach((hex, index) => {
+      const lane = byId.get(`branchwise.graphLane${index + 1}`)!;
+      for (const theme of themes) {
+        expect(lane.defaults[theme], `${lane.id} ${theme}`).toBe(hex);
+      }
+    });
+  });
+
+  test("defaults the unpushed dot and the conflict mark to the Git colours they used", () => {
+    for (const theme of themes) {
+      expect(byId.get("branchwise.unpushed")!.defaults[theme]).toBe(
+        "gitDecoration.modifiedResourceForeground"
+      );
+      expect(byId.get("branchwise.conflict")!.defaults[theme]).toBe(
+        "gitDecoration.conflictingResourceForeground"
+      );
+    }
+  });
 });
 
 describe("settings passed through", () => {
@@ -161,6 +230,7 @@ describe("settings passed through", () => {
       "conflictForecast",
       "dateFormat",
       "dateType",
+      "dragAndDrop",
       "gitPath",
       "graphColours",
       "graphStyle",
@@ -170,7 +240,9 @@ describe("settings passed through", () => {
       "maxDepthOfRepoSearch",
       "nestedRepoSearchDepth",
       "showCurrentBranchByDefault",
+      "showSignatures",
       "showUncommittedChanges",
+      "singleKeyShortcuts",
       "tabIconColourTheme"
     ]);
   });

@@ -1,7 +1,9 @@
 import { useEffect } from "preact/hooks";
 
+import { openShortcutSheet } from "@/webview/components/ui/ShortcutSheet";
 import { focusSearch } from "@/webview/lib/focus";
 import { leaveNavigation, restoreScroll } from "@/webview/lib/navigation";
+import { shortcutFor } from "@/webview/lib/shortcuts";
 import { contextMenu, dialog, selectedRepo } from "@/webview/lib/stores";
 
 export function NavigationEffects() {
@@ -29,6 +31,11 @@ export function NavigationEffects() {
       ) {
         event.preventDefault();
         focusSearch();
+      } else if (shortcutFor(event, "page")?.id === "shortcutSheet") {
+        event.preventDefault();
+        if (!event.repeat) {
+          openShortcutSheet();
+        }
       }
     };
     window.addEventListener("scroll", scroll, { passive: true });
