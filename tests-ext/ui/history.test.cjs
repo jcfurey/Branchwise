@@ -4530,7 +4530,7 @@ suite("Branchwise workflow UI", function () {
     assert.ok(before.right <= before.pageWidth + 0.5, "clear of the window's scrollbar");
     assert.ok(before.rowTop > before.height, "the tagged commit starts out of sight");
 
-    // Every theme colours the marks: HEAD in the editor's cursor colour, tags in the middle lane.
+    // Every theme colours the marks: HEAD in the editor's cursor colour, tags in the left half.
     const marks = () =>
       graph.evaluate(`(() => {
       const canvas = document.querySelector('[data-overview-strip] canvas');
@@ -4542,7 +4542,7 @@ suite("Branchwise workflow UI", function () {
       document.body.append(probe);
       const cursor = getComputedStyle(probe).color.match(/\\d+/g).slice(0, 3).map(Number);
       probe.remove();
-      return { head: pixel(5, rowY(0) + 1), tag: pixel(5.5, rowY(146) + 1), cursor };
+      return { head: pixel(5, rowY(0) + 1), tag: pixel(3, rowY(146) + 1), cursor };
     })()`);
     const workbench = vscode.workspace.getConfiguration("workbench");
     const originalTheme = workbench.inspect("colorTheme").globalValue;

@@ -48,8 +48,6 @@ type CommitTableProps = {
   pushStatus?: { unpushed: Array<string>; unpulled: Array<string> } | null;
   /** Branches that would not merge cleanly into HEAD, with the files in conflict. */
   conflicts?: Array<ConflictForecastEntry> | undefined;
-  /** Every row is a result of the active search or filter, which the overview strip marks. */
-  searchResults?: boolean;
   keepMergedBright?: boolean;
   dimming?: FocusDimming;
 };
@@ -186,7 +184,6 @@ export function CommitTable({
   focus = null,
   pushStatus = null,
   conflicts,
-  searchResults = false,
   keepMergedBright = false,
   dimming = "subtle"
 }: CommitTableProps) {
@@ -241,13 +238,12 @@ export function CommitTable({
         ? collectMarkers({
             commits,
             head,
-            matches: searchResults,
             selected: new Set(selection.map((commit) => commit.hash)),
             details: expandedHash,
             unpushed: new Set(pushStatus?.unpushed)
           })
         : [],
-    [overview, commits, head, searchResults, selection, expandedHash, pushStatus]
+    [overview, commits, head, selection, expandedHash, pushStatus]
   );
 
   // Rows get the same callbacks on every render, so a row whose own props did not change skips.

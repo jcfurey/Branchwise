@@ -2,7 +2,7 @@ import type { HistoryEntry } from "@/backend/types";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
 
 /** What a mark on the overview strip stands for. */
-export type MarkerKind = "head" | "match" | "selected" | "details" | "branch" | "tag" | "unpushed";
+export type MarkerKind = "head" | "selected" | "details" | "branch" | "tag" | "unpushed";
 
 /**
  * Every kind, most important first. Where marks meet, the more important one is drawn over the
@@ -10,7 +10,6 @@ export type MarkerKind = "head" | "match" | "selected" | "details" | "branch" | 
  */
 export const MARKER_PRIORITY: readonly MarkerKind[] = Object.freeze([
   "head",
-  "match",
   "selected",
   "details",
   "branch",
@@ -27,8 +26,6 @@ export type StripMark = Readonly<{ y: number; kinds: readonly MarkerKind[] }>;
 export type MarkerSources = Readonly<{
   commits: readonly HistoryEntry[];
   head: string | null;
-  /** Every row is a result of the active search or filter. */
-  matches: boolean;
   selected: ReadonlySet<string>;
   /** The commit whose details are open, or `null`. */
   details: string | null;
@@ -42,7 +39,6 @@ export type MarkerSources = Readonly<{
 export function collectMarkers({
   commits,
   head,
-  matches,
   selected,
   details,
   unpushed
@@ -53,9 +49,6 @@ export function collectMarkers({
     const add = (kind: MarkerKind) => markers.push({ row, kind });
     if (hash !== UNCOMMITTED_CHANGES && hash === head) {
       add("head");
-    }
-    if (matches && hash !== UNCOMMITTED_CHANGES) {
-      add("match");
     }
     if (selected.has(hash)) {
       add("selected");

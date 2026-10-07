@@ -135,7 +135,7 @@ it("draws the whole history beside the table, kept out of the keyboard's way", (
   expect(host.firstElementChild!.getAttribute("style")).toContain("--overview-gutter: 10px");
   expect(drawn.some((step) => step.call === "fillRect")).toBe(true);
   // No row of the table is drawn as an element of the strip.
-  expect(strip()!.querySelectorAll("*")).toHaveLength(10);
+  expect(strip()!.querySelectorAll("*")).toHaveLength(9);
 });
 
 it("scrolls the table to the row under a click, and follows a drag", () => {

@@ -107,10 +107,6 @@
    * Unpushed commits keep the colour of their dot in the table.
    */
   --color-overview-head: var(--vscode-editorCursor-foreground, var(--vscode-foreground));
-  --color-overview-match: var(
-    --vscode-editorOverviewRuler-findMatchForeground,
-    rgba(209, 134, 22, 0.49)
-  );
   --color-overview-selected: var(--vscode-focusBorder);
   --color-overview-details: var(
     --vscode-editorOverviewRuler-wordHighlightStrongForeground,
@@ -321,7 +317,6 @@
   /* The canvas is never recoloured, so the strip picks system colours for itself. */
   .overview-strip {
     --color-overview-head: CanvasText;
-    --color-overview-match: LinkText;
     --color-overview-selected: Highlight;
     --color-overview-details: Highlight;
     --color-overview-branch: CanvasText;

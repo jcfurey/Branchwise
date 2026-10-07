@@ -209,19 +209,17 @@ describe("styles.css", () => {
   });
 
   it("colours the overview strip from the theme, and from system colours when forced", () => {
-    expect(theme).toMatch(
-      /--color-overview-match: var\(\s*--vscode-editorOverviewRuler-findMatchForeground,/
-    );
     expect(theme).toContain(
       "--color-overview-band: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));"
     );
     expect(theme).toContain("--color-overview-unpushed: var(--color-unpushed);");
     // The canvas reads its colours from probes, which the utilities colour.
-    for (const kind of ["head", "match", "selected", "details", "branch", "tag", "unpushed"]) {
+    for (const kind of ["head", "selected", "details", "branch", "tag", "unpushed"]) {
       expect(ruleOf(utilities, `.text-overview-${kind}`)).toContain(
         `color: var(--color-overview-${kind});`
       );
     }
+    expect(css).not.toContain("overview-match");
     const strip = ruleOf(components, ".overview-strip");
     expect(strip).toContain("forced-color-adjust: none;");
     expect(strip).toContain("--overview-tag-alpha: 0.55;");

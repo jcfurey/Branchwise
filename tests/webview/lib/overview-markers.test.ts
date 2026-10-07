@@ -58,7 +58,6 @@ describe("collectMarkers", () => {
     const markers = collectMarkers({
       commits,
       head: "a",
-      matches: false,
       selected: new Set(["b", UNCOMMITTED_CHANGES]),
       details: "d",
       unpushed: new Set(["a"])
@@ -75,20 +74,6 @@ describe("collectMarkers", () => {
       { row: 4, kind: "details" }
     ]);
   });
-
-  it("marks every commit as a result while a search or filter shows them", () => {
-    const markers = collectMarkers({
-      commits,
-      head: null,
-      matches: true,
-      selected: new Set(),
-      details: null,
-      unpushed: new Set()
-    });
-    expect(markers.filter((marker) => marker.kind === "match").map((marker) => marker.row)).toEqual(
-      [1, 2, 3, 4]
-    );
-  });
 });
 
 describe("collapseMarkers", () => {
@@ -98,14 +83,13 @@ describe("collapseMarkers", () => {
       { row: 1, kind: "unpushed" },
       { row: 2, kind: "head" },
       { row: 3, kind: "selected" },
-      { row: 4, kind: "match" },
-      { row: 5, kind: "branch" },
-      { row: 6, kind: "tag" },
-      { row: 7, kind: "details" }
+      { row: 4, kind: "branch" },
+      { row: 5, kind: "tag" },
+      { row: 6, kind: "details" }
     ];
-    // Ten rows to a pixel: all eight share pixel row 0.
+    // Ten rows to a pixel: all seven share pixel row 0.
     expect(collapseMarkers(markers, 1000, 100)).toEqual([
-      { y: 0, kinds: ["head", "match", "selected", "details", "branch", "tag", "unpushed"] }
+      { y: 0, kinds: ["head", "selected", "details", "branch", "tag", "unpushed"] }
     ]);
   });
 
@@ -114,11 +98,11 @@ describe("collapseMarkers", () => {
       { row: 990, kind: "tag" },
       { row: 0, kind: "head" },
       { row: 500, kind: "branch" },
-      { row: 501, kind: "match" }
+      { row: 501, kind: "selected" }
     ];
     expect(collapseMarkers(markers, 1000, 100)).toEqual([
       { y: 0, kinds: ["head"] },
-      { y: 50, kinds: ["match", "branch"] },
+      { y: 50, kinds: ["selected", "branch"] },
       { y: 99, kinds: ["tag"] }
     ]);
   });
@@ -126,7 +110,7 @@ describe("collapseMarkers", () => {
   it("draws one mark per pixel row however many rows carry it", () => {
     const markers = Array.from({ length: 50_000 }, (_, row): OverviewMarker => ({
       row,
-      kind: "match"
+      kind: "branch"
     }));
     const marks = collapseMarkers(markers, 50_000, 400);
     expect(marks).toHaveLength(400);
@@ -141,7 +125,7 @@ describe("collapseMarkers", () => {
         { row: 2, kind: "tag" }
       ])
     ).toEqual(["head", "tag"]);
-    expect(MARKER_PRIORITY.slice(0, 4)).toEqual(["head", "match", "selected", "details"]);
+    expect(MARKER_PRIORITY).toEqual(["head", "selected", "details", "branch", "tag", "unpushed"]);
   });
 });
 

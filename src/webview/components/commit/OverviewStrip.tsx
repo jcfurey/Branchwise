@@ -30,7 +30,6 @@ const GUTTER_PROPERTY = "--overview-gutter";
  */
 const COLOUR_PROBES = {
   head: "text-overview-head",
-  match: "text-overview-match",
   selected: "text-overview-selected",
   details: "text-overview-details",
   branch: "text-overview-branch",
@@ -61,9 +60,9 @@ function readColours(strip: HTMLElement): Colours {
 
 /**
  * Draw one kind's mark at pixel row `y`. Each kind has its own shape and place across the strip
- * as well as its own colour: search results on the left, branches and tags in the middle, the
- * selection and unpushed commits on the right, the open details as an outline across the whole
- * width and HEAD as a solid bar across it.
+ * as well as its own colour: branches and tags in the left half, the selection and unpushed
+ * commits in the right half, the open details as an outline across the whole width and HEAD as a
+ * solid bar across it.
  */
 function drawMark(
   context: CanvasRenderingContext2D,
@@ -75,13 +74,10 @@ function drawMark(
   context.globalAlpha = kind === "tag" ? colours.tagAlpha : 1;
   context.fillStyle = colours[kind];
   context.strokeStyle = colours[kind];
-  const lane = (width - 1) / 3;
+  const lane = (width - 1) / 2;
   switch (kind) {
     case "head":
       context.fillRect(1, y - 1, width - 1, 4);
-      break;
-    case "match":
-      context.fillRect(1, y, lane, 2);
       break;
     case "selected":
       context.fillRect(width - lane, y - 0.5, lane, 3);
@@ -91,10 +87,10 @@ function drawMark(
       context.strokeRect(1.5, y - 1.5, width - 2, 5);
       break;
     case "branch":
-      context.fillRect(1 + lane, y, lane, 2);
+      context.fillRect(1, y, lane, 2);
       break;
     case "tag":
-      context.fillRect(1 + lane + lane / 4, y, lane / 2, 2);
+      context.fillRect(1 + lane / 4, y, lane / 2, 2);
       break;
     case "unpushed":
       context.beginPath();
@@ -172,7 +168,7 @@ type OverviewStripProps = {
 
 /**
  * A narrow strip on the table's right edge that shows the whole loaded history at once: marks for
- * HEAD, branches and tags, search results, the selection, the open details and unpushed commits,
+ * HEAD, branches and tags, the selection, the open details and unpushed commits,
  * and a band over the rows on screen. Clicking or dragging on it scrolls there. It is drawn on a
  * canvas, so tens of thousands of rows cost no more than a few hundred, and it is a pointer
  * convenience only: Go to and the arrow keys reach every row without it.

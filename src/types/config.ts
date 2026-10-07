@@ -45,7 +45,7 @@ export type WebviewConfig = Readonly<{
   issueLinks: readonly IssueLink[];
   /** Rows added by each "load more", with the same bounds. */
   loadMoreCommits: number;
-  /** Show the strip of marks for HEAD, refs, results and the selection beside the table. */
+  /** Show the strip of marks for HEAD, refs and the selection beside the table. */
   overviewMarkers: boolean;
   /** VS Code's display language (`en`, `fr`, `zh-cn`, ...), used for every `Intl` format. */
   locale: string;
