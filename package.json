@@ -221,6 +221,11 @@
             "%config.dateType.commitDate%"
           ]
         },
+        "branchwise.dragAndDrop": {
+          "description": "%config.dragAndDrop%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.fetchAvatars": {
           "description": "%config.fetchAvatars%",
           "deprecationMessage": "%config.fetchAvatars.deprecation%",
@@ -292,8 +297,18 @@
           "type": "boolean",
           "default": false
         },
+        "branchwise.showSignatures": {
+          "description": "%config.showSignatures%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.showUncommittedChanges": {
           "description": "%config.showUncommittedChanges%",
+          "type": "boolean",
+          "default": true
+        },
+        "branchwise.singleKeyShortcuts": {
+          "description": "%config.singleKeyShortcuts%",
           "type": "boolean",
           "default": true
         },
@@ -312,6 +327,148 @@
         }
       }
     },
+    "colors": [
+      {
+        "id": "branchwise.graphLane1",
+        "description": "%colors.graphLane1%",
+        "defaults": {
+          "dark": "#0085d9",
+          "light": "#0085d9",
+          "highContrast": "#0085d9",
+          "highContrastLight": "#0085d9"
+        }
+      },
+      {
+        "id": "branchwise.graphLane2",
+        "description": "%colors.graphLane2%",
+        "defaults": {
+          "dark": "#d9008f",
+          "light": "#d9008f",
+          "highContrast": "#d9008f",
+          "highContrastLight": "#d9008f"
+        }
+      },
+      {
+        "id": "branchwise.graphLane3",
+        "description": "%colors.graphLane3%",
+        "defaults": {
+          "dark": "#00d90a",
+          "light": "#00d90a",
+          "highContrast": "#00d90a",
+          "highContrastLight": "#00d90a"
+        }
+      },
+      {
+        "id": "branchwise.graphLane4",
+        "description": "%colors.graphLane4%",
+        "defaults": {
+          "dark": "#d98500",
+          "light": "#d98500",
+          "highContrast": "#d98500",
+          "highContrastLight": "#d98500"
+        }
+      },
+      {
+        "id": "branchwise.graphLane5",
+        "description": "%colors.graphLane5%",
+        "defaults": {
+          "dark": "#a300d9",
+          "light": "#a300d9",
+          "highContrast": "#a300d9",
+          "highContrastLight": "#a300d9"
+        }
+      },
+      {
+        "id": "branchwise.graphLane6",
+        "description": "%colors.graphLane6%",
+        "defaults": {
+          "dark": "#ff0000",
+          "light": "#ff0000",
+          "highContrast": "#ff0000",
+          "highContrastLight": "#ff0000"
+        }
+      },
+      {
+        "id": "branchwise.graphLane7",
+        "description": "%colors.graphLane7%",
+        "defaults": {
+          "dark": "#00d9cc",
+          "light": "#00d9cc",
+          "highContrast": "#00d9cc",
+          "highContrastLight": "#00d9cc"
+        }
+      },
+      {
+        "id": "branchwise.graphLane8",
+        "description": "%colors.graphLane8%",
+        "defaults": {
+          "dark": "#e138e8",
+          "light": "#e138e8",
+          "highContrast": "#e138e8",
+          "highContrastLight": "#e138e8"
+        }
+      },
+      {
+        "id": "branchwise.graphLane9",
+        "description": "%colors.graphLane9%",
+        "defaults": {
+          "dark": "#85d900",
+          "light": "#85d900",
+          "highContrast": "#85d900",
+          "highContrastLight": "#85d900"
+        }
+      },
+      {
+        "id": "branchwise.graphLane10",
+        "description": "%colors.graphLane10%",
+        "defaults": {
+          "dark": "#dc5b23",
+          "light": "#dc5b23",
+          "highContrast": "#dc5b23",
+          "highContrastLight": "#dc5b23"
+        }
+      },
+      {
+        "id": "branchwise.graphLane11",
+        "description": "%colors.graphLane11%",
+        "defaults": {
+          "dark": "#6f24d6",
+          "light": "#6f24d6",
+          "highContrast": "#6f24d6",
+          "highContrastLight": "#6f24d6"
+        }
+      },
+      {
+        "id": "branchwise.graphLane12",
+        "description": "%colors.graphLane12%",
+        "defaults": {
+          "dark": "#ffcc00",
+          "light": "#ffcc00",
+          "highContrast": "#ffcc00",
+          "highContrastLight": "#ffcc00"
+        }
+      },
+      {
+        "id": "branchwise.unpushed",
+        "description": "%colors.unpushed%",
+        "defaults": {
+          "dark": "gitDecoration.modifiedResourceForeground",
+          "light": "gitDecoration.modifiedResourceForeground",
+          "highContrast": "gitDecoration.modifiedResourceForeground",
+          "highContrastLight": "gitDecoration.modifiedResourceForeground"
+        }
+      },
+      {
+        "id": "branchwise.conflict",
+        "description": "%colors.conflict%",
+        "defaults": {
+          "dark": "gitDecoration.conflictingResourceForeground",
+          "light": "gitDecoration.conflictingResourceForeground",
+          "highContrast": "gitDecoration.conflictingResourceForeground",
+          "highContrastLight": "gitDecoration.conflictingResourceForeground"
+        }
+      }
+    ],
     "walkthroughs": [
       {
         "id": "gettingStarted",

@@ -9,12 +9,14 @@ const settings = (overrides: Partial<WebviewConfig> = {}): WebviewConfig => ({
   autoCenterCommitDetailsView: false,
   conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
+  dragAndDrop: true,
   graphColours: ["#123456"],
   graphStyle: "angular",
   initialLoadCommits: 50,
   loadMoreCommits: 25,
   locale: "fr",
   showCurrentBranchByDefault: true,
+  singleKeyShortcuts: true,
   ...overrides
 });
 

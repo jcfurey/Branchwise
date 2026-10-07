@@ -11,6 +11,8 @@ import { setupWebviewTest } from "@tests/webview/test-utils";
 let host: HTMLDivElement;
 
 const button = () => host.querySelector("button")!;
+const buttons = () => [...host.querySelectorAll("button")];
+const named = (text: string) => buttons().find((each) => each.textContent === text)!;
 const alert = () => host.querySelector('[role="alert"]');
 
 /** Make `git.init` answer with whatever `answer` returns, and watch the calls. */
@@ -32,7 +34,14 @@ beforeAll(() => {
   Object.defineProperty(window, "l10n", {
     value: new Proxy(
       {},
-      { get: (_target, key) => (key === "unableToInitializeRepo" ? "Unable: {0}" : String(key)) }
+      {
+        get: (_target, key) =>
+          ({
+            unableToInitializeRepo: "Unable: {0}",
+            unableToCloneRepo: "Unable to clone: {0}",
+            unableToOpenFolder: "Unable to open: {0}"
+          })[String(key)] ?? String(key)
+      }
     ),
     configurable: true
   });
@@ -58,10 +67,11 @@ describe("NoRepoPage", () => {
     expect(title.tagName).toBe("H1");
     expect(title.textContent).toBe("noRepo");
 
-    expect(host.querySelectorAll("button")).toHaveLength(1);
-    expect(button().disabled).toBe(false);
-    expect(button().type).toBe("button");
-    expect(button().textContent).toBe("initializeRepo");
+    expect(buttons().map((each) => [each.textContent, each.type, each.disabled])).toEqual([
+      ["initializeRepo", "button", false],
+      ["cloneRepo", "button", false],
+      ["openFolder", "button", false]
+    ]);
     expect(alert()).toBeNull();
 
     expect([...host.querySelectorAll("[id]")].map((element) => element.id)).toEqual([
@@ -166,6 +176,28 @@ describe("NoRepoPage", () => {
 
     await settle(() => answer.reject(new Error("no")));
     expect(document.activeElement).toBe(button());
+  });
+
+  it.each([
+    ["cloneRepo", "git.clone", "Unable to clone: {0}"],
+    ["openFolder", "folder.open", "Unable to open: {0}"]
+  ])("%s asks the extension for %s, with the same care", async (label, method, template) => {
+    const answer = Promise.withResolvers<boolean>();
+    const request = initAnswers(() => answer.promise);
+    act(() => {
+      named(label).click();
+      named(label).click();
+    });
+    expect(request).toHaveBeenCalledExactlyOnceWith(method, null);
+    // One flow at a time: every button waits for it.
+    expect(buttons().every((each) => each.disabled)).toBe(true);
+    act(() => named(label).blur());
+
+    await settle(() => answer.reject(new Error("no")));
+    expect(alert()?.textContent).toBe(template.replace("{0}", "no"));
+    expect(buttons().every((each) => !each.disabled)).toBe(true);
+    // The button pressed, not the first one, takes the focus back.
+    expect(document.activeElement).toBe(named(label));
   });
 
   it("leaves the focus where the user moved it while waiting", async () => {

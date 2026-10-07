@@ -109,6 +109,8 @@ describe("names", () => {
       | "clipboard.copy"
       | "webview.initialize"
       | "git.init"
+      | "git.clone"
+      | "folder.open"
       | "repo.scan"
       | "settings.open"
       | "docs.open"

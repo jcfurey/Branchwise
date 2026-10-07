@@ -24,6 +24,13 @@ export type RpcMethodMap = {
   "webview.initialize": { params: null; result: WebviewInitialize };
   /** Run VS Code's own `git.init`; `true` once it finishes, even when the user cancelled. */
   "git.init": { params: null; result: boolean };
+  /** Run VS Code's own `git.clone`; `true` once it finishes, even when the user cancelled. */
+  "git.clone": { params: null; result: boolean };
+  /**
+   * Ask for a folder and open it in this window. Opening one reloads the window, so only a
+   * cancelled choice is answered, with `true`.
+   */
+  "folder.open": { params: null; result: boolean };
   "repo.scan": { params: null; result: ScanRepoResult };
   /** Open the Settings editor on this extension's settings. */
   "settings.open": { params: null; result: boolean };

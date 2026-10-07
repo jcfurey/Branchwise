@@ -436,12 +436,14 @@ it("delivers every notification in the form the webview accepts", async () => {
     autoCenterCommitDetailsView: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dragAndDrop: true,
     graphColours: ["#0085d9"],
     graphStyle: "rounded",
     initialLoadCommits: 300,
     loadMoreCommits: 100,
     locale: "en",
-    showCurrentBranchByDefault: false
+    showCurrentBranchByDefault: false,
+    singleKeyShortcuts: true
   };
   const repo: GitRepo = { name: "app", path: "/work/app" };
   const cases: { [N in RpcNotificationName]: RpcNotificationMap[N] } = {

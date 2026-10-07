@@ -11,7 +11,9 @@ vi.mock("vscode", () => ({
   env: { language: "de" },
   workspace: {
     getConfiguration: () => ({
-      get: (key: string, fallback: unknown) => mocks.settings[key] ?? fallback
+      get: (key: string, fallback: unknown) => mocks.settings[key] ?? fallback,
+      inspect: (key: string) =>
+        key in mocks.settings ? { globalValue: mocks.settings[key] } : undefined
     }),
     onDidChangeConfiguration: (listener: typeof mocks.listener) => {
       mocks.listener = listener;

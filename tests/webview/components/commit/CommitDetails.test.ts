@@ -17,7 +17,7 @@ import type { GitCommitDetails } from "@/backend/types";
 import { CommitDetails, DetailsRow } from "@/webview/components/commit/CommitDetails";
 import { repositoryState } from "@/webview/lib/repository-actions";
 import { rpcClient } from "@/webview/lib/rpc/rpc-client";
-import { commitDetails, dialog, expandedCommit } from "@/webview/lib/stores";
+import { commitDetails, dialog, expandedCommit, selectedRepo } from "@/webview/lib/stores";
 import { buildFileTree } from "@/webview/utils/fileTree";
 
 import {
@@ -26,6 +26,7 @@ import {
   reconfigure,
   speak
 } from "@tests/webview/components/commit/commit-view-fixtures";
+import { vscodeApi } from "@tests/webview/setup";
 import { setupWebviewTest } from "@tests/webview/test-utils";
 
 vi.mock("@/webview/utils/fileTree", async (original) => {
@@ -39,6 +40,8 @@ const ENGLISH = {
   detailAuthor: "Author: {0}",
   detailDate: "Date: {0}",
   detailCommitter: "Committer: {0}",
+  detailSignature: "Signature: {0}",
+  signatureChecking: "Checking the signature…",
   close: "Close",
   unknownDate: "Unknown date"
 };
@@ -285,7 +288,9 @@ describe("commit facts", () => {
       },
       { label: "Author: ", text: "Author: Ann <x> <ann+tag@ex ample.com>" },
       { label: "Date: ", text: "Date: Tuesday, November 14, 2023 at 10:13:20 PM UTC" },
-      { label: "Committer: ", text: "Committer: Bob" }
+      { label: "Committer: ", text: "Committer: Bob" },
+      // Checked once the details are open; see SignatureBadge.test.ts.
+      { label: "Signature: ", text: "Signature: Checking the signature…" }
     ]);
     const link = detailsRow().querySelector("a")!;
     expect(link.textContent).toBe("ann+tag@ex ample.com");
@@ -360,6 +365,31 @@ describe("commit facts", () => {
 
     drawUnderOwner(h(CommitDetails, { details: sample({ fileChanges: oneChange() }) }));
     expect(build).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("opening all of the commit's changes", () => {
+  const header = () => detailsRow().querySelector<HTMLElement>("[data-file-list-header]");
+
+  it("counts the changed files and opens them all in one editor from the list's header", () => {
+    selectedRepo.value = "/repo";
+    vscodeApi.postMessage.mockClear();
+    drawUnderOwner(h(CommitDetails, { details: sample({ fileChanges: oneChange() }) }));
+
+    expect(header()!.textContent).toBe("comparedFiles (1)openAllChanges");
+    header()!.querySelector("button")!.click();
+    expect(vscodeApi.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: "repositoryAction",
+        repo: "/repo",
+        action: { kind: "viewCommitChanges", hash: "c".repeat(40) }
+      })
+    );
+  });
+
+  it("has no header for a commit that changes no files", () => {
+    drawUnderOwner(h(CommitDetails, { details: sample() }));
+    expect(header()).toBeNull();
   });
 });
 

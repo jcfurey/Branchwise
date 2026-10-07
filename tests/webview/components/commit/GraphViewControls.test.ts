@@ -41,12 +41,26 @@ function showRows(hashes: string[]) {
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
 describe("which view is shown", () => {
-  it("waits in a spinner until the first rows arrive, posting nothing", () => {
+  it("waits in placeholder rows until the first rows arrive, posting nothing", () => {
     showGraphView();
     const main = view().querySelector("main")!;
-    expect(main.querySelectorAll("[role=status]")).toHaveLength(1);
+    const statuses = main.querySelectorAll("[role=status]");
+    expect(statuses).toHaveLength(1);
+    expect(statuses[0]!.hasAttribute("data-graph-skeleton")).toBe(true);
+    expect(statuses[0]!.getAttribute("aria-busy")).toBe("true");
     expect(main.textContent).toBe("");
     expect(vscodeApi.postMessage).not.toHaveBeenCalled();
+  });
+
+  it("keeps the rows it has, with no placeholders, while a refresh loads", () => {
+    refresh();
+    loadPage(3, false);
+    showGraphView();
+    expect(view().querySelectorAll("tr[data-commit-hash]")).toHaveLength(3);
+
+    refresh();
+    expect(view().querySelectorAll("tr[data-commit-hash]")).toHaveLength(3);
+    expect(view().querySelector("[data-graph-skeleton]")).toBeNull();
   });
 
   it("offers to create the first commit in a repository without one", () => {

@@ -56,3 +56,50 @@ VS Code settings, unlike the choices above, apply to every repository; the
 
 The remote branches tried follow the graph's choices for this repository: a hidden remote, a
 hidden-branch pattern or **Show Remote Branches in Graph** turned off leaves branches out.
+
+`branchwise.showUncommittedChanges` adds the row of uncommitted changes, which scans the working
+tree. `branchwise.showSignatures` (on by default) marks signed commits with a small key, which
+reads the loaded commits once more; turning it off saves about 10 ms for 300 rows and 40 ms for
+3,000 (see [performance](performance.md)). The commit details still check signatures. See [commit signatures](git-actions.md#commit-signatures).
+
+`branchwise.dragAndDrop` (default `true`) lets commit rows and local branches be dragged onto
+branch labels in the graph and the Branches pane to cherry-pick, merge or rebase, each after a
+confirmation. Turn it off if you drag by accident; every action stays in the menus. See
+[drag and drop](git-actions.md#drag-and-drop).
+
+### Single-key shortcuts
+
+`branchwise.singleKeyShortcuts` (default `true`) lets single keys act on the focused commit row,
+such as B for **Create Branch…** or Y to copy the short commit ID, and lets `?` open the list of
+keyboard shortcuts. Turn it off if you use a screen reader that reads the graph with single-letter
+commands, or an extension that sends single keys of its own. With it off, the menus stop showing
+the keys and the shortcut sheet says they are off; arrow keys, Enter, Space, Escape, Shift+F10,
+Ctrl/Cmd+F, `/` and Ctrl+Alt+G keep working. See
+[keyboard navigation](git-actions.md#keyboard-navigation-and-activity).
+
+## Theme colours
+
+Branchwise contributes these colours, which a colour theme or `workbench.colorCustomizations` in
+your settings can change:
+
+| Colour                                             | Used for                                                      | Default in every theme kind                   |
+| -------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------- |
+| `branchwise.graphLane1` … `branchwise.graphLane12` | The graph's lanes, in order, while `graphColours` is not set  | The 12 colours of `graphColours`              |
+| `branchwise.unpushed`                              | The dot before a commit that no remote branch has yet         | `gitDecoration.modifiedResourceForeground`    |
+| `branchwise.conflict`                              | The mark on a branch that would conflict if merged into yours | `gitDecoration.conflictingResourceForeground` |
+
+The defaults are the colours the graph has always used, in dark, light and both high contrast
+themes, so nothing changes until a theme or you set one. Setting `branchwise.graphColours` in the
+user, workspace or folder settings replaces the lane colours with that list, whatever the theme
+says. For example, to make the first lane orange in the Default Dark Modern theme only:
+
+```json
+"workbench.colorCustomizations": {
+  "[Default Dark Modern]": { "branchwise.graphLane1": "#ff8800" }
+}
+```
+
+High contrast themes outline a selected or hovered commit row, and draw lines and borders in the
+theme's contrast border colour. With forced colours, such as a Windows contrast theme, focus and
+selection are outlined in the system highlight colour, and the unpushed dot, the conflict mark and
+branch and tag labels keep system colours.

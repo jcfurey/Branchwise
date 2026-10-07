@@ -1,6 +1,7 @@
 import type { ComponentChildren } from "preact";
 
 import type { ActionRequest } from "@/backend/types";
+import type { ShortcutId } from "@/webview/lib/shortcuts";
 
 export type { BranchDisplay, FocusDimming } from "@/types";
 
@@ -13,8 +14,11 @@ export type CommitBranchType = "*" | (string & {});
 
 /* Context menus */
 
-/** A row of a context menu, or `null` for a separator line. */
-export type ContextMenuEntry = { title: string; onClick: () => void } | null;
+/**
+ * A row of a context menu, or `null` for a separator line. `shortcut` names the key that does
+ * the same from the commit row, which the menu shows beside the title.
+ */
+export type ContextMenuEntry = { title: string; onClick: () => void; shortcut?: ShortcutId } | null;
 
 /** The open context menu. */
 export type ContextMenuState = {
