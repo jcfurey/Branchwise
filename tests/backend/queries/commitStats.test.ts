@@ -195,7 +195,9 @@ describe("change counts", () => {
   it("refuses anything but full commit IDs, and too many of them", async () => {
     await expect(stats(["HEAD"])).rejects.toThrow("HEAD is not a full commit ID.");
     await expect(stats(["--all"])).rejects.toThrow("--all is not a full commit ID.");
-    const many = Array.from({ length: COMMIT_STATS_LIMIT + 1 }, () => head());
+    // One Git process for the tip, not one per entry, which is slow where starting Git is.
+    const tip = head();
+    const many = Array.from({ length: COMMIT_STATS_LIMIT + 1 }, () => tip);
     await expect(stats(many)).rejects.toThrow(
       `Ask for the changes of at most ${COMMIT_STATS_LIMIT} commits at a time.`
     );
