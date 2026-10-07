@@ -73,6 +73,16 @@ column headings. Days follow `branchwise.dateType` and your local time zone. Tur
 plainer graph; the date column is unchanged either way. See
 [days in the graph](git-actions.md#days-in-the-graph).
 
+`branchwise.commitHoverCards` (default `true`) shows a card with a commit's whole message, author,
+date, IDs and change counts when the pointer rests on its message, or when the keyboard rests on
+its row. Turn it off if the card gets in the way; the commit details hold the same information.
+With it on, the message has no tooltip of its own.
+
+`branchwise.showChangesColumn` (default `false`) adds a **Changes** column, such as **+12 −3**,
+with the number of files in its tooltip. The counts are read only for the rows in sight, as you
+scroll, so a long history costs no more than a short one. See
+[commit cards and change counts](git-actions.md#commit-cards-and-change-counts).
+
 ### Single-key shortcuts
 
 `branchwise.singleKeyShortcuts` (default `true`) lets single keys act on the focused commit row,

@@ -54,6 +54,7 @@ describe("styles.css", () => {
       "--color-line: rgba(128, 128, 128, 0.5);",
       "--color-focus: var(--vscode-focusBorder);",
       "--color-drop: var(--vscode-list-dropBackground);",
+      "--color-card: var(--vscode-editorHoverWidget-background, var(--vscode-editor-background));",
       "--color-graph: var(--vscode-focusBorder);",
       "--color-git-deleted: var(--vscode-gitDecoration-deletedResourceForeground);",
       "--default-font-family: var(--vscode-font-family);"
@@ -215,6 +216,7 @@ describe("styles.css", () => {
     expect(unpushed).toContain("background-color: CanvasText;");
     expect(ruleOf(forced, '[data-push="unpulled"]')).toContain("border-color: CanvasText;");
     expect(ruleOf(forced, "[data-ref], [data-more-refs]")).toContain("border-color: CanvasText;");
+    expect(ruleOf(forced, "[data-hover-card]")).toContain("border-color: CanvasText;");
     const cap = ruleOf(forced, "[data-ref] > svg:first-child");
     expect(cap).toContain("background-color: CanvasText;");
     expect(cap).toContain("color: Canvas;");

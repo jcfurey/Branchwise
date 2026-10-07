@@ -2121,6 +2121,131 @@ suite("Branchwise workflow UI", function () {
     await button("Clear focus");
   });
 
+  test("counts a commit's changes in the Changes column and shows its card on hover", async () => {
+    const dir = directory();
+    init(dir);
+    fs.writeFileSync(path.join(dir, "notes.txt"), "a\nb\nc\n");
+    git(["add", "--", "notes.txt"], dir);
+    git(["commit", "-m", "stats base"], dir);
+    fs.writeFileSync(path.join(dir, "notes.txt"), "a\nB\nc\nd\n");
+    fs.writeFileSync(path.join(dir, "extra.txt"), "x\n");
+    git(["add", "-A"], dir);
+    git(["commit", "-m", "Count these changes", "-m", "Why it changed.\nSecond line."], dir);
+    const target = git(["rev-parse", "HEAD"], dir);
+    // A later commit, so that the row measured has no checked-out highlight behind it.
+    commit("later.txt", "stats later", dir);
+    const config = vscode.workspace.getConfiguration("branchwise");
+    const original = config.inspect("showChangesColumn").globalValue;
+    const workbench = vscode.workspace.getConfiguration("workbench");
+    const originalTheme = workbench.inspect("colorTheme").globalValue;
+    try {
+      await config.update("showChangesColumn", true, vscode.ConfigurationTarget.Global);
+      await openRepo(dir);
+      const cell = `document.querySelector('tr[data-commit-hash="${target}"] [data-changes]')`;
+      // notes.txt: one line changed and one added; extra.txt: one line added.
+      await until(
+        async () => (await graph.evaluate(`${cell}?.innerText ?? null`)) === "+3 −1",
+        "change counts in the Changes column"
+      );
+      assert.equal(
+        await graph.evaluate(`${cell}.title`),
+        "2 files changed, 3 insertions, 1 deletion"
+      );
+      assert.equal(
+        await graph.evaluate(
+          `[...document.querySelectorAll('thead th')].map(th => th.innerText.trim()).at(-1)`
+        ),
+        "Changes"
+      );
+
+      await graph.evaluate(`(() => {
+        const message = document.querySelector('tr[data-commit-hash="${target}"] [data-commit-message]');
+        const box = message.getBoundingClientRect();
+        for (const type of ['mouseenter', 'mouseover']) {
+          message.dispatchEvent(new MouseEvent(type, { bubbles: type === 'mouseover', clientX: box.left + 8, clientY: box.top + 6 }));
+        }
+      })()`);
+      const card = `document.querySelector('[data-hover-card="${target}"]')`;
+      const text = await until(
+        () =>
+          graph.evaluate(
+            `(() => { const text = ${card}?.innerText ?? ''; return text.includes('2 files changed') ? text : null; })()`
+          ),
+        "commit card with its change counts"
+      );
+      for (const part of [
+        "Count these changes",
+        "Why it changed.\nSecond line.",
+        "UI Test <ui@test>",
+        target.slice(0, 8),
+        target,
+        "+3 −1"
+      ]) {
+        assert.ok(text.includes(part), `card shows ${JSON.stringify(part)}:\n${text}`);
+      }
+      assert.deepEqual(
+        await graph.evaluate(
+          `(() => { const element = ${card}; const box = element.getBoundingClientRect(); return [element.getAttribute('aria-hidden'), getComputedStyle(element).pointerEvents, box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight, element.contains(document.activeElement)]; })()`
+        ),
+        ["true", "none", true, false]
+      );
+
+      // Moving off the message takes the card away.
+      const leave = `document.querySelector('tr[data-commit-hash="${target}"]').cells[2].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))`;
+      await graph.evaluate(leave);
+      await until(() => graph.evaluate(`${card} === null`), "card hidden");
+
+      // The card and the counts stay readable in light, dark and high contrast themes.
+      for (const [theme, kind] of [
+        ["Light Modern", "vscode-light"],
+        ["Dark Modern", "vscode-dark"],
+        ["Default High Contrast", "vscode-high-contrast"],
+        ["Default High Contrast Light", "vscode-high-contrast-light"]
+      ]) {
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        await graph.evaluate(`(() => {
+          const message = document.querySelector('tr[data-commit-hash="${target}"] [data-commit-message]');
+          const box = message.getBoundingClientRect();
+          message.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, clientX: box.left + 8, clientY: box.top + 6 }));
+        })()`);
+        await until(
+          () => graph.evaluate(`!!${card}?.querySelector('[data-hover-changes] .text-git-added')`),
+          `card in ${theme}`
+        );
+        // Text needs 4.5:1. The counts are in the theme's own added and deleted colours, which
+        // VS Code draws file names in, and their + and − signs say what the colour says: 3:1.
+        const readable = [
+          [4.5, "subject", `[data-hover-card] [data-hover-subject]`],
+          [4.5, "author", `[data-hover-card] [data-hover-author]`],
+          [3, "added", `[data-hover-card] .text-git-added`],
+          [3, "deleted", `[data-hover-card] .text-git-deleted`],
+          [3, "cell added", `tr[data-commit-hash="${target}"] [data-changes] .text-git-added`],
+          [3, "cell deleted", `tr[data-commit-hash="${target}"] [data-changes] .text-git-deleted`]
+        ];
+        for (const [minimum, part, selector] of readable) {
+          const measured = await contrast(selector);
+          assert.ok(
+            measured.ratio >= minimum,
+            `${part} contrast in ${theme}: ${JSON.stringify(measured)}`
+          );
+        }
+        await graph.evaluate(leave);
+        await until(() => graph.evaluate(`${card} === null`), `card hidden in ${theme}`);
+      }
+    } finally {
+      await config.update("showChangesColumn", original, vscode.ConfigurationTarget.Global);
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+    }
+    await until(
+      () => graph.evaluate(`document.querySelector('[data-changes]') === null`),
+      "Changes column turned off again"
+    );
+  });
+
   test("acts on the focused commit with single keys and lists them on the shortcut sheet", async () => {
     const dir = directory();
     init(dir);

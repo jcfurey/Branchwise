@@ -30,6 +30,7 @@ vi.mock("@/old-extension/l10n/webviewL10n", () => ({
 
 const DEFAULT_CONFIG = {
   autoCenterCommitDetailsView: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   dateSeparators: true,
@@ -40,6 +41,7 @@ const DEFAULT_CONFIG = {
   issueLinks: [],
   loadMoreCommits: 100,
   locale: "fr",
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true
 };

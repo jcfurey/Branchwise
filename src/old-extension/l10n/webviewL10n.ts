@@ -61,7 +61,7 @@ export function getWebviewLocalizedStrings() {
     filterPlaceholder: vscode.l10n.t("{0}: type to filter…"),
     noResultsFound: vscode.l10n.t("Nothing matches this filter."),
 
-    // Commit table headers. All but the last also name their column in "Resize {0} column".
+    // Commit table headers. All but the last two also name their column in "Resize {0} column".
     graph: vscode.l10n.t("Graph"),
     scrollGraphHorizontally: vscode.l10n.t("Scroll graph horizontally"),
     revealSelectedLane: vscode.l10n.t("Reveal selected lane"),
@@ -70,6 +70,18 @@ export function getWebviewLocalizedStrings() {
     date: vscode.l10n.t("Date"),
     author: vscode.l10n.t("Author"),
     commit: vscode.l10n.t("ID"),
+    // The optional column of lines added and deleted, shown as "+12 −3".
+    changesColumn: vscode.l10n.t("Changes"),
+    // A commit's change counts: {0}, {1} and {2} are the three phrases below, in that order.
+    changesSummary: vscode.l10n.t("{0}, {1}, {2}"),
+    filesChanged: vscode.l10n.t("{0} file changed"),
+    filesChangedPlural: vscode.l10n.t("{0} files changed"),
+    insertions: vscode.l10n.t("{0} insertion"),
+    insertionsPlural: vscode.l10n.t("{0} insertions"),
+    deletions: vscode.l10n.t("{0} deletion"),
+    deletionsPlural: vscode.l10n.t("{0} deletions"),
+    // The hover card while a commit's change counts are read.
+    loadingChanges: vscode.l10n.t("Counting changes…"),
 
     // Pages shown instead of the graph
     noCommits: vscode.l10n.t("This repository has no commits yet"),

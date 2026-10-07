@@ -91,6 +91,11 @@
   --color-signature-bad: var(--vscode-errorForeground);
   --color-signature-unknown: var(--vscode-descriptionForeground);
 
+  /* The card about a commit that rests beside its row, drawn as VS Code draws its own hovers. */
+  --color-card: var(--vscode-editorHoverWidget-background, var(--vscode-editor-background));
+  --color-card-fg: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  --color-card-border: var(--vscode-editorHoverWidget-border, rgba(128, 128, 128, 0.5));
+
   --color-row-head: var(--vscode-list-inactiveSelectionBackground);
   --color-row-hover: var(--vscode-list-hoverBackground);
   --color-row-selected: rgba(128, 128, 128, 0.25);
@@ -287,6 +292,11 @@
 
   [data-ref],
   [data-more-refs] {
+    border-color: CanvasText;
+  }
+
+  /* The commit card's frame, the only edge between it and the rows it covers. */
+  [data-hover-card] {
     border-color: CanvasText;
   }
 

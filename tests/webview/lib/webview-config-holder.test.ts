@@ -7,6 +7,7 @@ let holder: typeof import("@/webview/lib/webview-config");
 
 const settings = (overrides: Partial<WebviewConfig> = {}): WebviewConfig => ({
   autoCenterCommitDetailsView: false,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
   dateSeparators: true,
@@ -17,6 +18,7 @@ const settings = (overrides: Partial<WebviewConfig> = {}): WebviewConfig => ({
   issueLinks: [],
   loadMoreCommits: 25,
   locale: "fr",
+  showChangesColumn: false,
   showCurrentBranchByDefault: true,
   singleKeyShortcuts: true,
   ...overrides

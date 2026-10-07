@@ -23,6 +23,7 @@ const LINEAR: IssueLink = {
 
 const settings = (issueLinks: readonly IssueLink[]): WebviewConfig => ({
   autoCenterCommitDetailsView: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
   dateSeparators: true,
@@ -33,6 +34,7 @@ const settings = (issueLinks: readonly IssueLink[]): WebviewConfig => ({
   issueLinks,
   loadMoreCommits: 100,
   locale: "en",
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true
 });
