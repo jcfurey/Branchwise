@@ -183,7 +183,7 @@ The graph marks the commit each of your other worktrees has checked out. When th
 
 A dot on the badge means that worktree has uncommitted changes to tracked files, and its tooltip says **Has uncommitted changes**. Branchwise finds this with `git status --porcelain=v1 -z --untracked-files=no` in each worktree, a few at a time, after the repository state loads and whenever it refreshes, so the marks appear first and the dots follow. Untracked files are not counted. A worktree whose folder is gone is not visited, each worktree gets at most 3 seconds, so a slow network drive never holds up the graph, and only the first 20 worktrees are checked; the others show their marks without dots. Nothing is written: the checks run with `--no-optional-locks`, so Git does not even refresh an index.
 
-Right-click a worktree's own label, or the branch label that carries its badge, for **Open Worktree in New Window** and **Reveal in Explorer/Finder**, which show its folder in the system's file manager. Neither is offered once the worktree's folder is gone. Turn off `branchwise.showWorktrees` to leave out the marks and the checks.
+Right-click a worktree's own label, or the branch label that carries its badge, for **Open Worktree in New Window** and **Reveal in File Explorer** (**Reveal in Finder** on macOS, **Open Containing Folder** on Linux), which shows its folder in the system's file manager. Neither is offered once the worktree's folder is gone. Turn off `branchwise.showWorktrees` to leave out the marks and the checks.
 
 ## Workspace and submodules
 

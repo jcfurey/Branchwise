@@ -37,6 +37,7 @@ import {
   type ReviewRequest,
   tagPage
 } from "@/webview/lib/host-links";
+import { revealFolderTitle } from "@/webview/lib/platform";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
 import { repositoryState, sendRepositoryAction } from "@/webview/lib/repository-actions";
 import type { ShortcutId } from "@/webview/lib/shortcuts";
@@ -211,7 +212,7 @@ export function worktreeEntries(marker: WorktreeMarker): Array<Entry> {
       onClick: () => sendRepositoryAction({ kind: "openWorktree", path })
     },
     {
-      title: window.l10n.revealWorktree,
+      title: revealFolderTitle(),
       onClick: () => sendRepositoryAction({ kind: "revealWorktree", path })
     }
   ];

@@ -2,6 +2,7 @@ import { signal } from "@preact/signals";
 
 import type { ActionResponse } from "@/backend/types";
 import type { LocalizedStrings } from "@/old-extension/l10n/webviewL10n";
+import { revealFolderTitle } from "@/webview/lib/platform";
 import type { ActionCommand } from "@/webview/types";
 
 export type ActivityEntry = {
@@ -54,7 +55,6 @@ const titles: Record<string, keyof LocalizedStrings> = {
   addWorktree: "addWorktree",
   removeWorktree: "removeWorktree",
   openWorktree: "openWorktree",
-  revealWorktree: "revealWorktree",
   submodule: "updateSubmodule",
   restoreFile: "restoreHistoricalFile",
   fixup: "createFixup",
@@ -91,6 +91,9 @@ export function beginActivity(
   let title = window.l10n[titles[kind] ?? "runningGitAction"] || fallback;
   if (command.command === "repositoryAction") {
     const action = command.action;
+    if (action.kind === "revealWorktree") {
+      title = revealFolderTitle();
+    }
     if (action.kind === "batch") {
       title = action.operation === "revert" ? window.l10n.batchRevert : window.l10n.batchCherryPick;
     }

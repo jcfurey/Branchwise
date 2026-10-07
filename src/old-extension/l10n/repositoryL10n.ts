@@ -68,7 +68,10 @@ export function getRepositoryLocalizedStrings() {
     worktreeTitle: vscode.l10n.t("Worktree: {0}"),
     worktreeDirty: vscode.l10n.t("Has uncommitted changes"),
     openWorktreeWindow: vscode.l10n.t("Open Worktree in New Window"),
-    revealWorktree: vscode.l10n.t("Reveal in Explorer/Finder"),
+    // Showing a worktree's folder, named as VS Code names it on Windows, macOS and elsewhere.
+    revealWorktreeWindows: vscode.l10n.t("Reveal in File Explorer"),
+    revealWorktreeMac: vscode.l10n.t("Reveal in Finder"),
+    revealWorktreeOther: vscode.l10n.t("Open Containing Folder"),
     rebaseOnto: vscode.l10n.t("Move the current branch onto this (rebase)"),
     rebaseConfirm: vscode.l10n.t(
       "Rebase {0} onto {1}? This rewrites commits on the current branch and preserves merge structure. Commit or stash your changes first."

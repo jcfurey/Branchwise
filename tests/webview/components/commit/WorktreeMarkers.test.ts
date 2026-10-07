@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { h, render } from "preact";
 import { act } from "preact/test-utils";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   GitCommitNode,
@@ -30,6 +30,7 @@ import {
 import { vscodeApi } from "@tests/webview/setup";
 import { setupWebviewTest } from "@tests/webview/test-utils";
 
+const LINUX = "Mozilla/5.0 (X11; Linux x86_64) Code/1.140.0";
 const MAIN = "/work/app";
 const TIP = "a1b2c3d4";
 const OLD = "0f0e0d0c";
@@ -136,6 +137,8 @@ beforeEach(() => {
     lockedWorktree: "Locked",
     prunableWorktree: "Missing worktree"
   });
+  // The page names the reveal entry after the window's platform; Linux unless a test says so.
+  vi.spyOn(navigator, "userAgent", "get").mockReturnValue(LINUX);
   selectedRepo.value = MAIN;
   resetRepositoryState();
   contextMenu.value = null;
@@ -146,6 +149,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => render(null, body));
   resetRepositoryState();
+  vi.restoreAllMocks();
 });
 
 describe("worktreeName", () => {
@@ -255,19 +259,31 @@ describe("worktree actions", () => {
     load(state(), [{ path: "/work/feature-x", state: "clean" }]);
     const entries = refMenu({ type: "head", name: "feature", hash: TIP }, false);
     expect(titles(entries)).toEqual(
-      expect.arrayContaining(["openWorktreeWindow", "revealWorktree"])
+      expect.arrayContaining(["openWorktreeWindow", "revealWorktreeOther"])
     );
     expect(titles(refMenu({ type: "head", name: "main", hash: OLD }, true))).not.toContain(
       "openWorktreeWindow"
     );
 
     vscodeApi.postMessage.mockClear();
-    act(() => entries.find((entry) => entry?.title === "revealWorktree")!.onClick());
+    act(() => entries.find((entry) => entry?.title === "revealWorktreeOther")!.onClick());
     expect(newest()).toMatchObject({
       command: "repositoryAction",
       repo: MAIN,
       action: { kind: "revealWorktree", path: "/work/feature-x" }
     });
+  });
+
+  it.each([
+    ["Windows", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Code/1.140.0", "revealWorktreeWindows"],
+    ["macOS", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Code/1.140.0", "revealWorktreeMac"],
+    ["Linux", LINUX, "revealWorktreeOther"]
+  ])("names the reveal entry as VS Code does on %s", (_platform, agent, title) => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(agent);
+    load(state(), [{ path: "/work/feature-x", state: "clean" }]);
+    const entries = refMenu({ type: "head", name: "feature", hash: TIP }, false);
+    const at = titles(entries).indexOf("openWorktreeWindow");
+    expect(titles(entries).slice(at, at + 2)).toEqual(["openWorktreeWindow", title]);
   });
 
   it("opens a worktree from its own label's menu", () => {
@@ -278,7 +294,7 @@ describe("worktree actions", () => {
       label!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
     });
     const entries = contextMenu.value?.entries;
-    expect(titles(entries)).toEqual(["openWorktreeWindow", "revealWorktree"]);
+    expect(titles(entries)).toEqual(["openWorktreeWindow", "revealWorktreeOther"]);
 
     vscodeApi.postMessage.mockClear();
     act(() => entries![0]!.onClick());
@@ -303,6 +319,6 @@ describe("worktree actions", () => {
     // The label has no menu of its own, so the commit's opens, without the worktree's entries.
     expect(contextMenu.value?.source).toBe(`commit:${OLD}`);
     expect(titles(contextMenu.value?.entries)).not.toContain("openWorktreeWindow");
-    expect(titles(contextMenu.value?.entries)).not.toContain("revealWorktree");
+    expect(titles(contextMenu.value?.entries)).not.toContain("revealWorktreeOther");
   });
 });

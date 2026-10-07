@@ -985,7 +985,14 @@ suite("Branchwise workflow UI", function () {
       "menu of ui-feature"
     );
     assert.ok(entries.includes("Open Worktree in New Window"), entries.join(", "));
-    assert.ok(entries.includes("Reveal in Explorer/Finder"), entries.join(", "));
+    // Named as VS Code names it on the platform the window runs on.
+    const reveal =
+      process.platform === "win32"
+        ? "Reveal in File Explorer"
+        : process.platform === "darwin"
+          ? "Reveal in Finder"
+          : "Open Containing Folder";
+    assert.ok(entries.includes(reveal), entries.join(", "));
     await keypress("Escape");
 
     // Once the change is undone, a refresh takes the dot away and keeps the badge.
