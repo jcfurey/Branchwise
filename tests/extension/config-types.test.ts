@@ -15,8 +15,10 @@ function manifestChoices(key: string): Array<string> {
 
 const settings: WebviewConfig = {
   autoCenterCommitDetailsView: false,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Relative",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: ["#123456"],
   graphStyle: "angular",
@@ -25,6 +27,7 @@ const settings: WebviewConfig = {
   loadMoreCommits: 25,
   locale: "de",
   overviewMarkers: true,
+  showChangesColumn: false,
   showCurrentBranchByDefault: true,
   singleKeyShortcuts: true
 };
@@ -46,11 +49,13 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the thirteen display settings", () => {
+  it("holds exactly the sixteen display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
+      | "commitHoverCards"
       | "conflictForecast"
       | "dateFormat"
+      | "dateSeparators"
       | "dragAndDrop"
       | "graphColours"
       | "graphStyle"
@@ -59,10 +64,11 @@ describe("WebviewConfig", () => {
       | "loadMoreCommits"
       | "locale"
       | "overviewMarkers"
+      | "showChangesColumn"
       | "showCurrentBranchByDefault"
       | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(13);
+    expect(Object.keys(settings)).toHaveLength(16);
   });
 });
 

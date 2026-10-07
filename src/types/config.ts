@@ -24,12 +24,16 @@ export type IssueLink = Readonly<{ pattern: string; url: string }>;
 export type WebviewConfig = Readonly<{
   /** Centre the opened commit details in the window, rather than scroll only as far as needed. */
   autoCenterCommitDetailsView: boolean;
+  /** Show a card about a commit when the pointer or the keyboard rests on its row. */
+  commitHoverCards: boolean;
   /**
    * Which branches the conflict forecast tries. The page reads anything but `local` and `off` as
    * `localAndRemote`, the default.
    */
   conflictForecast: ConflictForecastScope;
   dateFormat: DateFormat;
+  /** Mark where each day's commits begin, and name the day of the topmost row while scrolled. */
+  dateSeparators: boolean;
   /** Let commits and branches be dragged onto branch labels to start an action. */
   dragAndDrop: boolean;
   /**
@@ -49,6 +53,8 @@ export type WebviewConfig = Readonly<{
   overviewMarkers: boolean;
   /** VS Code's display language (`en`, `fr`, `zh-cn`, ...), used for every `Intl` format. */
   locale: string;
+  /** Add the Changes column, with the lines each commit added and deleted, to the graph. */
+  showChangesColumn: boolean;
   /** In filter mode, open a repository on its checked-out branch rather than on every branch. */
   showCurrentBranchByDefault: boolean;
   /** Let single keys, such as `b` for Create Branch, act on the focused commit row. */

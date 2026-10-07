@@ -11,8 +11,10 @@ import { vscodeApi } from "@tests/webview/setup";
 beforeAll(() => {
   initializeWebviewConfig({
     autoCenterCommitDetailsView: true,
+    commitHoverCards: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dateSeparators: true,
     dragAndDrop: true,
     graphColours: [],
     graphStyle: "rounded",
@@ -21,6 +23,7 @@ beforeAll(() => {
     loadMoreCommits: 100,
     locale: "en",
     overviewMarkers: true,
+    showChangesColumn: false,
     showCurrentBranchByDefault: false,
     singleKeyShortcuts: true
   });

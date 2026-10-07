@@ -140,8 +140,10 @@ function graphColours(): string[] {
  */
 export const extConfig = {
   autoCenterCommitDetailsView: () => setting<boolean>("autoCenterCommitDetailsView", true),
+  commitHoverCards: () => setting<boolean>("commitHoverCards", true),
   conflictForecast: () => setting<ConflictForecastScope>("conflictForecast", "localAndRemote"),
   dateFormat: () => setting<DateFormat>("dateFormat", "Date & Time"),
+  dateSeparators: () => setting<boolean>("dateSeparators", true),
   dateType: () => setting<DateType>("dateType", "Author Date"),
   dragAndDrop: () => setting<boolean>("dragAndDrop", true),
   /** The built-in Git extension's executable when known, otherwise the `git.path` setting. */
@@ -156,6 +158,7 @@ export const extConfig = {
   maxDepthOfRepoSearch: () => wholeNumberSetting("maxDepthOfRepoSearch", 0, 0),
   nestedRepoSearchDepth: () => wholeNumberSetting("nestedRepoSearchDepth", 0, 3),
   overviewMarkers: () => setting<boolean>("overviewMarkers", true),
+  showChangesColumn: () => setting<boolean>("showChangesColumn", false),
   showCurrentBranchByDefault: () => setting<boolean>("showCurrentBranchByDefault", false),
   showSignatures: () => setting<boolean>("showSignatures", true),
   showUncommittedChanges: () => setting<boolean>("showUncommittedChanges", true),

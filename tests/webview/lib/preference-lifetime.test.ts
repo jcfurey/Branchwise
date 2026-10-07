@@ -42,8 +42,10 @@ async function freshPanel() {
   const { initializeWebviewConfig } = await import("@/webview/lib/webview-config");
   initializeWebviewConfig({
     autoCenterCommitDetailsView: true,
+    commitHoverCards: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dateSeparators: true,
     dragAndDrop: true,
     graphColours: [],
     graphStyle: "rounded",
@@ -52,6 +54,7 @@ async function freshPanel() {
     loadMoreCommits: 100,
     locale: "en",
     overviewMarkers: true,
+    showChangesColumn: false,
     showCurrentBranchByDefault: false,
     singleKeyShortcuts: true
   });

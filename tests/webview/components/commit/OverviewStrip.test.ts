@@ -170,15 +170,21 @@ it("scrolls the table to the row under a click, and follows a drag", () => {
 });
 
 it("redraws once per frame while the window scrolls", () => {
-  draw(history(500));
-  vi.stubGlobal("scrollY", 2000);
-  for (let event = 0; event < 3; event++) {
-    window.dispatchEvent(new Event("scroll"));
+  // The day label also asks for a frame as the window scrolls; only the strip's are counted here.
+  const restore = reconfigure({ dateSeparators: false });
+  try {
+    draw(history(500));
+    vi.stubGlobal("scrollY", 2000);
+    for (let event = 0; event < 3; event++) {
+      window.dispatchEvent(new Event("scroll"));
+    }
+    expect(frames).toHaveLength(1);
+    act(() => frames[0]!(0));
+    // Stuck below the heading now, the strip reaches from there to the bottom of the window.
+    expect(canvas()!.style.height).toBe(`${WINDOW - HEADING}px`);
+  } finally {
+    act(() => restore());
   }
-  expect(frames).toHaveLength(1);
-  act(() => frames[0]!(0));
-  // Stuck below the heading now, the strip reaches from there to the bottom of the window.
-  expect(canvas()!.style.height).toBe(`${WINDOW - HEADING}px`);
 });
 
 it("hides itself when every row fits on screen", () => {
