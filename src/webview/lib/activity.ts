@@ -62,6 +62,8 @@ const titles: Record<string, keyof LocalizedStrings> = {
   viewWorkingTreeFile: "openFileChanges",
   viewRangeFile: "compareRevisions",
   viewHistoricalFile: "openHistoricalFile",
+  viewCommitChanges: "openAllChanges",
+  viewRangeChanges: "openAllChanges",
   previewFileRestore: "restorePreview",
   submodulePointer: "stagePointer",
   fetch: "fetch",

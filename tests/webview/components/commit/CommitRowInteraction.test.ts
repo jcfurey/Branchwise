@@ -264,6 +264,7 @@ describe("pointer", () => {
       "—",
       "interactiveRebase…",
       "createFixupMenu…",
+      "openAllChanges",
       "compareWith",
       "bisectChooseGood",
       "bisectChooseBad",
@@ -345,7 +346,7 @@ describe("keyboard", () => {
       contextMenu.value = null;
       expect(press(row("b"), key, init)).toBe(true);
       expect(contextMenu.value).toMatchObject({ source: "commit:b", x: 110, y: 120 });
-      expect(contextMenu.value!.entries).toHaveLength(17);
+      expect(contextMenu.value!.entries).toHaveLength(18);
     }
   });
 

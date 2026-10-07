@@ -133,6 +133,19 @@ describe("commit menu dialogs", () => {
       ).toBe(true);
     }
   });
+
+  it("opens all of the commit's changes at once, without asking first", () => {
+    entries()
+      .find((item) => item?.title === "openAllChanges")!
+      .onClick();
+    expect(stores.dialog.value).toBeNull();
+    expect(lastRequest()).toEqual({
+      command: "repositoryAction",
+      repo: "/repo",
+      requestId: expect.any(String),
+      action: { kind: "viewCommitChanges", hash }
+    });
+  });
 });
 
 describe("tag menu dialogs", () => {

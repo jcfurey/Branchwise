@@ -83,6 +83,12 @@ const text = {
     ),
   stagedChanges: () => vscode.l10n.t("Staged Changes"),
   workingTreeChanges: () => vscode.l10n.t("Working Tree Changes"),
+  noChanges: () => vscode.l10n.t("There are no changed files to show."),
+  oneDiffOnly: (reason: string) =>
+    vscode.l10n.t(
+      "VS Code could not show all the changes in one editor, so only the first file's changes are open: {0}",
+      reason
+    ),
   undo: () => vscode.l10n.t("Undo"),
   recorded: (action: string) =>
     vscode.l10n.t("{0} is done. The Safety Net kept what it replaced, so it can be undone.", action)
@@ -118,6 +124,8 @@ const VIEW_ONLY = new Set<RepositoryAction["kind"]>([
   "viewWorkingTreeFile",
   "viewRangeFile",
   "viewHistoricalFile",
+  "viewCommitChanges",
+  "viewRangeChanges",
   "previewFileRestore"
 ]);
 
@@ -222,6 +230,39 @@ async function showDiff(left: vscode.Uri, right: vscode.Uri, title: string) {
   await vscode.commands.executeCommand("vscode.diff", left, right, title, { preview: true });
 }
 
+/**
+ * Open every file of `effect` in VS Code's multi-file diff editor, with the same documents a diff
+ * of one file would show. `vscode.changes` is there in every VS Code the manifest allows, but
+ * should it fail, the first file opens on its own and the user is told why.
+ */
+async function showChanges(repo: string, effect: Extract<RepositoryEffect, { kind: "changes" }>) {
+  const sides = effect.files.map((file) => ({
+    name: file.after.slice(file.after.lastIndexOf("/") + 1),
+    left: encodeDiffDocUri(repo, file.before, file.left ?? NO_COMMIT),
+    right: encodeDiffDocUri(repo, file.after, file.right ?? NO_COMMIT)
+  }));
+  const [first] = sides;
+  if (first === undefined) {
+    detach(vscode.window.showInformationMessage(text.noChanges()), "The empty changes notice");
+    return;
+  }
+  try {
+    // Each entry is the resource it stands for, then the two sides.
+    await vscode.commands.executeCommand(
+      "vscode.changes",
+      effect.title,
+      sides.map(({ left, right }) => [right, left, right])
+    );
+  } catch (error) {
+    logger.debug("The multi-file diff editor did not open", error);
+    await showDiff(first.left, first.right, `${first.name} (${effect.title})`);
+    detach(
+      vscode.window.showInformationMessage(text.oneDiffOnly(errorText(error))),
+      "The single diff notice"
+    );
+  }
+}
+
 /** Explain that a folder is a repository of its own, and offer to open its graph. */
 function explainNestedRepository(folder: string) {
   const open = text.openItsGraph();
@@ -264,6 +305,9 @@ async function openEffect(repo: string, effect: RepositoryEffect) {
         encodeDiffDocUri(repo, effect.after, effect.right ?? NO_COMMIT),
         `${effect.after} (${sideLabel(effect.left)} ↔ ${sideLabel(effect.right)})`
       );
+      return;
+    case "changes":
+      await showChanges(repo, effect);
       return;
     case "workingTreeDiff": {
       const group = effect.staged ? text.stagedChanges() : text.workingTreeChanges();

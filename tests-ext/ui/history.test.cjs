@@ -1746,6 +1746,103 @@ suite("Branchwise workflow UI", function () {
     await until(() => graph.evaluate('!document.querySelector("[data-reflog-view]")'), "graph tab");
   });
 
+  test("opens all of a commit's or a comparison's changes in one multi-file diff editor", async () => {
+    const dir = directory();
+    init(dir);
+    commit("keep.txt", "all changes base", dir);
+    fs.writeFileSync(path.join(dir, "gone.txt"), "going\n");
+    git(["add", "gone.txt"], dir);
+    git(["commit", "-q", "-m", "all changes setup"], dir);
+    const base = git(["rev-parse", "HEAD"], dir);
+    fs.writeFileSync(path.join(dir, "keep.txt"), "changed\n");
+    fs.writeFileSync(path.join(dir, "added.txt"), "new\n");
+    fs.rmSync(path.join(dir, "gone.txt"));
+    git(["add", "-A"], dir);
+    git(["commit", "-q", "-m", "all changes target"], dir);
+    const target = git(["rev-parse", "HEAD"], dir);
+    await openRepo(dir);
+    const workbench = connections[0];
+    /** Close the diff editor and bring the graph back. */
+    const closeChanges = async () => {
+      await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      await vscode.commands.executeCommand("branchwise.view", { rootUri: vscode.Uri.file(dir) });
+    };
+    /** The active tab is a multi-file diff titled `title`, then its file count, listing `files`. */
+    const multiDiff = (title, files) =>
+      until(async () => {
+        const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        if (
+          tab?.label !== `${title} (${files.length} files)` ||
+          tab.input instanceof vscode.TabInputText ||
+          tab.input instanceof vscode.TabInputTextDiff
+        ) {
+          return false;
+        }
+        const text = await workbench.evaluate(
+          `[...document.querySelectorAll('.multiDiffEditor')].map(e => e.innerText).join('\\n')`
+        );
+        return files.every((file) => text.includes(file));
+      }, "multi-file diff " + title);
+
+    await graph.evaluate(`document.querySelector('tr[data-commit-hash="${target}"]').click()`);
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('[data-details-row] [data-file-list-header]')?.innerText.includes('Changed Files (3)')`
+        ),
+      "changed file list header"
+    );
+    await button("Open All Changes", 'document.querySelector("[data-details-row]")');
+    await multiDiff(`Changes in ${target.slice(0, 8)}`, ["added.txt", "gone.txt", "keep.txt"]);
+    await closeChanges();
+
+    // The same from the commit menu, and from a comparison's file list.
+    // The graph coming back can scroll, which closes a menu, so the menu opens until it is used.
+    await until(
+      () =>
+        graph.evaluate(`(() => {
+          const item = [...document.querySelectorAll('[role="menuitem"]')].find(e => e.textContent.trim() === "Open All Changes");
+          if (item) { item.click(); return true; }
+          const row = document.querySelector('tr[data-commit-hash="${target}"]');
+          row?.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, clientX: 180, clientY: 240}));
+          return false;
+        })()`),
+      "commit menu Open All Changes"
+    );
+    await multiDiff(`Changes in ${target.slice(0, 8)}`, ["added.txt", "gone.txt", "keep.txt"]);
+    await closeChanges();
+
+    await button("Compare", 'document.querySelector("header")');
+    await until(
+      () => graph.evaluate('document.querySelectorAll("[role=dialog] input").length >= 2'),
+      "comparison fields"
+    );
+    await fill([base, target]);
+    await button("Compare");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog]").innerText.includes("Changed Files (3)")'
+        ),
+      "compared files"
+    );
+    await button("Open All Changes");
+    await multiDiff(`${base.slice(0, 8)} ↔ ${target.slice(0, 8)}`, [
+      "added.txt",
+      "gone.txt",
+      "keep.txt"
+    ]);
+    // The comparison stays open behind the editor.
+    assert.equal(
+      await graph.evaluate(
+        '!!document.querySelector("[role=dialog]")?.innerText.includes("Compare")'
+      ),
+      true
+    );
+    await closeChanges();
+    await button("Close");
+  });
+
   test("counts contributors and daily activity in the Statistics tab", async () => {
     const counted = directory();
     init(counted);

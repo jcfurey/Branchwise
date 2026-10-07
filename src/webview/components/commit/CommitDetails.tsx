@@ -11,7 +11,7 @@ import { openSplitCommit } from "@/webview/components/repository/SplitCommit";
 import { Icon } from "@/webview/components/ui/Icons";
 import { Loading } from "@/webview/components/ui/Loading";
 import { COMMIT_DETAILS_HEIGHT, ROW_HEIGHT, TABLE_HEADER_HEIGHT } from "@/webview/constants";
-import { closeCommitDetails } from "@/webview/lib/actions";
+import { closeCommitDetails, openAllCommitChanges } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { CommitMessage, repositoryTracker } from "@/webview/lib/commit-message";
 import { repositoryState } from "@/webview/lib/repository-actions";
@@ -253,8 +253,27 @@ export function CommitDetails({ details }: { details: GitCommitDetails | null })
           <SignatureLine hash={details.hash} />
           <CommitMessage body={details.body} tracker={repositoryTracker(repositoryState.value)} />
         </div>
-        <div class="mr-8 min-w-0 flex-1 overflow-x-hidden overflow-y-scroll border-r border-line py-1">
-          <FileTree nodes={nodes} commitHash={details.hash} />
+        <div class="mr-8 flex min-w-0 flex-1 flex-col border-r border-line">
+          {details.fileChanges.length > 0 && (
+            <div
+              class="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-2 py-0.5 text-xs"
+              data-file-list-header
+            >
+              <span class="truncate text-muted">
+                {l10n.comparedFiles} ({details.fileChanges.length})
+              </span>
+              <button
+                type="button"
+                class="shrink-0 cursor-pointer rounded-sm px-1 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
+                onClick={() => openAllCommitChanges(details.hash)}
+              >
+                {l10n.openAllChanges}
+              </button>
+            </div>
+          )}
+          <div class="min-h-0 flex-1 overflow-x-hidden overflow-y-scroll py-1">
+            <FileTree nodes={nodes} commitHash={details.hash} />
+          </div>
         </div>
       </div>
     </DetailsRow>

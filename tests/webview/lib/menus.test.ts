@@ -66,6 +66,7 @@ const COMMIT_TITLES = [
   null,
   "interactiveRebase…",
   "createFixupMenu…",
+  "openAllChanges",
   "compareWith",
   "bisectChooseGood",
   "bisectChooseBad",

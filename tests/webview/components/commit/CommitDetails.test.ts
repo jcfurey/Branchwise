@@ -17,7 +17,7 @@ import type { GitCommitDetails } from "@/backend/types";
 import { CommitDetails, DetailsRow } from "@/webview/components/commit/CommitDetails";
 import { repositoryState } from "@/webview/lib/repository-actions";
 import { rpcClient } from "@/webview/lib/rpc/rpc-client";
-import { commitDetails, dialog, expandedCommit } from "@/webview/lib/stores";
+import { commitDetails, dialog, expandedCommit, selectedRepo } from "@/webview/lib/stores";
 import { buildFileTree } from "@/webview/utils/fileTree";
 
 import {
@@ -26,6 +26,7 @@ import {
   reconfigure,
   speak
 } from "@tests/webview/components/commit/commit-view-fixtures";
+import { vscodeApi } from "@tests/webview/setup";
 import { setupWebviewTest } from "@tests/webview/test-utils";
 
 vi.mock("@/webview/utils/fileTree", async (original) => {
@@ -364,6 +365,31 @@ describe("commit facts", () => {
 
     drawUnderOwner(h(CommitDetails, { details: sample({ fileChanges: oneChange() }) }));
     expect(build).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("opening all of the commit's changes", () => {
+  const header = () => detailsRow().querySelector<HTMLElement>("[data-file-list-header]");
+
+  it("counts the changed files and opens them all in one editor from the list's header", () => {
+    selectedRepo.value = "/repo";
+    vscodeApi.postMessage.mockClear();
+    drawUnderOwner(h(CommitDetails, { details: sample({ fileChanges: oneChange() }) }));
+
+    expect(header()!.textContent).toBe("comparedFiles (1)openAllChanges");
+    header()!.querySelector("button")!.click();
+    expect(vscodeApi.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: "repositoryAction",
+        repo: "/repo",
+        action: { kind: "viewCommitChanges", hash: "c".repeat(40) }
+      })
+    );
+  });
+
+  it("has no header for a commit that changes no files", () => {
+    drawUnderOwner(h(CommitDetails, { details: sample() }));
+    expect(header()).toBeNull();
   });
 });
 

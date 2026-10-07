@@ -200,4 +200,8 @@ export type HistoryAction =
       before: string;
       after: string;
     }
-  | { kind: "viewHistoricalFile"; hash: string; path: string };
+  | { kind: "viewHistoricalFile"; hash: string; path: string }
+  /** Every file a commit changes against its first parent, in one multi-file diff editor. */
+  | { kind: "viewCommitChanges"; hash: string }
+  /** The files of a comparison, from `base` to `right`, in one multi-file diff editor. */
+  | { kind: "viewRangeChanges"; base: string; right: string; files: ComparedFile[] };

@@ -58,6 +58,8 @@ export function getHistoryLocalizedStrings() {
     identicalFiles: vscode.l10n.t("No file differences between these revisions."),
     openHistoricalFile: vscode.l10n.t("Open File at This Revision"),
     openFileChanges: vscode.l10n.t("Open File Changes"),
+    // Opens every changed file of a commit or comparison in one multi-file diff editor.
+    openAllChanges: vscode.l10n.t("Open All Changes"),
     restoreHistoricalFile: vscode.l10n.t("Restore File Contents"),
     restoreDestination: vscode.l10n.t("Restore to path"),
     restorePreview: vscode.l10n.t("Preview Restore"),

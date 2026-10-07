@@ -18,7 +18,13 @@ import { openSplitCommit } from "@/webview/components/repository/SplitCommit";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
 import { announce } from "@/webview/components/ui/Announcer";
 import { Explain } from "@/webview/components/ui/Explain";
-import { closeDialog, focusBranchInGraph, openFormDialog, runAction } from "@/webview/lib/actions";
+import {
+  closeDialog,
+  focusBranchInGraph,
+  openAllCommitChanges,
+  openFormDialog,
+  runAction
+} from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { openUrl } from "@/webview/lib/actions/open-url";
 import { branchPage, commitPage, type HostPage, tagPage } from "@/webview/lib/host-links";
@@ -352,6 +358,7 @@ export function commitMenu(
         shortcut: "interactiveRebase"
       },
       { title: more(l10n.createFixupMenu), onClick: () => openFixup(hash) },
+      { title: l10n.openAllChanges, onClick: () => openAllCommitChanges(hash) },
       compareEntry(hash),
       { title: l10n.bisectChooseGood, onClick: () => chooseBisectCommit("good", hash) },
       { title: l10n.bisectChooseBad, onClick: () => chooseBisectCommit("bad", hash) },

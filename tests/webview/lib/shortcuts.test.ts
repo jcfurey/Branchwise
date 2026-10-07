@@ -265,6 +265,7 @@ describe("menu hints", () => {
       ["reset…", "X", "X"],
       ["interactiveRebase…", "I", "I"],
       ["createFixupMenu…", null, null],
+      ["openAllChanges", null, null],
       ["compareWith", null, null],
       ["bisectChooseGood", null, null],
       ["bisectChooseBad", null, null],

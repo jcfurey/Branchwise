@@ -17,11 +17,13 @@ import type { SimpleGit } from "simple-git";
 import { requireIdle, withRecoveryEditor } from "@/backend/actions/rebase";
 import type { RepositoryEffect } from "@/backend/actions/repository";
 import { gitClientFactory } from "@/backend/gitClient";
+import { commitDetails } from "@/backend/queries/commitDetails";
 import { loadBatchPlan, loadStagedPlan, sourceFile } from "@/backend/queries/history";
 import { loadWorkspace, submoduleLinks } from "@/backend/queries/workspace";
 import type { HistoryAction, RestoreBackup } from "@/backend/types";
 import { checkedWorktreePath, fileSnapshot, repoFile } from "@/backend/utils/history";
 import { readBlob, runGit, writeBlob } from "@/backend/utils/runGit";
+import { abbrevCommit } from "@/backend/utils/string";
 import { requireBranchName, requireCurrentBranch, resolveCommit } from "@/backend/utils/validation";
 
 /**
@@ -81,6 +83,45 @@ export async function runHistoryAction(
         before: repoFile(action.before),
         after: repoFile(action.after)
       };
+    case "viewCommitChanges": {
+      const hash = await resolveCommit(git, action.hash);
+      const { commitDetails: details } = await commitDetails(git, {
+        commitHash: hash,
+        dateType: "Author Date"
+      });
+      if (details === null) {
+        throw new Error(l10n.t("Unable to read the changes of commit {0}.", abbrevCommit(hash)));
+      }
+      return {
+        kind: "changes",
+        title: l10n.t("Changes in {0}", abbrevCommit(hash)),
+        // As one file's diff opens: the old path at the first parent beside the new path at the
+        // commit, so an added or deleted file compares with an empty side.
+        files: details.fileChanges.map((change) => ({
+          left: `${hash}^`,
+          right: hash,
+          before: change.oldFilePath,
+          after: change.newFilePath
+        }))
+      };
+    }
+    case "viewRangeChanges": {
+      const [base, right] = await Promise.all([
+        resolveCommit(git, action.base),
+        resolveCommit(git, action.right)
+      ]);
+      return {
+        kind: "changes",
+        title: `${abbrevCommit(base)} ↔ ${abbrevCommit(right)}`,
+        // As the comparison opens each file: an added file has no left side, a deleted one no right.
+        files: action.files.map((file) => ({
+          left: file.status === "A" ? null : base,
+          right: file.status === "D" ? null : right,
+          before: repoFile(file.before),
+          after: repoFile(file.after)
+        }))
+      };
+    }
     case "viewHistoricalFile":
       return {
         kind: "historicalFile",
