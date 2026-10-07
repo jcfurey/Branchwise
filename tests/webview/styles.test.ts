@@ -119,6 +119,18 @@ describe("styles.css", () => {
     );
   });
 
+  it("draws a day's first row with a themed line that leaves the row's height alone", () => {
+    expect(theme).toContain(
+      "--color-day-line: var(--vscode-tree-indentGuidesStroke, rgba(128, 128, 128, 0.4));"
+    );
+    const rule = ruleOf(components, ".branch-focus-row[data-day-start] > td");
+    expect(rule).toContain(
+      "background-image: linear-gradient(var(--color-day-line), var(--color-day-line));"
+    );
+    expect(rule).toContain("background-size: 100% 1px;");
+    expect(rule).not.toContain("border");
+  });
+
   it("shows a row in use in full, whatever its relation", () => {
     const emphasis = [
       ".branch-focus-row:hover",

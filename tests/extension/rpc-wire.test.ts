@@ -99,6 +99,7 @@ test("hands the page its strings and settings", async () => {
     autoCenterCommitDetailsView: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dateSeparators: true,
     dragAndDrop: true,
     graphColours: themeGraphColours,
     graphStyle: "rounded",

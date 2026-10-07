@@ -208,6 +208,11 @@
             "%config.dateFormat.relative%"
           ]
         },
+        "branchwise.dateSeparators": {
+          "description": "%config.dateSeparators%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.dateType": {
           "description": "%config.dateType%",
           "type": "string",

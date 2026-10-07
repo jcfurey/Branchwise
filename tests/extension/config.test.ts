@@ -23,6 +23,7 @@ it("falls back to the defaults declared in package.json", () => {
     autoCenterCommitDetailsView: extConfig.autoCenterCommitDetailsView(),
     conflictForecast: extConfig.conflictForecast(),
     dateFormat: extConfig.dateFormat(),
+    dateSeparators: extConfig.dateSeparators(),
     dateType: extConfig.dateType(),
     dragAndDrop: extConfig.dragAndDrop(),
     graphStyle: extConfig.graphStyle(),

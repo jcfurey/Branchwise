@@ -32,6 +32,7 @@ const DEFAULT_CONFIG = {
   autoCenterCommitDetailsView: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: themeGraphColours,
   graphStyle: "rounded",

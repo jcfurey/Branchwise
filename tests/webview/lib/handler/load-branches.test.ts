@@ -18,6 +18,7 @@ const settings: WebviewConfig = {
   autoCenterCommitDetailsView: false,
   conflictForecast: "localAndRemote",
   dateFormat: "Relative",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: [],
   graphStyle: "angular",

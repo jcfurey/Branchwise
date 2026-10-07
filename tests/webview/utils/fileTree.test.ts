@@ -9,6 +9,7 @@ const config: WebviewConfig = {
   autoCenterCommitDetailsView: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: [],
   graphStyle: "rounded",

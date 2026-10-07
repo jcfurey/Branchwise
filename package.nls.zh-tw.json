@@ -10,6 +10,7 @@
   "config.dateFormat.dateTime": "顯示日期和 24 小時制時間（例如：2024年3月15日 14:30）",
   "config.dateFormat.dateOnly": "僅顯示日期（例如：2024年3月15日）",
   "config.dateFormat.relative": "顯示每個提交距今多久（例如：5 分鐘前）；工具提示中保留確切的日期和時間",
+  "config.dateSeparators": "在分支圖中某一天的提交結束、前一天的提交開始之處畫一條淡淡的線；捲動分支圖時，在靠近頂端的小標籤中顯示最上方提交所在的日期。日期依照日期類型設定，並使用你的本機時區。",
   "config.dateType": "指定在 Branchwise 各處顯示的日期類型。",
   "config.dateType.authorDate": "在日期欄和詳細資料面板中顯示每個提交的作者日期，即其變更最初被記錄的時間",
   "config.dateType.commitDate": "改為顯示每個提交的提交者日期，即該提交本身最後一次產生的時間；重定基底、修訂或揀選提交都會改變它",

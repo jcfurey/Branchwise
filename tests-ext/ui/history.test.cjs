@@ -4474,6 +4474,125 @@ suite("Branchwise workflow UI", function () {
     await openRepo(repo);
   });
 
+  test("marks where each day's commits begin and names the topmost day while scrolled", async () => {
+    const dir = directory();
+    init(dir);
+    // Eight days of ten commits, at and after noon UTC, so each day is one day in any time zone
+    // within eleven hours of UTC. Newest first, a day begins every tenth row.
+    const days = 8;
+    const perDay = 10;
+    const first = Date.UTC(2026, 8, 1, 12) / 1000;
+    const stamps = [];
+    for (let day = 0; day < days; day++) {
+      for (let n = 0; n < perDay; n++) {
+        const seconds = first + day * 86400 + n * 60;
+        const date = `@${seconds} +0000`;
+        cp.execFileSync("git", ["commit", "--allow-empty", "-m", `day ${day} commit ${n}`], {
+          cwd: dir,
+          stdio: "pipe",
+          env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }
+        });
+        stamps.unshift(seconds);
+      }
+    }
+    await openRepo(dir);
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelectorAll('tr[data-commit-hash]').length === ${days * perDay}`
+        ),
+      "every dated commit loaded"
+    );
+    const marked = await graph.evaluate(
+      `[...document.querySelectorAll('tbody tr[data-commit-hash]')].flatMap((row, index) => row.hasAttribute('data-day-start') ? [index] : [])`
+    );
+    assert.deepEqual(
+      marked,
+      Array.from({ length: days - 1 }, (_, day) => (day + 1) * perDay)
+    );
+    // The line is drawn without changing the row's height.
+    assert.deepEqual(
+      await graph.evaluate(`(() => {
+        const row = document.querySelector('tbody tr[data-day-start]');
+        return [row.getBoundingClientRect().height, getComputedStyle(row.cells[1]).backgroundImage.includes('gradient')];
+      })()`),
+      [24, true]
+    );
+
+    await graph.evaluate("window.scrollTo(0, 0)");
+    await until(
+      () => graph.evaluate("!document.querySelector('[data-day-pill]')"),
+      "no day label at the top"
+    );
+    // Bring the middle of a day under the headings.
+    const target = 3 * perDay + perDay / 2;
+    const scrollable = await graph.evaluate(`(() => {
+      const row = document.querySelectorAll('tbody tr[data-commit-hash]')[${target}];
+      window.scrollBy(0, row.getBoundingClientRect().top - document.querySelector('thead').getBoundingClientRect().bottom + 2);
+      return scrollY > 0;
+    })()`);
+    assert.ok(scrollable, "the history is taller than the window");
+    const expected = new Intl.DateTimeFormat("en", { dateStyle: "full" }).format(
+      new Date(stamps[target] * 1000)
+    );
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector('[data-day-pill]')?.textContent === ${JSON.stringify(expected)}`
+        ),
+      "day label names " + expected
+    );
+    const pill = await graph.evaluate(`(() => {
+      const pill = document.querySelector('[data-day-pill]');
+      const box = pill.getBoundingClientRect();
+      const under = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return {
+        hidden: pill.closest('[aria-hidden="true"]') !== null,
+        pointer: getComputedStyle(pill).pointerEvents,
+        below: box.top >= document.querySelector('thead').getBoundingClientRect().bottom,
+        under: under?.closest('tr')?.hasAttribute('data-commit-hash') ?? false
+      };
+    })()`);
+    assert.deepEqual(pill, { hidden: true, pointer: "none", below: true, under: true });
+
+    // The label reads like the page's menus in every kind of theme.
+    const workbench = vscode.workspace.getConfiguration("workbench");
+    const originalTheme = workbench.inspect("colorTheme").globalValue;
+    try {
+      for (const [theme, kind] of [
+        ["Light Modern", "vscode-light"],
+        ["Default High Contrast", "vscode-high-contrast"],
+        ["Default High Contrast Light", "vscode-high-contrast-light"],
+        ["Dark Modern", "vscode-dark"]
+      ]) {
+        await workbench.update("colorTheme", theme, vscode.ConfigurationTarget.Global);
+        await until(
+          () => graph.evaluate(`document.body.classList.contains(${JSON.stringify(kind)})`),
+          `applied ${theme}`
+        );
+        const measured = await contrast("[data-day-pill]");
+        assert.ok(
+          measured.ratio >= 4.5,
+          `day label contrast in ${theme}: ${JSON.stringify(measured)}`
+        );
+        const shot = await connections[0].call("Page.captureScreenshot");
+        fs.writeFileSync(
+          path.join(artifacts, `day-separators-${kind}.png`),
+          Buffer.from(shot.data, "base64")
+        );
+      }
+    } finally {
+      await workbench.update("colorTheme", originalTheme, vscode.ConfigurationTarget.Global);
+    }
+
+    await graph.evaluate("window.scrollTo(0, 0)");
+    await until(
+      () => graph.evaluate("!document.querySelector('[data-day-pill]')"),
+      "day label gone back at the top"
+    );
+    await openRepo(repo);
+  });
+
   test("lists branches, remotes, tags and stashes beside the graph and switches the graph from them", async () => {
     const pane = directory();
     init(pane);

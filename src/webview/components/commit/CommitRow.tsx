@@ -61,6 +61,8 @@ type CommitRowProps = {
   conflicts?: ReadonlyMap<string, ConflictForecastEntry>;
   /** Whether the details of this row are open beneath it. */
   expanded: boolean;
+  /** Whether this commit is the first of its day, below a commit from another day. */
+  dayStart?: boolean;
   onSelect: (() => void) | undefined;
   /** Asks the table to scroll the graph sideways until this commit's dot shows. */
   onRevealLane?: (hash: string) => void;
@@ -233,6 +235,7 @@ export function CommitRow({
   push,
   conflicts,
   expanded,
+  dayStart = false,
   onSelect,
   onRevealLane
 }: CommitRowProps) {
@@ -352,6 +355,7 @@ export function CommitRow({
       data-commit-hash={hash}
       data-branch-relation={relation === "merged" && keepMergedBright ? "direct" : relation}
       data-emphasized={String(emphasized)}
+      data-day-start={dayStart ? "" : undefined}
       tabIndex={tabStop ? 0 : -1}
       draggable={uncommitted || !dragAndDropOn() ? undefined : true}
       aria-selected={uncommitted ? expanded : selected}

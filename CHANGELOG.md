@@ -10,6 +10,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ### Added
 
+- Day boundaries in the graph: a faint line above the first commit of each day, in your local time zone and by the date type you chose, and, once you scroll down, a small label under the column headings naming the day of the topmost commit. The new `branchwise.dateSeparators` setting turns both off. See [days in the graph](docs/git-actions.md#days-in-the-graph).
 - Drag and drop in the graph and the Branches pane: drop a commit row on the checked-out branch's label to cherry-pick it, or drop a local branch on another branch to merge it into the checked-out branch or to rebase the checked-out branch onto it. Every drop opens the same confirmation as the matching menu entry, so nothing changes until you confirm; a branch that cannot take the drop says which branch to check out first, and Escape cancels. Every action stays in the menus, and `branchwise.dragAndDrop` turns dragging off. See [drag and drop](docs/git-actions.md#drag-and-drop).
 - A **Legend** in **Settings & Tools** that explains every symbol of the graph, each drawn by the graph's own components: dots and rings, push marks, the conflict mark, labels, dimmed history and the strips above the graph. See [getting started](docs/git-actions.md#getting-started).
 - **Clone Repository…** and **Open Folder…** beside **Initialize Repository** when the workspace has no Git repository.

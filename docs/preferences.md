@@ -67,6 +67,12 @@ branch labels in the graph and the Branches pane to cherry-pick, merge or rebase
 confirmation. Turn it off if you drag by accident; every action stays in the menus. See
 [drag and drop](git-actions.md#drag-and-drop).
 
+`branchwise.dateSeparators` (default `true`) draws a faint line above the first commit of each
+day and, once you scroll down, names the day of the topmost commit in a small label under the
+column headings. Days follow `branchwise.dateType` and your local time zone. Turn it off for a
+plainer graph; the date column is unchanged either way. See
+[days in the graph](git-actions.md#days-in-the-graph).
+
 ### Single-key shortcuts
 
 `branchwise.singleKeyShortcuts` (default `true`) lets single keys act on the focused commit row,
