@@ -5,7 +5,11 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 import type { GitCommitDetails, RepositoryQuery, TreeEntry } from "@/backend/types";
 import { ROW_STEP } from "@/webview/components/commit/AllFiles";
-import { CommitDetails, fileListMode } from "@/webview/components/commit/CommitDetails";
+import {
+  CommitDetails,
+  CommitDetailsContent,
+  fileListMode
+} from "@/webview/components/commit/CommitDetails";
 import { forgetCommitTrees } from "@/webview/lib/commit-tree";
 import { historyFilter } from "@/webview/lib/navigation";
 import { handleRepositoryQuery } from "@/webview/lib/repository-actions";
@@ -168,6 +172,19 @@ describe("the Changed Files | All Files toggle", () => {
     draw(HASH);
     expect(treeReads()).toHaveLength(2);
     expect(names()).toEqual(["docs", "src", "vendor", "README.md"]);
+  });
+
+  it("offers the same choice in details docked to the right, under the facts", () => {
+    act(() => render(h(CommitDetailsContent, { details: details(), stacked: true }), host));
+    chooseAll();
+    answer(TREE);
+
+    expect(filterBox()).not.toBeNull();
+    expect(names()).toContain("README.md");
+    // Stacked under the facts, the list has no border of its own on the right.
+    const column = header().parentElement!;
+    expect(column.classList).toContain("min-h-0");
+    expect(column.classList).not.toContain("border-r");
   });
 
   it("says why the files could not be listed", () => {
