@@ -7,7 +7,11 @@ import { registerMessageHandlers } from "@/old-extension/messageHandler";
 
 import { git, gitOutput, makeRepo } from "@tests/backend/helpers";
 
-vi.mock("vscode", () => ({ l10n: { t: (message: string) => message } }));
+// Deleting the tag is recorded in the Safety Net, which offers its Undo in a notification.
+vi.mock("vscode", () => ({
+  l10n: { t: (message: string) => message },
+  window: { showInformationMessage: vi.fn() }
+}));
 vi.mock("@/extension/watchers/git-repo.watcher", () => ({
   selectWatchedRepo: vi.fn(),
   muteGitRepoWatcher: vi.fn(),

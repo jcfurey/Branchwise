@@ -81,6 +81,11 @@ export function getRepositoryLocalizedStrings() {
     moveLater: vscode.l10n.t("Move Later"),
     movedEntry: vscode.l10n.t("Moved {0} to position {1} of {2}."),
     startRebase: vscode.l10n.t("Start Rebase"),
+    combinedMessage: vscode.l10n.t("Message of the combined commit {0}"),
+    combinedMessageHint: vscode.l10n.t(
+      "Squash keeps these messages in one commit; Fixup messages are left out. Edit the result here."
+    ),
+    combinedMessageRequired: vscode.l10n.t("The combined commit needs a message."),
     editMessage: vscode.l10n.t("Edit Message"),
     editMessageIntro: vscode.l10n.t("Edit the message of {0}. Its changes stay as they are."),
     commitMessage: vscode.l10n.t("Commit message"),
@@ -96,6 +101,57 @@ export function getRepositoryLocalizedStrings() {
     explainAddStaged: vscode.l10n.t(
       "The changes are committed as a fixup! commit, which an autosquash rebase then folds into this commit. If the rebase stops on a conflict, the status strip offers Continue and Abort, and Abort leaves the changes in the fixup! commit."
     ),
+    splitCommit: vscode.l10n.t("Split Commit"),
+    splitIntro: vscode.l10n.t(
+      "Split {0} into several commits. Choose the part each file or hunk goes to. The parts are committed in order, each with the original author and date."
+    ),
+    explainSplit: vscode.l10n.t(
+      "The parts are built from the commit's parent without touching the working tree or the index, and together they must make exactly the original commit. The commits after it are made again on the last part with the same files, so no rebase runs and uncommitted changes stay as they are."
+    ),
+    splitPart: vscode.l10n.t("Part {0}"),
+    splitPartMessage: vscode.l10n.t("Message of Part {0}"),
+    addSplitPart: vscode.l10n.t("+ Part"),
+    removeSplitPart: vscode.l10n.t("Remove Part {0}"),
+    splitFilePart: vscode.l10n.t("Part for {0}"),
+    splitHunkPart: vscode.l10n.t("Part for {0} at {1}"),
+    splitHunks: vscode.l10n.t("{0} hunks: choose a part for each"),
+    splitByHunk: vscode.l10n.t("By hunk"),
+    splitMoreLines: vscode.l10n.t("{0} more lines"),
+    splitPreview: vscode.l10n.t("{0} commits: {1}"),
+    splitPartFiles: vscode.l10n.t("Part {0} ({1} files)"),
+    splitPartOneFile: vscode.l10n.t("Part {0} (1 file)"),
+    splitPartsJoin: vscode.l10n.t("{0}, {1}"),
+    splitEmptyPart: vscode.l10n.t("Choose at least one file or hunk for Part {0}."),
+    splitNoMessage: vscode.l10n.t("Enter a message for Part {0}."),
+    absorbStaged: vscode.l10n.t("Absorb Staged Changes"),
+    absorbIntro: vscode.l10n.t(
+      "Each staged hunk becomes part of a fixup! commit for the commit of this branch that last changed its lines. Unstaged and untracked changes stay as they are."
+    ),
+    absorbLeft: vscode.l10n.t("Left staged"),
+    absorbNothing: vscode.l10n.t(
+      "None of the staged changes can be absorbed, so nothing would change."
+    ),
+    createFixupCommits: vscode.l10n.t("Create Fixup Commits"),
+    createAndSquash: vscode.l10n.t("Create and Squash Now"),
+    explainCreateAndSquash: vscode.l10n.t(
+      "Create and Squash Now then opens the interactive rebase editor with each fixup arranged after its commit. Nothing is rewritten until you start the rebase there."
+    ),
+    absorbNeedsClean: vscode.l10n.t(
+      "To squash now, nothing else may be staged, unstaged or untracked, since the rebase needs a clean working tree. The fixup commits can still be created and squashed later."
+    ),
+    absorbRootTarget: vscode.l10n.t(
+      "A fixup goes into the first commit of the history, which the rebase editor cannot rewrite, so it cannot be squashed from here."
+    ),
+    absorbAdded: vscode.l10n.t("added file"),
+    absorbDeleted: vscode.l10n.t("deleted file"),
+    absorbRenamed: vscode.l10n.t("renamed or copied file"),
+    absorbBinary: vscode.l10n.t("binary file"),
+    absorbSpecial: vscode.l10n.t("mode or file type changed"),
+    absorbOutside: vscode.l10n.t(
+      "lines last changed by a commit already pushed or older than the branch"
+    ),
+    absorbSeveral: vscode.l10n.t("lines last changed by more than one commit"),
+    absorbNoContext: vscode.l10n.t("no surrounding lines to tell which commit it belongs to"),
     invalidRebasePlan: vscode.l10n.t(
       "Keep at least one commit; the first retained commit cannot be Squash. Reword requires a message."
     ),
@@ -158,6 +214,53 @@ export function getRepositoryLocalizedStrings() {
     gettingStarted: vscode.l10n.t("Getting Started"),
     learnMore: vscode.l10n.t("Learn more"),
 
+    // The legend: each symbol the graph uses, its name, then what it means.
+    legend: vscode.l10n.t("Legend"),
+    // The name of the branch on the legend's sample labels.
+    legendSampleBranch: vscode.l10n.t("feature"),
+    legendCommit: vscode.l10n.t("Commit"),
+    legendCommitHint: vscode.l10n.t("A commit, on the lane of the branch it belongs to."),
+    legendHead: vscode.l10n.t("Checked-out commit (HEAD)"),
+    legendHeadHint: vscode.l10n.t(
+      "The commit you have checked out, as a ring. Its row's description is bold."
+    ),
+    legendMerge: vscode.l10n.t("Merge commit"),
+    legendMergeHint: vscode.l10n.t("A commit with two or more parents, as a ring around a dot."),
+    legendUncommitted: vscode.l10n.t("Uncommitted changes"),
+    legendUncommittedHint: vscode.l10n.t(
+      "Changes in the work tree and the index, in grey above the checked-out commit."
+    ),
+    legendUnpushed: vscode.l10n.t("Unpushed commit"),
+    legendUnpulled: vscode.l10n.t("Unpulled commit"),
+    legendConflict: vscode.l10n.t("Conflict forecast"),
+    legendConflictHint: vscode.l10n.t(
+      "Merging this branch into yours would conflict; the number counts the files, which its tooltip names."
+    ),
+    legendBranch: vscode.l10n.t("Branch"),
+    legendBranchHint: vscode.l10n.t(
+      "A local branch. A cloud at its end stands for the remote branch of the same name on the same commit."
+    ),
+    legendRemote: vscode.l10n.t("Remote branch"),
+    legendRemoteHint: vscode.l10n.t("A remote branch with no local branch of the same name here."),
+    legendTag: vscode.l10n.t("Tag"),
+    legendTagHint: vscode.l10n.t("A tag."),
+    legendMore: vscode.l10n.t("More labels"),
+    legendMoreHint: vscode.l10n.t(
+      "The labels that do not fit on the row, counted. Its menu lists them."
+    ),
+    legendDimmed: vscode.l10n.t("Dimmed history"),
+    legendDimmedHint: vscode.l10n.t(
+      "While a branch is focused, commits outside its history turn grey."
+    ),
+    legendFocus: vscode.l10n.t("Branch focus"),
+    legendFocusHint: vscode.l10n.t(
+      "Above the graph while a branch is focused, with ways to pause, dim more or less, or clear the focus."
+    ),
+    legendHidden: vscode.l10n.t("Hidden branches"),
+    legendHiddenHint: vscode.l10n.t(
+      "Above the graph while name patterns hide branches, with ways to show them or edit the patterns."
+    ),
+
     // Hidden branches
     hiddenBranches: vscode.l10n.t("Hidden Branches"),
     hideBranchesLikeThis: vscode.l10n.t("Hide Branches Like This"),
@@ -194,7 +297,18 @@ export function getRepositoryLocalizedStrings() {
       "Nothing changes until you start the rebase. If it stops on a conflict, the status strip offers Continue and Abort, and Abort restores the branch as it was."
     ),
     explainDropStash: vscode.l10n.t(
-      "A dropped stash is hard to recover. Apply it first if you are not sure."
-    )
+      "Branchwise keeps a dropped stash in the Safety Net for 30 days, so Undo can bring it back."
+    ),
+    forecastChecking: vscode.l10n.t("Checking for conflicts…"),
+    forecastRebaseStop: vscode.l10n.t("Rebase would stop at {0}: conflicts in {1}"),
+    forecastCherryPickStop: vscode.l10n.t("Cherry-pick would stop at {0}: conflicts in {1}"),
+    forecastRevertStop: vscode.l10n.t("Revert would stop at {0}: conflicts in {1}"),
+    forecastStopsHere: vscode.l10n.t("Would stop here: conflicts in {0}"),
+    forecastReplaysOne: vscode.l10n.t("Replays 1 commit cleanly"),
+    forecastReplays: vscode.l10n.t("Replays {0} commits cleanly"),
+    forecastRevertsOne: vscode.l10n.t("Reverts 1 commit cleanly"),
+    forecastReverts: vscode.l10n.t("Reverts {0} commits cleanly"),
+    forecastSkippedLimit: vscode.l10n.t("Conflict forecast skipped: too many commits"),
+    forecastNeedsGit: vscode.l10n.t("Conflict forecast needs Git 2.40 or later")
   };
 }

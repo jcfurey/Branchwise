@@ -1,13 +1,15 @@
 import { computed } from "@preact/signals";
 import { useMemo } from "preact/hooks";
 
-import type { GitRef } from "@/backend/types";
+import type { ConflictForecastEntry, GitRef } from "@/backend/types";
 import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
 import { BranchIcon, ConflictIcon, RemoteIcon, TagIcon } from "@/webview/components/ui/Icons";
 import { openContextMenu } from "@/webview/lib/actions";
+import { DROP_TARGET_CLASS, refDragAttributes } from "@/webview/lib/drag-drop";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
 import { repositoryState } from "@/webview/lib/repository-actions";
 import { activeSource } from "@/webview/lib/stores";
+import { getRelativeDate } from "@/webview/utils/date";
 
 /** What the repository state says about a local branch: its tracking and where it is checked out. */
 function localBranchFacts(gitRef: GitRef) {
@@ -22,20 +24,35 @@ function localBranchFacts(gitRef: GitRef) {
 }
 
 /** Files listed by name in the tooltip of a conflict forecast; the rest are counted. */
-const CONFLICTS_LISTED = 10;
+export const CONFLICTS_LISTED = 10;
+
+/** Who made a forecast branch's last commit, and how long ago. */
+export function lastCommitBy(entry: ConflictForecastEntry): string {
+  // Function replacements insert the name as written, even when it contains `$`.
+  return window.l10n.lastCommitBy
+    .replace("{0}", () => entry.committer)
+    .replace("{1}", () => getRelativeDate(entry.date));
+}
 
 /**
- * A warning that merging the branch into HEAD would stop with conflicts in `files`, with the
- * number of them. The tooltip names the files.
+ * A warning that merging the branch into HEAD would stop with conflicts in its files, with the
+ * number of them. The tooltip names the files and, for a remote branch, whose work it holds:
+ * the committer of its last commit and how long ago that was.
  */
-export function ConflictBadge({ files }: { files: Array<string> }) {
+export function ConflictBadge({ entry }: { entry: ConflictForecastEntry }) {
   const l10n = window.l10n;
+  const { files } = entry;
   const into = repositoryState.value?.head || "HEAD";
-  // Function replacements insert the names as written, even when they contain `$`.
-  const summary = l10n.conflictForecast.replace("{0}", () => into);
+  const summary = (entry.remote ? l10n.teamConflictForecast : l10n.conflictForecast).replace(
+    "{0}",
+    () => into
+  );
   const lines = [summary, ...files.slice(0, CONFLICTS_LISTED)];
   if (files.length > CONFLICTS_LISTED) {
     lines.push(l10n.conflictForecastMore.replace("{0}", String(files.length - CONFLICTS_LISTED)));
+  }
+  if (entry.remote) {
+    lines.push(lastCommitBy(entry));
   }
   return (
     <span
@@ -55,19 +72,19 @@ export function ConflictBadge({ files }: { files: Array<string> }) {
  * A branch or tag on a commit row. The tooltip starts with the ref's name, then adds what the
  * repository state knows about a local branch: its upstream and the worktree holding it.
  * `remotes` are remote branches of the same name on the same commit, shown as a cloud at the
- * end of the label, with their own tooltip and menu. `conflicts` are the files a merge of the
- * branch into HEAD would leave in conflict, when it would.
+ * end of the label, with their own tooltip and menu. `conflict` is the forecast of merging the
+ * branch into HEAD, when that would leave files in conflict.
  */
 export function RefLabel({
   gitRef,
   active,
   remotes = [],
-  conflicts
+  conflict
 }: {
   gitRef: GitRef;
   active: boolean;
   remotes?: Array<GitRef>;
-  conflicts?: Array<string> | undefined;
+  conflict?: ConflictForecastEntry | undefined;
 }) {
   const source = refMenuSource(gitRef);
   // Every label of the ref shares the key, so all of them light up while its menu is open.
@@ -101,8 +118,10 @@ export function RefLabel({
     <span
       class={`mt-0.5 mr-1.25 box-content inline-flex h-4.5 max-w-full items-center overflow-hidden rounded-md border pr-1.25 align-top text-xs ${
         active ? "border-graph" : "border-line"
-      } ${menuOpen ? "bg-btn-hover" : "bg-btn"}`}
+      } ${menuOpen ? "bg-btn-hover" : "bg-btn"} ${DROP_TARGET_CLASS}`}
+      data-ref={gitRef.type}
       title={lines.join("\n")}
+      {...refDragAttributes(gitRef)}
       onContextMenu={(event) => openContextMenu(event, source, refMenu(gitRef, active))}
       onClick={(event) => event.stopPropagation()}
       onDblClick={(event) => {
@@ -124,7 +143,7 @@ export function RefLabel({
         <span class="ml-1 whitespace-nowrap">{`↑${branch.ahead} ↓${branch.behind}`}</span>
       )}
       {worktree !== undefined && !active && <span class="ml-1">↗</span>}
-      {conflicts !== undefined && conflicts.length > 0 && <ConflictBadge files={conflicts} />}
+      {conflict !== undefined && conflict.files.length > 0 && <ConflictBadge entry={conflict} />}
       {remotes.length > 0 && (
         <span
           data-remote-refs={remotes.map((remote) => remote.name).join(" ")}

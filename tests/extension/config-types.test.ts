@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, expectTypeOf, it } from "vitest";
 
+import type { ConflictForecastScope } from "@/backend/types";
 import type { DateFormat, GraphStyle, WebviewConfig } from "@/types";
 
 /** The `enum` that package.json declares for the setting `branchwise.<key>`. */
@@ -14,13 +15,16 @@ function manifestChoices(key: string): Array<string> {
 
 const settings: WebviewConfig = {
   autoCenterCommitDetailsView: false,
+  conflictForecast: "localAndRemote",
   dateFormat: "Relative",
+  dragAndDrop: true,
   graphColours: ["#123456"],
   graphStyle: "angular",
   initialLoadCommits: 50,
   loadMoreCommits: 25,
   locale: "de",
-  showCurrentBranchByDefault: true
+  showCurrentBranchByDefault: true,
+  singleKeyShortcuts: true
 };
 
 /** Edits a configuration in place, which the types forbid. Compiled, never called. */
@@ -40,18 +44,21 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the eight display settings", () => {
+  it("holds exactly the eleven display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
+      | "conflictForecast"
       | "dateFormat"
+      | "dragAndDrop"
       | "graphColours"
       | "graphStyle"
       | "initialLoadCommits"
       | "loadMoreCommits"
       | "locale"
       | "showCurrentBranchByDefault"
+      | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(8);
+    expect(Object.keys(settings)).toHaveLength(11);
   });
 });
 
@@ -63,6 +70,11 @@ describe("setting choices", () => {
     Relative: true
   };
   const graphStyles: Record<GraphStyle, true> = { rounded: true, angular: true };
+  const forecastScopes: Record<ConflictForecastScope, true> = {
+    localAndRemote: true,
+    local: true,
+    off: true
+  };
 
   it("match the date formats package.json offers", () => {
     const offered = manifestChoices("dateFormat").toSorted();
@@ -76,5 +88,12 @@ describe("setting choices", () => {
 
     expect(offered).toEqual(["angular", "rounded"]);
     expect(Object.keys(graphStyles).toSorted()).toEqual(offered);
+  });
+
+  it("match the conflict forecast scopes package.json offers", () => {
+    const offered = manifestChoices("conflictForecast").toSorted();
+
+    expect(offered).toEqual(["local", "localAndRemote", "off"]);
+    expect(Object.keys(forecastScopes).toSorted()).toEqual(offered);
   });
 });

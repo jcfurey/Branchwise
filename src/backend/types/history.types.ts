@@ -1,4 +1,5 @@
 import type { GitCommitNode } from "./git.types";
+import type { OperationKind } from "./repository.types";
 
 export type HistoryFilter = {
   text: string;
@@ -107,7 +108,21 @@ export type WorkspaceEntry = {
   behind: number;
   initialized: boolean;
   error: string | null;
+  /** A merge, rebase, cherry-pick, revert or bisect stopped partway, or null. */
+  operation: WorkspaceOperation | null;
+  /** Paths with unmerged changes. */
+  conflicts: number;
+  stashes: number;
+  detached: boolean;
+  /** The checked-out branch's upstream, such as `origin/main`, or null when it has none. */
+  upstream: string | null;
+  /** Local branches other than the checked-out one with commits their upstream lacks. */
+  aheadBranches: number;
+  remotes: number;
+  /** When `FETCH_HEAD` was last written, in seconds since 1970, or null before any fetch. */
+  fetched: number | null;
 };
+export type WorkspaceOperation = OperationKind | "bisect";
 export type FileRestorePlan = {
   source: string;
   sourcePath: string;

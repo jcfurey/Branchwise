@@ -17,7 +17,8 @@ function layoutOf(lanes: number, rows: number): GraphLayout {
       y,
       colour: 0,
       isCommitted: true,
-      isCurrent: false
+      isCurrent: false,
+      isMerge: false
     }))
   };
 }

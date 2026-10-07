@@ -8,8 +8,8 @@ pnpm benchmark:ui
 ```
 
 The backend benchmark creates a disposable repository with merges, remote-only history, and
-submodules. It measures history/search, workspace scanning, loading 300/1,000/3,000 rows, hiding
-one remote, focusing local/remote branches, graph layout, and cancellation. Each case runs three
+submodules. It measures history/search, workspace scanning, loading 300/1,000/3,000 rows, finding the
+signed commits among 3,000, hiding one remote, focusing local/remote branches, graph layout, and cancellation. Each case runs three
 sequential samples. The default fixture has 53,158 commits (including the submodule commit),
 999 merges, 16 remote lanes, and 40 submodules.
 
@@ -140,3 +140,24 @@ Medians in milliseconds (before → after):
 | Files  | Show the list | Refresh    |
 | ------ | ------------- | ---------- |
 | 20,000 | 1281.9 → 26.6 | 1386 → 6.4 |
+
+## Signed-commit marks, 2026-10-06
+
+Asking Git whether each signature is valid, with `%G?` in the graph's log, runs gpg or ssh-keygen
+once for every signed commit. In a repository of 200 SSH-signed commits, that log took 4,628 ms,
+against 22 ms without `%G?`. Git has no format placeholder that only says whether a commit is
+signed. The graph therefore looks for a `gpgsig` or `gpgsig-sha256` header in the commits of the
+loaded page, with one `git cat-file --batch --buffer` over their IDs, and leaves the check itself
+to the commit details.
+
+Medians in milliseconds of that read alone, on the 53,158-commit benchmark repository, beside the
+whole load it adds to (where it runs after the log, alongside the working-tree status):
+
+| Loaded rows | Load the graph | The read | Without `--buffer` | `rev-list --no-walk --header` |
+| ----------- | -------------- | -------- | ------------------ | ----------------------------- |
+| 300         | 347.5          | 9.4      | 13.9               | 12                            |
+| 3,000       | 430.9          | 39       | 72.2               | 62.6                          |
+
+The machine was shared and busy, so absolute times vary by tens of milliseconds between runs;
+`pnpm benchmark` reports the read as `signedMarks3000`. Since it adds a measurable share to a
+large load, the `branchwise.showSignatures` setting turns the marks, and the read, off.

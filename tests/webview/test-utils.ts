@@ -13,13 +13,16 @@ import { vscodeApi } from "@tests/webview/setup";
  */
 const settings: WebviewConfig = {
   autoCenterCommitDetailsView: true,
+  conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dragAndDrop: true,
   graphColours: [],
   graphStyle: "rounded",
   initialLoadCommits: 300,
   loadMoreCommits: 100,
   locale: "en",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 /** Strings that read as their own keys, so that a test can find a text by the name it has. */

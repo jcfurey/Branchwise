@@ -22,13 +22,16 @@ beforeAll(async () => {
 
 const changed: WebviewConfig = {
   autoCenterCommitDetailsView: true,
+  conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
+  dragAndDrop: true,
   graphColours: ["#ff0000"],
   graphStyle: "angular",
   initialLoadCommits: 500,
   loadMoreCommits: 100,
   locale: "en",
-  showCurrentBranchByDefault: false
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 function notifyConfig(config: WebviewConfig) {

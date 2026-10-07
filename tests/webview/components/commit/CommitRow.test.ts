@@ -5,6 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { GitCommitNode, GitRef } from "@/backend/types";
 import { CommitRow, type PushState, shownRefs } from "@/webview/components/commit/CommitRow";
+import { conflictsByBranch } from "@/webview/lib/conflict-forecast";
 import { contextMenu } from "@/webview/lib/stores";
 
 import { setupWebviewTest } from "@tests/webview/test-utils";
@@ -153,7 +154,32 @@ describe("the push status", () => {
 });
 
 describe("the conflict forecast", () => {
-  const drawWith = (commit: GitCommitNode, conflicts: Map<string, Array<string>>) =>
+  /** A forecast entry for a local branch, or a remote one when `branch` names its remote. */
+  const conflictOf = (branch: string, files: Array<string>, remote = false) => ({
+    branch,
+    remote,
+    files,
+    committer: "Alice",
+    date: Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60
+  });
+  let keyNames: typeof window.l10n;
+  beforeAll(() => {
+    keyNames = window.l10n;
+  });
+  /** Show these English templates; every other string stays its key name. */
+  const withStrings = (strings: Partial<Record<keyof typeof window.l10n, string>>) =>
+    Object.defineProperty(window, "l10n", {
+      value: new Proxy(keyNames, {
+        get: (target, key) =>
+          (strings as Record<string | symbol, string | undefined>)[key] ?? Reflect.get(target, key)
+      }),
+      configurable: true
+    });
+  afterEach(() => Object.defineProperty(window, "l10n", { value: keyNames, configurable: true }));
+  /** The forecast keyed as the table keys it. */
+  const forecastOf = (...entries: Array<ReturnType<typeof conflictOf>>) =>
+    conflictsByBranch(entries);
+  const drawWith = (commit: GitCommitNode, conflicts: ReturnType<typeof forecastOf>) =>
     render(
       h(CommitRow, {
         commit,
@@ -169,11 +195,11 @@ describe("the conflict forecast", () => {
     );
 
   it("marks a local branch that would conflict, with the number of files and their names", () => {
-    drawWith(LABELLED, new Map([["other", ["a"]]]));
+    drawWith(LABELLED, forecastOf(conflictOf("other", ["a"])));
     expect(body.querySelector("[data-conflicts]")).toBeNull();
 
     const files = Array.from({ length: 12 }, (_, index) => `src/file-${index}.ts`);
-    drawWith(LABELLED, new Map([[BRANCH, files]]));
+    drawWith(LABELLED, forecastOf(conflictOf(BRANCH, files)));
     const badge = body.querySelector<HTMLElement>("[data-conflicts]")!;
     expect(badge.textContent).toBe("12");
     expect(badge.getAttribute("role")).toBe("img");
@@ -192,8 +218,33 @@ describe("the conflict forecast", () => {
       { type: "tag", name: "v1", hash: HASH },
       { type: "remote", name: "origin/v1", hash: HASH }
     ];
-    drawWith(commitWith("Tagged", refs), new Map([["v1", ["a"]]]));
+    drawWith(commitWith("Tagged", refs), forecastOf(conflictOf("v1", ["a"])));
     expect(body.querySelector("[data-conflicts]")).toBeNull();
+    // A local branch named like the remote one does not mark it either.
+    drawWith(commitWith("Tagged", refs), forecastOf(conflictOf("origin/v1", ["a"])));
+    expect(body.querySelector("[data-conflicts]")).toBeNull();
+  });
+
+  it("marks a teammate's remote branch, and says whose work it is and how recent", () => {
+    const refs: Array<GitRef> = [{ type: "remote", name: "origin/alice/payments", hash: HASH }];
+    withStrings({
+      teamConflictForecast: "Would conflict with your branch {0} in:",
+      lastCommitBy: "Last commit by {0}, {1}"
+    });
+    drawWith(
+      commitWith("Payments", refs),
+      forecastOf(conflictOf("origin/alice/payments", ["api.ts", "db.ts", "ui.ts"], true))
+    );
+    const badge = body.querySelector<HTMLElement>("[data-conflicts]")!;
+    expect(badge.textContent).toBe("3");
+    expect(badge.getAttribute("aria-label")).toBe("Would conflict with your branch HEAD in:");
+    expect(badge.title.split("\n")).toEqual([
+      "Would conflict with your branch HEAD in:",
+      "api.ts",
+      "db.ts",
+      "ui.ts",
+      "Last commit by Alice, 2 days ago"
+    ]);
   });
 });
 

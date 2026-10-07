@@ -2,7 +2,13 @@ import { useComputed } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { useId, useState } from "preact/hooks";
 
-import type { BranchDetails, GitRef, RefDetails, RemoteDetails } from "@/backend/types";
+import type {
+  BranchDetails,
+  ConflictForecastEntry,
+  GitRef,
+  RefDetails,
+  RemoteDetails
+} from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { abbrevCommit } from "@/backend/utils/string";
 import { BranchFocusBadge } from "@/webview/components/commit/BranchFocusBadge";
@@ -41,6 +47,8 @@ import {
   setShowRemoteBranch
 } from "@/webview/lib/actions";
 import { branchHealth, orderBranches } from "@/webview/lib/branch-health";
+import { conflictForecastQuery, conflictsByBranch } from "@/webview/lib/conflict-forecast";
+import { DROP_TARGET_CLASS, dragHandlers, refDragAttributes } from "@/webview/lib/drag-drop";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
 import { collapsedSections, focusHistory, toggleSection } from "@/webview/lib/navigation";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
@@ -66,6 +74,8 @@ const ACTION_CLASS =
 const ROW_ICON = "size-3.5 shrink-0 text-muted";
 /** Rows each list renders before Show more, so thousands of refs stay responsive. */
 export const REF_PAGE = PAGE_SIZE;
+/** The pane's drag listeners. Only branches are dragged from it, so it has no commits to find. */
+const PANE_DRAG = dragHandlers(() => null);
 
 type RemoteGroup = { remote: string; details: RemoteDetails | undefined; branches: RefDetails[] };
 
@@ -142,12 +152,14 @@ function Flag({ kind, label, title }: { kind: string; label: string; title: stri
  * One ref, stash or remote. The label selects it; the trailing controls and
  * the context menu carry its actions. `depth` indents rows under a remote.
  * `name` identifies the row in its controls' names, such as `refs/remotes/origin/main` for a
- * row labelled `main`, so rows with the same label stay distinct.
+ * row labelled `main`, so rows with the same label stay distinct. A branch row names its
+ * `gitRef`, which makes it a drop target and, for a local branch, something to drag.
  */
 function Row({
   source,
   label,
   name = label,
+  gitRef,
   icon,
   title,
   active = false,
@@ -163,6 +175,7 @@ function Row({
   source: string;
   label: string;
   name?: string;
+  gitRef?: GitRef;
   icon: ComponentChildren;
   title?: string;
   active?: boolean;
@@ -182,8 +195,9 @@ function Row({
     <div
       class={`group flex items-center gap-1 pr-1 ${
         active ? "bg-row-head" : menuOpen ? "bg-btn-hover" : "hover:bg-row-hover"
-      } ${dimmed ? "text-muted" : ""}`}
+      } ${dimmed ? "text-muted" : ""} ${gitRef === undefined ? "" : DROP_TARGET_CLASS}`}
       style={{ paddingLeft: 8 + depth * 12 }}
+      {...(gitRef === undefined ? {} : refDragAttributes(gitRef))}
       onContextMenu={menu && ((event) => openContextMenu(event, source, menu()))}
     >
       <button
@@ -266,10 +280,13 @@ function Section({
 /** The first `limit` items of a list, and a button that shows the next page. */
 function RemoteBranches({
   group,
-  shown
+  shown,
+  conflicts
 }: {
   group: { remote: string; branches: RefDetails[] };
   shown: boolean;
+  /** The conflict forecast by branch, as `conflictsByBranch` keys it. */
+  conflicts: ReadonlyMap<string, ConflictForecastEntry>;
 }) {
   const page = usePage(group.branches);
   return (
@@ -277,6 +294,7 @@ function RemoteBranches({
       {page.shown.map((ref) => {
         const gitRef: GitRef = { type: "remote", name: ref.name, hash: ref.hash };
         const value = "remotes/" + ref.name;
+        const conflicted = conflicts.get(value);
         return (
           <Row
             key={ref.name}
@@ -284,11 +302,13 @@ function RemoteBranches({
             source={refMenuSource(gitRef)}
             label={ref.name.slice(group.remote.length + 1)}
             name={`refs/remotes/${ref.name}`}
+            gitRef={gitRef}
             title={ref.name}
             icon={<BranchIcon class={ROW_ICON} />}
             dimmed={!shown || isBranchHidden(value)}
             active={selectedBranch.value === value}
             badge={<BranchFocusBadge branch={value} />}
+            flags={conflicted === undefined ? undefined : <ConflictBadge entry={conflicted} />}
             onSelect={() => selectBranch(value)}
             menu={() => refMenu(gitRef, false)}
             actions={
@@ -339,9 +359,9 @@ export function RefsPane() {
     pinned
   );
   const forecast = useRepositoryQuery<"conflictForecast">(
-    state === null ? null : { kind: "conflictForecast" }
+    state === null ? null : conflictForecastQuery()
   );
-  const conflicts = new Map(forecast.data?.conflicts.map(({ branch, files }) => [branch, files]));
+  const conflicts = conflictsByBranch(forecast.data?.conflicts);
   const now = Date.now() / 1000;
   const groups = groupRemoteBranches(state?.remotes ?? [], state?.remoteBranches ?? []).flatMap(
     (group) => {
@@ -364,6 +384,7 @@ export function RefsPane() {
     <nav
       aria-label={window.l10n.branchesPane}
       class="flex max-h-72 min-h-0 w-full flex-1 flex-col border-b border-line-soft bg-editor text-ui md:max-h-none md:border-b-0"
+      {...PANE_DRAG}
     >
       <div class="space-y-2 border-b border-line-soft p-3">
         <h2 class="font-semibold">{window.l10n.branchesPane}</h2>
@@ -438,6 +459,7 @@ export function RefsPane() {
                   label={branch.name}
                   dimmed={isBranchHidden(branch.name)}
                   name={`refs/heads/${branch.name}`}
+                  gitRef={gitRef}
                   bold={isHead}
                   icon={
                     isPinned ? (
@@ -468,7 +490,7 @@ export function RefsPane() {
                   }
                   flags={
                     <>
-                      {conflicted !== undefined && <ConflictBadge files={conflicted} />}
+                      {conflicted !== undefined && <ConflictBadge entry={conflicted} />}
                       {health.merged && (
                         <Flag
                           kind="merged"
@@ -621,7 +643,7 @@ export function RefsPane() {
                     </span>
                   }
                 >
-                  <RemoteBranches group={group} shown={shown} />
+                  <RemoteBranches group={group} shown={shown} conflicts={conflicts} />
                 </Section>
               );
             })}

@@ -130,6 +130,12 @@ function relativeTo(date: Date, locale: string): string {
   ).format(signed, unit.name);
 }
 
+/** How long ago a Git timestamp in seconds was, such as "3 days ago", in the display language. */
+export function getRelativeDate(seconds: number): string {
+  const date = toDate(seconds);
+  return date === null ? window.l10n.unknownDate : relativeTo(date, getWebviewConfig().locale);
+}
+
 /** Whole seconds from `started` to `finished`, both in milliseconds, such as "5s". */
 export function formatSeconds(started: number, finished: number): string {
   const elapsed = Math.floor((finished - started) / 1000);

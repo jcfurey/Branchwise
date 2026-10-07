@@ -6,6 +6,9 @@ export const SHOW_ALL_BRANCHES = "*";
 /** The `hash` of the row standing for the working tree's changes, listed above every commit. */
 export const UNCOMMITTED_CHANGES = "*";
 
+/** The batch cherry-pick and revert dialogs refuse selections larger than this. */
+export const BATCH_LIMIT = 100;
+
 /* Table geometry, in CSS pixels */
 
 /**

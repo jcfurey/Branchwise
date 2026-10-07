@@ -3,6 +3,7 @@ import path from "node:path";
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
+import { absorbStaged } from "@/backend/actions/absorb";
 import { amendCommit, rewordCommit } from "@/backend/actions/editCommit";
 import { runHistoryAction } from "@/backend/actions/history";
 import {
@@ -12,6 +13,8 @@ import {
   withRecoveryEditor
 } from "@/backend/actions/rebase";
 import { manageRemote } from "@/backend/actions/remotes";
+import { undoSafetyRecord } from "@/backend/actions/safetyNet";
+import { splitCommit } from "@/backend/actions/splitCommit";
 import { runWorkflowAction } from "@/backend/actions/workflows";
 import { viewWorkingTreeFile } from "@/backend/actions/workingTree";
 import { loadOperation, loadStashes, loadWorktrees } from "@/backend/queries/repository";
@@ -139,6 +142,10 @@ export async function runRepositoryAction(
       return rewordCommit(git, action.plan, action.message, binary);
     case "amendCommit":
       return amendCommit(git, action.plan, binary);
+    case "splitCommit":
+      return splitCommit(git, action.plan, action.messages, action.assignment, binary);
+    case "absorb":
+      return absorbStaged(git, action.plan, binary);
     case "recover": {
       const current = await loadOperation(git);
       if (
@@ -187,6 +194,8 @@ export async function runRepositoryAction(
       ]);
       return;
     }
+    case "undoSafetyNet":
+      return undoSafetyRecord(git, action.id);
     case "openWorktree":
     case "removeWorktree": {
       const worktrees = await loadWorktrees(git);

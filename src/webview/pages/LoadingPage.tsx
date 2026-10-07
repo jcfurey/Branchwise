@@ -1,10 +1,13 @@
-import { Loading } from "@/webview/components/ui/Loading";
+import { GraphSkeleton } from "@/webview/components/ui/Loading";
 
-/** The whole window while the page starts. It needs no `window.l10n`, which comes later. */
+/**
+ * The whole window while the page starts: the rows of a graph still to come. It needs no
+ * `window.l10n`, which comes later.
+ */
 export function LoadingPage() {
   return (
-    <main class="flex min-h-screen items-center justify-center px-6 py-16">
-      <Loading variant="page" />
+    <main class="min-h-screen">
+      <GraphSkeleton />
     </main>
   );
 }

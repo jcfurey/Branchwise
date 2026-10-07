@@ -132,6 +132,14 @@ suite("Branchwise in a running VS Code", () => {
     }
   });
 
+  test("finds the commands that the page without a repository starts", async () => {
+    // Initialize Repository, Clone Repository… and Open Folder… run these by name.
+    const registered = new Set(await vscode.commands.getCommands(false));
+    for (const command of ["git.init", "git.clone", "vscode.openFolder"]) {
+      assert.ok(registered.has(command), `${command} is registered`);
+    }
+  });
+
   test("opens the graph from the branches command", async () => {
     assert.ok(await graphOpensAfter("branchwise.showBranches"), "the graph tab appears");
   });

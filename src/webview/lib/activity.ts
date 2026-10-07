@@ -47,6 +47,8 @@ const titles: Record<string, keyof LocalizedStrings> = {
   interactiveRebase: "startRebase",
   reword: "editMessage",
   amendCommit: "addStagedToCommit",
+  splitCommit: "splitCommit",
+  absorb: "absorbStaged",
   recover: "continueOperation",
   conflict: "stageResolution",
   addWorktree: "addWorktree",

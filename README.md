@@ -33,9 +33,13 @@ basics.
 - Commit details with formatted messages, linked issues, a file tree and per-file diffs
 - See which branches and tags contain a commit, and the first release it shipped in
 - Search by message, ID, author, committer, branch, tag, date or path, or for the commits that added or removed a piece of text
+- A legend of every graph symbol, and one-click ways to widen a search that finds nothing
 - Go to any branch, tag or commit from the keyboard, or open it on GitHub or GitLab
 - Dots and rings mark unpushed and unpulled commits
 - A mark on each branch that would conflict if merged into yours, naming the files
+- A key on signed commits; their details check the GPG, SSH or X.509 signature
+- Teammates' remote branches that would conflict with yours, flagged before anyone opens a pull request
+- Shapes, status letters and screen-reader summaries, so colour is never the only sign, and [theme colours](docs/preferences.md#theme-colours) for the lanes
 
 **Focus**
 
@@ -50,13 +54,19 @@ basics.
 
 - Branches and tags: create, check out, rename, merge, delete, push
 - Commits: check out, cherry-pick, revert, reset, fixup; cherry-pick or revert several in order
+- Absorb staged changes: each hunk becomes a fixup for the commit that last changed its lines
 - Plain and interactive rebase; push and pull previews; force-push only with a lease
+- Before a rebase, cherry-pick or revert, see which commit would stop with conflicts, and in which files
+- Split a commit into several, by file or by hunk, without touching the working tree
 - Fast-forward every branch that is only behind its upstream, without a checkout
+- Drag a commit onto your branch to cherry-pick it, or a branch onto another to merge or rebase, always confirmed first
 - Stashes, conflict resolution, and continue, skip or abort for interrupted operations
+- Single keys on the focused commit, such as B to create a branch; `?` lists every shortcut
 
 **Recover and investigate**
 
 - Reflog tab that recovers commits no branch reaches; compare refs; restore earlier file contents
+- Undo the last reset, rebase, merge, amend or deletion in one click; a Safety Net lists what each destructive action replaced
 - Guided bisect, merged-branch cleanup, and a Statistics tab of commits and contributors
 
 ![The Statistics tab: commit, contributor and active-day counts, a year of daily activity, and each contributor's share of the commits](docs/images/statistics-dark.png)
@@ -64,6 +74,7 @@ basics.
 **Repositories**
 
 - Multi-repository workspaces with submodules, nested repositories, remotes and worktrees
+- Workspace status: what needs attention across repositories, with Fetch, Pull and Push All
 - Remote - SSH, WSL, Dev Containers and Codespaces; English, Simplified and Traditional Chinese
 
 The [user guide](docs/git-actions.md) describes every action.
@@ -72,20 +83,24 @@ The [user guide](docs/git-actions.md) describes every action.
 
 All settings start with `branchwise.`.
 
-| Setting                       | Default         | Description                                                  |
-| ----------------------------- | --------------- | ------------------------------------------------------------ |
-| `autoCenterCommitDetailsView` | `true`          | Centre an opened commit's details vertically                 |
-| `dateFormat`                  | `"Date & Time"` | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"` |
-| `dateType`                    | `"Author Date"` | Show each commit's `"Author Date"` or `"Commit Date"`        |
-| `graphColours`                | 12 colours      | Colours of the graph's lanes, in order                       |
-| `graphStyle`                  | `"rounded"`     | Lines that change lanes: `"rounded"` or `"angular"`          |
-| `initialLoadCommits`          | `300`           | Commits first loaded for a repository or branch              |
-| `loadMoreCommits`             | `100`           | Commits added by **Load Older Commits**                      |
-| `maxDepthOfRepoSearch`        | `0`             | Folder depth searched for repositories                       |
-| `nestedRepoSearchDepth`       | `3`             | Folder depth searched inside each repository for nested ones |
-| `showCurrentBranchByDefault`  | `false`         | Open showing only the checked-out branch                     |
-| `showUncommittedChanges`      | `true`          | Show the uncommitted changes row                             |
-| `tabIconColourTheme`          | `"colour"`      | Graph tab icon in `"colour"` or `"grey"`                     |
+| Setting                       | Default            | Description                                                              |
+| ----------------------------- | ------------------ | ------------------------------------------------------------------------ |
+| `autoCenterCommitDetailsView` | `true`             | Centre an opened commit's details vertically                             |
+| `conflictForecast`            | `"localAndRemote"` | Branches checked for conflicts: `"localAndRemote"`, `"local"` or `"off"` |
+| `dateFormat`                  | `"Date & Time"`    | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"`             |
+| `dateType`                    | `"Author Date"`    | Show each commit's `"Author Date"` or `"Commit Date"`                    |
+| `dragAndDrop`                 | `true`             | Drag commits and branches onto branch labels                             |
+| `graphColours`                | 12 colours         | Colours of the graph's lanes, in order                                   |
+| `graphStyle`                  | `"rounded"`        | Lines that change lanes: `"rounded"` or `"angular"`                      |
+| `initialLoadCommits`          | `300`              | Commits first loaded for a repository or branch                          |
+| `loadMoreCommits`             | `100`              | Commits added by **Load Older Commits**                                  |
+| `maxDepthOfRepoSearch`        | `0`                | Folder depth searched for repositories                                   |
+| `nestedRepoSearchDepth`       | `3`                | Folder depth searched inside each repository for nested ones             |
+| `showCurrentBranchByDefault`  | `false`            | Open showing only the checked-out branch                                 |
+| `showSignatures`              | `true`             | Mark signed commits in the graph                                         |
+| `showUncommittedChanges`      | `true`             | Show the uncommitted changes row                                         |
+| `singleKeyShortcuts`          | `true`             | Let single keys act on the focused commit row                            |
+| `tabIconColourTheme`          | `"colour"`         | Graph tab icon in `"colour"` or `"grey"`                                 |
 
 ## Upgrading from (neo) Git Graph
 

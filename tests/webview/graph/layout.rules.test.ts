@@ -242,7 +242,8 @@ describe("the current commit", () => {
       y: 1,
       colour: 0,
       isCommitted: true,
-      isCurrent: true
+      isCurrent: true,
+      isMerge: false
     });
     expect(allLines(layout).every((drawn) => drawn.isCommitted)).toBe(true);
   });
@@ -324,7 +325,7 @@ describe("decisions on the specification's questions", () => {
     expect(merged).toStrictEqual(
       layoutOf({
         lanes: 2,
-        dots: ["0/0 current uncommitted", "0/0", "1/1", "0/0"],
+        dots: ["0/0 current uncommitted merge", "0/0", "1/1", "0/0"],
         tracks: [
           [
             0,
@@ -347,19 +348,25 @@ describe("decisions on the specification's questions", () => {
     ]);
   });
 
+  // The last column lists the rows that still name two parents, and so keep a merge's dot.
   it.each([
-    ["itself", history("a a", "b"), history("a", "b")],
-    ["an asterisk row above it", history("h b", "* h", "b"), history("h b", "*", "b")],
+    ["itself", history("a a", "b"), history("a", "b"), []],
+    ["an asterisk row above it", history("h b", "* h", "b"), history("h b", "*", "b"), []],
     [
       "an extra parent above it",
       history("x b", "m a x", "a b", "b"),
-      history("x b", "m a", "a b", "b")
+      history("x b", "m a", "a b", "b"),
+      [1]
     ],
-    ["itself as an extra parent", history("m a m", "a"), history("m a", "a")],
-    ["a first parent above it", history("x", "m x y", "y"), history("x", "m y", "y")],
-    ["an only parent above it on the last row", history("a", "b a"), history("a", "b")]
-  ])("Q6 treats a parent that is %s as not loaded", (_, rows, equivalent) => {
-    expect(computeGraphLayout(rows, null)).toStrictEqual(computeGraphLayout(equivalent, null));
+    ["itself as an extra parent", history("m a m", "a"), history("m a", "a"), [0]],
+    ["a first parent above it", history("x", "m x y", "y"), history("x", "m y", "y"), [1]],
+    ["an only parent above it on the last row", history("a", "b a"), history("a", "b"), []]
+  ])("Q6 treats a parent that is %s as not loaded", (_, rows, equivalent, merges) => {
+    const expected = computeGraphLayout(equivalent, null);
+    for (const row of merges) {
+      expected.vertices[row]!.isMerge = true;
+    }
+    expect(computeGraphLayout(rows, null)).toStrictEqual(expected);
   });
 
   it.each([
@@ -376,6 +383,22 @@ describe("decisions on the specification's questions", () => {
     ]
   ])("Q8 counts %s once", (_, rows, equivalent) => {
     expect(computeGraphLayout(rows, "m")).toStrictEqual(computeGraphLayout(equivalent, "m"));
+  });
+
+  it("marks a merge for two different parents, whether or not they are loaded", () => {
+    const layout = computeGraphLayout(
+      history("* m", "m a b", "o a gone", "d a a", "a b", "b", "r"),
+      "m"
+    );
+    expect(layout.vertices.map((vertex) => vertex.isMerge)).toEqual([
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]);
   });
 });
 

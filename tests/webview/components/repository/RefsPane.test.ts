@@ -267,6 +267,53 @@ describe("RefsPane", () => {
     );
   });
 
+  it("shows rows only once the repository state arrives, and keeps them while the rest loads", () => {
+    // A reopened graph can show its rows before the Branches pane has the repository state.
+    act(() => {
+      actions.repositoryState.value = null;
+    });
+    expect(hasRow("feature\norigin/feature")).toBe(false);
+    expect(container.querySelector('nav [role="status"]')).not.toBeNull();
+    act(() => {
+      actions.repositoryState.value = state;
+    });
+    const button = row("feature\norigin/feature");
+
+    // The forecast, a new HEAD, the saved pins and a fresh state all arrive after the rows.
+    const forecast = mocks.postMessage.mock.calls
+      .map((call) => call[0] as { command: string; requestId: string; query?: { kind: string } })
+      .findLast(
+        (message) =>
+          message.command === "repositoryQuery" && message.query?.kind === "conflictForecast"
+      );
+    act(() =>
+      actions.handleRepositoryQuery({
+        repo: "/repo",
+        requestId: forecast!.requestId,
+        data: {
+          kind: "conflictForecast",
+          conflicts: [
+            { branch: "feature", remote: false, files: ["a.ts"], committer: "T", date: 0 }
+          ]
+        },
+        status: null
+      })
+    );
+    act(() => {
+      stores.commitHead.value = "f".repeat(40);
+      stores.repoStates.value = {
+        "/repo": { columnWidths: null, pinnedBranches: ["main"], branchSort: "recent" }
+      };
+      actions.repositoryState.value = { ...state, branches: [...state.branches] };
+    });
+    expect(row("feature\norigin/feature")).toBe(button);
+    act(() => button.click());
+    expect(stores.selectedBranch.value).toBe("feature");
+    act(() => {
+      stores.repoStates.value = {};
+    });
+  });
+
   it("dims remote branches hidden from the graph and shows them again when one is selected", () => {
     act(() => {
       stores.showRemoteBranch.value = false;
@@ -310,6 +357,41 @@ describe("RefsPane", () => {
     expect(navigation.collapsedSections.value.has("tags")).toBe(true);
     act(() => toggle.click());
     expect(hasRow(`v1\n${"1".repeat(40)}`)).toBe(true);
+  });
+
+  it("marks local and remote rows that would conflict, asking for remote branches the graph shows", () => {
+    const sent = mocks.postMessage.mock.calls
+      .map((call) => call[0] as { command: string; requestId: string; query?: { kind: string } })
+      .filter((message) => message.query?.kind === "conflictForecast");
+    expect(sent.at(-1)?.query).toEqual({
+      kind: "conflictForecast",
+      scope: "localAndRemote",
+      hiddenRemotes: [],
+      hiddenBranchPatterns: []
+    });
+    const entry = { committer: "Alice", date: 0 };
+    act(() =>
+      actions.handleRepositoryQuery({
+        repo: "/repo",
+        requestId: sent.at(-1)!.requestId,
+        data: {
+          kind: "conflictForecast",
+          conflicts: [
+            { ...entry, branch: "feature", remote: false, files: ["a"] },
+            { ...entry, branch: "origin/feature", remote: true, files: ["a", "b"] }
+          ]
+        },
+        status: null
+      })
+    );
+    const badge = (title: string) =>
+      row(title).parentElement!.querySelector("[data-conflicts]")?.textContent;
+    expect(badge("feature\norigin/feature")).toBe("1");
+    expect(badge("origin/feature")).toBe("2");
+    expect(badge("origin/main")).toBeUndefined();
+    expect(
+      row("origin/feature").parentElement!.querySelector<HTMLElement>("[data-conflicts]")!.title
+    ).toContain("lastCommitBy");
   });
 
   it("groups remote refs under the longest matching remote name", () => {

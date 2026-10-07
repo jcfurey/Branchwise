@@ -21,12 +21,15 @@ export const PAGE_STRINGS = new Proxy({} as LocalizedStrings, {
 export const PAGE_CONFIG: WebviewConfig = {
   locale: "en",
   dateFormat: "Relative",
+  dragAndDrop: true,
   graphStyle: "angular",
   graphColours: ["#0085d9"],
   initialLoadCommits: 123,
   loadMoreCommits: 50,
   autoCenterCommitDetailsView: false,
-  showCurrentBranchByDefault: false
+  conflictForecast: "localAndRemote",
+  showCurrentBranchByDefault: false,
+  singleKeyShortcuts: true
 };
 
 export const initialized = (): Reply => ({

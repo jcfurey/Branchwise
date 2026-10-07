@@ -263,3 +263,78 @@ export function CloseIcon(props: IconProps) {
     </Icon>
   );
 }
+
+/** A ring round two upright bars: work stopped partway, waiting to be continued. */
+export function PausedIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <circle cx="8" cy="8" r="6.25" />
+      <path d="M6.25 5.5V10.5M9.75 5.5V10.5" />
+    </Icon>
+  );
+}
+
+/** A cloud with an arrow rising into it from below: not yet published. */
+export function PublishIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <path d="M5.25 11.5H4.5A2.9 2.9 0 0 1 4.1 5.75 4.1 4.1 0 0 1 11.9 6.4 2.55 2.55 0 0 1 11.5 11.5H10.75" />
+      <path d="M8 14.75V8.25M5.75 10.5 8 8.25 10.25 10.5" />
+    </Icon>
+  );
+}
+
+/** A commit on a line that breaks off above it: HEAD on a commit, not on a branch. */
+export function DetachedIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <circle cx="8" cy="9.75" r="2.25" />
+      <path d="M8 12V14.75M8 1.25V3.25M8 5.25V7.5" />
+    </Icon>
+  );
+}
+
+/** A key with a round bow and two teeth: a signed commit. */
+export function KeyIcon(props: IconProps) {
+  return (
+    <Icon {...LINE} {...props}>
+      <circle cx="4.75" cy="8" r="3" />
+      <path d="M7.75 8H14.25M11.5 8V10.25M14.25 8V10.75" />
+    </Icon>
+  );
+}
+
+/** What a shield carries: the verdict on a signature. */
+export type ShieldMark =
+  | "check"
+  | "cross"
+  | "question"
+  | "exclamation"
+  | "clock"
+  | "slash"
+  | "none";
+
+const SHIELD_MARKS: Record<Exclude<ShieldMark, "none">, string> = {
+  check: "M5.5 8.1 7.25 9.85 10.5 6.6",
+  cross: "M6.1 6.1 9.9 9.9M9.9 6.1 6.1 9.9",
+  question: "M6.5 6.4A1.5 1.5 0 1 1 8.6 7.75C8.15 8 8 8.3 8 8.75M8 10.9V10.95",
+  exclamation: "M8 5.5V8.5M8 10.9V10.95",
+  clock: "M8 5.25V8L9.75 9.25",
+  slash: "M5.25 10.75 10.75 5.25"
+};
+
+/**
+ * A shield with a mark on it: a tick, a cross, a question or exclamation mark, a clock's hands or
+ * a stroke. Without a mark its outline is broken, as for a commit that has no signature.
+ */
+export function ShieldIcon({ mark, ...props }: IconProps & { mark: ShieldMark }) {
+  return (
+    <Icon {...LINE} {...props}>
+      <path
+        d="M8 1.5 13.25 3.5V7.5C13.25 10.75 11.1 13.25 8 14.5 4.9 13.25 2.75 10.75 2.75 7.5V3.5z"
+        stroke-dasharray={mark === "none" ? "2 1.75" : undefined}
+      />
+      {mark === "none" ? null : <path d={SHIELD_MARKS[mark]} />}
+    </Icon>
+  );
+}

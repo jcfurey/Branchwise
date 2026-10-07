@@ -13,6 +13,7 @@ describe("webview constants", () => {
     expect({ ...constants }).toEqual({
       SHOW_ALL_BRANCHES: "*",
       UNCOMMITTED_CHANGES: "*",
+      BATCH_LIMIT: 100,
       ROW_HEIGHT: 24,
       TABLE_HEADER_HEIGHT: 32,
       COMMIT_DETAILS_HEIGHT: 250,

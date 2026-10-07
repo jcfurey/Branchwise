@@ -78,6 +78,11 @@ export function getWebviewLocalizedStrings() {
     // The title of VS Code's own git.init command, which the button runs.
     initializeRepo: vscode.l10n.t("Initialize Repository"),
     unableToInitializeRepo: vscode.l10n.t("Unable to create a Git repository: {0}"),
+    // The titles of VS Code's own git.clone and File > Open Folder, which the other buttons run.
+    cloneRepo: vscode.l10n.t("Clone Repository…"),
+    unableToCloneRepo: vscode.l10n.t("Unable to clone a Git repository: {0}"),
+    openFolder: vscode.l10n.t("Open Folder…"),
+    unableToOpenFolder: vscode.l10n.t("Unable to open a folder: {0}"),
 
     // Error dialog titles. The reason, when there is one, is shown under the title.
     unableToLoad: vscode.l10n.t("Unable to load the graph"),
@@ -147,6 +152,26 @@ export function getWebviewLocalizedStrings() {
     commitUnpulled: vscode.l10n.t("Not pulled: only the tracked remote branch has this commit"),
     conflictForecast: vscode.l10n.t("Merging this branch into {0} would conflict in:"),
     conflictForecastMore: vscode.l10n.t("and {0} more files"),
+    // A remote branch: {0} is the checked-out branch, then the files follow, one per line.
+    teamConflictForecast: vscode.l10n.t("Would conflict with your branch {0} in:"),
+    // {0} is the committer's name, {1} how long ago, such as "2 days ago".
+    lastCommitBy: vscode.l10n.t("Last commit by {0}, {1}"),
+    teamOverlapOne: vscode.l10n.t("1 teammate's branch would conflict with yours"),
+    teamOverlapMany: vscode.l10n.t("{0} teammates' branches would conflict with yours"),
+    teamOverlapTitle: vscode.l10n.t("Remote branches that would conflict with {0}"),
+    teamOverlapHint: vscode.l10n.t(
+      "Recent work on the remote that would not merge cleanly into your branch. Choose a branch to show it in the graph."
+    ),
+    // Parts of the summary a screen reader reads for a commit row, after its subject, author and
+    // age, joined with commas: "…, merge of 2 parents, unpushed, branch main, tag v1.0".
+    rowHead: vscode.l10n.t("checked out"),
+    rowMergeOf: vscode.l10n.t("merge of {0} parents"),
+    rowUnpushed: vscode.l10n.t("unpushed"),
+    rowUnpulled: vscode.l10n.t("unpulled"),
+    rowConflictsWith: vscode.l10n.t("has conflicts with {0}"),
+    rowBranch: vscode.l10n.t("branch {0}"),
+    rowRemote: vscode.l10n.t("remote branch {0}"),
+    rowTag: vscode.l10n.t("tag {0}"),
     copyTagName: vscode.l10n.t("Copy Tag Name"),
     copyBranchName: vscode.l10n.t("Copy Branch Name"),
     deleteTag: vscode.l10n.t("Delete Local Tag"),
@@ -158,6 +183,29 @@ export function getWebviewLocalizedStrings() {
     openCommitOnHost: vscode.l10n.t("Open Commit on {0}"),
     openBranchOnHost: vscode.l10n.t("Open Branch on {0}"),
     openTagOnHost: vscode.l10n.t("Open Tag on {0}"),
+
+    // Keyboard shortcuts: the sheet's title, groups and descriptions. Menu titles name the rest.
+    keyboardShortcuts: vscode.l10n.t("Keyboard Shortcuts"),
+    shortcutGroupNavigation: vscode.l10n.t("Navigation"),
+    shortcutGroupCommit: vscode.l10n.t("Commit actions"),
+    shortcutGroupPanels: vscode.l10n.t("Panels"),
+    shortcutKeysColumn: vscode.l10n.t("Keys"),
+    shortcutActionColumn: vscode.l10n.t("Action"),
+    shortcutMove: vscode.l10n.t("Move to the previous or next commit"),
+    shortcutFirstLast: vscode.l10n.t("Move to the first or last loaded commit"),
+    shortcutExtendSelection: vscode.l10n.t("Move and add the commits passed to the selection"),
+    shortcutSelect: vscode.l10n.t("Select or deselect the commit; with Shift, select a range"),
+    shortcutDetails: vscode.l10n.t("Open or close the commit's details"),
+    shortcutClose: vscode.l10n.t("Close the details, a dialog or a menu"),
+    shortcutMenu: vscode.l10n.t("Open the commit's menu"),
+    shortcutSheet: vscode.l10n.t("Show keyboard shortcuts"),
+    shortcutOpenOnHost: vscode.l10n.t("Open Commit on GitHub or GitLab"),
+    shortcutRowHint: vscode.l10n.t("These keys act on the commit row that has focus."),
+    shortcutsOff: vscode.l10n.t(
+      "Single keys are turned off. Turn on the branchwise.singleKeyShortcuts setting to use them."
+    ),
+    // Announced, not shown, when a key's action does not apply to the focused row.
+    shortcutUnavailable: vscode.l10n.t("Not available here: {0}"),
 
     // What a failed copy was copying, inserted mid-sentence into unableToCopyToClipboard
     typeCommitHash: vscode.l10n.t("commit ID"),
@@ -230,6 +278,8 @@ export function getWebviewLocalizedStrings() {
     detailAuthor: vscode.l10n.t("Author: {0}"),
     detailDate: vscode.l10n.t("Date: {0}"),
     detailCommitter: vscode.l10n.t("Committer: {0}"),
+    detailSignature: vscode.l10n.t("Signature: {0}"),
+
     // The branches and tags that contain the commit, loaded after the rest of the details.
     // {0} is a tag, shown as a button that selects its commit.
     checkingRefs: vscode.l10n.t("Checking…"),
@@ -241,6 +291,56 @@ export function getWebviewLocalizedStrings() {
     followsTag: vscode.l10n.t("Follows {0}"),
     focusBranchChip: vscode.l10n.t("Focus {0} in the graph"),
     selectTaggedCommit: vscode.l10n.t("Select the commit tagged {0}"),
+
+    // Commit signatures: the mark on a signed commit's row, then the verdicts in its details.
+    // {0} in signatureGoodBy and signatureSigner is the signer's name, or an SSH principal such
+    // as an email address. "gpg.ssh.allowedSignersFile" is a Git setting and stays as it is.
+    signedCommit: vscode.l10n.t("Signed — open the details to verify"),
+    signatureChecking: vscode.l10n.t("Checking the signature…"),
+    signatureGoodBy: vscode.l10n.t("Good signature by {0}"),
+    signatureGood: vscode.l10n.t("Good signature"),
+    signatureUntrusted: vscode.l10n.t("Good signature from a key that is not trusted"),
+    signatureBad: vscode.l10n.t("Bad signature"),
+    signatureExpired: vscode.l10n.t("Expired signature"),
+    signatureExpiredKey: vscode.l10n.t("Signed with an expired key"),
+    signatureRevoked: vscode.l10n.t("Signed with a revoked key"),
+    signatureUnchecked: vscode.l10n.t("Signature can't be checked"),
+    signatureUnsigned: vscode.l10n.t("Unsigned"),
+    signatureSigner: vscode.l10n.t("Signer: {0}"),
+    // {0} is the start of the key's fingerprint.
+    signatureKey: vscode.l10n.t("Key {0}"),
+    // {0} is one of the trust levels below.
+    signatureTrust: vscode.l10n.t("Trust: {0}"),
+    trustNever: vscode.l10n.t("never"),
+    trustMarginal: vscode.l10n.t("marginal"),
+    trustFully: vscode.l10n.t("full"),
+    trustUltimate: vscode.l10n.t("ultimate"),
+    signatureMissingKey: vscode.l10n.t("The key that made it is not available here."),
+    // {0} is the program's name: gpg, gpgsm or ssh-keygen.
+    signatureNoProgram: vscode.l10n.t("Git could not start {0} to check it."),
+    signatureAllowedSigners: vscode.l10n.t(
+      "Set gpg.ssh.allowedSignersFile to check SSH signatures."
+    ),
+    signatureTimeout: vscode.l10n.t("The check took too long and was stopped."),
+    signatureUnreadable: vscode.l10n.t("Git could not read the signature."),
+
+    // Drag and drop onto branch labels. Each action names what the drop offers, beside the
+    // pointer; each hint says why a branch refuses the drop.
+    // {0} is a short commit ID, {1} the checked-out branch.
+    dropCherryPick: vscode.l10n.t("Cherry-pick {0} onto {1}"),
+    // {0} is the dragged branch, {1} the branch it was dropped on.
+    dropMerge: vscode.l10n.t("Merge {0} into {1}"),
+    dropRebase: vscode.l10n.t("Rebase {0} onto {1}"),
+    // {0} is the branch the commit was dragged over.
+    dropCherryPickCheckout: vscode.l10n.t(
+      "Check out {0} first: a cherry-pick applies to the checked-out branch"
+    ),
+    // {0} is the branch dragged over, {1} the dragged branch.
+    dropMergeOrRebaseCheckout: vscode.l10n.t(
+      "Check out {0} to merge {1} into it, or check out {1} to rebase it onto {0}"
+    ),
+    // {0} is the dragged branch, {1} the remote branch dragged over.
+    dropRebaseCheckout: vscode.l10n.t("Check out {0} to rebase it onto {1}"),
 
     // Uncommitted changes. {0} is the number of changed paths; the singular is used for 1.
     uncommittedChange: vscode.l10n.t("Uncommitted changes in {0} file"),
@@ -264,7 +364,15 @@ export function getWebviewLocalizedStrings() {
     tooltipAddition: vscode.l10n.t("{0} line added"),
     tooltipAdditions: vscode.l10n.t("{0} lines added"),
     tooltipDeletion: vscode.l10n.t("{0} line deleted"),
-    tooltipDeletions: vscode.l10n.t("{0} lines deleted")
+    tooltipDeletions: vscode.l10n.t("{0} lines deleted"),
+    // What each status letter in a commit's file tree stands for: A, M, D, R, C, T and U.
+    changeAdded: vscode.l10n.t("Added"),
+    changeModified: vscode.l10n.t("Modified"),
+    changeDeleted: vscode.l10n.t("Deleted"),
+    changeRenamed: vscode.l10n.t("Renamed"),
+    changeCopied: vscode.l10n.t("Copied"),
+    changeTypeChanged: vscode.l10n.t("Type changed"),
+    changeUnmerged: vscode.l10n.t("Unmerged")
   };
 }
 

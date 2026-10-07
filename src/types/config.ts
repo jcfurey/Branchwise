@@ -1,3 +1,5 @@
+import type { ConflictForecastScope } from "@/backend/types";
+
 /**
  * Values of the `branchwise.dateFormat` setting. The extension passes a hand-edited value on
  * unchecked, so readers show anything they do not recognise as `"Date & Time"`.
@@ -15,10 +17,18 @@ export type GraphStyle = "rounded" | "angular";
 export type WebviewConfig = Readonly<{
   /** Centre the opened commit details in the window, rather than scroll only as far as needed. */
   autoCenterCommitDetailsView: boolean;
+  /**
+   * Which branches the conflict forecast tries. The page reads anything but `local` and `off` as
+   * `localAndRemote`, the default.
+   */
+  conflictForecast: ConflictForecastScope;
   dateFormat: DateFormat;
+  /** Let commits and branches be dragged onto branch labels to start an action. */
+  dragAndDrop: boolean;
   /**
    * The branch palette, in the order the graph hands colours out. Entries are kept exactly as
-   * written in the setting, and the list may be empty.
+   * written in the setting, and the list may be empty. While the user has not set it, the entries
+   * are CSS `var()` references to the theme colours `branchwise.graphLane1` and on.
    */
   graphColours: readonly string[];
   graphStyle: GraphStyle;
@@ -30,4 +40,6 @@ export type WebviewConfig = Readonly<{
   locale: string;
   /** In filter mode, open a repository on its checked-out branch rather than on every branch. */
   showCurrentBranchByDefault: boolean;
+  /** Let single keys, such as `b` for Create Branch, act on the focused commit row. */
+  singleKeyShortcuts: boolean;
 }>;

@@ -14,7 +14,9 @@ let repo: string;
 beforeEach(() => {
   repo = makeRepo();
 });
-afterEach(() => rmSync(repo, { recursive: true, force: true }));
+// A query that fails early leaves its other Git reads running, and Windows keeps the folder
+// locked until they exit.
+afterEach(() => rmSync(repo, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }));
 const input = {
   branchName: "",
   maxCommits: 300,
