@@ -24,6 +24,7 @@ const settings: WebviewConfig = {
   initialLoadCommits: 300,
   issueLinks: [],
   loadMoreCommits: 50,
+  markAppliedCommits: true,
   locale: "en",
   showCurrentBranchByDefault: false,
   singleKeyShortcuts: true

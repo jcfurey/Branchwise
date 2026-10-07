@@ -27,6 +27,7 @@ import {
 } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { openUrl } from "@/webview/lib/actions/open-url";
+import { findEquivalentCommit } from "@/webview/lib/applied-commits";
 import {
   branchPage,
   branchReviewRequest,
@@ -40,6 +41,7 @@ import {
 import { openRemoteAction } from "@/webview/lib/remote-actions";
 import { repositoryState } from "@/webview/lib/repository-actions";
 import type { ShortcutId } from "@/webview/lib/shortcuts";
+import { commitHead } from "@/webview/lib/stores";
 import { patternLike } from "@/webview/lib/stores/hidden-branches.store";
 import type { ContextMenuEntry } from "@/webview/types";
 import { format } from "@/webview/utils/format";
@@ -413,6 +415,11 @@ export function commitMenu(
       { title: more(l10n.createFixupMenu), onClick: () => openFixup(hash) },
       { title: l10n.openAllChanges, onClick: () => openAllCommitChanges(hash) },
       compareEntry(hash),
+      // A commit of another branch may have been picked onto this one under another ID. A merge
+      // has no single change to look for.
+      ...(!onCheckedOutLine(hash) && commit.parentHashes.length < 2 && commitHead.value !== null
+        ? [{ title: l10n.findEquivalentCommit, onClick: () => findEquivalentCommit(hash) }]
+        : []),
       { title: l10n.bisectChooseGood, onClick: () => chooseBisectCommit("good", hash) },
       { title: l10n.bisectChooseBad, onClick: () => chooseBisectCommit("bad", hash) },
       ...hostEntry(l10n.openCommitOnHost, commitPage(repositoryState.peek(), hash), "openOnHost"),

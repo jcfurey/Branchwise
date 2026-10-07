@@ -15,6 +15,7 @@ const settings = (overrides: Partial<WebviewConfig> = {}): WebviewConfig => ({
   initialLoadCommits: 50,
   issueLinks: [],
   loadMoreCommits: 25,
+  markAppliedCommits: true,
   locale: "fr",
   showCurrentBranchByDefault: true,
   singleKeyShortcuts: true,

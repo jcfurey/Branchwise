@@ -153,6 +153,7 @@ export const extConfig = {
   /** The valid entries of `branchwise.issueLinks`; the others are reported in the log. */
   issueLinks: () => readIssueLinks(setting<unknown>("issueLinks", [])),
   loadMoreCommits: () => wholeNumberSetting("loadMoreCommits", 1, 100),
+  markAppliedCommits: () => setting<boolean>("markAppliedCommits", true),
   maxDepthOfRepoSearch: () => wholeNumberSetting("maxDepthOfRepoSearch", 0, 0),
   nestedRepoSearchDepth: () => wholeNumberSetting("nestedRepoSearchDepth", 0, 3),
   showCurrentBranchByDefault: () => setting<boolean>("showCurrentBranchByDefault", false),

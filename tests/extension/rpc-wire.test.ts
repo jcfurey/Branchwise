@@ -105,6 +105,7 @@ test("hands the page its strings and settings", async () => {
     initialLoadCommits: 300,
     issueLinks: [],
     loadMoreCommits: 100,
+    markAppliedCommits: true,
     locale: "en",
     showCurrentBranchByDefault: false,
     singleKeyShortcuts: true

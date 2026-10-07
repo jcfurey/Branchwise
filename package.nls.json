@@ -26,6 +26,7 @@
   "config.issueLinks.pattern": "A JavaScript regular expression of at most 200 characters that cannot match empty text",
   "config.issueLinks.url": "The link's http: or https: address; $0 is the whole match and $1 to $9 are its groups",
   "config.loadMoreCommits": "The number of further commits loaded each time the Load Older Commits button is pressed. The button appears below the last commit only while the repository has more commits.",
+  "config.markAppliedCommits": "When a branch is focused or the graph shows one branch, mark its commits whose change the checked-out branch already has, as after a cherry-pick or a rebase, by comparing patch IDs. Nothing is compared for a branch with more than 2,000 commits the checked-out branch lacks.",
   "config.maxDepthOfRepoSearch": "How many levels of subfolders below each workspace folder are searched for Git repositories. With 0, only the workspace folders themselves are checked (a folder inside a repository finds that repository). Initialized submodules of the repositories found are always listed.",
   "config.nestedRepoSearchDepth": "How many levels of subfolders inside each repository found are searched for repositories cloned there, which the Workspace pane lists under it. Hidden folders and node_modules are skipped. With 0, repositories inside other repositories are only found as submodules.",
   "config.showCurrentBranchByDefault": "Show the current branch by default when Branchwise is opened. Default: false (show all branches)",

@@ -2,7 +2,7 @@ import { useComputed, useSignal } from "@preact/signals";
 import { type ComponentProps, Fragment } from "preact";
 import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 
-import type { ConflictForecastEntry, HistoryEntry } from "@/backend/types";
+import type { AppliedCommits, ConflictForecastEntry, HistoryEntry } from "@/backend/types";
 import { CommitDetails } from "@/webview/components/commit/CommitDetails";
 import { CommitGraph } from "@/webview/components/commit/CommitGraph";
 import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
@@ -45,6 +45,8 @@ type CommitTableProps = {
   pushStatus?: { unpushed: Array<string>; unpulled: Array<string> } | null;
   /** Branches that would not merge cleanly into HEAD, with the files in conflict. */
   conflicts?: Array<ConflictForecastEntry> | undefined;
+  /** Commits of the focused or shown branch whose change the checked-out branch already has. */
+  applied?: AppliedCommits["applied"] | undefined;
   keepMergedBright?: boolean;
   dimming?: FocusDimming;
 };
@@ -181,6 +183,7 @@ export function CommitTable({
   focus = null,
   pushStatus = null,
   conflicts,
+  applied,
   keepMergedBright = false,
   dimming = "subtle"
 }: CommitTableProps) {
@@ -191,6 +194,10 @@ export function CommitTable({
     return status;
   }, [pushStatus]);
   const conflictsOf = useMemo(() => conflictsByBranch(conflicts), [conflicts]);
+  const appliedOf = useMemo(
+    () => new Map(applied?.map((commit) => [commit.hash, commit.equivalent])),
+    [applied]
+  );
   const layout = useMemo(() => computeGraphLayout(commits, head), [commits, head]);
   const relations = useMemo(() => commitRelations(commits, focus), [commits, focus]);
   const { rowOf, messages } = useMemo(() => indexRows(commits), [commits]);
@@ -396,6 +403,7 @@ export function CommitTable({
                 dimming={dimming}
                 push={pushOf.get(commit.hash)}
                 conflicts={conflictsOf}
+                applied={appliedOf.get(commit.hash)}
                 expanded={index === expandedRow}
                 onSelect={toggles.get(commit.hash)}
                 onRevealLane={onRevealLane}

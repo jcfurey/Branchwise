@@ -62,6 +62,13 @@ tree. `branchwise.showSignatures` (on by default) marks signed commits with a sm
 reads the loaded commits once more; turning it off saves about 10 ms for 300 rows and 40 ms for
 3,000 (see [performance](performance.md)). The commit details still check signatures. See [commit signatures](git-actions.md#commit-signatures).
 
+`branchwise.markAppliedCommits` (default `true`) marks the commits of a focused or filtered branch
+whose change the checked-out branch already has, as after a cherry-pick or a rebase, with a muted
+**applied**. Git compares patch IDs for that branch alone, and skips one with more than 2,000
+commits the checked-out branch lacks. Turn it off to leave the marks out and start no comparison;
+**Find Equivalent Commit** stays in the commit menu. See
+[commits the checked-out branch already has](git-actions.md#commits-the-checked-out-branch-already-has).
+
 `branchwise.dragAndDrop` (default `true`) lets commit rows and local branches be dragged onto
 branch labels in the graph and the Branches pane to cherry-pick, merge or rebase, each after a
 confirmation. Turn it off if you drag by accident; every action stays in the menus. See

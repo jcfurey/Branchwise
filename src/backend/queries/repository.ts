@@ -6,6 +6,7 @@ import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import { loadAbsorbPlan } from "@/backend/queries/absorb";
+import { findEquivalentCommit, loadAppliedCommits } from "@/backend/queries/appliedCommits";
 import { loadBisect } from "@/backend/queries/bisect";
 import { loadBranchFocus } from "@/backend/queries/branchFocus";
 import { loadConflictForecast } from "@/backend/queries/conflictForecast";
@@ -368,6 +369,14 @@ export async function repositoryQuery(
       const { kind, hash, ...visibility } = query;
       return { kind, ...(await loadContainingRefs(git, hash, visibility)) };
     }
+    case "appliedCommits":
+      return { kind: "appliedCommits", ...(await loadAppliedCommits(git, query.branch)) };
+    case "equivalentCommit":
+      return {
+        kind: "equivalentCommit",
+        hash: query.hash,
+        ...(await findEquivalentCommit(git, query.hash))
+      };
     case "pushStatus":
       return { kind: "pushStatus", ...(await loadPushStatus(git)) };
     case "conflictForecast":

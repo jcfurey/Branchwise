@@ -306,6 +306,11 @@
           "default": 100,
           "minimum": 1
         },
+        "branchwise.markAppliedCommits": {
+          "description": "%config.markAppliedCommits%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.maxDepthOfRepoSearch": {
           "description": "%config.maxDepthOfRepoSearch%",
           "type": "integer",

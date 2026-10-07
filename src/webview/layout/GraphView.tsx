@@ -22,6 +22,7 @@ import {
   setFocusDimming,
   toggleBranchFocus
 } from "@/webview/lib/actions";
+import { appliedCommitsQuery } from "@/webview/lib/applied-commits";
 import { conflictForecastQuery } from "@/webview/lib/conflict-forecast";
 import { commitMenuHintDismissed, dismissCommitMenuHint } from "@/webview/lib/hints";
 import {
@@ -283,6 +284,11 @@ export function GraphView() {
       : null
   );
 
+  // Only for a branch the user is looking at: comparing patches is too slow for every branch.
+  const applied = useRepositoryQuery<"appliedCommits">(
+    rows !== undefined && rows.length > 0 ? appliedCommitsQuery() : null
+  );
+
   const pushStatus = useRepositoryQuery<"pushStatus">(
     rows !== undefined && rows.length > 0 ? { kind: "pushStatus" } : null
   );
@@ -365,6 +371,7 @@ export function GraphView() {
         focus={focusData}
         pushStatus={pushStatus.data}
         conflicts={conflictForecast.data?.conflicts}
+        applied={applied.data?.applied}
         keepMergedBright={branchDisplay.value === "ancestors"}
         dimming={focusDimming.value}
       />

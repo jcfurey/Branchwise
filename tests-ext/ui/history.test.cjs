@@ -2121,6 +2121,61 @@ suite("Branchwise workflow UI", function () {
     await button("Clear focus");
   });
 
+  test("marks a focused branch's commits that main already has, and jumps to main's copy", async () => {
+    const dir = directory();
+    init(dir);
+    commit("f", "applied base", dir);
+    git(["checkout", "-b", "applied-topic"], dir);
+    commit("picked", "applied picked", dir);
+    const picked = git(["rev-parse", "HEAD"], dir);
+    commit("kept", "applied kept", dir);
+    const kept = git(["rev-parse", "HEAD"], dir);
+    git(["checkout", "main"], dir);
+    commit("m", "applied main", dir);
+    git(["cherry-pick", picked], dir);
+    const copy = git(["rev-parse", "HEAD"], dir);
+    const refs = () => git(["for-each-ref", "--format=%(refname) %(objectname)"], dir);
+    const before = [
+      refs(),
+      git(["symbolic-ref", "HEAD"], dir),
+      git(["status", "--porcelain"], dir)
+    ];
+    await openRepo(dir);
+    await contextRef("applied-topic");
+    await menu("Focus this branch");
+    const mark = (hash) =>
+      graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${hash}"] [data-applied-as]')?.dataset.appliedAs ?? null`
+      );
+    await until(async () => (await mark(picked)) === copy, "applied mark on the picked commit");
+    assert.equal(await mark(kept), null);
+    assert.equal(await mark(copy), null);
+    assert.equal(
+      await graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${picked}"] [data-applied-as]').title`
+      ),
+      `Already in main as ${copy.slice(0, 8)}: applied picked`
+    );
+    await graph.evaluate(
+      `document.querySelector('tr[data-commit-hash="${picked}"] [data-applied-as]').click()`
+    );
+    const selected = (hash) =>
+      graph.evaluate(
+        `document.querySelector('tr[data-commit-hash="${hash}"]')?.getAttribute('aria-selected')`
+      );
+    await until(
+      async () => (await selected(copy)) === "true",
+      "main's copy selected from the mark"
+    );
+    assert.equal(await selected(picked), "false");
+    // Looking changed nothing: the refs, the checked-out branch and the work tree are as they were.
+    assert.deepEqual(
+      [refs(), git(["symbolic-ref", "HEAD"], dir), git(["status", "--porcelain"], dir)],
+      before
+    );
+    await button("Clear focus");
+  });
+
   test("acts on the focused commit with single keys and lists them on the shortcut sheet", async () => {
     const dir = directory();
     init(dir);
