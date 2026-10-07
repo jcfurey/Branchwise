@@ -8,8 +8,10 @@ import { buildFileTree, type FileTreeFolder, type FileTreeNode } from "@/webview
 const config: WebviewConfig = {
   autoCenterCommitDetailsView: true,
   branchHoverPreview: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: [],
   graphStyle: "rounded",
@@ -17,6 +19,8 @@ const config: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 100,
   locale: "en",
+  overviewMarkers: true,
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
   showNearestBranch: true,
   singleKeyShortcuts: true

@@ -26,8 +26,10 @@ type DispatcherModule = typeof import("@/webview/lib/dispatcher");
 const expectedSettings: WebviewConfig = {
   autoCenterCommitDetailsView: true,
   branchHoverPreview: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: [],
   graphStyle: "rounded",
@@ -35,6 +37,8 @@ const expectedSettings: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 100,
   locale: "en",
+  overviewMarkers: true,
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
   showNearestBranch: true,
   singleKeyShortcuts: true

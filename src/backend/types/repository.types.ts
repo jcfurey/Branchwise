@@ -194,6 +194,22 @@ export type ContainingRefs = {
   follows: RefDetails | null;
 };
 /**
+ * What a commit changed against its first parent, or against the empty tree for a commit without
+ * parents: the files its details list. It also carries the start of the message after the
+ * subject, for the hover card, as the same Git process reads both.
+ */
+export type CommitStats = {
+  /** Files changed, binary ones included. */
+  files: number;
+  /** Lines added and deleted in text files. A binary file counts as a file with neither. */
+  additions: number;
+  deletions: number;
+  /** The first lines of the message body, without the blank lines around it. */
+  body: string;
+  /** Whether the body goes on past `body`. */
+  bodyCut: boolean;
+};
+/**
  * Which branches a `containingRefs` query may name: those the graph shows, under the same
  * remote and hidden-branch choices as a `loadCommits` request.
  */
@@ -211,6 +227,8 @@ export type RepositoryQuery =
   /** With `tag`, `branch` is a tag's name, for the preview of a tag label's history. */
   | { kind: "branchFocus"; branch: string; hashes: string[]; tag?: boolean }
   | ({ kind: "containingRefs"; hash: string } & ContainingRefsScope)
+  /** The change counts of the commits with these full IDs. */
+  | { kind: "commitStats"; hashes: string[] }
   | { kind: "pushStatus" }
   | {
       kind: "conflictForecast";
@@ -245,6 +263,8 @@ export type RepositoryQueryData =
   | { kind: "workingTree"; files: WorkingTreeFile[] }
   | { kind: "branchFocus"; tip: string; direct: string[]; merged: string[] }
   | ({ kind: "containingRefs" } & ContainingRefs)
+  /** By commit ID. A commit Git does not have is left out. */
+  | { kind: "commitStats"; stats: Record<string, CommitStats> }
   | { kind: "pushStatus"; unpushed: string[]; unpulled: string[] }
   | { kind: "conflictForecast"; conflicts: ConflictForecastEntry[] }
   | { kind: "replayForecast"; forecast: ReplayForecast }

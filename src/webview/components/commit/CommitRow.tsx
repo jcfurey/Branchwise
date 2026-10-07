@@ -4,6 +4,7 @@ import { useMemo } from "preact/hooks";
 
 import type { ConflictForecastEntry, GitRef, HistoryEntry } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
+import { ChangesCell } from "@/webview/components/commit/ChangeCounts";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
 import { SignedMark } from "@/webview/components/commit/SignatureBadge";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
@@ -64,9 +65,18 @@ type CommitRowProps = {
   conflicts?: ReadonlyMap<string, ConflictForecastEntry>;
   /** Whether the details of this row are open beneath it. */
   expanded: boolean;
+  /** Whether this commit is the first of its day, below a commit from another day. */
+  dayStart?: boolean;
   onSelect: (() => void) | undefined;
   /** Asks the table to scroll the graph sideways until this commit's dot shows. */
   onRevealLane?: (hash: string) => void;
+  /** Whether the row ends with a cell of the Changes column. */
+  showChanges?: boolean;
+  /**
+   * Whether a card about the commit shows when the pointer rests on its message. The message then
+   * has no tooltip of its own, which would cover the card.
+   */
+  hoverCards?: boolean;
 };
 
 /** Where a keyboard-opened menu hangs, from the row's left edge, in pixels. */
@@ -238,8 +248,11 @@ export function CommitRow({
   push,
   conflicts,
   expanded,
+  dayStart = false,
   onSelect,
-  onRevealLane
+  onRevealLane,
+  showChanges = false,
+  hoverCards = false
 }: CommitRowProps) {
   const { hash } = commit;
   const uncommitted = hash === UNCOMMITTED_CHANGES;
@@ -362,6 +375,7 @@ export function CommitRow({
       data-branch-relation={relation === "merged" && keepMergedBright ? "direct" : relation}
       data-preview-branch={previewBranch}
       data-emphasized={String(emphasized)}
+      data-day-start={dayStart ? "" : undefined}
       tabIndex={tabStop ? 0 : -1}
       draggable={uncommitted || !dragAndDropOn() ? undefined : true}
       aria-selected={uncommitted ? expanded : selected}
@@ -418,7 +432,11 @@ export function CommitRow({
               )}
             </span>
           )}
-          <span class={`min-w-0 truncate ${nearest === undefined ? "flex-1" : ""}`} title={message}>
+          <span
+            class={`min-w-0 truncate ${nearest === undefined ? "flex-1" : ""}`}
+            data-commit-message={uncommitted ? undefined : true}
+            title={hoverCards && !uncommitted ? "" : message}
+          >
             {isHead || uncommitted ? <b>{message}</b> : message}
           </span>
           {nearest !== undefined && (
@@ -473,6 +491,7 @@ export function CommitRow({
       <td class={`${CELL} font-mono`} title={uncommitted ? undefined : hash}>
         {uncommitted ? null : abbrevCommit(hash)}
       </td>
+      {showChanges && <ChangesCell hash={hash} class={CELL} />}
     </tr>
   );
 }

@@ -16,8 +16,10 @@ function manifestChoices(key: string): Array<string> {
 const settings: WebviewConfig = {
   autoCenterCommitDetailsView: false,
   branchHoverPreview: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Relative",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: ["#123456"],
   graphStyle: "angular",
@@ -25,6 +27,8 @@ const settings: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 25,
   locale: "de",
+  overviewMarkers: true,
+  showChangesColumn: false,
   showCurrentBranchByDefault: true,
   showNearestBranch: true,
   singleKeyShortcuts: true
@@ -47,12 +51,14 @@ describe("WebviewConfig", () => {
     expect(replaced.graphColours).toBe(palette);
   });
 
-  it("holds exactly the fourteen display settings", () => {
+  it("holds exactly the eighteen display settings", () => {
     expectTypeOf<keyof WebviewConfig>().toEqualTypeOf<
       | "autoCenterCommitDetailsView"
       | "branchHoverPreview"
+      | "commitHoverCards"
       | "conflictForecast"
       | "dateFormat"
+      | "dateSeparators"
       | "dragAndDrop"
       | "graphColours"
       | "graphStyle"
@@ -60,11 +66,13 @@ describe("WebviewConfig", () => {
       | "issueLinks"
       | "loadMoreCommits"
       | "locale"
+      | "overviewMarkers"
+      | "showChangesColumn"
       | "showCurrentBranchByDefault"
       | "showNearestBranch"
       | "singleKeyShortcuts"
     >();
-    expect(Object.keys(settings)).toHaveLength(14);
+    expect(Object.keys(settings)).toHaveLength(18);
   });
 });
 

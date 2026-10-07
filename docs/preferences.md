@@ -67,6 +67,28 @@ branch labels in the graph and the Branches pane to cherry-pick, merge or rebase
 confirmation. Turn it off if you drag by accident; every action stays in the menus. See
 [drag and drop](git-actions.md#drag-and-drop).
 
+`branchwise.dateSeparators` (default `true`) draws a faint line above the first commit of each
+day and, once you scroll down, names the day of the topmost commit in a small label under the
+column headings. Days follow `branchwise.dateType` and your local time zone. Turn it off for a
+plainer graph; the date column is unchanged either way. See
+[days in the graph](git-actions.md#days-in-the-graph).
+
+`branchwise.commitHoverCards` (default `true`) shows a card with a commit's whole message, author,
+date, IDs and change counts when the pointer rests on its message, or when the keyboard rests on
+its row. Turn it off if the card gets in the way; the commit details hold the same information.
+With it on, the message has no tooltip of its own.
+
+`branchwise.showChangesColumn` (default `false`) adds a **Changes** column, such as **+12 −3**,
+with the number of files in its tooltip. The counts are read only for the rows in sight, as you
+scroll, so a long history costs no more than a short one. See
+[commit cards and change counts](git-actions.md#commit-cards-and-change-counts).
+
+`branchwise.overviewMarkers` (default `true`) shows the strip beside the commit table that marks
+HEAD, branch tips and tags, the selection, the open commit and unpushed commits across
+the whole loaded history, with a band for the rows on screen; click or drag on it to scroll.
+Turn it off to give the table those 10 pixels back. See
+[overview strip](git-actions.md#overview-strip).
+
 ### Branch previews and nearest branches
 
 `branchwise.branchHoverPreview` (default `true`) highlights a branch's or tag's commits, more

@@ -23,8 +23,10 @@ beforeAll(async () => {
 const changed: WebviewConfig = {
   autoCenterCommitDetailsView: true,
   branchHoverPreview: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date Only",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: ["#ff0000"],
   graphStyle: "angular",
@@ -32,6 +34,8 @@ const changed: WebviewConfig = {
   issueLinks: [],
   loadMoreCommits: 100,
   locale: "en",
+  overviewMarkers: true,
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
   showNearestBranch: true,
   singleKeyShortcuts: true

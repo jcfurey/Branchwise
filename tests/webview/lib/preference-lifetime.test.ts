@@ -43,8 +43,10 @@ async function freshPanel() {
   initializeWebviewConfig({
     autoCenterCommitDetailsView: true,
     branchHoverPreview: true,
+    commitHoverCards: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dateSeparators: true,
     dragAndDrop: true,
     graphColours: [],
     graphStyle: "rounded",
@@ -52,6 +54,8 @@ async function freshPanel() {
     issueLinks: [],
     loadMoreCommits: 100,
     locale: "en",
+    overviewMarkers: true,
+    showChangesColumn: false,
     showCurrentBranchByDefault: false,
     showNearestBranch: true,
     singleKeyShortcuts: true

@@ -1,3 +1,5 @@
+import type { HistoryEntry } from "@/backend/types";
+import { UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 
 /** The date cell of a commit row: `value` is shown, `title` is its tooltip. */
@@ -34,6 +36,7 @@ type ShortDate = { day: Intl.DateTimeFormat; clock: Intl.DateTimeFormat };
 // effect on the next call however the configuration was changed.
 const shortDates = new Map<string, ShortDate>();
 const fullDates = new Map<string, Intl.DateTimeFormat>();
+const dayNames = new Map<string, Intl.DateTimeFormat>();
 const relativeTimes = new Map<string, Intl.RelativeTimeFormat>();
 const secondCounts = new Map<string, Intl.NumberFormat>();
 
@@ -189,4 +192,65 @@ export function getCommitDate(seconds: number): CommitDate {
       // "Date & Time", and whatever else a hand-edited setting holds.
       return { title, value: title };
   }
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * The calendar day of a Git timestamp in seconds in the runtime's time zone, counted in days
+ * from 1 January 1970, or null when a JavaScript date cannot hold it. Each instant is shifted by
+ * its own zone offset, so days next to a daylight saving change still split at local midnight.
+ */
+export function localDay(seconds: number): number | null {
+  const date = toDate(seconds);
+  return date === null
+    ? null
+    : Math.floor((date.getTime() - date.getTimezoneOffset() * 60_000) / DAY_MS);
+}
+
+/** The day of each row of the graph, and the rows that begin a new day. */
+export type CommitDays = {
+  /** The `localDay` of each row by index; null for the uncommitted changes and unknown dates. */
+  days: ReadonlyArray<number | null>;
+  /** Rows whose commit falls on another day than the nearest dated commit above them. */
+  starts: ReadonlySet<number>;
+};
+
+/**
+ * Where the days change in `commits`. Each row's `date` is already the author or the committer
+ * date, as the date type setting says. The uncommitted-changes row and rows without a usable date
+ * take no part, so the commit below one is compared with the commit above it, and the first
+ * commit never starts a day.
+ */
+export function commitDays(commits: ReadonlyArray<HistoryEntry>): CommitDays {
+  const days: Array<number | null> = [];
+  const starts = new Set<number>();
+  let previous: number | null = null;
+  commits.forEach((commit, index) => {
+    const day = commit.hash === UNCOMMITTED_CHANGES ? null : localDay(commit.date);
+    days.push(day);
+    if (day === null) {
+      return;
+    }
+    if (previous !== null && day !== previous) {
+      starts.add(index);
+    }
+    previous = day;
+  });
+  return { days, starts };
+}
+
+/** A day from `localDay` in full in the display language, such as "Tuesday, 6 October 2026". */
+export function getDayName(day: number): string {
+  // The day is already local: formatting its midnight as UTC keeps any zone from moving it.
+  const date = new Date(day * DAY_MS);
+  if (Number.isNaN(date.getTime())) {
+    return window.l10n.unknownDate;
+  }
+  const { locale } = getWebviewConfig();
+  return formatterFor(
+    dayNames,
+    locale,
+    (tag) => new Intl.DateTimeFormat(tag, { dateStyle: "full", timeZone: "UTC" })
+  ).format(date);
 }

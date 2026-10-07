@@ -31,8 +31,10 @@ vi.mock("@/old-extension/l10n/webviewL10n", () => ({
 const DEFAULT_CONFIG = {
   autoCenterCommitDetailsView: true,
   branchHoverPreview: true,
+  commitHoverCards: true,
   conflictForecast: "localAndRemote",
   dateFormat: "Date & Time",
+  dateSeparators: true,
   dragAndDrop: true,
   graphColours: themeGraphColours,
   graphStyle: "rounded",
@@ -40,6 +42,8 @@ const DEFAULT_CONFIG = {
   issueLinks: [],
   loadMoreCommits: 100,
   locale: "fr",
+  overviewMarkers: true,
+  showChangesColumn: false,
   showCurrentBranchByDefault: false,
   showNearestBranch: true,
   singleKeyShortcuts: true

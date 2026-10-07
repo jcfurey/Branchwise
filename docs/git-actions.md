@@ -81,6 +81,27 @@ The column headings and graph scrollbar stay below the main controls as you scro
 
 Clicking or keyboard-navigating to a commit brings its lane into view with the smallest necessary horizontal movement. To find it again after panning, use the crosshair button beside **Message**, labelled **Reveal selected lane**. Refreshing or resizing keeps your manual position where the graph still fits; switching repositories resets it. Revealing a lane leaves the branch, checkout, focus mode, and commit text position unchanged.
 
+## Overview strip
+
+A narrow strip along the right edge of the commit table shows the whole loaded history at once, as the overview ruler beside an editor's scrollbar does. Each mark has its own place and shape across the strip as well as its own colour:
+
+| Mark                          | Shape and place                        | Colour                                           |
+| ----------------------------- | -------------------------------------- | ------------------------------------------------ |
+| Checked-out commit (HEAD)     | Solid bar across the whole width       | The editor's cursor colour                       |
+| Selected commits              | Block in the right half                | The focus border colour                          |
+| Commit whose details are open | Outline across the whole width         | The overview ruler's strong-highlight colour     |
+| Branch tips, local or remote  | Bar in the left half                   | The overview ruler's added-lines colour          |
+| Tags                          | Narrower bar in the left half, lighter | The same colour as branches                      |
+| Unpushed commits              | Dot in the right half                  | The unpushed dot's colour, `branchwise.unpushed` |
+
+A translucent band, in the scrollbar's colour, covers the rows on screen. Rows share the strip's height evenly, so 50,000 rows still fit; where several rows fall on the same pixel, their marks are drawn there once, with the more important ones on top: HEAD, then the selection, the open details, branches, tags and unpushed commits. In high contrast themes tags are drawn as strongly as branches, and with forced colours, such as a Windows contrast theme, the strip uses system colours.
+
+Click the strip to scroll that part of the history to the middle of the window, or drag along it to scroll continuously. The strip only appears when the table is too long to see at once, and it has its own 10 pixels beside the table, so it never covers a row or the window's scrollbar. It is a pointer shortcut only: screen readers skip it and it takes no keyboard focus, since **Go to Branch, Tag or Commit…**, **Jump to HEAD** and the arrow keys reach every row. Set `branchwise.overviewMarkers` to `false` to hide it.
+
+## Days in the graph
+
+A faint line runs across the graph above the first commit of each day, where it follows a commit from a later day, so long stretches of **Relative** dates such as "3 days ago" still show where one day ends. Days are those of the dates the graph shows, author or commit dates as `branchwise.dateType` says, in your local time zone; the uncommitted changes row takes no part. Once you scroll down, a small label under the column headings names the day of the topmost commit, such as **Tuesday, October 6, 2026**, in VS Code's display language. The label lets clicks through to the rows beneath it, and screen readers skip it, since each row reads its own date. Set `branchwise.dateSeparators` to `false` to turn off both.
+
 ## Loading errors
 
 If Git cannot load the graph, the view shows the error and a **Retry** button. Repair the reported problem, such as an unavailable repository, Git executable, or invalid Git configuration, then retry. **This repository has no commits yet** is reserved for a successful load of a repository without commits.
@@ -232,6 +253,14 @@ The same remote gives the commit menu **Open Commit on GitHub** or **Open Commit
 The same branch offers **Create Pull Request…** on GitHub, or **Create Merge Request…** on GitLab, and so does a remote branch's menu. It opens the host's page for proposing the branch, under its name on the remote, against the remote's default branch: the branch `refs/remotes/<remote>/HEAD` points to, which a clone records and `git remote set-head <remote> --auto` updates. When that is unknown the host proposes its own default branch. The entry is missing for the default branch itself. A local branch without an upstream, or whose upstream was deleted, offers **Push and Create Pull Request…** (or **Merge Request…**) instead, when the remote a push would suggest (`remote.pushDefault`, else `origin`, else the first remote) is on a known host: it opens the push dialog with **Set as upstream branch** ticked, and opens the page for the remote and branch name you pushed to once the push succeeds. Nothing opens when the push fails or is cancelled.
 
 Under the committer, once the rest of the details are showing, a line names the branches that contain the commit, with **Contained in:** and one chip per branch: the checked-out branch first, then the other local branches, then the remote ones. Branches the graph hides, those of hidden remotes or matching a hidden-branch pattern, are left out. Ten are shown; **and N more** lists the rest in its tooltip. A second line names the earliest tag, by its tag date, that contains the commit as **First released in v1.2.0**, counts the later ones as **also in N later tags** (hover to see them), and names the nearest tag before it, from its first parent, as **Follows v1.1.0**. Click a branch chip to focus that branch in the graph, or a tag chip to select its commit. Git answers with `git for-each-ref --contains` and `git describe`, which can take a moment in a repository with thousands of refs: the line reads **Checking…** meanwhile, the rest of the details never wait for it, and closing the details stops it. Answers are kept until a ref changes. A commit that no branch or tag contains shows neither line.
+
+### Commit cards and change counts
+
+Rest the pointer on a commit's message for about 0.6 seconds, or move to its row with the keyboard and press nothing for as long, and a card about the commit appears beside the pointer or the row: the whole subject, the first six lines of the rest of the message (cut with **…** when there is more), the author and email address, the full date, the short and full commit ID, and how many lines and files the commit changed. The counts read **Counting changes…** until Git answers. The card goes away when the pointer leaves the message or the keyboard leaves the row, and on scrolling, on any key, Escape included, and when a menu or dialog opens. It never takes the keyboard or a click: the row under it still opens and selects as usual. Near an edge of the window it opens above or to the left instead. Screen readers skip it, as the details hold the same and more. With the card on, the message has no tooltip of its own. Set `branchwise.commitHoverCards` to `false` to turn the card off.
+
+`branchwise.showChangesColumn`, off by default, adds a **Changes** column at the end of the table with the lines each commit added and deleted, such as **+12 −3**, in the theme's colours for added and deleted files. Its tooltip names the files as well: **4 files changed, 12 insertions, 3 deletions**. A merge counts what it brought in against its first parent, and the first commit counts against an empty repository, so the numbers agree with the file list of the [commit details](#commit-details); a binary file counts as a changed file with no lines, and a renamed file as one file with only the lines that changed. The column has a fixed width and the other columns resize around it.
+
+The counts are read with `git log --numstat` for the rows in sight and some rows either side, a few hundred commits at most per Git process, and again for the rows that come into sight once scrolling pauses; a cell stays empty until its count is read. Reading changes nothing in the repository. Each answer is kept until VS Code restarts, as a commit never changes, and closing the graph or switching repositories stops the reads still running.
 
 ### Commit signatures
 

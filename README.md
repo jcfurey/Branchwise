@@ -32,11 +32,14 @@ basics.
 - One graph of branches, tags, remotes, stashes and uncommitted changes
 - Commit details with formatted messages, linked issues, a file tree and per-file diffs
 - See which branches and tags contain a commit, and the first release it shipped in
+- Hover a commit for a card with its message, author, date and change counts, or add a **+12 −3** Changes column
 - Open all of a commit's or a comparison's changes in one multi-file diff editor
 - Search by message, ID, author, committer, branch, tag, date or path, or for the commits that added or removed a piece of text
 - A legend of every graph symbol, and one-click ways to widen a search that finds nothing
 - Go to any branch, tag or commit from the keyboard, or open it on GitHub or GitLab
 - Dots and rings mark unpushed and unpulled commits
+- A faint line where each day's commits begin, and the topmost day named as you scroll
+- An overview strip beside the scrollbar marks HEAD, branches, tags and the selection across the whole history; click it to jump there
 - A mark on each branch that would conflict if merged into yours, naming the files
 - A key on signed commits; their details check the GPG, SSH or X.509 signature
 - Teammates' remote branches that would conflict with yours, flagged before anyone opens a pull request
@@ -90,8 +93,10 @@ All settings start with `branchwise.`.
 | ----------------------------- | ------------------ | ------------------------------------------------------------------------ |
 | `autoCenterCommitDetailsView` | `true`             | Centre an opened commit's details vertically                             |
 | `branchHoverPreview`          | `true`             | Preview a branch's history while the pointer rests on its label          |
+| `commitHoverCards`            | `true`             | Show a card about a commit when the pointer or keyboard rests on it      |
 | `conflictForecast`            | `"localAndRemote"` | Branches checked for conflicts: `"localAndRemote"`, `"local"` or `"off"` |
 | `dateFormat`                  | `"Date & Time"`    | Show dates as `"Date & Time"`, `"Date Only"` or `"Relative"`             |
+| `dateSeparators`              | `true`             | Mark where each day begins and name the day at the top while scrolling   |
 | `dateType`                    | `"Author Date"`    | Show each commit's `"Author Date"` or `"Commit Date"`                    |
 | `dragAndDrop`                 | `true`             | Drag commits and branches onto branch labels                             |
 | `graphColours`                | 12 colours         | Colours of the graph's lanes, in order                                   |
@@ -101,6 +106,8 @@ All settings start with `branchwise.`.
 | `loadMoreCommits`             | `100`              | Commits added by **Load Older Commits**                                  |
 | `maxDepthOfRepoSearch`        | `0`                | Folder depth searched for repositories                                   |
 | `nestedRepoSearchDepth`       | `3`                | Folder depth searched inside each repository for nested ones             |
+| `overviewMarkers`             | `true`             | Show the strip of HEAD, branch, tag and selection marks beside the graph |
+| `showChangesColumn`           | `false`            | Add a column of the lines each commit added and deleted                  |
 | `showCurrentBranchByDefault`  | `false`            | Open showing only the checked-out branch                                 |
 | `showNearestBranch`           | `true`             | Name the nearest branch after commits without a branch label             |
 | `showSignatures`              | `true`             | Mark signed commits in the graph                                         |

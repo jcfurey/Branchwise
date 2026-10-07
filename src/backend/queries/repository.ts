@@ -8,6 +8,7 @@ import type { SimpleGit } from "simple-git";
 import { loadAbsorbPlan } from "@/backend/queries/absorb";
 import { loadBisect } from "@/backend/queries/bisect";
 import { loadBranchFocus } from "@/backend/queries/branchFocus";
+import { loadCommitStats } from "@/backend/queries/commitStats";
 import { loadConflictForecast } from "@/backend/queries/conflictForecast";
 import { loadContainingRefs } from "@/backend/queries/containingRefs";
 import { loadAmendPlan, loadRewordPlan } from "@/backend/queries/editCommit";
@@ -371,6 +372,8 @@ export async function repositoryQuery(
       const { kind, hash, ...visibility } = query;
       return { kind, ...(await loadContainingRefs(git, hash, visibility)) };
     }
+    case "commitStats":
+      return { kind: "commitStats", stats: await loadCommitStats(git, query.hashes) };
     case "pushStatus":
       return { kind: "pushStatus", ...(await loadPushStatus(git)) };
     case "conflictForecast":

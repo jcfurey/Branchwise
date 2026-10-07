@@ -98,8 +98,10 @@ test("hands the page its strings and settings", async () => {
   expect(response.result.config).toEqual({
     autoCenterCommitDetailsView: true,
     branchHoverPreview: true,
+    commitHoverCards: true,
     conflictForecast: "localAndRemote",
     dateFormat: "Date & Time",
+    dateSeparators: true,
     dragAndDrop: true,
     graphColours: themeGraphColours,
     graphStyle: "rounded",
@@ -107,6 +109,8 @@ test("hands the page its strings and settings", async () => {
     issueLinks: [],
     loadMoreCommits: 100,
     locale: "en",
+    overviewMarkers: true,
+    showChangesColumn: false,
     showCurrentBranchByDefault: false,
     showNearestBranch: true,
     singleKeyShortcuts: true

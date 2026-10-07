@@ -183,6 +183,11 @@
           "type": "boolean",
           "default": true
         },
+        "branchwise.commitHoverCards": {
+          "description": "%config.commitHoverCards%",
+          "type": "boolean",
+          "default": true
+        },
         "branchwise.conflictForecast": {
           "description": "%config.conflictForecast%",
           "type": "string",
@@ -212,6 +217,11 @@
             "%config.dateFormat.dateOnly%",
             "%config.dateFormat.relative%"
           ]
+        },
+        "branchwise.dateSeparators": {
+          "description": "%config.dateSeparators%",
+          "type": "boolean",
+          "default": true
         },
         "branchwise.dateType": {
           "description": "%config.dateType%",
@@ -322,6 +332,16 @@
           "type": "integer",
           "default": 3,
           "minimum": 0
+        },
+        "branchwise.overviewMarkers": {
+          "description": "%config.overviewMarkers%",
+          "type": "boolean",
+          "default": true
+        },
+        "branchwise.showChangesColumn": {
+          "description": "%config.showChangesColumn%",
+          "type": "boolean",
+          "default": false
         },
         "branchwise.showCurrentBranchByDefault": {
           "description": "%config.showCurrentBranchByDefault%",
