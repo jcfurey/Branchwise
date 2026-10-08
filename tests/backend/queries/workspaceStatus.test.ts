@@ -67,6 +67,35 @@ it("reports a clean repository with nothing waiting", async () => {
   });
 });
 
+it("counts each changed, staged, renamed and untracked file once, and reads how far HEAD is from its upstream", async () => {
+  const dir = clone();
+  commit(dir, "a", "one\n");
+  commit(dir, "b", "two\n");
+  git(["push", "-q", "origin", "main"], dir);
+  git(["reset", "-q", "--hard", "HEAD~1"], dir);
+  commit(dir, "c", "three\n");
+  // Behind by the pushed commit, ahead by the new one.
+  fs.writeFileSync(path.join(dir, "a"), "changed\n");
+  fs.writeFileSync(path.join(dir, "new file"), "untracked\n");
+  git(["mv", "c", "renamed c"], dir);
+  expect(await status(dir)).toMatchObject({
+    head: gitOutput(["rev-parse", "HEAD"], dir),
+    branch: "main",
+    detached: false,
+    ahead: 1,
+    behind: 1,
+    dirty: 3,
+    conflicts: 0
+  });
+});
+
+it("reads a branch with no commits yet as that branch, with no checked-out commit", async () => {
+  const dir = repo();
+  git(["checkout", "-q", "--orphan", "fresh"], dir);
+  git(["rm", "-q", "-r", "--cached", "."], dir);
+  expect(await status(dir)).toMatchObject({ head: null, branch: "fresh", detached: false });
+});
+
 it("reports a merge stopped by conflicts, with its unmerged files", async () => {
   const dir = repo();
   git(["checkout", "-q", "-b", "clash"], dir);
@@ -168,28 +197,26 @@ it("leaves every repository untouched while it reads them", async () => {
   expect([stashed, detached].map(snapshot)).toStrictEqual(before);
 });
 
-it("stops when cancelled partway, without starting the next repositories", async () => {
-  const repos = [repo(), repo(), repo(), repo(), repo()];
-  fs.writeFileSync(path.join(repos[0]!, "u"), "untracked");
-  git(["stash", "push", "-q", "--include-untracked"], repos[0]!);
-  const controller = new AbortController();
-  const visited: string[] = [];
-  // The module afresh, over a client factory that notes each repository it is asked for and
-  // cancels the read the moment the first repository's stashes are counted.
+/**
+ * `loadWorkspace` afresh, over a client factory that tells `onClient` each repository it is asked
+ * for, and whose clients pass each command to `onRaw` before running it.
+ */
+async function watchedLoad(
+  onClient: (repo: string) => void,
+  onRaw: (repo: string, command: string[]) => Promise<void> | void = () => {}
+) {
   vi.resetModules();
   vi.doMock("@/backend/gitClient", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/backend/gitClient")>();
     return {
       ...actual,
       gitClientFactory: (...args: Parameters<typeof actual.gitClientFactory>) => {
-        visited.push(args[0]);
+        onClient(args[0]);
         const factory = actual.gitClientFactory(...args);
         const client = factory.getInstance();
         const raw = client.raw.bind(client);
-        client.raw = ((command: string[]) => {
-          if (command.includes("--walk-reflogs")) {
-            controller.abort();
-          }
+        client.raw = (async (command: string[]) => {
+          await onRaw(args[0], command);
           return raw(command);
         }) as typeof client.raw;
         return { ...factory, getInstance: () => client };
@@ -197,13 +224,47 @@ it("stops when cancelled partway, without starting the next repositories", async
     };
   });
   try {
-    const { loadWorkspace: cancellable } = await import("@/backend/queries/workspace");
-    await expect(cancellable(repos, "git", controller.signal)).rejects.toThrow();
+    return (await import("@/backend/queries/workspace")).loadWorkspace;
   } finally {
     vi.doUnmock("@/backend/gitClient");
     vi.resetModules();
   }
-  expect(controller.signal.aborted).toBe(true);
-  // The first four repositories form one batch; the fifth would have been read after it.
-  expect(visited).toStrictEqual(repos.slice(0, 4).map(normalizeRepoPath));
+}
+
+it("stops when cancelled partway, without starting the next repositories", async () => {
+  const repos = Array.from({ length: 9 }, repo);
+  const controller = new AbortController();
+  const visited: string[] = [];
+  // Cancelled once eight repositories are being read, as many as are read at once.
+  const cancellable = await watchedLoad((folder) => {
+    visited.push(folder);
+    if (visited.length === 8) {
+      controller.abort();
+    }
+  });
+  await expect(cancellable(repos, "git", controller.signal)).rejects.toThrow();
+  // The ninth would have been read once one of the first eight was done.
+  expect(visited).toStrictEqual(repos.slice(0, 8).map(normalizeRepoPath));
+});
+
+it("reads the next repository as soon as one is done, while a slow one is still read", async () => {
+  const repos = Array.from({ length: 12 }, repo);
+  const slow = normalizeRepoPath(repos[0]!);
+  const visited: string[] = [];
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const load = await watchedLoad(
+    (folder) => visited.push(folder),
+    (folder) => (folder === slow ? held : undefined)
+  );
+  const loaded = load(repos, "git");
+  await vi.waitFor(() => expect(visited).toHaveLength(repos.length), { timeout: 20000 });
+  release();
+  const entries = await loaded;
+  expect(entries.map((entry) => entry.path)).toStrictEqual(
+    repos.map(normalizeRepoPath).toSorted((a, b) => a.localeCompare(b))
+  );
+  expect(entries.every((entry) => entry.initialized && entry.error === null)).toBe(true);
 });

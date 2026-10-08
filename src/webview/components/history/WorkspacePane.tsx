@@ -1,5 +1,5 @@
 import type { ComponentChildren, VNode } from "preact";
-import { useState } from "preact/hooks";
+import { useRef, useState } from "preact/hooks";
 
 import type { RepositoryAction, WorkspaceEntry } from "@/backend/types";
 import { openSubmodule, openWorkspaceSync } from "@/webview/components/history/WorkflowTools";
@@ -28,7 +28,7 @@ import {
 } from "@/webview/lib/navigation";
 import { confirmRepositoryAction, repositoryRevision } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
-import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
+import { useSettledRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { workspaceBusy } from "@/webview/lib/workspace-actions";
 import {
   isUnpublished,
@@ -366,8 +366,16 @@ export function WorkspacePane() {
   const [filter, setFilter] = useState("");
   const [onlyChanged, setOnlyChanged] = useState(false);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  const query = useRepositoryQuery<"workspace">({ kind: "workspace" });
-  const entries = query.data?.entries ?? [];
+  const query = useSettledRepositoryQuery<"workspace">({ kind: "workspace" });
+  // The listing is the workspace's, whichever repository is selected, so the last one stays while
+  // the listing asked for by a newly selected repository loads. Choosing a repository here must
+  // not empty the pane for as long as every repository's status takes to read.
+  const lastListing = useRef(query.data);
+  if (query.data !== null || query.error !== null) {
+    lastListing.current = query.data;
+  }
+  const listing = lastListing.current;
+  const entries = listing?.entries ?? [];
   const byPath = new Map(entries.map((entry) => [entry.path, entry]));
   const status = workspaceFilter.value;
   // The totals count what the text filter matches; the bulk actions act on what every filter does.
@@ -452,7 +460,7 @@ export function WorkspacePane() {
             {window.l10n.refresh}
           </Button>
         </div>
-        {query.data && <OverviewStrip totals={workspaceTotals(named)} />}
+        {listing && <OverviewStrip totals={workspaceTotals(named)} />}
         <input
           class={INPUT_CLASS}
           aria-label={window.l10n.overviewFilter}

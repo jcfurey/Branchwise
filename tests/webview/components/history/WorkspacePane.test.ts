@@ -435,3 +435,45 @@ describe("bulk actions", () => {
     ]);
   });
 });
+
+describe("choosing a repository in the pane", () => {
+  const workspaceRead = () =>
+    requests()
+      .filter((request) => request.command === "repositoryQuery")
+      .findLast((request) => request.query.kind === "workspace");
+  const choose = (path: string) =>
+    act(() => container.querySelector<HTMLButtonElement>(`aside button[title="${path}"]`)!.click());
+
+  it("keeps listing the workspace while the newly selected repository reads it again", () => {
+    show();
+    choose("/ws/app/lib");
+    expect(selectedRepo.value).toBe("/ws/app/lib");
+    expect(workspaceRead()).toMatchObject({ repo: "/ws/app/lib" });
+    // Every repository's status takes a while to read; the parent must not vanish meanwhile.
+    expect(rows()).toStrictEqual(workspace.map((entry) => entry.path));
+    expect(container.querySelector("aside [role=status]")).not.toBeNull();
+
+    const entries = [repo("/ws/app"), repo("/ws/app/lib", { parent: "/ws/app" })];
+    respond({ kind: "workspace", entries }, workspaceRead());
+    expect(rows()).toStrictEqual(["/ws/app", "/ws/app/lib"]);
+    expect(container.querySelector("aside [role=status]")).toBeNull();
+  });
+
+  it("shows the newly selected repository's error rather than the earlier listing", () => {
+    show();
+    choose("/ws/docs");
+    const request = workspaceRead();
+    act(() =>
+      handleRepositoryQuery({
+        repo: request.repo,
+        requestId: request.requestId,
+        data: null,
+        status: "fatal: not a git repository"
+      })
+    );
+    expect(rows()).toStrictEqual([]);
+    expect(container.querySelector("aside [role=alert]")!.textContent).toBe(
+      "fatal: not a git repository"
+    );
+  });
+});
