@@ -189,6 +189,17 @@ describe("what a repository action opens", () => {
     expect(editor.executeCommand).toHaveBeenCalledExactlyOnceWith(
       "vscode.open",
       document("dir/h.txt", HASH),
+      { preview: true },
+      "h.txt (01234567)"
+    );
+  });
+
+  it("opens the work tree's own copy of a file", async () => {
+    await produce({ kind: "workingFile", path: "/repo/dir/h.txt" });
+
+    expect(editor.executeCommand).toHaveBeenCalledExactlyOnceWith(
+      "vscode.open",
+      { scheme: "file", fsPath: "/repo/dir/h.txt" },
       { preview: true }
     );
   });

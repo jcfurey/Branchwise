@@ -189,6 +189,20 @@ export type SplitPlan = EditPlan & { files: SplitFile[] };
  */
 export type SplitAssignment = Array<number | number[]>;
 
+/**
+ * One entry of a commit's whole tree, as `git ls-tree -r` lists it: a file, an executable file,
+ * a symbolic link (whose blob holds the target's path), or a submodule, which records a commit of
+ * another repository and has no blob of its own.
+ */
+export type TreeEntry = {
+  path: string;
+  kind: "file" | "executable" | "symlink" | "submodule";
+  /** The blob's size in bytes, or null for a submodule. */
+  size: number | null;
+  /** The commit a submodule records. Only submodules carry it. */
+  commit?: string;
+};
+
 /** The refs that hold a commit, and the tag it came after. */
 export type ContainingRefs = {
   /**
@@ -296,6 +310,8 @@ export type RepositoryQuery =
   | { kind: "absorbPlan" }
   | { kind: "lease"; remote: string; branch: string }
   | { kind: "safetyNet" }
+  /** Every file in the tree of the commit `hash` names, up to `TREE_LIMIT` of them. */
+  | { kind: "tree"; hash: string }
   /** Check the signature of the commit `hash` names. */
   | { kind: "signature"; hash: string };
 
@@ -322,6 +338,8 @@ export type RepositoryQueryData =
   | { kind: "absorbPlan"; plan: AbsorbPlan }
   | { kind: "lease"; hash: string }
   | { kind: "safetyNet"; entries: SafetyNetEntry[] }
+  /** `hash` is the full commit ID; `more` says the tree has entries beyond those listed. */
+  | { kind: "tree"; hash: string; entries: TreeEntry[]; more: boolean }
   | { kind: "signature"; hash: string; check: SignatureCheck };
 
 export type RepositoryAction =
@@ -353,6 +371,8 @@ export type RepositoryAction =
   | { kind: "addWorktree"; path: string; branch: string; newBranch: boolean; startPoint: string }
   | { kind: "removeWorktree"; path: string; expectedHead: string }
   | { kind: "openWorktree"; path: string }
+  /** Open the work tree's own copy of `path`, relative to the repository's root. */
+  | { kind: "viewCurrentFile"; path: string }
   /** Show a worktree's folder in the system's file manager. */
   | { kind: "revealWorktree"; path: string }
   | { kind: "undoSafetyNet"; id: string };

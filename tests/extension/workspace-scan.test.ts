@@ -73,7 +73,9 @@ describe("repositories offered by the picker and the Workspace pane", () => {
   beforeEach(() => {
     root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "ngg-session-")));
   });
-  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+  afterEach(() =>
+    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+  );
 
   function repository(name: string) {
     const repo = normalizeRepoPath(path.join(root, name));
@@ -95,6 +97,7 @@ describe("repositories offered by the picker and the Workspace pane", () => {
     expect(await listRepos("git", 1)).toEqual([scanned]);
   });
 
+  // Real Git runs here, as in the backend tests, which allow Windows the same 30 seconds.
   it("adds the repositories cloned inside them, up to the nested depth", async () => {
     mocks.findGitRepos.mockResolvedValue([]);
     const opened = normalizeRepoPath(path.join(root, "opened"));
@@ -107,5 +110,5 @@ describe("repositories offered by the picker and the Workspace pane", () => {
     expect(await listRepos("git", 0, 2)).toEqual([opened, nested]);
     expect(await listRepos("git", 0, 1)).toEqual([opened]);
     expect(await listRepos("git", 0)).toEqual([opened]);
-  });
+  }, 30_000);
 });

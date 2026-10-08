@@ -392,8 +392,8 @@ describe("opening all of the commit's changes", () => {
     vscodeApi.postMessage.mockClear();
     drawUnderOwner(h(CommitDetails, { details: sample({ fileChanges: oneChange() }) }));
 
-    expect(header()!.textContent).toBe("comparedFiles (1)openAllChanges");
-    header()!.querySelector("button")!.click();
+    expect(header()!.textContent).toBe("comparedFiles (1)allFilesopenAllChanges");
+    [...header()!.querySelectorAll("button")].at(-1)!.click();
     expect(vscodeApi.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         command: "repositoryAction",
@@ -403,9 +403,9 @@ describe("opening all of the commit's changes", () => {
     );
   });
 
-  it("has no header for a commit that changes no files", () => {
+  it("offers no Open All Changes for a commit that changes no files, but lists all of them", () => {
     drawUnderOwner(h(CommitDetails, { details: sample() }));
-    expect(header()).toBeNull();
+    expect(header()!.textContent).toBe("comparedFiles (0)allFiles");
   });
 });
 

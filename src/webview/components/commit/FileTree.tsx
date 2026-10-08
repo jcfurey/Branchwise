@@ -2,9 +2,11 @@ import { Component } from "preact";
 import { useCallback, useMemo, useState } from "preact/hooks";
 
 import type { GitFileChange } from "@/backend/types";
+import { imageType } from "@/backend/utils/image";
 import { fileContextMenu } from "@/webview/components/history/file-menu";
 import { Icon } from "@/webview/components/ui/Icons";
 import { openContextMenu, viewDiff } from "@/webview/lib/actions";
+import type { ContextMenuEntry } from "@/webview/types";
 import type { FileTreeFile, FileTreeFolder, FileTreeNode } from "@/webview/utils/fileTree";
 import { format } from "@/webview/utils/format";
 
@@ -54,35 +56,55 @@ function statusName(letter: StatusLetter): string {
   }
 }
 
-const ENTRY_CLASS = "flex w-full items-center overflow-hidden text-left whitespace-nowrap";
-const GLYPH_CLASS = "mr-2 size-3.25 shrink-0 text-fg/60";
+export const ENTRY_CLASS = "flex w-full items-center overflow-hidden text-left whitespace-nowrap";
+export const GLYPH_CLASS = "mr-2 size-3.25 shrink-0 text-fg/60";
 
 // The glyphs never change, so each is built once and shared by every entry that shows it.
 
 /** A closed folder: the back panel with its tab, and the front panel shut over it. */
-const CLOSED_FOLDER = (
+export const CLOSED_FOLDER = (
   <Icon class={GLYPH_CLASS}>
     <path d="M1 3.5a1 1 0 0 1 1-1h3.6l1.6 1.6H14a1 1 0 0 1 1 1V6H1zM1 7h14v5.5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1z" />
   </Icon>
 );
 
 /** An open folder: the front panel leans forward, off the back panel and its tab. */
-const OPEN_FOLDER = (
+export const OPEN_FOLDER = (
   <Icon class={GLYPH_CLASS}>
     <path d="M1 3.5a1 1 0 0 1 1-1h3.6l1.6 1.6H13a1 1 0 0 1 1 1v1.4H3.2L1 11.5zM3.7 7.5h11.8l-2.7 6H1z" />
   </Icon>
 );
 
 /** A page with its top right corner folded over. */
-const PAGE = (
+export const PAGE = (
   <Icon class={GLYPH_CLASS}>
     <path d="M3 1h6.2v4.3h4.3V15H3zM10.2 1l3.3 3.3h-3.3z" />
   </Icon>
 );
 
 /** Left padding of an entry, in pixels: the top level sits 10px in, each folder adds 30px. */
-function indent(depth: number) {
+export function indent(depth: number) {
   return 10 + 30 * depth;
+}
+
+/**
+ * Open `menu` from the keyboard, as the context menu key or Shift+F10 does elsewhere, below the
+ * entry that has focus. `source` keys the entry, which stays highlighted while the menu is open.
+ */
+export function openMenuFromKeys(
+  event: KeyboardEvent & { currentTarget: HTMLElement },
+  source: string,
+  menu: () => Array<ContextMenuEntry>
+) {
+  if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+    event.preventDefault();
+    const box = event.currentTarget.getBoundingClientRect();
+    openContextMenu(
+      new MouseEvent("contextmenu", { clientX: box.left, clientY: box.bottom }),
+      source,
+      menu()
+    );
+  }
 }
 
 /**
@@ -244,12 +266,15 @@ function FolderEntry({
 
 /**
  * A changed file. A click opens its diff; a file Git gave no line counts for is binary and has
- * no diff to open, so it only offers its menu.
+ * no diff to open, so it only offers its menu. An image is the exception: its two versions open
+ * side by side.
  */
 function FileEntry({ entry, commitHash }: { entry: FileTreeFile; commitHash: string }) {
   const change = entry.file;
   const { type, oldFilePath, newFilePath, additions, deletions } = change;
-  const binary = additions === null || deletions === null;
+  const binary =
+    (additions === null || deletions === null) &&
+    imageType(type === "D" ? oldFilePath : newFilePath) === null;
   const source = `file:${newFilePath}`;
   const menu = () => fileContextMenu(commitHash, newFilePath, oldFilePath, type === "D");
 
@@ -267,21 +292,11 @@ function FileEntry({ entry, commitHash }: { entry: FileTreeFile; commitHash: str
         }
       }}
       onContextMenu={(event) => openContextMenu(event, source, menu())}
-      onKeyDown={(event) => {
-        if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
-          event.preventDefault();
-          const box = event.currentTarget.getBoundingClientRect();
-          openContextMenu(
-            new MouseEvent("contextmenu", { clientX: box.left, clientY: box.bottom }),
-            source,
-            menu()
-          );
-        }
-      }}
+      onKeyDown={(event) => openMenuFromKeys(event, source, menu)}
     >
       {PAGE}
       <span class="min-w-0 truncate">{entry.name}</span>
-      {!binary && (type === "M" || type === "R") && (
+      {additions !== null && deletions !== null && (type === "M" || type === "R") && (
         <LineCounts added={additions} removed={deletions} />
       )}
       <StatusCell
@@ -300,7 +315,13 @@ function FileEntry({ entry, commitHash }: { entry: FileTreeFile; commitHash: str
  * The change's status letter at the end of the entry, in a cell of fixed width so the letters
  * line up down the tree. Its name is read out in place of the letter.
  */
-function StatusCell({ letter, title }: { letter: StatusLetter; title?: string | undefined }) {
+export function StatusCell({
+  letter,
+  title
+}: {
+  letter: StatusLetter;
+  title?: string | undefined;
+}) {
   const name = statusName(letter);
   return (
     <span
