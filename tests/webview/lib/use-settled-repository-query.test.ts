@@ -16,8 +16,16 @@ setupWebviewTest();
 let container: HTMLDivElement;
 let shown: ReturnType<typeof useSettledRepositoryQuery<"workspace">>;
 
+let alsoShown: ReturnType<typeof useSettledRepositoryQuery<"workspace">>;
+
 function Listing() {
   shown = useSettledRepositoryQuery<"workspace">({ kind: "workspace" });
+  return null;
+}
+
+/** A second component showing the same listing, as the workspace sync dialog does. */
+function AlsoListing() {
+  alsoShown = useSettledRepositoryQuery<"workspace">({ kind: "workspace" });
   return null;
 }
 
@@ -133,5 +141,37 @@ describe("a long read that settles", () => {
 
     bump();
     expect(reads()).toHaveLength(1);
+  });
+
+  it("shares one read between the components showing the same listing", () => {
+    act(() => render(h("div", {}, h(Listing, {}), h(AlsoListing, {})), container));
+    expect(reads()).toHaveLength(1);
+
+    answer(["/ws/app"]);
+    expect(shown.data?.entries.map((item) => item.path)).toStrictEqual(["/ws/app"]);
+    expect(alsoShown.data?.entries.map((item) => item.path)).toStrictEqual(["/ws/app"]);
+
+    // One of them goes; the other keeps the read, and only it.
+    act(() => render(h("div", {}, h(Listing, {})), container));
+    expect(cancels()).toHaveLength(0);
+    bump();
+    expect(reads()).toHaveLength(2);
+  });
+
+  it("lets a component that arrives during a read join it, showing the last answer meanwhile", () => {
+    act(() => render(h("div", {}, h(Listing, {})), container));
+    answer(["/ws/app"]);
+    bump();
+    expect(reads()).toHaveLength(2);
+
+    act(() => render(h("div", {}, h(Listing, {}), h(AlsoListing, {})), container));
+    expect(reads()).toHaveLength(2);
+    expect(alsoShown.data?.entries.map((item) => item.path)).toStrictEqual(["/ws/app"]);
+    expect(alsoShown.loading).toBe(true);
+
+    answer(["/ws/app", "/ws/lib"]);
+    expect(alsoShown.data?.entries.map((item) => item.path)).toStrictEqual(["/ws/app", "/ws/lib"]);
+    expect(alsoShown.loading).toBe(false);
+    expect(reads()).toHaveLength(2);
   });
 });
