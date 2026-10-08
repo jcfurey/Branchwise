@@ -10,7 +10,7 @@ import { Dialog } from "@/webview/components/ui/Dialog";
 import { closeDialog } from "@/webview/lib/actions";
 import { setWorkspaceFilter, setWorkspaceOrder, workspaceFilter } from "@/webview/lib/navigation";
 import { acceptRemoteActionResult } from "@/webview/lib/remote-actions";
-import { handleRepositoryQuery } from "@/webview/lib/repository-actions";
+import { handleRepositoryQuery, repositoryRevision } from "@/webview/lib/repository-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 import { workspaceJobs } from "@/webview/lib/workspace-actions";
 
@@ -124,9 +124,16 @@ function respond(data: RepositoryQueryData, request = requests().at(-1)) {
     handleRepositoryQuery({ repo: request.repo, requestId: request.requestId, data, status: null })
   );
 }
+/** The pane's last read of the whole workspace, or with `refresh`, of the selected repository. */
+const workspaceRead = (refresh?: "selected") =>
+  requests()
+    .filter((request) => request.command === "repositoryQuery")
+    .findLast((request) => request.query.kind === "workspace" && request.query.refresh === refresh);
+/** Show the pane, and answer both its reads with `entries`. */
 function show(entries = workspace) {
   act(() => render(h("div", {}, h(WorkspacePane, {}), h(Dialog, {})), container));
-  respond({ kind: "workspace", entries });
+  respond({ kind: "workspace", entries }, workspaceRead("selected"));
+  respond({ kind: "workspace", entries }, workspaceRead());
 }
 const chips = () =>
   [...container.querySelectorAll<HTMLButtonElement>("[data-total]")].map((chip) => [
@@ -437,10 +444,6 @@ describe("bulk actions", () => {
 });
 
 describe("choosing a repository in the pane", () => {
-  const workspaceRead = () =>
-    requests()
-      .filter((request) => request.command === "repositoryQuery")
-      .findLast((request) => request.query.kind === "workspace");
   const choose = (path: string) =>
     act(() => container.querySelector<HTMLButtonElement>(`aside button[title="${path}"]`)!.click());
 
@@ -454,8 +457,9 @@ describe("choosing a repository in the pane", () => {
     expect(container.querySelector("aside [role=status]")).not.toBeNull();
 
     const entries = [repo("/ws/app"), repo("/ws/app/lib", { parent: "/ws/app" })];
-    respond({ kind: "workspace", entries }, workspaceRead());
+    respond({ kind: "workspace", entries }, workspaceRead("selected"));
     expect(rows()).toStrictEqual(["/ws/app", "/ws/app/lib"]);
+    respond({ kind: "workspace", entries }, workspaceRead());
     expect(container.querySelector("aside [role=status]")).toBeNull();
   });
 
@@ -475,5 +479,56 @@ describe("choosing a repository in the pane", () => {
     expect(container.querySelector("aside [role=alert]")!.textContent).toBe(
       "fatal: not a git repository"
     );
+  });
+});
+
+describe("reading the selected repository on its own", () => {
+  const changes = () => chip("changes").textContent;
+  const withChanges = (dirty: number) =>
+    workspace.map((entry) => (entry.path === "/ws/app" ? { ...entry, dirty } : entry));
+
+  it("shows its status before the whole workspace is read", () => {
+    act(() => render(h(WorkspacePane, {}), container));
+    expect(
+      requests()
+        .filter((request) => request.command === "repositoryQuery")
+        .map((request) => [request.repo, request.query])
+    ).toStrictEqual([
+      ["/ws/app", { kind: "workspace" }],
+      ["/ws/app", { kind: "workspace", refresh: "selected" }]
+    ]);
+
+    respond({ kind: "workspace", entries: [repo("/ws/app")] }, workspaceRead("selected"));
+    expect(rows()).toStrictEqual(["/ws/app"]);
+    expect(container.querySelector("aside [role=status]")).not.toBeNull();
+
+    const name = container.querySelector<HTMLButtonElement>('aside button[title="/ws/app"]')!;
+    name.focus();
+    respond({ kind: "workspace", entries: workspace }, workspaceRead());
+    expect(rows()).toStrictEqual(workspace.map((entry) => entry.path));
+    expect(container.querySelector("aside [role=status]")).toBeNull();
+    // The row gained a toggle for the repository inside it; the focused name stays as it was.
+    expect(document.activeElement).toBe(name);
+    expect(name.title).toBe("/ws/app");
+  });
+
+  it("shows whichever listing came last, as both list the whole workspace", () => {
+    show();
+    expect(changes()).toBe("2 with changes");
+
+    act(() => {
+      repositoryRevision.value++;
+    });
+    respond({ kind: "workspace", entries: withChanges(1) }, workspaceRead("selected"));
+    expect(changes()).toBe("3 with changes");
+    // The whole listing began before the selected repository was read again, and finishes after.
+    respond({ kind: "workspace", entries: withChanges(0) }, workspaceRead());
+    expect(changes()).toBe("2 with changes");
+
+    act(() => {
+      repositoryRevision.value++;
+    });
+    respond({ kind: "workspace", entries: withChanges(4) }, workspaceRead("selected"));
+    expect(changes()).toBe("3 with changes");
   });
 });

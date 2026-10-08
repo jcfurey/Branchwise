@@ -4,7 +4,11 @@ import { registerMessageHandlers } from "@/old-extension/messageHandler";
 
 const mocks = vi.hoisted(() => ({
   repositoryQuery: vi.fn(
-    async (_git: unknown, _query: unknown, _workspace: { repos: string[] }) => ({
+    async (
+      _git: unknown,
+      _query: unknown,
+      _workspace: { repos: string[]; selected?: string; status?: unknown }
+    ) => ({
       kind: "workspace",
       entries: []
     })
@@ -60,4 +64,9 @@ it("lists the picker's repositories, not every repository with saved state", asy
     ["/ws/a", "/ws/b"],
     ["/ws/opened", "/ws/a", "/ws/b"]
   ]);
+  // Every listing reads around the repository that asks, and shares what the others read.
+  const [first, second] = mocks.repositoryQuery.mock.calls.map((call) => call[2]);
+  expect([first?.selected, second?.selected]).toEqual(["/ws/b", "/ws/opened"]);
+  expect(first?.status).toBeDefined();
+  expect(second?.status).toBe(first?.status);
 });

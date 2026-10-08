@@ -29,7 +29,7 @@ import {
   submoduleComparison
 } from "@/backend/queries/workflows";
 import { loadWorkingTree } from "@/backend/queries/workingTree";
-import { loadWorkspace } from "@/backend/queries/workspace";
+import { createWorkspaceStatus, type WorkspaceStatus } from "@/backend/queries/workspace";
 import { loadWorktreeChanges } from "@/backend/queries/worktrees";
 import type {
   BranchDetails,
@@ -358,7 +358,15 @@ export function squashRebasePlan(plan: RebasePlan, hashes: string[]): RebasePlan
 export async function repositoryQuery(
   git: SimpleGit,
   query: RepositoryQuery,
-  workspace: { repos: string[]; binary: string; signal?: AbortSignal } = {
+  workspace: {
+    repos: string[];
+    binary: string;
+    signal?: AbortSignal;
+    /** What the workspace listing remembers between reads; a fresh one when missing. */
+    status?: WorkspaceStatus;
+    /** The selected repository, which a listing that refreshes only it reads around. */
+    selected?: string;
+  } = {
     repos: [],
     binary: "git"
   }
@@ -427,11 +435,11 @@ export async function repositoryQuery(
       return { kind: "fastForwardPlan", plan: await loadFastForwardPlan(git) };
     case "bulkSyncPlan":
       return { kind: "bulkSyncPlan", plan: await loadBulkSyncPlan(git, query.operation) };
-    case "workspace":
-      return {
-        kind: "workspace",
-        entries: await loadWorkspace(workspace.repos, workspace.binary, workspace.signal)
-      };
+    case "workspace": {
+      const { repos, binary, signal, status = createWorkspaceStatus() } = workspace;
+      const around = query.refresh === "selected" ? workspace.selected : undefined;
+      return { kind: "workspace", entries: await status.list(repos, binary, { signal, around }) };
+    }
     case "history":
     case "compare":
     case "compareCommits":

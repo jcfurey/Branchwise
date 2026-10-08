@@ -346,6 +346,13 @@ async function findGraph() {
     25000
   );
 }
+/**
+ * An expression for the Workspace pane's row of `repo`. The pane lists every repository the
+ * session opened, so a scenario looks in its own rows, never at the first match in the pane.
+ */
+function workspaceRow(repo) {
+  return `document.querySelector('aside button[title=${JSON.stringify(repoKey(repo))}]').closest("[style]")`;
+}
 async function button(text, scope = '(document.querySelector("[role=dialog]") || document)') {
   if (["Remotes", "Stashes", "Worktrees"].includes(text)) {
     await toolsMenu(text);
@@ -3712,12 +3719,12 @@ suite("Branchwise workflow UI", function () {
     await until(
       () =>
         graph.evaluate(
-          'document.querySelector("aside").innerText.includes("Different from parent revision")'
+          `${workspaceRow(module)}.innerText.includes("Different from parent revision")`
         ),
       "submodule mismatch"
     );
     await graph.evaluate(
-      `document.querySelector('button[aria-label="module Repository Tools"]').click()`
+      `${workspaceRow(module)}.querySelector('button[aria-label="module Repository Tools"]').click()`
     );
     await menu("Update to Recorded Revision");
     await button("Update to Recorded Revision");
@@ -3799,7 +3806,7 @@ suite("Branchwise workflow UI", function () {
     if (!(await graph.evaluate('!!document.querySelector("aside")'))) {
       await button("Workspace");
     }
-    await button("Different from parent revision", 'document.querySelector("aside")');
+    await button("Different from parent revision", workspaceRow(module));
     await until(
       () =>
         graph.evaluate(
@@ -3813,7 +3820,7 @@ suite("Branchwise workflow UI", function () {
       git(["diff", "--cached", "--name-only"], parent),
       "module\nother".replace("\\n", "\n")
     );
-    await button("Parent has a staged revision change", 'document.querySelector("aside")');
+    await button("Parent has a staged revision change", workspaceRow(module));
     await until(
       () =>
         graph.evaluate(

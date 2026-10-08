@@ -36,8 +36,19 @@ export function useRepositoryQuery<K extends RepositoryQuery["kind"]>(
   };
 }
 
-/** An answer to a settled read, and the revision the read started at. */
-type Settled = { revision: number; data: RepositoryQueryData | null; error: string | null };
+/**
+ * An answer to a settled read, the revision the read started at, and when the answer came, as a
+ * count of the answers to every settled read so far.
+ */
+type Settled = {
+  revision: number;
+  data: RepositoryQueryData | null;
+  error: string | null;
+  answered: number;
+};
+
+/** How many answers settled reads have had, which orders them. */
+let answers = 0;
 
 /** One shared read, and the components showing it. */
 type SettledRead = {
@@ -80,7 +91,7 @@ function followSettledRead(
           query,
           (data, error) => {
             entry.cancel = null;
-            entry.latest = { revision: started, data, error };
+            entry.latest = { revision: started, data, error, answered: ++answers };
             for (const each of entry.listeners) {
               each(entry.latest);
             }
@@ -129,7 +140,8 @@ function followSettledRead(
  * over on every change, and while the repository keeps changing none would ever finish. The read
  * finishes and shows, and one more then starts if the revision moved on meanwhile, however often
  * it did. Components showing the same query share one read. Another repository or query still
- * stops the read under way once nothing shows it.
+ * stops the read under way once nothing shows it. `answered` tells which of two reads answered
+ * last, and is 0 before the first answer.
  */
 export function useSettledRepositoryQuery<K extends RepositoryQuery["kind"]>(
   query: Extract<RepositoryQuery, { kind: K }> | null,
@@ -149,6 +161,7 @@ export function useSettledRepositoryQuery<K extends RepositoryQuery["kind"]>(
   return {
     data: shown?.data?.kind === query?.kind ? (shown?.data as Data | null) : null,
     error: shown?.error ?? null,
-    loading: query !== null && (shown === null || shown.revision !== revision)
+    loading: query !== null && (shown === null || shown.revision !== revision),
+    answered: shown?.answered ?? 0
   };
 }

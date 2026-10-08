@@ -214,10 +214,12 @@ function RepoRow({
       style={{ paddingLeft: `${4 + Math.min(depth, 8) * 16}px` }}
     >
       <div class="flex items-center gap-1">
+        {/* Keyed, so a row that gains rows below it gets a new toggle and keeps its name button. */}
         {expanded === undefined ? (
-          <span class="size-5 shrink-0" />
+          <span key="toggle" class="size-5 shrink-0" />
         ) : (
           <button
+            key="toggle"
             type="button"
             class="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded hover:bg-btn-hover focus:outline-1 focus:outline-focus"
             aria-expanded={expanded}
@@ -231,6 +233,7 @@ function RepoRow({
           </button>
         )}
         <button
+          key="name"
           class="min-w-0 flex-1 cursor-pointer truncate text-left font-medium disabled:cursor-default"
           disabled={!entry.initialized}
           onClick={() => selectRepo(entry.path)}
@@ -366,7 +369,17 @@ export function WorkspacePane() {
   const [filter, setFilter] = useState("");
   const [onlyChanged, setOnlyChanged] = useState(false);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  const query = useSettledRepositoryQuery<"workspace">({ kind: "workspace" });
+  const listing = useSettledRepositoryQuery<"workspace">({ kind: "workspace" });
+  // Reading every repository takes a while in a large workspace, so the selected repository and
+  // the repositories around it are also read on their own: their status shows at once, and again
+  // soon after every change. Both answers list the whole workspace, and the later is the newer.
+  const nearby = useSettledRepositoryQuery<"workspace">({ kind: "workspace", refresh: "selected" });
+  const newest = nearby.answered > listing.answered ? nearby : listing;
+  // An error shows at once, even while the other read is still under way.
+  const query = {
+    ...newest,
+    loading: newest.error === null && (listing.loading || nearby.loading)
+  };
   // The listing is the workspace's, whichever repository is selected, so the last one stays while
   // the listing asked for by a newly selected repository loads. Choosing a repository here must
   // not empty the pane for as long as every repository's status takes to read.
@@ -374,8 +387,8 @@ export function WorkspacePane() {
   if (query.data !== null || query.error !== null) {
     lastListing.current = query.data;
   }
-  const listing = lastListing.current;
-  const entries = listing?.entries ?? [];
+  const shownListing = lastListing.current;
+  const entries = shownListing?.entries ?? [];
   const byPath = new Map(entries.map((entry) => [entry.path, entry]));
   const status = workspaceFilter.value;
   // The totals count what the text filter matches; the bulk actions act on what every filter does.
@@ -460,7 +473,7 @@ export function WorkspacePane() {
             {window.l10n.refresh}
           </Button>
         </div>
-        {listing && <OverviewStrip totals={workspaceTotals(named)} />}
+        {shownListing && <OverviewStrip totals={workspaceTotals(named)} />}
         <input
           class={INPUT_CLASS}
           aria-label={window.l10n.overviewFilter}
