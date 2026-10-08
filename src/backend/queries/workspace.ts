@@ -36,6 +36,59 @@ export async function submoduleLinks(git: SimpleGit) {
 }
 
 /**
+ * The checked-out commit and branch, how far the branch is from its upstream, and how many files
+ * are changed or conflicted, all from one `git status`. A listing starts Git several times for
+ * every repository, and on Windows starting a process holds up the extension host, so each one
+ * saved counts.
+ */
+async function readStatus(git: SimpleGit) {
+  const text = await git.raw(["status", "--porcelain=v2", "--branch", "-z"]);
+  const status = {
+    head: null as string | null,
+    branch: "",
+    detached: false,
+    ahead: 0,
+    behind: 0,
+    dirty: 0,
+    conflicts: 0
+  };
+  const records = text.split("\0");
+  for (let index = 0; index < records.length; index++) {
+    const record = records[index]!;
+    if (record.startsWith("# branch.oid ")) {
+      const oid = record.slice("# branch.oid ".length);
+      status.head = oid === "(initial)" ? null : oid;
+    } else if (record.startsWith("# branch.head ")) {
+      const name = record.slice("# branch.head ".length);
+      status.detached = name === "(detached)";
+      status.branch = status.detached ? "" : name;
+    } else if (record.startsWith("# branch.ab ")) {
+      const match = /^\+(\d+) -(\d+)$/.exec(record.slice("# branch.ab ".length));
+      status.ahead = Number(match?.[1] ?? 0);
+      status.behind = Number(match?.[2] ?? 0);
+    } else if (record.startsWith("u ")) {
+      status.dirty++;
+      status.conflicts++;
+    } else if (record.startsWith("1 ") || record.startsWith("? ")) {
+      status.dirty++;
+    } else if (record.startsWith("2 ")) {
+      // A rename or copy: the path it came from is the next record.
+      status.dirty++;
+      index++;
+    }
+  }
+  return status;
+}
+
+/** Whether the work tree at `top` can have submodules: Git keeps them in `.gitmodules`. */
+function mayHaveSubmodules(top: string) {
+  return stat(path.join(top, ".gitmodules")).then(
+    (file) => file.isFile(),
+    () => false
+  );
+}
+
+/**
  * What needs attention in a repository besides its changed files: which branches have an
  * upstream, how many other branches are ahead of theirs, how many stashes there are and when it
  * last fetched. One ref listing answers the branch questions; the stash count needs a second Git
@@ -202,23 +255,13 @@ async function readEntry(repo: string, binary: string, signal?: AbortSignal) {
       return { entry, children: [] };
     }
     entry.initialized = true;
-    const [status, head, children, operation, extra] = await Promise.all([
-      git.status(),
-      git.raw(["rev-parse", "--verify", "--quiet", "HEAD"]),
-      submoduleLinks(git),
+    const [status, children, operation, extra] = await Promise.all([
+      readStatus(git),
+      mayHaveSubmodules(top).then((has) => (has ? submoduleLinks(git) : [])),
       loadOperationKind(git, directory),
       attention(git, directory)
     ]);
-    Object.assign(entry, extra, {
-      head: head.trim() || null,
-      branch: status.detached ? "" : (status.current ?? ""),
-      dirty: status.files.length,
-      ahead: status.ahead,
-      behind: status.behind,
-      operation,
-      conflicts: status.conflicted.length,
-      detached: status.detached
-    });
+    Object.assign(entry, extra, status, { operation });
     return { entry, children };
   } catch (error) {
     signal?.throwIfAborted();

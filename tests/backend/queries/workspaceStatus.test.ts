@@ -67,6 +67,35 @@ it("reports a clean repository with nothing waiting", async () => {
   });
 });
 
+it("counts each changed, staged, renamed and untracked file once, and reads how far HEAD is from its upstream", async () => {
+  const dir = clone();
+  commit(dir, "a", "one\n");
+  commit(dir, "b", "two\n");
+  git(["push", "-q", "origin", "main"], dir);
+  git(["reset", "-q", "--hard", "HEAD~1"], dir);
+  commit(dir, "c", "three\n");
+  // Behind by the pushed commit, ahead by the new one.
+  fs.writeFileSync(path.join(dir, "a"), "changed\n");
+  fs.writeFileSync(path.join(dir, "new file"), "untracked\n");
+  git(["mv", "c", "renamed c"], dir);
+  expect(await status(dir)).toMatchObject({
+    head: gitOutput(["rev-parse", "HEAD"], dir),
+    branch: "main",
+    detached: false,
+    ahead: 1,
+    behind: 1,
+    dirty: 3,
+    conflicts: 0
+  });
+});
+
+it("reads a branch with no commits yet as that branch, with no checked-out commit", async () => {
+  const dir = repo();
+  git(["checkout", "-q", "--orphan", "fresh"], dir);
+  git(["rm", "-q", "-r", "--cached", "."], dir);
+  expect(await status(dir)).toMatchObject({ head: null, branch: "fresh", detached: false });
+});
+
 it("reports a merge stopped by conflicts, with its unmerged files", async () => {
   const dir = repo();
   git(["checkout", "-q", "-b", "clash"], dir);
