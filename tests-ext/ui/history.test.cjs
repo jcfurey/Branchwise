@@ -2124,10 +2124,10 @@ suite("Branchwise workflow UI", function () {
           : false;
       }, "file at revision");
       assert.equal(opened.scheme, "branchwise");
-      const document = vscode.workspace.textDocuments.find(
-        (item) => item.uri.toString() === opened.toString()
-      );
-      assert.equal(document?.getText(), "nested at first\n");
+      // Read through the tab's own URI, as the diff scenario does: on Windows the open
+      // documents' URIs need not spell the repository path the same way.
+      const document = await vscode.workspace.openTextDocument(opened);
+      assert.equal(document.getText(), "nested at first\n");
       await backToGraph();
 
       // The second commit changes the picture: its diff shows both versions as images.
