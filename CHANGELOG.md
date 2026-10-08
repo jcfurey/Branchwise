@@ -68,6 +68,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 - Ship the license and copyright notices of the open-source packages bundled into the extension, such as simple-git and Preact, in `THIRD-PARTY-NOTICES.txt`. The file is generated from what the build bundles, and CI fails when it is out of date.
 - Choosing a repository in the Workspace pane no longer empties the pane until every repository's status has been read again; the listing stays while it refreshes, and the pane reads up to eight repositories at once instead of four at a time.
+- The Workspace pane no longer starts its listing over each time the repository changes. With many repositories, a slow disk or Git that starts slowly, as on Windows, a listing could take longer than the gap between changes and never finish, so the pane kept showing old states. The listing under way now finishes and shows, and one more catches up with every change since.
 - **Go to Branch, Tag or Commit…** no longer closes by itself just after opening: it brings the graph forward without giving it the keyboard, which the graph could otherwise take a moment after the picker had opened.
 
 ## [0.9.9] - 2026-10-02

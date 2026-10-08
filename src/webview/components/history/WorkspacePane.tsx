@@ -28,7 +28,7 @@ import {
 } from "@/webview/lib/navigation";
 import { confirmRepositoryAction, repositoryRevision } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
-import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
+import { useSettledRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { workspaceBusy } from "@/webview/lib/workspace-actions";
 import {
   isUnpublished,
@@ -366,7 +366,7 @@ export function WorkspacePane() {
   const [filter, setFilter] = useState("");
   const [onlyChanged, setOnlyChanged] = useState(false);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  const query = useRepositoryQuery<"workspace">({ kind: "workspace" });
+  const query = useSettledRepositoryQuery<"workspace">({ kind: "workspace" });
   // The listing is the workspace's, whichever repository is selected, so the last one stays while
   // the listing asked for by a newly selected repository loads. Choosing a repository here must
   // not empty the pane for as long as every repository's status takes to read.
