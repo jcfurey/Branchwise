@@ -50,7 +50,10 @@ export default defineConfig({
         test: {
           name: "extension",
           include: ["tests/extension/**/*.test.ts"],
-          setupFiles: [gitConfig]
+          setupFiles: [gitConfig],
+          // Many of these start real Git processes too, and need the backend's allowance on Windows.
+          testTimeout: 30_000,
+          hookTimeout: 30_000
         }
       },
       {

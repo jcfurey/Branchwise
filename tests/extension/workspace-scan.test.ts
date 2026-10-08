@@ -97,7 +97,6 @@ describe("repositories offered by the picker and the Workspace pane", () => {
     expect(await listRepos("git", 1)).toEqual([scanned]);
   });
 
-  // Real Git runs here, as in the backend tests, which allow Windows the same 30 seconds.
   it("adds the repositories cloned inside them, up to the nested depth", async () => {
     mocks.findGitRepos.mockResolvedValue([]);
     const opened = normalizeRepoPath(path.join(root, "opened"));
@@ -110,5 +109,5 @@ describe("repositories offered by the picker and the Workspace pane", () => {
     expect(await listRepos("git", 0, 2)).toEqual([opened, nested]);
     expect(await listRepos("git", 0, 1)).toEqual([opened]);
     expect(await listRepos("git", 0)).toEqual([opened]);
-  }, 30_000);
+  });
 });
