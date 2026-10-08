@@ -11,7 +11,7 @@ import {
   sendRepositoryAction
 } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
-import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
+import { useRepositoryQuery, useSettledRepositoryQuery } from "@/webview/lib/use-repository-query";
 import {
   backgroundAction,
   fetchWorkspace,
@@ -409,7 +409,7 @@ export function openSync(
 }
 
 function WorkspaceSyncView() {
-  const query = useRepositoryQuery<"workspace">({ kind: "workspace" });
+  const query = useSettledRepositoryQuery<"workspace">({ kind: "workspace" });
   const entries = (query.data?.entries ?? []).filter((entry) => entry.initialized && !entry.error);
   const [selection, setSelection] = useState<string[]>([]);
   const selected = selection.filter((repo) => entries.some((entry) => entry.path === repo));

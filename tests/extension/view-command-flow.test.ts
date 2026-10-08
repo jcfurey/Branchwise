@@ -421,6 +421,15 @@ describe("the Go to picker", () => {
     expect(world.sent).toEqual([goTo]);
   });
 
+  test("leaves the keyboard where it is when bringing the graph forward", () => {
+    // A page given the keyboard could take it after the picker opened, which closes the picker.
+    const view = createViewCommand(ctx);
+    view();
+    newest().pageReady();
+    view.goTo();
+    expect(newest().panel.reveal.mock.calls).toEqual([[2, true]]);
+  });
+
   test("is forgotten when the panel closes before its page was ready", () => {
     const view = createViewCommand(ctx);
     view.goTo();

@@ -8,6 +8,13 @@ import { loadOperationKind } from "@/backend/queries/repository";
 import type { WorkspaceEntry } from "@/backend/types";
 import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 
+/**
+ * Repositories read at once. A read mostly waits for its Git processes to start and finish, so
+ * more reads than cores still pay off; the bound keeps a large workspace from starting hundreds
+ * of processes together.
+ */
+const REPOS_IN_FLIGHT = 8;
+
 export async function submoduleLinks(git: SimpleGit) {
   const [index, tree] = await Promise.all([
     git.raw(["ls-files", "--stage", "-z"]),
@@ -26,6 +33,59 @@ export async function submoduleLinks(git: SimpleGit) {
       ? [{ path: match[2]!, recorded: match[1]!, committed: committed.get(match[2]!) ?? null }]
       : [];
   });
+}
+
+/**
+ * The checked-out commit and branch, how far the branch is from its upstream, and how many files
+ * are changed or conflicted, all from one `git status`. A listing starts Git several times for
+ * every repository, and on Windows starting a process holds up the extension host, so each one
+ * saved counts.
+ */
+async function readStatus(git: SimpleGit) {
+  const text = await git.raw(["status", "--porcelain=v2", "--branch", "-z"]);
+  const status = {
+    head: null as string | null,
+    branch: "",
+    detached: false,
+    ahead: 0,
+    behind: 0,
+    dirty: 0,
+    conflicts: 0
+  };
+  const records = text.split("\0");
+  for (let index = 0; index < records.length; index++) {
+    const record = records[index]!;
+    if (record.startsWith("# branch.oid ")) {
+      const oid = record.slice("# branch.oid ".length);
+      status.head = oid === "(initial)" ? null : oid;
+    } else if (record.startsWith("# branch.head ")) {
+      const name = record.slice("# branch.head ".length);
+      status.detached = name === "(detached)";
+      status.branch = status.detached ? "" : name;
+    } else if (record.startsWith("# branch.ab ")) {
+      const match = /^\+(\d+) -(\d+)$/.exec(record.slice("# branch.ab ".length));
+      status.ahead = Number(match?.[1] ?? 0);
+      status.behind = Number(match?.[2] ?? 0);
+    } else if (record.startsWith("u ")) {
+      status.dirty++;
+      status.conflicts++;
+    } else if (record.startsWith("1 ") || record.startsWith("? ")) {
+      status.dirty++;
+    } else if (record.startsWith("2 ")) {
+      // A rename or copy: the path it came from is the next record.
+      status.dirty++;
+      index++;
+    }
+  }
+  return status;
+}
+
+/** Whether the work tree at `top` can have submodules: Git keeps them in `.gitmodules`. */
+function mayHaveSubmodules(top: string) {
+  return stat(path.join(top, ".gitmodules")).then(
+    (file) => file.isFile(),
+    () => false
+  );
 }
 
 /**
@@ -77,7 +137,9 @@ async function attention(git: SimpleGit, directory: string) {
 /**
  * The repositories `repos`, their submodules and their submodules' submodules, each with its
  * parent: the superproject of a submodule, otherwise the innermost listed repository holding it.
- * Bound concurrency keeps a workspace with many submodules responsive.
+ * Bound concurrency keeps a workspace with many submodules responsive. Each lane reads the next
+ * repository as soon as its last one is done, so one slow repository holds up only its own lane,
+ * and the submodules a read finds join the queue.
  */
 export async function loadWorkspace(
   repos: string[],
@@ -85,94 +147,30 @@ export async function loadWorkspace(
   signal?: AbortSignal
 ): Promise<WorkspaceEntry[]> {
   const queue = [...new Set(repos.map(normalizeRepoPath))];
-  const visited = new Set<string>();
+  const queued = new Set(queue);
   const entries = new Map<string, WorkspaceEntry>();
   const parents = new Map<
     string,
     Pick<WorkspaceEntry, "parent" | "submodulePath" | "recorded" | "committed">
   >();
-  while (queue.length > 0) {
+  await drain(queue, async (repo) => {
     signal?.throwIfAborted();
-    const batch = queue.splice(0, 4).filter((repo) => !visited.has(repo));
-    for (const repo of batch) {
-      visited.add(repo);
-    }
-    // Discover children from this batch before scheduling the next bounded batch.
-    // eslint-disable-next-line no-await-in-loop
-    const results = await Promise.all(
-      batch.map(async (repo) => {
-        const entry: WorkspaceEntry = {
-          path: repo,
-          parent: null,
-          submodulePath: null,
-          recorded: null,
-          committed: null,
-          head: null,
-          branch: "",
-          dirty: 0,
-          ahead: 0,
-          behind: 0,
-          initialized: false,
-          error: null,
-          operation: null,
-          conflicts: 0,
-          stashes: 0,
-          detached: false,
-          upstream: null,
-          aheadBranches: 0,
-          remotes: 0,
-          fetched: null
-        };
-        try {
-          const git = gitClientFactory(repo, binary, signal).getInstance();
-          const [top = "", directory = ""] = (
-            await git.raw(["rev-parse", "--show-toplevel", "--absolute-git-dir"])
-          ).split("\n");
-          if (normalizeRepoPath(top) !== repo) {
-            return { entry, children: [] };
-          }
-          entry.initialized = true;
-          const [status, head, children, operation, extra] = await Promise.all([
-            git.status(),
-            git.raw(["rev-parse", "--verify", "--quiet", "HEAD"]),
-            submoduleLinks(git),
-            loadOperationKind(git, directory),
-            attention(git, directory)
-          ]);
-          Object.assign(entry, extra, {
-            head: head.trim() || null,
-            branch: status.detached ? "" : (status.current ?? ""),
-            dirty: status.files.length,
-            ahead: status.ahead,
-            behind: status.behind,
-            operation,
-            conflicts: status.conflicted.length,
-            detached: status.detached
-          });
-          return { entry, children };
-        } catch (error) {
-          signal?.throwIfAborted();
-          entry.error = error instanceof Error ? error.message : String(error);
-          return { entry, children: [] };
-        }
-      })
-    );
-    for (const { entry, children } of results) {
-      entries.set(entry.path, entry);
-      for (const child of children) {
-        const childPath = normalizeRepoPath(path.join(entry.path, child.path));
-        parents.set(childPath, {
-          parent: entry.path,
-          submodulePath: child.path,
-          recorded: child.recorded,
-          committed: child.committed
-        });
-        if (!visited.has(childPath) && !queue.includes(childPath)) {
-          queue.push(childPath);
-        }
+    const { entry, children } = await readEntry(repo, binary, signal);
+    entries.set(entry.path, entry);
+    for (const child of children) {
+      const childPath = normalizeRepoPath(path.join(entry.path, child.path));
+      parents.set(childPath, {
+        parent: entry.path,
+        submodulePath: child.path,
+        recorded: child.recorded,
+        committed: child.committed
+      });
+      if (!queued.has(childPath)) {
+        queued.add(childPath);
+        queue.push(childPath);
       }
     }
-  }
+  });
   const list = [...entries.values()].map((entry) =>
     Object.assign(entry, parents.get(entry.path), {
       error: !entry.initialized && parents.has(entry.path) ? null : entry.error
@@ -187,6 +185,89 @@ export async function loadWorkspace(
     }
   }
   return list.toSorted((a, b) => a.path.localeCompare(b.path));
+}
+
+/**
+ * Run `read` on every item of `queue`, at most `REPOS_IN_FLIGHT` at once, starting the next item
+ * whenever one finishes. Items that a read appends to `queue` are run too. The first failure
+ * rejects, and no further item starts.
+ */
+function drain(queue: string[], read: (item: string) => Promise<void>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let next = 0;
+    let running = 0;
+    let failed = false;
+    const pump = () => {
+      if (failed) {
+        return;
+      }
+      while (running < REPOS_IN_FLIGHT && next < queue.length) {
+        running++;
+        read(queue[next++]!).then(
+          () => {
+            running--;
+            pump();
+          },
+          (error: unknown) => {
+            failed = true;
+            reject(error);
+          }
+        );
+      }
+      if (running === 0) {
+        resolve();
+      }
+    };
+    pump();
+  });
+}
+
+/** The status of the repository at `repo`, and the submodules its index records. */
+async function readEntry(repo: string, binary: string, signal?: AbortSignal) {
+  const entry: WorkspaceEntry = {
+    path: repo,
+    parent: null,
+    submodulePath: null,
+    recorded: null,
+    committed: null,
+    head: null,
+    branch: "",
+    dirty: 0,
+    ahead: 0,
+    behind: 0,
+    initialized: false,
+    error: null,
+    operation: null,
+    conflicts: 0,
+    stashes: 0,
+    detached: false,
+    upstream: null,
+    aheadBranches: 0,
+    remotes: 0,
+    fetched: null
+  };
+  try {
+    const git = gitClientFactory(repo, binary, signal).getInstance();
+    const [top = "", directory = ""] = (
+      await git.raw(["rev-parse", "--show-toplevel", "--absolute-git-dir"])
+    ).split("\n");
+    if (normalizeRepoPath(top) !== repo) {
+      return { entry, children: [] };
+    }
+    entry.initialized = true;
+    const [status, children, operation, extra] = await Promise.all([
+      readStatus(git),
+      mayHaveSubmodules(top).then((has) => (has ? submoduleLinks(git) : [])),
+      loadOperationKind(git, directory),
+      attention(git, directory)
+    ]);
+    Object.assign(entry, extra, status, { operation });
+    return { entry, children };
+  } catch (error) {
+    signal?.throwIfAborted();
+    entry.error = error instanceof Error ? error.message : String(error);
+    return { entry, children: [] };
+  }
 }
 
 /** The innermost of `repos` whose folder holds `repo`, or null. */
