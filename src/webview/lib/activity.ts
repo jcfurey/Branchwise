@@ -63,6 +63,7 @@ const titles: Record<string, keyof LocalizedStrings> = {
   viewWorkingTreeFile: "openFileChanges",
   viewRangeFile: "compareRevisions",
   viewHistoricalFile: "openHistoricalFile",
+  viewCurrentFile: "openCurrentFile",
   viewCommitChanges: "openAllChanges",
   viewRangeChanges: "openAllChanges",
   previewFileRestore: "restorePreview",

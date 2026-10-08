@@ -37,6 +37,7 @@ import { isRepoWithinPath, normalizeRepoPath } from "@/backend/utils/repoPath";
 import { abbrevCommit } from "@/backend/utils/string";
 import type { Config } from "@/extension/config";
 import { openConflict } from "@/extension/conflicts";
+import { isImageChange, openImageDiff } from "@/extension/image-diff";
 import { logger } from "@/extension/util/logger";
 import {
   muteGitRepoWatcher,
@@ -124,6 +125,7 @@ const VIEW_ONLY = new Set<RepositoryAction["kind"]>([
   "viewWorkingTreeFile",
   "viewRangeFile",
   "viewHistoricalFile",
+  "viewCurrentFile",
   "viewCommitChanges",
   "viewRangeChanges",
   "previewFileRestore"
@@ -324,11 +326,18 @@ async function openEffect(repo: string, effect: RepositoryEffect) {
       return;
     }
     case "historicalFile":
+      // Titled with the commit, so versions of one file from several commits tell apart.
       await vscode.commands.executeCommand(
         "vscode.open",
         encodeDiffDocUri(repo, effect.path, effect.hash),
-        { preview: true }
+        { preview: true },
+        `${effect.path.slice(effect.path.lastIndexOf("/") + 1)} (${abbrevCommit(effect.hash)})`
       );
+      return;
+    case "workingFile":
+      await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(effect.path), {
+        preview: true
+      });
       return;
     case "restoreDiff":
       // `destination` is absolute here; a file that does not exist yet compares as empty.
@@ -734,14 +743,29 @@ export function registerMessageHandlers(
         : type === "D"
           ? text.deletedIn(short)
           : `${short}^ ↔ ${short}`;
-    let success = true;
-    try {
-      // The left side is the old path at the first parent, so an added file compares with nothing.
-      await showDiff(
+    const title = `${name} (${change})`;
+    // The left side is the old path at the first parent, so an added file compares with nothing.
+    const textDiff = () =>
+      showDiff(
         encodeDiffDocUri(repo, oldFilePath, `${commitHash}^`),
         encodeDiffDocUri(repo, newFilePath, commitHash),
-        `${name} (${change})`
+        title
       );
+    let success = true;
+    try {
+      if (isImageChange(request)) {
+        await openImageDiff(gitClientFactory(repo, config.gitPath()).getInstance(), {
+          commit: commitHash,
+          oldFilePath,
+          newFilePath,
+          type,
+          title,
+          labels: [`${short}^`, short],
+          openTextDiff: textDiff
+        });
+      } else {
+        await textDiff();
+      }
     } catch (error) {
       logger.error(`Unable to open the diff of ${newFilePath} at ${short}`, error);
       success = false;

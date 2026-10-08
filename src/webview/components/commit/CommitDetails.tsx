@@ -1,8 +1,10 @@
+import { signal } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import type { GitCommitDetails } from "@/backend/types";
 import { abbrevCommit } from "@/backend/utils/string";
+import { AllFiles } from "@/webview/components/commit/AllFiles";
 import { ContainingRefs } from "@/webview/components/commit/ContainingRefs";
 import { FileTree } from "@/webview/components/commit/FileTree";
 import { SignatureLine } from "@/webview/components/commit/SignatureBadge";
@@ -18,7 +20,7 @@ import { repositoryState } from "@/webview/lib/repository-actions";
 import { shownColumns } from "@/webview/lib/stores";
 import { getWebviewConfig, rowHeight } from "@/webview/lib/webview-config";
 import { getFullDate } from "@/webview/utils/date";
-import { buildFileTree } from "@/webview/utils/fileTree";
+import { buildFileTree, type FileTreeNode } from "@/webview/utils/fileTree";
 
 /** Thickness of the line that closes off the details at the bottom, in pixels. */
 const BOTTOM_LINE = 2;
@@ -278,29 +280,85 @@ export function CommitDetailsContent({
         <SignatureLine hash={details.hash} />
         <CommitMessage body={details.body} tracker={repositoryTracker(repositoryState.value)} />
       </div>
+      <FileList key={details.hash} details={details} nodes={nodes} stacked={stacked} />
+    </div>
+  );
+}
+
+/** Which files the details list: those the commit changed, or every file of its tree. */
+export const fileListMode = signal<"changed" | "all">("changed");
+
+const HEADER_BUTTON =
+  "shrink-0 cursor-pointer rounded-sm px-1 hover:bg-btn-hover focus:outline-1 focus:outline-focus";
+
+/**
+ * The commit's files, with a header to choose between the changed files and all of them. The
+ * choice holds for every commit opened after it; the filter starts empty for each commit.
+ */
+function FileList({
+  details,
+  nodes,
+  stacked
+}: {
+  details: GitCommitDetails;
+  nodes: Array<FileTreeNode>;
+  /** Whether the list sits under the facts, as in a pane docked to the right, not beside them. */
+  stacked: boolean;
+}) {
+  const [filter, setFilter] = useState("");
+  const l10n = window.l10n;
+  const mode = fileListMode.value;
+  const choice = (value: typeof mode, label: string) => (
+    <button
+      type="button"
+      aria-pressed={mode === value}
+      class={`${HEADER_BUTTON} ${mode === value ? "bg-row-head font-medium text-fg" : "text-muted"}`}
+      onClick={() => {
+        fileListMode.value = value;
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div
+      class={`flex min-w-0 flex-1 flex-col ${stacked ? "min-h-0" : "mr-8 border-r border-line"}`}
+    >
       <div
-        class={`flex min-w-0 flex-1 flex-col ${stacked ? "min-h-0" : "mr-8 border-r border-line"}`}
+        class="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-2 py-0.5 text-xs"
+        data-file-list-header
       >
-        {details.fileChanges.length > 0 && (
-          <div
-            class="flex shrink-0 items-center justify-between gap-2 border-b border-line-soft px-2 py-0.5 text-xs"
-            data-file-list-header
-          >
-            <span class="truncate text-muted">
-              {l10n.comparedFiles} ({details.fileChanges.length})
-            </span>
+        <div role="group" aria-label={l10n.fileListShows} class="flex min-w-0 gap-0.5">
+          {choice("changed", `${l10n.comparedFiles} (${details.fileChanges.length})`)}
+          {choice("all", l10n.allFiles)}
+        </div>
+        {mode === "all" ? (
+          <input
+            type="search"
+            class="w-40 min-w-0 rounded-sm border border-input-border bg-input px-1.5 text-input-fg focus:outline-1 focus:outline-focus"
+            placeholder={l10n.filterFiles}
+            aria-label={l10n.filterFiles}
+            value={filter}
+            onInput={(event) => setFilter(event.currentTarget.value)}
+          />
+        ) : (
+          details.fileChanges.length > 0 && (
             <button
               type="button"
-              class="shrink-0 cursor-pointer rounded-sm px-1 hover:bg-btn-hover focus:outline-1 focus:outline-focus"
+              class={HEADER_BUTTON}
               onClick={() => openAllCommitChanges(details.hash)}
             >
               {l10n.openAllChanges}
             </button>
-          </div>
+          )
         )}
-        <div class="min-h-0 flex-1 overflow-x-hidden overflow-y-scroll py-1">
+      </div>
+      <div class="min-h-0 flex-1 overflow-x-hidden overflow-y-scroll py-1">
+        {mode === "all" ? (
+          <AllFiles hash={details.hash} changes={details.fileChanges} filter={filter} />
+        ) : (
           <FileTree nodes={nodes} commitHash={details.hash} />
-        </div>
+        )}
       </div>
     </div>
   );
