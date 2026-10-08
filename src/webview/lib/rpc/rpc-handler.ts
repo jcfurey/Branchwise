@@ -37,7 +37,7 @@ const notifications: Record<RpcNotificationName, (message: unknown) => void> = {
   },
   "view.reveal": (message) => {
     if (isFields(message) && typeof message.repo === "string" && typeof message.hash === "string") {
-      revealChoice(message.repo, message.hash);
+      revealChoice(message.repo, message.hash, message.details === true);
     }
   },
   "repo.select": (message) => {

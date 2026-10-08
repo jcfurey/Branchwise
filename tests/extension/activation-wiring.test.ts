@@ -104,6 +104,13 @@ vi.mock("@/old-extension/fileHistoryCommand", () => ({
     fake.openFileHistory = open;
   }
 }));
+vi.mock("@/extension/line-commands", () => ({
+  registerLineCommands: (ctx: unknown, view: unknown) => {
+    fake.note(
+      `registerLineCommands ${ctx === context ? "ctx" : "?"} ${view === fake.view ? "view" : "?"}`
+    );
+  }
+}));
 
 let context: import("vscode").ExtensionContext;
 
@@ -135,6 +142,7 @@ describe("activation", () => {
       "createStatusBarItem",
       "createViewCommand",
       "registerFileHistoryCommand ctx",
+      "registerLineCommands ctx view",
       "logger.info Extension activated"
     ]);
   });

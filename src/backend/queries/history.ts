@@ -1,6 +1,12 @@
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
+import {
+  LINE_HISTORY_LIMIT,
+  lineLogOption,
+  lineLogRecords,
+  lineSpan
+} from "@/backend/queries/lineHistory";
 import { loadStatistics } from "@/backend/queries/statistics";
 import type {
   BatchPlan,
@@ -110,8 +116,23 @@ export async function loadHistory(
   // reads the matches before this page and leaves them out instead: each page still stops at
   // its last match, and the client's abort signal stops Git whenever the search is replaced.
   const changes = filter.changes ?? "";
-  const skip = changes ? pageOffset(offset) : 0;
-  const args = changes ? logArgs(0, skip + HISTORY_PAGE_SIZE + 1) : logArgs(offset);
+  // A line history is bounded, so it is read whole and paged the same way. The format closes
+  // each record with a NUL, so that only the records need reading if Git adds the patches.
+  const lines = lineSpan(filter);
+  const skip = changes || lines ? pageOffset(offset) : 0;
+  const args = lines
+    ? [
+        "log",
+        "-z",
+        "--format=" + HISTORY_FORMAT + "%x00",
+        "--date-order",
+        "--max-count=" + LINE_HISTORY_LIMIT,
+        "--no-patch",
+        lineLogOption(lines, filter.path)
+      ]
+    : changes
+      ? logArgs(0, skip + HISTORY_PAGE_SIZE + 1)
+      : logArgs(offset);
   for (const [name, value] of [
     ["since", filter.since],
     ["until", filter.until]
@@ -140,9 +161,11 @@ export async function loadHistory(
     args.push("--committer=" + filter.committer);
   }
   const text = filter.text.trim();
-  const hashSearch = /^[a-f0-9]{7,64}$/i.test(text)
-    ? await resolveCommit(git, text).catch(() => null)
-    : null;
+  // The lines belong to one revision's file, so a line history only searches messages.
+  const hashSearch =
+    !lines && /^[a-f0-9]{7,64}$/i.test(text)
+      ? await resolveCommit(git, text).catch(() => null)
+      : null;
   if (filter.text && !hashSearch) {
     args.push("--grep=" + filter.text);
   }
@@ -152,13 +175,13 @@ export async function loadHistory(
     // Attached to its option, the text cannot be read as an option, even when it starts with `-`.
     args.push((regex ? "-G" : "-S") + changes);
   }
-  if (filter.path && filter.follow) {
+  if (filter.path && filter.follow && !lines) {
     args.push("--follow", "--name-status", "--diff-merges=first-parent");
   }
 
   // Branch and tag names: the commits they point to, and names to offer beside the results.
-  const byName = !hashSearch && Boolean(filter.branch || filter.tag);
-  const suggest = !hashSearch && text !== "" && offset === 0;
+  const byName = !lines && !hashSearch && Boolean(filter.branch || filter.tag);
+  const suggest = !lines && !hashSearch && text !== "" && offset === 0;
   const tips = byName || suggest ? await refTips(git, visibility) : [];
   let refs: string[] | undefined;
   if (suggest) {
@@ -189,6 +212,8 @@ export async function loadHistory(
     args.push("--no-walk=sorted", "--stdin");
   } else if (filter.revision) {
     args.push(await resolveCommit(git, filter.revision));
+  } else if (lines) {
+    args.push("HEAD");
   } else {
     const { branchArgs, logArgs: refArgs } = await remoteVisibility(git, visibility);
     args.push(...branchArgs, "--tags", ...refArgs);
@@ -198,13 +223,14 @@ export async function loadHistory(
     }
   }
   args.push("--");
-  if (filter.path) {
+  if (filter.path && !lines) {
     args.push(literalPath(filter.path));
   }
   const output = commits
     ? await readGitWithInput(git, args, commits.join("\n") + "\n")
     : await git.raw(args);
-  return { ...historyPage(parseHistory(output).slice(skip)), ...(refs ? { refs } : {}) };
+  const entries = parseHistory(lines ? lineLogRecords(output, "NGG-HISTORY", 6) : output);
+  return { ...historyPage(entries.slice(skip)), ...(refs ? { refs } : {}) };
 }
 
 export async function compareCommits(

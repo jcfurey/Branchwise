@@ -236,6 +236,15 @@ export function openFileHistory(file: string, revision = "") {
   setHistoryFilter({ ...emptyFilter(), path: file, follow: true, revision });
 }
 
+/**
+ * The commits that changed lines `start` to `end` of `file`, counted in the file at `revision`,
+ * or at HEAD when it is empty. Git follows the lines across renames by itself.
+ */
+export function openLineHistory(file: string, start: number, end: number, revision = "") {
+  closeDialog();
+  setHistoryFilter({ ...emptyFilter(), path: file, lines: `${start},${end}`, revision });
+}
+
 function RestorePreview({ plan: initial, repo }: { plan: FileRestorePlan; repo: string }) {
   const [plan, setPlan] = useState(initial);
   const [changed, setChanged] = useState(false);

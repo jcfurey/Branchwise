@@ -56,6 +56,10 @@ describe("noMatchSuggestions", () => {
     expect(noMatchSuggestions(filter({ path: "a", revision: "abc123" }), "main")).toEqual([
       "clearFilters"
     ]);
+    // A line history starts at HEAD whatever branch is shown.
+    expect(noMatchSuggestions(filter({ path: "a", lines: "1,2" }), "main")).toEqual([
+      "clearFilters"
+    ]);
   });
 
   it("offers literal text only while regular expressions are on", () => {

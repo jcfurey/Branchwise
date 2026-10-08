@@ -396,6 +396,68 @@ describe("a pending file history", () => {
   });
 });
 
+describe("an editor's line commands", () => {
+  const reveal = (repo: string, hash: string) => [
+    "notify",
+    "view.reveal",
+    { repo, hash, details: true }
+  ];
+
+  test("open the graph on the history of lines once the page selected their repository", async () => {
+    const view = createViewCommand(ctx);
+    view.show("/w/a", { path: "src/f.ts", lines: { start: 10, end: 20 }, revision: "abc" });
+    await settle();
+    expect(world.createPanel).toHaveBeenCalledOnce();
+    expect(world.sent).toEqual([]);
+    newest().pageReady();
+    expect(world.sent).toEqual([
+      selected("a", "/w/a"),
+      [
+        "post",
+        {
+          command: "fileHistory",
+          repo: "/w/a",
+          path: "src/f.ts",
+          lines: { start: 10, end: 20 },
+          revision: "abc"
+        }
+      ]
+    ]);
+  });
+
+  test("bring an open graph forward and reveal a commit with its details", async () => {
+    const view = createViewCommand(ctx);
+    view();
+    newest().pageReady();
+    view.show("/w/nested/inner", { commit: "c0ffee" });
+    await settle();
+    expect(world.createPanel).toHaveBeenCalledOnce();
+    expect(newest().panel.reveal).toHaveBeenCalledOnce();
+    expect(world.sent).toEqual([
+      selected("inner", "/w/nested/inner"),
+      reveal("/w/nested/inner", "c0ffee")
+    ]);
+  });
+
+  test("give way to a newer request, and end with the panel", async () => {
+    const view = createViewCommand(ctx);
+    view.show("/w/a", { commit: "old" });
+    await settle();
+    view.show("/w/b", { commit: "new" });
+    await settle();
+    newest().pageReady();
+    expect(world.sent).toEqual([selected("b", "/w/b"), reveal("/w/b", "new")]);
+
+    world.sent.length = 0;
+    view.show("/w/a", { commit: "dropped" });
+    newest().close();
+    await settle();
+    view();
+    newest().pageReady();
+    expect(world.sent).toEqual([]);
+  });
+});
+
 describe("the Go to picker", () => {
   const goTo = ["notify", "view.goTo", null];
 

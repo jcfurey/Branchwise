@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { resolveBuiltInGitPath } from "@/extension/config";
 import { EXTENSION_NAME } from "@/extension/constants";
 import { openDocumentation, openWalkthrough } from "@/extension/handlers/onboarding";
+import { registerLineCommands } from "@/extension/line-commands";
 import { migrateSettings } from "@/extension/migrate-settings";
 import { logger } from "@/extension/util/logger";
 import { createViewCommand } from "@/extension/view-command";
@@ -45,6 +46,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   );
 
   registerFileHistoryCommand(ctx, (repo, file) => view({ rootUri: vscode.Uri.file(repo) }, file));
+  registerLineCommands(ctx, view);
 
   logger.info("Extension activated");
 }

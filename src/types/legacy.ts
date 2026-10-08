@@ -133,8 +133,17 @@ export type ResponseMessage =
       requestId: string;
       message: string;
     }
-  /** Open the history of `path`, relative to `repo` with `/` separators. */
-  | { command: "fileHistory"; repo: string; path: string }
+  /**
+   * Open the history of `path`, relative to `repo` with `/` separators. With `lines`, only the
+   * commits that changed those lines, counted from 1 in the file at `revision` or else at HEAD.
+   */
+  | {
+      command: "fileHistory";
+      repo: string;
+      path: string;
+      lines?: { start: number; end: number };
+      revision?: string;
+    }
   | ActionResponse
   | QueryResponse
   | ResponseViewDiff

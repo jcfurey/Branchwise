@@ -105,6 +105,7 @@ function runsInBackground(action: RepositoryAction) {
     case "viewHistoricalFile":
     case "viewCurrentFile":
     case "viewCommitChanges":
+    case "viewLineChanges":
     case "viewRangeChanges":
       return true;
     default:

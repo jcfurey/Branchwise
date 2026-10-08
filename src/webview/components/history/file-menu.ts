@@ -1,4 +1,4 @@
-import type { TreeEntry } from "@/backend/types";
+import type { HistoryFilter, TreeEntry } from "@/backend/types";
 import { openFileHistory, openRestoreFile } from "@/webview/components/history/HistoryTools";
 import { copyToClipboard } from "@/webview/lib/actions/clipboard";
 import { sendRepositoryAction } from "@/webview/lib/repository-actions";
@@ -25,6 +25,21 @@ export function fileContextMenu(
       onClick: () => openRestoreFile(revision, historicalPath, destination || file)
     }
   ];
+}
+
+/** The entry that opens how commit `hash` of a line history changed the lines it follows. */
+export function lineChangesEntry(hash: string, filter: HistoryFilter): ContextMenuEntry {
+  return {
+    title: window.l10n.lineChanges,
+    onClick: () =>
+      sendRepositoryAction({
+        kind: "viewLineChanges",
+        hash,
+        path: filter.path,
+        lines: filter.lines ?? "",
+        revision: filter.revision
+      })
+  };
 }
 
 /**

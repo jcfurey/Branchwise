@@ -15,7 +15,7 @@ function start(
   args: string[],
   cwd: string,
   env: NodeJS.ProcessEnv,
-  options: { input?: Buffer; stoppable?: boolean; codes?: number[] } = {}
+  options: { input?: Uint8Array; stoppable?: boolean; codes?: number[] } = {}
 ) {
   const codes = options.codes ?? [0];
   const child = spawn(binary, [...PARSED_OUTPUT_ARGS, ...args], {
@@ -127,12 +127,13 @@ export async function writeBlob(git: SimpleGit, content: Buffer) {
 /**
  * Run a Git command that takes its revisions or instructions on standard input (`--stdin`), such
  * as `rev-list` or `update-ref`. Any number of them fits there, where the command line is limited
- * to 32,767 characters on Windows.
+ * to 32,767 characters on Windows. Bytes go in unchanged, such as a file's text in its own encoding.
  */
-export async function readGitWithInput(git: SimpleGit, args: string[], input: string) {
+export async function readGitWithInput(git: SimpleGit, args: string[], input: string | Uint8Array) {
   const binary = gitProcessOf(git)?.gitPath ?? "git";
   const cwd = await readDirectory(git);
-  const { done } = start(binary, args, cwd, process.env, { input: Buffer.from(input) });
+  const bytes = typeof input === "string" ? Buffer.from(input) : input;
+  const { done } = start(binary, args, cwd, process.env, { input: bytes });
   return (await done).stdout.toString();
 }
 

@@ -8,7 +8,7 @@ import { ChangesCell } from "@/webview/components/commit/ChangeCounts";
 import { RefLabel } from "@/webview/components/commit/RefLabel";
 import { SignedMark } from "@/webview/components/commit/SignatureBadge";
 import { WorktreeLabel } from "@/webview/components/commit/WorktreeMarker";
-import { fileContextMenu } from "@/webview/components/history/file-menu";
+import { fileContextMenu, lineChangesEntry } from "@/webview/components/history/file-menu";
 import { KebabIcon } from "@/webview/components/ui/Icons";
 import { OPTIONAL_COLUMNS, UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { type Dimming, focusColour } from "@/webview/graph/focus";
@@ -349,6 +349,10 @@ export function CommitRow({
 
   function menuEntries() {
     const entries = commitMenu(commit, messages);
+    const filter = historyFilter.value;
+    if ((filter.lines ?? "") !== "" && !uncommitted) {
+      entries.push(null, lineChangesEntry(hash, filter));
+    }
     if (commit.filePath) {
       entries.push(
         null,

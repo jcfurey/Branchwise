@@ -3,6 +3,7 @@ import { basename } from "node:path";
 import * as vscode from "vscode";
 
 import { workTreeRoot } from "@/backend/utils/git";
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { extConfig } from "@/extension/config";
 import { EXTENSION_NAME } from "@/extension/constants";
 import { createWebviewHtml } from "@/extension/html";
@@ -16,14 +17,23 @@ import { watchGitDir } from "@/extension/watchers/git.watcher";
 import { addSessionRepo } from "@/extension/workspace-scan";
 import type { ResponseMessage, SidebarPane } from "@/types";
 
-type ViewCommand = {
+/**
+ * What the page should show in a repository once it has selected it: the history of a file, or
+ * of some of its lines, as `fileHistory` describes them, or a commit with its details open.
+ */
+export type RepoRequest =
+  | Omit<Extract<ResponseMessage, { command: "fileHistory" }>, "command" | "repo">
+  | { commit: string };
+
+export type ViewCommand = {
   (sourceControl?: Pick<vscode.SourceControl, "rootUri">, file?: string): void;
   showPane(pane: SidebarPane): void;
   goTo(): void;
+  /** Open the graph on the repository that contains `folder` and show `request` there. */
+  show(folder: string, request: RepoRequest): void;
 };
 
-/** A file whose history the page should show once it has selected `repo`. */
-type FileHistoryRequest = { repo: string; path: string };
+type PendingRequest = RepoRequest & { repo: string };
 
 /** The graph panel while it is open, with everything that lives and dies with it. */
 type OpenGraph = {
@@ -37,7 +47,7 @@ type OpenGraph = {
 /**
  * The `branchwise.view` command. It opens the one graph panel or brings it forward, selects the
  * repository of a Source Control or File History click, and opens side panes and the Go to
- * picker on request.
+ * picker on request. The editor's line commands open it on a line history or a commit.
  */
 export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
   // Both serve every panel of the session.
@@ -45,7 +55,7 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
   const rpcServer = createRpcServer();
 
   let graph: OpenGraph | undefined;
-  let pendingFile: FileHistoryRequest | undefined;
+  let pendingRequest: PendingRequest | undefined;
   let pendingPane: SidebarPane | undefined;
   /** The Go to picker was asked for before the page could hear of it. */
   let pendingGoTo = false;
@@ -77,17 +87,23 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
 
   function onRepoSent(webview: vscode.Webview, repo: string) {
     // The notification is posted within this call, so the page selects the repository before
-    // it receives the file history below.
+    // it receives the file history or the commit below.
     void rpcNotify.notify("repo.select", { name: basename(repo), path: repo });
-    if (pendingFile?.repo === repo) {
-      const message: ResponseMessage = { command: "fileHistory", repo, path: pendingFile.path };
-      pendingFile = undefined;
-      void Promise.resolve(webview.postMessage(message)).catch(() => {});
+    const request = pendingRequest;
+    if (request?.repo !== repo) {
+      return;
     }
+    pendingRequest = undefined;
+    if ("commit" in request) {
+      void rpcNotify.notify("view.reveal", { repo, hash: request.commit, details: true });
+      return;
+    }
+    const message: ResponseMessage = { command: "fileHistory", ...request };
+    void Promise.resolve(webview.postMessage(message)).catch(() => {});
   }
 
   /** Select the repository that contains a clicked folder, once Git has named its top level. */
-  async function followClick(folder: string, file: string | undefined) {
+  async function followClick(folder: string, request: RepoRequest | undefined) {
     const click = ++clicks;
     const top = await workTreeRoot(folder, extConfig.gitPath()).catch(() => null);
     const repo = top ?? folder;
@@ -96,7 +112,7 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
     if (click !== clicks || graph === undefined) {
       return;
     }
-    pendingFile = file === undefined ? undefined : { repo, path: file };
+    pendingRequest = request === undefined ? undefined : { ...request, repo };
     graph.selection.select(repo);
   }
 
@@ -147,7 +163,7 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
       }
       // Requests for this page end with it; the next panel starts afresh.
       graph = undefined;
-      pendingFile = undefined;
+      pendingRequest = undefined;
       pendingPane = undefined;
       pendingGoTo = false;
       for (const attachment of opened.attachments) {
@@ -164,9 +180,12 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
     // comes first.
     const folder = getSourceControlRepo(sourceControl);
     if (folder !== undefined) {
-      void followClick(folder, file);
+      void followClick(folder, file === undefined ? undefined : { path: file });
     }
+    openOrReveal();
+  }
 
+  function openOrReveal() {
     if (graph === undefined) {
       graph = openGraph();
     } else {
@@ -194,5 +213,10 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
     showPendingGoTo();
   }
 
-  return Object.assign(view, { showPane, goTo });
+  function show(folder: string, request: RepoRequest): void {
+    void followClick(normalizeRepoPath(folder), request);
+    openOrReveal();
+  }
+
+  return Object.assign(view, { showPane, goTo, show });
 }

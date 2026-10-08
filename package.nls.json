@@ -52,6 +52,8 @@
   "config.tabIconColourTheme.colour": "Show the icon in colour, which suits most Visual Studio Code colour themes",
   "config.tabIconColourTheme.grey": "Show a grey icon which suits Visual Studio Code colour themes that are predominantly grayscale",
   "command.fileHistory": "View File History",
+  "command.showLineCommit": "Show Line's Commit in Graph",
+  "command.lineHistory": "Show History of Selected Lines",
   "command.showBranches": "Show the Branches Pane",
   "command.goTo": "Go to Branch, Tag or Commit…",
   "command.openDocumentation": "Open Documentation",

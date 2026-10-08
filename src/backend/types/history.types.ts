@@ -22,6 +22,12 @@ export type HistoryFilter = {
   changes?: string;
   /** Read the text fields as regular expressions instead of literal text. */
   regex?: boolean;
+  /**
+   * Only the commits that changed these lines of `path`, as `<start>,<end>` counted from 1 in the
+   * file at `revision`, or at HEAD without one. Branch and tag names do not narrow such a search.
+   * Optional: filters saved before it existed lack it.
+   */
+  lines?: string;
 };
 export type HistoryEntry = GitCommitNode & {
   filePath?: string;
@@ -203,5 +209,7 @@ export type HistoryAction =
   | { kind: "viewHistoricalFile"; hash: string; path: string }
   /** Every file a commit changes against its first parent, in one multi-file diff editor. */
   | { kind: "viewCommitChanges"; hash: string }
+  /** How a commit changed the lines of a line history, as `HistoryFilter` names them. */
+  | { kind: "viewLineChanges"; hash: string; path: string; lines: string; revision: string }
   /** The files of a comparison, from `base` to `right`, in one multi-file diff editor. */
   | { kind: "viewRangeChanges"; base: string; right: string; files: ComparedFile[] };
