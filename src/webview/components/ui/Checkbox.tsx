@@ -1,8 +1,12 @@
-import type { ComponentProps } from "preact";
+import type { InputHTMLAttributes } from "preact";
 
 import { Icon } from "./Icons";
 
-type CheckboxProps = Omit<ComponentProps<"input">, "class" | "type" | "children"> & {
+/** What a checkbox input takes besides what this sets: it is always a checkbox, with that role. */
+type CheckboxProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "class" | "type" | "role" | "children"
+> & {
   label: string;
 };
 

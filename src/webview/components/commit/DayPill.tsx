@@ -59,7 +59,7 @@ export function DayPill({
   rowOf,
   days
 }: {
-  containerRef: RefObject<HTMLElement>;
+  containerRef: RefObject<HTMLElement | null>;
   rowOf: ReadonlyMap<string, number>;
   days: CommitDays;
 }) {

@@ -6,8 +6,8 @@ import { selectedRepo } from "@/webview/lib/stores";
 
 /** Clip to the column the browser actually laid out, which may be narrower than its requested width. */
 export function useGraphScroll(
-  containerRef: RefObject<HTMLDivElement>,
-  headRef: RefObject<HTMLTableRowElement>,
+  containerRef: RefObject<HTMLDivElement | null>,
+  headRef: RefObject<HTMLTableRowElement | null>,
   contentWidth: number
 ) {
   const viewportRef = useRef<HTMLDivElement>(null);

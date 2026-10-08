@@ -211,7 +211,7 @@ function RepoRow({
         "border-b border-line-soft px-2 py-2 " +
         (entry.path === selectedRepo.value ? "bg-row-head" : "hover:bg-row-hover")
       }
-      style={{ paddingLeft: 4 + Math.min(depth, 8) * 16 }}
+      style={{ paddingLeft: `${4 + Math.min(depth, 8) * 16}px` }}
     >
       <div class="flex items-center gap-1">
         {expanded === undefined ? (

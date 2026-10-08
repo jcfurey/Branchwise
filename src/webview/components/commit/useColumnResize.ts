@@ -8,9 +8,9 @@ import { MIN_COLUMN, moveBoundary } from "@/webview/utils/columns";
 
 export type ColumnResize = {
   /** Element whose style holds the widths that the `<col>` elements read. */
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement | null>;
   /** Header row, whose cells show the widths the browser laid out. */
-  headRef: RefObject<HTMLTableRowElement>;
+  headRef: RefObject<HTMLTableRowElement | null>;
   /** Whether a boundary follows the pointer. */
   resizing: boolean;
   /** Let the boundary after column `boundary` follow the pointer until the button is released. */

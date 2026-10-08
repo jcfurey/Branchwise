@@ -55,6 +55,15 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - Never use colour as the only sign: changed files in a commit's details end with their status letter (A, M, D, R…), named in full for tooltips and screen readers; merges and the uncommitted changes have their own dot shapes in the graph; each commit row reads to a screen reader as one summary of its subject, author, age, merge, push and conflict state, and labels; and high contrast themes and forced colours outline selection and keep the graph's marks visible.
 - Show screenshots of the graph, branch focus and the Statistics tab in the README, and add search keywords such as `git log`, `git history`, `reflog` and `visualization`. `pnpm run screenshots` regenerates the images from a demo repository (see [testing](docs/testing.md)).
 - Show grey placeholder rows, with a quiet shimmer that stops for reduced motion, instead of a spinner while a repository's graph first loads.
+- Run the webview on Preact 11.
+
+### Fixed
+
+- Choosing a repository in the Workspace pane no longer empties the pane until every repository's status has been read again; the listing stays while it refreshes, and the pane reads up to eight repositories at once instead of four at a time.
+- The Workspace pane no longer starts its listing over each time the repository changes. With many repositories, a slow disk or Git that starts slowly, as on Windows, a listing could take longer than the gap between changes and never finish, so the pane kept showing old states. The listing under way now finishes and shows, and one more catches up with every change since.
+- The Workspace pane reads each repository with four Git processes instead of seven: one `git status` now gives the checked-out commit, branch, distance from upstream and changed files, and submodules are looked for only where `.gitmodules` exists. On Windows, where every process Git starts holds up the extension host for a moment, a listing of many repositories no longer leaves VS Code unresponsive for seconds.
+- **Go to Branch, Tag or Commit…** no longer closes by itself just after opening: it brings the graph forward without giving it the keyboard, which the graph could otherwise take a moment after the picker had opened.
+- The activity indicator beside the header no longer gives its buttons the `status` and `alert` roles, which ARIA does not allow on a button; a live region around each button announces it instead.
 
 ## [0.9.10] - 2026-10-03
 
@@ -70,10 +79,6 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 ### Fixed
 
 - Ship the license and copyright notices of the open-source packages bundled into the extension, such as simple-git and Preact, in `THIRD-PARTY-NOTICES.txt`. The file is generated from what the build bundles, and CI fails when it is out of date.
-- Choosing a repository in the Workspace pane no longer empties the pane until every repository's status has been read again; the listing stays while it refreshes, and the pane reads up to eight repositories at once instead of four at a time.
-- The Workspace pane no longer starts its listing over each time the repository changes. With many repositories, a slow disk or Git that starts slowly, as on Windows, a listing could take longer than the gap between changes and never finish, so the pane kept showing old states. The listing under way now finishes and shows, and one more catches up with every change since.
-- The Workspace pane reads each repository with four Git processes instead of seven: one `git status` now gives the checked-out commit, branch, distance from upstream and changed files, and submodules are looked for only where `.gitmodules` exists. On Windows, where every process Git starts holds up the extension host for a moment, a listing of many repositories no longer leaves VS Code unresponsive for seconds.
-- **Go to Branch, Tag or Commit…** no longer closes by itself just after opening: it brings the graph forward without giving it the keyboard, which the graph could otherwise take a moment after the picker had opened.
 
 ## [0.9.9] - 2026-10-02
 

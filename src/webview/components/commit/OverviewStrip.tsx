@@ -164,7 +164,7 @@ function measure(container: HTMLElement, rows: number) {
 
 type OverviewStripProps = {
   /** The table's container, which the strip sits in and gives room on its right. */
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement | null>;
   markers: readonly OverviewMarker[];
   rows: number;
   /** The row whose details are open, or -1. */
