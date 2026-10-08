@@ -75,7 +75,7 @@
   "dependencies": {
     "@preact/signals": "^2.11.3",
     "@vscode/l10n": "^0.0.18",
-    "preact": "^10.29.8",
+    "preact": "^11.0.0",
     "simple-git": "^4.0.2"
   },
   "devDependencies": {

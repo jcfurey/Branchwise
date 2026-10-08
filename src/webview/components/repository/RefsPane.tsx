@@ -208,7 +208,7 @@ function Row({
       class={`group flex items-center gap-1 pr-1 ${
         active ? "bg-row-head" : menuOpen ? "bg-btn-hover" : "hover:bg-row-hover"
       } ${dimmed ? "text-muted" : ""} ${gitRef === undefined ? "" : DROP_TARGET_CLASS}`}
-      style={{ paddingLeft: 8 + depth * 12 }}
+      style={{ paddingLeft: `${8 + depth * 12}px` }}
       {...(gitRef === undefined ? {} : refDragAttributes(gitRef))}
       {...hover}
       onContextMenu={menu && ((event) => openContextMenu(event, source, menu()))}
@@ -279,7 +279,7 @@ function Section({
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} class={depth === 0 ? "border-b border-line-soft" : ""}>
-      <div class="flex items-center gap-1 pr-1" style={{ paddingLeft: 4 + depth * 12 }}>
+      <div class="flex items-center gap-1 pr-1" style={{ paddingLeft: `${4 + depth * 12}px` }}>
         <button
           type="button"
           class="flex min-w-0 flex-1 cursor-pointer items-center gap-1 py-1.5 text-left focus:outline-1 focus:outline-focus"

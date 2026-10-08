@@ -78,29 +78,33 @@ export function ActivityIndicator() {
   if (active.length === 0 && unseen === 0) {
     return null;
   }
+  // The live regions hold the buttons: ARIA lets a button be a button only, and a screen reader
+  // still hears what the region says as it changes.
   return (
     <>
       {active.length > 0 && (
-        <button
-          class="flex cursor-pointer items-center gap-2 text-xs text-muted hover:text-fg"
-          onClick={openActivity}
-          role="status"
-        >
-          <span class="size-2 animate-pulse rounded-full bg-action" />
-          {active[0]!.title}
-          {active.length > 1 ? ` (+${active.length - 1})` : ""}
-        </button>
+        <div role="status" class="flex">
+          <button
+            class="flex cursor-pointer items-center gap-2 text-xs text-muted hover:text-fg"
+            onClick={openActivity}
+          >
+            <span class="size-2 animate-pulse rounded-full bg-action" />
+            {active[0]!.title}
+            {active.length > 1 ? ` (+${active.length - 1})` : ""}
+          </button>
+        </div>
       )}
       {unseen > 0 && (
-        <button
-          data-unseen-failures
-          class="flex cursor-pointer items-center gap-2 text-xs text-git-deleted hover:text-fg"
-          onClick={openActivity}
-          role="alert"
-        >
-          <span class="size-2 rounded-full bg-git-deleted" />
-          {window.l10n.unseenFailures.replace("{0}", String(unseen))}
-        </button>
+        <div role="alert" class="flex">
+          <button
+            data-unseen-failures
+            class="flex cursor-pointer items-center gap-2 text-xs text-git-deleted hover:text-fg"
+            onClick={openActivity}
+          >
+            <span class="size-2 rounded-full bg-git-deleted" />
+            {window.l10n.unseenFailures.replace("{0}", String(unseen))}
+          </button>
+        </div>
       )}
     </>
   );

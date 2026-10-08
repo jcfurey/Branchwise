@@ -140,7 +140,7 @@ export function rowsInSight(
  * the rows change or another repository is shown.
  */
 export function useCommitStatsLoader(
-  body: RefObject<HTMLElement>,
+  body: RefObject<HTMLElement | null>,
   hashes: readonly string[],
   detailsOpen: boolean,
   repo: string | undefined,

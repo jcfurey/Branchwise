@@ -18,15 +18,16 @@ export function TextField({
   type?: "text" | "date";
   children?: ComponentChildren;
 }) {
+  const field = {
+    class: INPUT_CLASS,
+    value,
+    onInput: (event: { currentTarget: HTMLInputElement }) => change(event.currentTarget.value)
+  };
   return (
     <label class="grid min-w-0 gap-1 text-left text-ui">
       <span class="text-muted">{label}</span>
-      <input
-        class={INPUT_CLASS}
-        type={type}
-        value={value}
-        onInput={(event) => change(event.currentTarget.value)}
-      />
+      {/* One input for each type: what an input may be told depends on its type. */}
+      {type === "date" ? <input {...field} type="date" /> : <input {...field} type="text" />}
       {children}
     </label>
   );

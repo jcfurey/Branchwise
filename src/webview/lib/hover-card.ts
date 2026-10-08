@@ -133,7 +133,7 @@ function commitRow(element: EventTarget | null) {
  * pointer leaves the message or the focus the row, on any key, press, scroll or resize, and
  * when a menu or dialog opens or the setting is turned off.
  */
-export function useHoverCards(container: RefObject<HTMLElement>): void {
+export function useHoverCards(container: RefObject<HTMLElement | null>): void {
   useEffect(() => {
     const element = container.current;
     if (element === null) {

@@ -1,4 +1,4 @@
-import type { ComponentChildren, JSX } from "preact";
+import type { ComponentChildren, CSSProperties } from "preact";
 import { useLayoutEffect, useRef } from "preact/hooks";
 
 import type { GitRepo } from "@/types";
@@ -64,7 +64,7 @@ function DockedLayout({
   const pane = open && below ? ` - ${share}vh - ${SPLITTER}px` : "";
   const dock = {
     "--sidebar-height": `calc(100vh - var(--main-header-height, 3rem)${pane})`
-  } as JSX.CSSProperties;
+  } as CSSProperties;
   return (
     <div
       data-details-dock={position}
@@ -74,7 +74,7 @@ function DockedLayout({
       <div
         data-graph-scroller
         class="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto"
-        style={{ "--main-header-height": "0px" } as JSX.CSSProperties}
+        style={{ "--main-header-height": "0px" } as CSSProperties}
       >
         {children}
       </div>
