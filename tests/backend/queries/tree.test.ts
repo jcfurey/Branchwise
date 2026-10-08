@@ -28,12 +28,16 @@ function blob(content: string | Buffer) {
 
 /**
  * A commit on top of HEAD whose tree holds exactly `entries`, each `[mode, object, path]`, made
- * with a private index so that the work tree and the real index are left as they are.
+ * with a private index so that the work tree and the real index are left as they are. Git for
+ * Windows keeps names that Windows cannot store, such as one with a quote, out of an index unless
+ * `core.protectNTFS` is off; these entries are never checked out, so it is off here.
  */
 function commitTree(entries: Array<[mode: string, object: string, path: string]>) {
   const env = { ...process.env, GIT_INDEX_FILE: path.join(repo, ".git", "tree-test-index") };
   const run = (args: string[], input?: string) =>
-    execFileSync("git", args, { cwd: repo, env, input }).toString().trim();
+    execFileSync("git", ["-c", "core.protectNTFS=false", ...args], { cwd: repo, env, input })
+      .toString()
+      .trim();
   run(["read-tree", "--empty"]);
   run(
     ["update-index", "--add", "-z", "--index-info"],
