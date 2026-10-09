@@ -29,6 +29,14 @@ function AlsoListing() {
   return null;
 }
 
+let nearbyShown: ReturnType<typeof useSettledRepositoryQuery<"workspace">>;
+
+/** The Workspace pane's other read: only the selected repository again, the rest as last read. */
+function NearbyListing() {
+  nearbyShown = useSettledRepositoryQuery<"workspace">({ kind: "workspace", refresh: "selected" });
+  return null;
+}
+
 beforeEach(() => {
   selectedRepo.value = "/ws/app";
   repositoryRevision.value = 0;
@@ -173,5 +181,19 @@ describe("a long read that settles", () => {
     expect(alsoShown.data?.entries.map((item) => item.path)).toStrictEqual(["/ws/app", "/ws/lib"]);
     expect(alsoShown.loading).toBe(false);
     expect(reads()).toHaveLength(2);
+  });
+
+  it("numbers the answers, so that a component with two reads can show the later", () => {
+    act(() => render(h("div", {}, h(Listing, {}), h(NearbyListing, {})), container));
+    const [listing, nearby] = reads();
+    expect(nearby.query).toStrictEqual({ kind: "workspace", refresh: "selected" });
+    expect([shown.answered, nearbyShown.answered]).toStrictEqual([0, 0]);
+
+    answer(["/ws/app"], nearby);
+    expect(nearbyShown.answered).toBeGreaterThan(0);
+    expect(shown.answered).toBe(0);
+
+    answer(["/ws/app", "/ws/lib"], listing);
+    expect(shown.answered).toBeGreaterThan(nearbyShown.answered);
   });
 });

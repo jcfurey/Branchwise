@@ -134,48 +134,125 @@ async function attention(git: SimpleGit, directory: string) {
   };
 }
 
+/** A submodule as its superproject's index and HEAD record it. */
+type SubmoduleLink = Awaited<ReturnType<typeof submoduleLinks>>[number];
+
+/** A repository's last read: its entry, the submodules its index records, and when it began. */
+type Read = { entry: WorkspaceEntry; children: SubmoduleLink[]; started: number };
+
+/** The workspace's repositories as their last reads left them, and a way to read them again. */
+export type WorkspaceStatus = {
+  /**
+   * Read `repos`, their submodules and their submodules' submodules, and list them, each with its
+   * parent: the superproject of a submodule, otherwise the innermost listed repository holding
+   * it. With `around`, only that repository, the listed repositories holding it and the
+   * repositories inside it are read, and the others are listed as their last read left them; a
+   * repository never read is left out.
+   */
+  list(
+    repos: string[],
+    binary: string,
+    options?: { signal?: AbortSignal | undefined; around?: string | undefined }
+  ): Promise<WorkspaceEntry[]>;
+};
+
 /**
- * The repositories `repos`, their submodules and their submodules' submodules, each with its
- * parent: the superproject of a submodule, otherwise the innermost listed repository holding it.
+ * Remember each repository's last read, so that a listing can read only the selected repository
+ * and still list the rest. Of two reads of one repository, the one that began later is kept: a
+ * long listing that finishes after a short one never brings back what the short one replaced.
+ *
  * Bound concurrency keeps a workspace with many submodules responsive. Each lane reads the next
  * repository as soon as its last one is done, so one slow repository holds up only its own lane,
  * and the submodules a read finds join the queue.
  */
-export async function loadWorkspace(
+export function createWorkspaceStatus(): WorkspaceStatus {
+  const reads = new Map<string, Read>();
+  let started = 0;
+  return {
+    async list(repos, binary, { signal, around } = {}) {
+      const listed = [...new Set(repos.map(normalizeRepoPath))];
+      const centre = around === undefined ? undefined : normalizeRepoPath(around);
+      const wanted = (repo: string) =>
+        centre === undefined || isRepoWithinPath(repo, centre) || isRepoWithinPath(centre, repo);
+      const queue = listed.filter(wanted);
+      const queued = new Set(queue);
+      await drain(queue, async (repo) => {
+        signal?.throwIfAborted();
+        const start = ++started;
+        const { entry, children } = await readEntry(repo, binary, signal);
+        if ((reads.get(repo)?.started ?? 0) < start) {
+          reads.set(repo, { entry, children, started: start });
+        }
+        for (const child of children) {
+          const childPath = normalizeRepoPath(path.join(repo, child.path));
+          if (wanted(childPath) && !queued.has(childPath)) {
+            queued.add(childPath);
+            queue.push(childPath);
+          }
+        }
+      });
+      const listing = arrange(listed, reads);
+      if (centre === undefined) {
+        // Everything still in the workspace was just read; forget the repositories that left it.
+        const kept = new Set(listing.map((entry) => entry.path));
+        for (const repo of reads.keys()) {
+          if (!kept.has(repo)) {
+            reads.delete(repo);
+          }
+        }
+      }
+      return listing;
+    }
+  };
+}
+
+/** Read and list `repos` and their submodules, as `WorkspaceStatus.list` does, from scratch. */
+export function loadWorkspace(
   repos: string[],
   binary: string,
   signal?: AbortSignal
 ): Promise<WorkspaceEntry[]> {
-  const queue = [...new Set(repos.map(normalizeRepoPath))];
-  const queued = new Set(queue);
-  const entries = new Map<string, WorkspaceEntry>();
-  const parents = new Map<
+  return createWorkspaceStatus().list(repos, binary, { signal });
+}
+
+/**
+ * `listed` and the submodules their reads record, from the last read of each, every one with its
+ * parent. A repository never read is left out. The entries are copies, so the reads stay as Git
+ * gave them.
+ */
+function arrange(listed: string[], reads: ReadonlyMap<string, Read>): WorkspaceEntry[] {
+  const links = new Map<
     string,
     Pick<WorkspaceEntry, "parent" | "submodulePath" | "recorded" | "committed">
   >();
-  await drain(queue, async (repo) => {
-    signal?.throwIfAborted();
-    const { entry, children } = await readEntry(repo, binary, signal);
-    entries.set(entry.path, entry);
-    for (const child of children) {
-      const childPath = normalizeRepoPath(path.join(entry.path, child.path));
-      parents.set(childPath, {
-        parent: entry.path,
+  const found: WorkspaceEntry[] = [];
+  const seen = new Set<string>();
+  const visit = (repo: string) => {
+    const read = reads.get(repo);
+    if (read === undefined || seen.has(repo)) {
+      return;
+    }
+    seen.add(repo);
+    found.push(read.entry);
+    for (const child of read.children) {
+      const childPath = normalizeRepoPath(path.join(repo, child.path));
+      links.set(childPath, {
+        parent: repo,
         submodulePath: child.path,
         recorded: child.recorded,
         committed: child.committed
       });
-      if (!queued.has(childPath)) {
-        queued.add(childPath);
-        queue.push(childPath);
-      }
+      visit(childPath);
     }
+  };
+  listed.forEach(visit);
+  const list = found.map((entry) => {
+    const link = links.get(entry.path);
+    // A submodule not yet checked out is expected, not an error.
+    return Object.assign({}, entry, link, {
+      error: !entry.initialized && link ? null : entry.error
+    });
   });
-  const list = [...entries.values()].map((entry) =>
-    Object.assign(entry, parents.get(entry.path), {
-      error: !entry.initialized && parents.has(entry.path) ? null : entry.error
-    })
-  );
   // A repository cloned inside another one, rather than added as its submodule, goes under the
   // nearest repository whose folder holds it.
   const paths = list.map((entry) => entry.path);

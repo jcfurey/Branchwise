@@ -170,7 +170,14 @@ export type HistoryQuery =
       lostOnly?: boolean;
     }
   | StatisticsQuery
-  | { kind: "workspace" }
+  | {
+      kind: "workspace";
+      /**
+       * Which repositories to read again: every one, or with `"selected"` only the selected one
+       * and the repositories around it, listing the rest as they were last read.
+       */
+      refresh?: "selected";
+    }
   | { kind: "restorePlan"; source: string; sourcePath: string; destination: string }
   | { kind: "stagedPlan"; target: string }
   | { kind: "batchPlan"; hashes: string[] };

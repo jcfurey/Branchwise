@@ -23,6 +23,7 @@ import { loadCommits } from "@/backend/queries/loadCommits";
 import { loadRemotes } from "@/backend/queries/loadRemotes";
 import { repositoryQuery } from "@/backend/queries/repository";
 import { safetyTitle } from "@/backend/queries/safetyNet";
+import { createWorkspaceStatus } from "@/backend/queries/workspace";
 import type {
   ActionRequest,
   GraphQueryCommand,
@@ -411,6 +412,8 @@ export function registerMessageHandlers(
   /** Keyed by request id; a page may send an action with the property present but undefined. */
   const cancellableActions = new Map<string | undefined, Cancellable>();
   const repositoryReads = new Map<string | undefined, Cancellable>();
+  /** Each repository's last workspace status, so a listing can read only the selected one again. */
+  const workspaceStatus = createWorkspaceStatus();
   /** The running read of each graph command. */
   const graphReads = new Map<GraphQueryCommand, AbortController>();
   let undoRequests = 0;
@@ -638,7 +641,9 @@ export function registerMessageHandlers(
       data = await repositoryQuery(git, query, {
         repos,
         binary: config.gitPath(),
-        signal: controller.signal
+        signal: controller.signal,
+        status: workspaceStatus,
+        selected: repo
       });
     } catch (error) {
       data = null;
