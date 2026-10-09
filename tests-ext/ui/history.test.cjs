@@ -347,11 +347,11 @@ async function findGraph() {
   );
 }
 /**
- * An expression for the Workspace pane's row of `repo`. The pane lists every repository the
+ * An expression for the Workspace pane's row of the repository at `folder`. The pane lists every repository the
  * session opened, so a scenario looks in its own rows, never at the first match in the pane.
  */
-function workspaceRow(repo) {
-  return `document.querySelector('aside button[title=${JSON.stringify(repoKey(repo))}]').closest("[style]")`;
+function workspaceRow(folder) {
+  return `document.querySelector('aside button[title=${JSON.stringify(repoKey(folder))}]').closest("[style]")`;
 }
 async function button(text, scope = '(document.querySelector("[role=dialog]") || document)') {
   if (["Remotes", "Stashes", "Worktrees"].includes(text)) {
