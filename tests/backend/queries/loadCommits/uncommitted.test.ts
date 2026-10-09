@@ -173,7 +173,9 @@ describe("uncommitted changes row", () => {
     const client = createGit(repo, "git");
     const failure = new Error("index unreadable");
     vi.spyOn(client, "status").mockRejectedValue(failure);
-    await expect(loadCommits(client, defaults)).rejects.toBe(failure);
+    // The failure comes back while the read of signatures may still be running Git in the folder,
+    // which Windows then cannot remove. Without the signature marks nothing else is running.
+    await expect(loadCommits(client, { ...defaults, showSignatures: false })).rejects.toBe(failure);
   });
 
   it("dates the row at the current second, never later", async () => {
