@@ -244,8 +244,9 @@ export function CommitDetailsContent({
           stacked ? "max-h-1/2 border-b pr-8" : "w-9/20 border-x"
         }`}
       >
-        {/* The buttons stay in view when a narrow panel cuts the ID short. */}
-        <div class="flex items-center">
+        {/* Buttons that don't fit beside the ID go to the next line, so the ID is never squeezed
+            down to its label; a panel too narrow for the ID itself cuts it short. */}
+        <div class="flex flex-wrap items-center">
           <div class="min-w-0">
             <Fact template={l10n.detailCommit}>{details.hash}</Fact>
           </div>
