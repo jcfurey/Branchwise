@@ -8,6 +8,8 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-09
+
 ### Added
 
 - Day boundaries in the graph: a faint line above the first commit of each day, in your local time zone and by the date type you chose, and, once you scroll down, a small label under the column headings naming the day of the topmost commit. The new `branchwise.dateSeparators` setting turns both off. See [days in the graph](docs/git-actions.md#days-in-the-graph).
