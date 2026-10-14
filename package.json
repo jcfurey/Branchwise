@@ -75,13 +75,13 @@
   "dependencies": {
     "@preact/signals": "^2.11.3",
     "@vscode/l10n": "^0.0.18",
-    "preact": "^11.0.0",
+    "preact": "^11.0.1",
     "simple-git": "^4.0.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/mocha": "^10.0.10",
-    "@types/node": "~26.6.4",
+    "@types/node": "~26.6.5",
     "@types/vscode": "~1.125.0",
     "@vitest/coverage-v8": "5.0.3",
     "@vscode/l10n-dev": "^0.0.35",
