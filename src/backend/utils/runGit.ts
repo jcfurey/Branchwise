@@ -132,12 +132,22 @@ export async function writeBlob(git: SimpleGit, content: Buffer) {
  * Run a Git command that takes its revisions or instructions on standard input (`--stdin`), such
  * as `rev-list` or `update-ref`. Any number of them fits there, where the command line is limited
  * to 32,767 characters on Windows. Bytes go in unchanged, such as a file's text in its own encoding.
+ * `codes` are the exit statuses that count as an answer, for a command that answers with one,
+ * and `cwd` the folder to run in when the caller knows it, which saves asking Git for it.
  */
-export async function readGitWithInput(git: SimpleGit, args: string[], input: string | Uint8Array) {
+export async function readGitWithInput(
+  git: SimpleGit,
+  args: string[],
+  input: string | Uint8Array,
+  options: { codes?: number[]; cwd?: string } = {}
+) {
   const binary = gitProcessOf(git)?.gitPath ?? "git";
-  const cwd = await readDirectory(git);
+  const cwd = options.cwd ?? (await readDirectory(git));
   const bytes = typeof input === "string" ? Buffer.from(input) : input;
-  const { done } = start(binary, args, cwd, process.env, { input: bytes });
+  const { done } = start(binary, args, cwd, process.env, {
+    input: bytes,
+    ...(options.codes ? { codes: options.codes } : {})
+  });
   return (await done).stdout.toString();
 }
 
