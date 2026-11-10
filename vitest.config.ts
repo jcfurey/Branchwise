@@ -14,6 +14,9 @@ const aliases = [
 /** Points every Git process a test starts at the fixture configuration in `tests/fixtures/`. */
 const gitConfig = "tests/git-config.ts";
 
+/** How long a test or a hook that runs Git may take, in milliseconds, before it counts as hung. */
+const GIT_TEST_TIMEOUT = 120_000;
+
 export default defineConfig({
   test: {
     // Only `pnpm run test:coverage` asks for coverage, which the CI step "Check menu coverage"
@@ -34,9 +37,11 @@ export default defineConfig({
           include: ["tests/backend/**/*.test.ts"],
           setupFiles: [gitConfig],
           // These tests start real Git processes and build repositories in their hooks, which
-          // takes far longer than the 5 s default on Windows runners.
-          testTimeout: 30_000,
-          hookTimeout: 30_000
+          // takes far longer than the 5 s default on Windows runners: the slowest take 10 s
+          // there, and 40 s while the runner is busy. The allowance only stops a test that
+          // hangs, so it stands well clear of both.
+          testTimeout: GIT_TEST_TIMEOUT,
+          hookTimeout: GIT_TEST_TIMEOUT
         }
       },
       {
@@ -52,8 +57,8 @@ export default defineConfig({
           include: ["tests/extension/**/*.test.ts"],
           setupFiles: [gitConfig],
           // Many of these start real Git processes too, and need the backend's allowance on Windows.
-          testTimeout: 30_000,
-          hookTimeout: 30_000
+          testTimeout: GIT_TEST_TIMEOUT,
+          hookTimeout: GIT_TEST_TIMEOUT
         }
       },
       {
