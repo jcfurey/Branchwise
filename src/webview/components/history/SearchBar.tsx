@@ -16,6 +16,7 @@ import {
   setHistoryFilter
 } from "@/webview/lib/navigation";
 import { applySearchPrefixes, hasFieldFilters } from "@/webview/lib/search-query";
+import { selectedRepo } from "@/webview/lib/stores";
 
 import { TextField } from "./QueryControls";
 
@@ -23,7 +24,12 @@ export function SearchBar() {
   const active = historyFilter.value;
   const [draft, setDraft] = useState(active);
   const [expanded, setExpanded] = useState(false);
-  const [savedName, setSavedName] = useState("");
+  // The saved filter chosen is one of a repository's: in another repository a filter of the same
+  // name is another filter, and nothing is chosen there until the user chooses again.
+  const repo = selectedRepo.value;
+  const [chosen, setChosen] = useState({ repo, name: "" });
+  const savedName = chosen.repo === repo ? chosen.name : "";
+  const setSavedName = (name: string) => setChosen({ repo, name });
   // Effects run a frame after mount. Only a filter that really changed replaces
   // the draft, so text typed into a freshly opened row is not thrown away.
   const applied = useRef(active);

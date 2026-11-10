@@ -4078,12 +4078,12 @@ suite("Branchwise workflow UI", function () {
       await until(
         () =>
           graph.evaluate(
-            `(() => { const text = document.querySelector("[role=dialog]")?.innerText ?? ""; return text.includes("main → origin/main, 1 new commits") && text.includes("Skip main: uncommitted changes") && text.includes("Skip main: already up to date"); })()`
+            `(() => { const text = document.querySelector("[role=dialog]")?.innerText ?? ""; return text.includes("main → origin/main, 1 new commit") && !text.includes("1 new commits") && text.includes("Skip main: uncommitted changes") && text.includes("Skip main: already up to date"); })()`
           ),
         "pull confirmation"
       );
       assert.equal(git(["rev-parse", "HEAD"], repos.behind), heads.behind);
-      await button("Fast-forward 1 Branches");
+      await button("Fast-forward 1 Branch");
       await until(
         () =>
           graph.evaluate(

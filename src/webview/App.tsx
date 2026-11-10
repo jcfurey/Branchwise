@@ -118,8 +118,7 @@ export function App({ repos }: { repos: Array<GitRepo> }) {
 
   const content = (
     <>
-      {/* A new repository starts the row afresh, as it does each view's filters below. */}
-      {search && <SearchBar key={selectedRepo.value} />}
+      {search && <SearchBar />}
       <RepositoryStatus />
       <div class="flex min-w-0 flex-1 flex-col items-start sm:flex-row">
         {(refs || workspace) && (

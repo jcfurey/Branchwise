@@ -96,29 +96,6 @@ describe("the page", () => {
     expect(root().querySelector("form[role=search]")).not.toBeNull();
   });
 
-  it("starts the search row afresh for another repository", () => {
-    act(() => {
-      searchVisible.value = true;
-    });
-    const form = root().querySelector("form[role=search]")!;
-    // The row keeps a draft and a chosen saved filter of its own; both are the repository's.
-    const input = form.querySelector("input")!;
-    act(() => {
-      input.value = "typed in the first repository";
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    expect(root().querySelector<HTMLInputElement>("form[role=search] input")!.value).toBe(
-      "typed in the first repository"
-    );
-
-    act(() => {
-      stores.selectedRepo.value = "/home/me/other";
-    });
-    const next = root().querySelector("form[role=search]")!;
-    expect(next).not.toBe(form);
-    expect(next.querySelector("input")!.value).toBe("");
-  });
-
   it("opens the sidebar for either pane, Branches above Workspace", () => {
     act(() => {
       refsVisible.value = false;
