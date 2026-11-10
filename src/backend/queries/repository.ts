@@ -46,6 +46,7 @@ import type {
   WorktreeDetails
 } from "@/backend/types";
 import { autosquashPlan } from "@/backend/utils/autosquash";
+import { gitVersionAtLeast } from "@/backend/utils/gitVersion";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { requireBranchName, requireRemote, resolveCommit } from "@/backend/utils/validation";
 
@@ -117,14 +118,21 @@ export async function loadOperationKind(
   return operation?.kind ?? (bisect === null ? null : "bisect");
 }
 
+/**
+ * The repository's worktrees, the main one first. Git 2.36 and later end each field with NUL, so
+ * that a folder may have any name. Older Git has only lines, which serve every folder but one
+ * with a line break in its name; without them the repository's state could not be read at all.
+ */
 export async function loadWorktrees(git: SimpleGit): Promise<WorktreeDetails[]> {
-  const text = await git.raw(["worktree", "list", "--porcelain", "-z"]);
+  const nul = await gitVersionAtLeast(git, 2, 36);
+  const text = await git.raw(["worktree", "list", "--porcelain", ...(nul ? ["-z"] : [])]);
+  const end = nul ? "\0" : "\n";
   return text
-    .split("\0\0")
-    .filter(Boolean)
+    .split(end + end)
+    .filter((record) => record.trim() !== "")
     .map((record) => {
       const fields = new Map(
-        record.split("\0").map((line) => {
+        record.split(end).map((line) => {
           const separator = line.indexOf(" ");
           return separator < 0 ? [line, ""] : [line.slice(0, separator), line.slice(separator + 1)];
         })
