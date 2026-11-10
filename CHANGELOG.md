@@ -15,6 +15,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - A run of rows on one branch names its nearest branch once, at the top, instead of repeating "on main" on every row; the name returns wherever rows of another branch come between. See [the Branches pane](docs/git-actions.md#branches-pane).
 - A refresh that changes nothing redraws nothing. Every file saved in the work tree refreshes the graph, and each refresh used to lay out and draw every row again, however many were loaded.
 - A list that fits on one page no longer shows disabled **Previous** and **Next** buttons, and an empty side of a comparison says **None**. **Clean Up Merged Branches** names the branch it checks against instead of a bare 40-character ID.
+- The repository state, which is read again after every change to the work tree, takes fewer Git processes: one for the addresses of every remote instead of two for each, and a status that no longer lists untracked files, which is what took long in a large work tree.
 
 ### Fixed
 
@@ -46,6 +47,15 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - **Restore File Contents** also refuses to run over unsaved edits when the editor reached the file through a symbolic link, or under a name in another case.
 - Reverting a commit whose changes are already gone says so, instead of reporting a revert that made no commit.
 - **Absorb Staged Changes…** names a commit by its ID in a fixup when another commit has the same subject, so that autosquash cannot fold the fixup into the wrong one.
+- The Branches pane, the status strip and Undo work with Git older than 2.36, such as the 2.34 of Ubuntu 22.04. Listing the worktrees used an option that came with 2.36, and with it the whole repository state failed to read.
+- Git settings given in the environment count for every command, as they do in a terminal: a configuration file named by `GIT_CONFIG_GLOBAL`, or `safe.directory` set through `GIT_CONFIG_COUNT`, as containers do. Most reads ignored them, so the graph could refuse a repository that a push accepted.
+- The conflict forecast no longer leaves objects in the repository. Each merge it tried wrote a tree, and the files it merged, after every refresh. See [the conflict forecast](docs/git-actions.md#conflict-forecast).
+- **Clone Repository…**, **Initialize Repository…** and **Open Folder…** on the page shown without a repository no longer report "The extension did not answer in time" after thirty seconds, while the clone was still running.
+- A search for a commit ID together with another filter shows that commit or nothing. It showed the nearest older commit that met the filter. A path filter also holds for commits found by branch or tag name.
+- The Reflog tab reads the reflog of `HEAD` or a branch in a repository that has a file of the same name.
+- A linked worktree no longer reads as never fetched when the fetch ran in another worktree.
+- The Statistics tab counts lines for contributors whose commits carry no email address.
+- A Git process that ends before reading what it was sent no longer raises an error outside any request.
 
 ## [0.10.0] - 2026-10-09
 

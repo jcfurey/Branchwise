@@ -146,7 +146,7 @@ After resolving and staging conflicts, use **Continue**. **Abort** restores the 
 
 A local branch that would not merge cleanly into the checked-out branch shows a red collision mark and a count on its label in the graph. The tooltip names the files that would be in conflict, up to ten, and counts the rest. The forecast comes from `git merge-tree`, which tries each merge in memory: the work tree, the index and the refs are left as they are.
 
-Only branches not yet merged into `HEAD` are tried: the 50 with the newest commits. Each result is remembered for that pair of commits, so a refresh tries again only the branches that moved, or all of them when `HEAD` does. Branches with no history in common with `HEAD`, which `git merge` refuses, get no mark. Nothing is forecast while a merge, rebase, cherry-pick or revert is under way, or with Git older than 2.38, which has no `merge-tree --write-tree`.
+Only branches not yet merged into `HEAD` are tried: the 50 with the newest commits. Each result is remembered for that pair of commits, so a refresh tries again only the branches that moved, or all of them when `HEAD` does. Branches with no history in common with `HEAD`, which `git merge` refuses, get no mark. Nothing is forecast while a merge, rebase, cherry-pick or revert is under way, or with Git older than 2.38, which has no `merge-tree --write-tree`. The trees and files those merges write go to a temporary folder that is deleted afterwards, so the repository gains no objects, and a repository that cannot be written to is forecast all the same.
 
 ### Teammates' branches
 
