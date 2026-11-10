@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import path from "node:path";
 
 import type { SimpleGit } from "simple-git";
@@ -196,15 +197,42 @@ function scopeOf(action: RepositoryAction): LockScope {
   return WHOLE_TREE.has(action.kind) ? "wholeTree" : "repository";
 }
 
-/** Whether an editor holds unsaved changes to `file`, given relative to `repo`. */
+/**
+ * Where `file` really is: symbolic links followed, and on Windows and macOS the spelling the
+ * disk has. A file that does not exist yet is placed in its folder's real location.
+ */
+function realLocation(file: string): string {
+  try {
+    return realpathSync.native(file);
+  } catch {
+    const folder = path.dirname(file);
+    return folder === file ? file : path.join(realLocation(folder), path.basename(file));
+  }
+}
+
+/** Windows and macOS take two spellings that differ only in case for one file. */
+const IGNORES_CASE = process.platform === "win32" || process.platform === "darwin";
+
+/** One name for a file however it was reached, to compare with another. */
+function fileKey(file: string) {
+  const key = normalizeRepoPath(realLocation(file));
+  return IGNORES_CASE ? key.toLowerCase() : key;
+}
+
+/**
+ * Whether an editor holds unsaved changes to `file`, given relative to `repo`. The editor may
+ * name the file by another path than Git does: through a symbolic link the workspace was
+ * opened by, or in another case.
+ */
 function hasUnsavedEditor(repo: string, file: string) {
-  const target = normalizeRepoPath(path.join(repo, file));
-  return vscode.workspace.textDocuments.some(
-    (document) =>
-      document.isDirty &&
-      document.uri.scheme === "file" &&
-      normalizeRepoPath(document.uri.fsPath) === target
+  const unsaved = vscode.workspace.textDocuments.filter(
+    (document) => document.isDirty && document.uri.scheme === "file"
   );
+  if (unsaved.length === 0) {
+    return false;
+  }
+  const target = fileKey(path.join(repo, file));
+  return unsaved.some((document) => fileKey(document.uri.fsPath) === target);
 }
 
 /**
