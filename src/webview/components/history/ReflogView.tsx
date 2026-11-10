@@ -89,13 +89,14 @@ function Row({ entry, index }: { entry: ReflogEntry; index: number }) {
           {operation}
         </span>
       </td>
-      <td class={`${CELL} break-words`}>{description(entry)}</td>
+      {/* Branch names and commit IDs are long words: they break anywhere, so the table fits. */}
+      <td class={`${CELL} wrap-anywhere`}>{description(entry)}</td>
       <td class={CELL}>
         <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
           <code class="text-muted" title={entry.hash}>
             {entry.hash.slice(0, 8)}
           </code>
-          <span class="min-w-0 break-words">{entry.subject}</span>
+          <span class="min-w-0 wrap-anywhere">{entry.subject}</span>
           {entry.lost && (
             <span class="rounded bg-row-selected px-1.5 text-xs" title={l10n.reflogLostHint}>
               {l10n.reflogLost}
@@ -223,7 +224,9 @@ export function ReflogView() {
           {data.entries.length === 0 ? (
             <p class="text-muted">{l10n.noReflog}</p>
           ) : (
-            <div class="overflow-x-auto">
+            // Positioned, so that the heading only screen readers see scrolls with the table
+            // instead of widening the page.
+            <div class="relative overflow-x-auto">
               <table class="w-full border-collapse">
                 <thead class="border-b border-line">
                   <tr>

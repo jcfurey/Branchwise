@@ -7,6 +7,21 @@ export const MIN_COLUMN = 40;
 /** Narrowest, in pixels, a move may leave the description column. */
 export const MIN_DESCRIPTION = 64;
 
+/**
+ * The room, in pixels, the description keeps before other columns give way to it: under this, a
+ * subject reads as a few letters and an ellipsis.
+ */
+export const DESCRIPTION_ROOM = 200;
+
+/** How much more than that a column must leave the description before it comes back. */
+const ROOM_TO_SPARE = 48;
+
+/**
+ * The cells that give way to a description short of room, first to last: the ID tells the least
+ * at a glance, the date the most.
+ */
+const GIVE_WAY = [OPTIONAL_COLUMNS.commit, OPTIONAL_COLUMNS.author, OPTIONAL_COLUMNS.date];
+
 /** A number that arithmetic can use: not `NaN`, not infinite, and not some other type. */
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -52,6 +67,46 @@ export function hiddenColumnsOf(stored: unknown): Array<OptionalColumn> {
 export function shownCells(hidden: ReadonlyArray<string>): Array<number> {
   const gone = new Set(hidden.filter(isOptionalColumn).map((name) => OPTIONAL_COLUMNS[name]));
   return ALL_COLUMNS.filter((cell) => !gone.has(cell));
+}
+
+/**
+ * Which of the `chosen` cells a table too narrow for them leaves out, so that the description
+ * keeps `DESCRIPTION_ROOM`. `crowded` are the cells left out so far, `room` is the width the
+ * description has now, and `widthOf` the width a cell takes when it shows.
+ *
+ * Cells give way in the order of `GIVE_WAY` and come back in the reverse order, each only when
+ * the description would keep its room with some to spare; that gap keeps a width near the limit
+ * from flickering between two layouts. A cell the user hid is never counted. The answer is in
+ * table order.
+ */
+export function crowdedCells(
+  chosen: ReadonlyArray<number>,
+  crowded: ReadonlyArray<number>,
+  room: number,
+  widthOf: (cell: number) => number
+): Array<number> {
+  const order = GIVE_WAY.filter((cell) => chosen.includes(cell));
+  const out = new Set(crowded.filter((cell) => order.includes(cell)));
+  let left = room;
+  for (const cell of order.toReversed()) {
+    if (out.has(cell)) {
+      if (left - widthOf(cell) < DESCRIPTION_ROOM + ROOM_TO_SPARE) {
+        break;
+      }
+      out.delete(cell);
+      left -= widthOf(cell);
+    }
+  }
+  for (const cell of order) {
+    if (left >= DESCRIPTION_ROOM) {
+      break;
+    }
+    if (!out.has(cell)) {
+      out.add(cell);
+      left += widthOf(cell);
+    }
+  }
+  return chosen.filter((cell) => out.has(cell));
 }
 
 /**

@@ -466,7 +466,7 @@ export function WorkspacePane() {
   return (
     <aside
       aria-label={window.l10n.workspaceOverview}
-      class="flex max-h-72 min-h-0 w-full flex-1 flex-col overflow-y-auto border-b border-line-soft bg-editor text-ui md:max-h-none md:border-b-0"
+      class="flex max-h-72 min-h-0 w-full flex-1 flex-col overflow-y-auto border-b border-line-soft bg-editor text-ui sm:max-h-none sm:border-b-0"
     >
       <div class="space-y-3 border-b border-line-soft p-3">
         <div class="flex items-center justify-between">

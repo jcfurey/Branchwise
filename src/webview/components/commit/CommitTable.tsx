@@ -10,6 +10,7 @@ import { CommitHoverCard } from "@/webview/components/commit/CommitHoverCard";
 import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
 import { DayPill } from "@/webview/components/commit/DayPill";
 import { OverviewStrip } from "@/webview/components/commit/OverviewStrip";
+import { useColumnFit } from "@/webview/components/commit/useColumnFit";
 import { type ColumnResize, useColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useGraphScroll } from "@/webview/components/commit/useGraphScroll";
 import { WorkingTreeDetails } from "@/webview/components/commit/WorkingTreeDetails";
@@ -276,6 +277,7 @@ export function CommitTable({
   const resize = useColumnResize(Math.min(Math.max(contentWidth, NARROWEST_GRAPH), WIDEST_GRAPH));
   const { containerRef, headRef, resizing } = resize;
   const scroll = useGraphScroll(containerRef, headRef, contentWidth);
+  useColumnFit(containerRef, headRef);
   // Written by the table's handlers and read by the graph alone, so hovering redraws only dots.
   const hovered = useSignal<string | null>(null);
   // Read here, so that a new density or column choice redraws the open graph at once.

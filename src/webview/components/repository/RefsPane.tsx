@@ -407,7 +407,7 @@ export function RefsPane() {
   return (
     <nav
       aria-label={window.l10n.branchesPane}
-      class="flex max-h-72 min-h-0 w-full flex-1 flex-col border-b border-line-soft bg-editor text-ui md:max-h-none md:border-b-0"
+      class="flex max-h-72 min-h-0 w-full flex-1 flex-col border-b border-line-soft bg-editor text-ui sm:max-h-none sm:border-b-0"
       {...PANE_DRAG}
     >
       <div class="space-y-2 border-b border-line-soft p-3">

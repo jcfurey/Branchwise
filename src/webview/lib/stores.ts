@@ -139,8 +139,34 @@ const columnChoice = computed(() => {
 /** The columns hidden from the selected repository's commit table, in table order. */
 export const hiddenColumns = computed(() => columnChoice.value.hidden);
 
-/** The cells the commit table shows, by index, in table order. */
-export const shownColumns = computed(() => columnChoice.value.shown);
+/** The cells the user chose to see, by index, in table order. */
+export const chosenColumns = computed(() => columnChoice.value.shown);
+
+/**
+ * The chosen cells a narrow table leaves out for now, so that the description stays readable.
+ * The table measures itself and writes this; nothing is saved, and the choice is untouched.
+ */
+export const crowdedColumns = signal<ReadonlyArray<number>>(Object.freeze([]));
+
+/** One array per set of cells, so that the same set does not redraw every row. */
+const fittedColumns = new Map<string, ReadonlyArray<number>>();
+
+/** The cells the commit table shows, by index, in table order: the chosen ones that fit. */
+export const shownColumns = computed(() => {
+  const chosen = chosenColumns.value;
+  const crowded = crowdedColumns.value;
+  if (!crowded.some((cell) => chosen.includes(cell))) {
+    return chosen;
+  }
+  const shown = chosen.filter((cell) => !crowded.includes(cell));
+  const key = shown.join();
+  let fitted = fittedColumns.get(key);
+  if (fitted === undefined) {
+    fitted = Object.freeze(shown);
+    fittedColumns.set(key, fitted);
+  }
+  return fitted;
+});
 
 /** The branch a focus mode emphasises, whether or not the emphasis is paused. */
 export const branchFocusTarget = computed<

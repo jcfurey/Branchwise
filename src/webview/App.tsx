@@ -30,15 +30,17 @@ import { pageScrollTop, scrollPageTo } from "./lib/page-scroll";
 import { expandedCommit, selectedRepo } from "./lib/stores";
 
 /**
- * The sidebar sits beside the graph from the `md` width up. There it stays in view while the
- * graph scrolls, starting right below the header, whose height depends on how often it wraps.
- * While the details are docked it fills the height of the graph's own scroller instead.
+ * The sidebar sits beside the graph from the `sm` width up, which half of a usual window still
+ * reaches; under it the sidebar goes above the graph, at a limited height. Beside the graph it
+ * stays in view while the graph scrolls, starting right below the header, whose height depends
+ * on how often it wraps. While the details are docked it fills the height of the graph's own
+ * scroller instead.
  */
 const SIDEBAR_CLASS = [
   "flex w-full shrink-0 flex-col border-r border-line-soft",
-  "md:sticky md:top-[var(--main-header-height,3rem)]",
-  "md:h-[var(--sidebar-height,calc(100vh_-_var(--main-header-height,3rem)))]",
-  "md:w-72 md:max-w-[40vw]"
+  "sm:sticky sm:top-[var(--main-header-height,3rem)]",
+  "sm:h-[var(--sidebar-height,calc(100vh_-_var(--main-header-height,3rem)))]",
+  "sm:w-72 sm:max-w-[40vw]"
 ].join(" ");
 
 /** Thickness of the splitter between the graph and docked details, in pixels: Tailwind's `1`. */
@@ -116,9 +118,10 @@ export function App({ repos }: { repos: Array<GitRepo> }) {
 
   const content = (
     <>
-      {search && <SearchBar />}
+      {/* A new repository starts the row afresh, as it does each view's filters below. */}
+      {search && <SearchBar key={selectedRepo.value} />}
       <RepositoryStatus />
-      <div class="flex min-w-0 flex-1 flex-col items-start md:flex-row">
+      <div class="flex min-w-0 flex-1 flex-col items-start sm:flex-row">
         {(refs || workspace) && (
           <div class={SIDEBAR_CLASS}>
             {refs && <RefsPane />}

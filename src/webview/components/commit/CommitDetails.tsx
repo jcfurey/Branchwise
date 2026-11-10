@@ -120,7 +120,12 @@ export function DetailsRow({ children }: { children: ComponentChildren }) {
         colSpan={shownColumns.value.length - 1 + (getWebviewConfig().showChangesColumn ? 1 : 0)}
         class="relative bg-btn p-0 align-top text-ui leading-4.5 whitespace-normal after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-line"
       >
-        <div class="overflow-hidden" style={{ height: `${COMMIT_DETAILS_HEIGHT - BOTTOM_LINE}px` }}>
+        {/* Sized by the columns above it, never the other way round: a long line in the details,
+            such as the two parents of a merge, must not widen the table past the window. */}
+        <div
+          class="overflow-hidden contain-inline-size"
+          style={{ height: `${COMMIT_DETAILS_HEIGHT - BOTTOM_LINE}px` }}
+        >
           {children}
         </div>
         <CloseDetailsButton onClick={close} />

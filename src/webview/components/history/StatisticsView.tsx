@@ -195,7 +195,7 @@ function Contributors({ statistics }: { statistics: Statistics }) {
   const head = "px-3 py-1.5 text-left font-semibold";
   const cell = "px-3 py-1.5";
   return (
-    <div class="overflow-x-auto">
+    <div class="relative overflow-x-auto">
       <table class="w-full border-collapse">
         <caption class="sr-only">{l10n.statsContributors}</caption>
         <thead class="border-b border-line">
