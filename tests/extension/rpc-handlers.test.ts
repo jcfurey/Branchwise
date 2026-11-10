@@ -57,6 +57,7 @@ describe("the RPC handler table", () => {
       "git.init",
       "goTo.show",
       "repo.scan",
+      "scm.show",
       "settings.open",
       "url.open",
       "walkthrough.open",
@@ -85,6 +86,7 @@ describe("the RPC handler table", () => {
     ["settings.open", delegates.openExtensionSettings, []],
     ["docs.open", delegates.runCommand, ["branchwise.openDocumentation"]],
     ["walkthrough.open", delegates.runCommand, ["branchwise.openWalkthrough"]],
+    ["scm.show", delegates.runCommand, ["workbench.view.scm"]],
     ["goTo.show", delegates.showGoTo, ["p"]],
     ["url.open", delegates.openUrl, ["p"]]
   ])("answers %s through its delegate", async (method, delegate, args) => {

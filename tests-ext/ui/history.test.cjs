@@ -1011,6 +1011,18 @@ suite("Branchwise workflow UI", function () {
       Buffer.from(screenshot.data, "base64")
     );
 
+    // The changes are committed in VS Code's Source Control view, which the details lead to.
+    const scmShown = () =>
+      connections[0].evaluate(
+        `!!document.querySelector('.sidebar .composite.viewlet[id="workbench.view.scm"]')`
+      );
+    assert.equal(await scmShown(), false, "the side bar starts closed");
+    await button("Open Source Control", 'document.querySelector("[data-working-tree-details]")');
+    await until(scmShown, "Source Control view");
+    await vscode.commands.executeCommand("workbench.action.closeSidebar");
+    await until(async () => !(await scmShown()), "side bar closed again");
+    await until(loaded, "changes still listed");
+
     async function openFile(group, name, before, after, working) {
       await graph.evaluate(`(() => {
         const section = document.querySelector('section[aria-label=${JSON.stringify(group)}]');

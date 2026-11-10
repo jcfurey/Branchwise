@@ -36,6 +36,8 @@ export type RpcMethodMap = {
   "settings.open": { params: null; result: boolean };
   "docs.open": { params: null; result: boolean };
   "walkthrough.open": { params: null; result: boolean };
+  /** Bring VS Code's Source Control view forward, where uncommitted changes are committed. */
+  "scm.show": { params: null; result: boolean };
   /**
    * Show the Go to picker for the repository; `true` once it is open. The choice arrives later as
    * `view.reveal`, as the user may take longer than a request may wait.

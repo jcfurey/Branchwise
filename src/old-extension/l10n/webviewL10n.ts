@@ -406,6 +406,7 @@ export function getWebviewLocalizedStrings() {
     nestedRepository: vscode.l10n.t("nested repository"),
     conflicts: vscode.l10n.t("Conflicts"),
     noWorkingTreeChanges: vscode.l10n.t("No uncommitted changes."),
+    openSourceControl: vscode.l10n.t("Open Source Control"),
 
     // Tooltips in a commit's file tree. The line counts pick the singular when {0} is 1.
     tooltipBinaryFile: vscode.l10n.t(

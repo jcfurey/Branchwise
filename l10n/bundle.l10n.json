@@ -378,6 +378,7 @@
   "nested repository": "nested repository",
   "Conflicts": "Conflicts",
   "No uncommitted changes.": "No uncommitted changes.",
+  "Open Source Control": "Open Source Control",
   "Git has no text diff for this file, so there is nothing to open.": "Git has no text diff for this file, so there is nothing to open.",
   "Renamed from {0} to {1}": "Renamed from {0} to {1}",
   "{0} line added": "{0} line added",

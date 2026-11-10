@@ -284,6 +284,26 @@ it("shows 200 files of a large group at a time", () => {
   expect(fileButton("staged", "staged.txt")).not.toBeNull();
 });
 
+it("offers the way to Source Control, where the changes are committed", () => {
+  act(() => row().click());
+  reply(files("unstaged", ["f"]));
+  const open = [...container.querySelectorAll<HTMLButtonElement>("button")].find(
+    (button) => button.textContent === "openSourceControl"
+  )!;
+  vscodeApi.postMessage.mockClear();
+
+  act(() => open.click());
+
+  expect(vscodeApi.postMessage).toHaveBeenCalledExactlyOnceWith({
+    kind: "rpc.request",
+    id: expect.any(String),
+    method: "scm.show",
+    params: null
+  });
+  // The list is as it was: nothing was read again, and nothing closed.
+  expect(fileButton("unstaged", "f")).not.toBeNull();
+});
+
 it("offers Absorb Staged Changes beside the staged files only", () => {
   act(() => row().click());
   const absorb = () =>

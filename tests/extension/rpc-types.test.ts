@@ -115,6 +115,7 @@ describe("names", () => {
       | "settings.open"
       | "docs.open"
       | "walkthrough.open"
+      | "scm.show"
       | "goTo.show"
       | "url.open"
     >();
