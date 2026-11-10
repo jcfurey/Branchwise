@@ -129,16 +129,27 @@ describe("which commits can be edited in place", () => {
     expect(titles(commitMenu(ROWS[1]!, new Map()))).not.toContain("editMessage…");
   });
 
-  it("offers to add staged changes only while something is staged", () => {
-    expect(titles(commitMenu(ROWS[2]!, new Map()))).not.toContain("addStagedToCommit…");
+  it("offers what is done with staged changes only while something is staged", () => {
+    const staged = new Set(["addStagedToCommit…", "createFixupMenu…"]);
+    const offered = (row: number) =>
+      titles(commitMenu(ROWS[row]!, new Map())).filter((title) => staged.has(title));
+    expect(offered(2)).toEqual([]);
     repositoryState.value = { ...STATE, staged: 2 };
     const entries = titles(commitMenu(ROWS[2]!, new Map()));
+    // The two beside each other: one rewrites the commit now, the other records a fixup for later.
     expect(
-      entries.slice(entries.indexOf("editMessage…"), entries.indexOf("editMessage…") + 4)
-    ).toEqual(["editMessage…", "splitCommit…", "addStagedToCommit…", "interactiveRebase…"]);
-    expect(titles(commitMenu(ROWS[3]!, new Map()))).not.toContain("addStagedToCommit…");
+      entries.slice(entries.indexOf("editMessage…"), entries.indexOf("editMessage…") + 5)
+    ).toEqual([
+      "editMessage…",
+      "splitCommit…",
+      "addStagedToCommit…",
+      "createFixupMenu…",
+      "interactiveRebase…"
+    ]);
+    // A commit the branch gained through a merge is not edited in place, but can get a fixup.
+    expect(offered(3)).toEqual(["createFixupMenu…"]);
     repositoryState.value = null;
-    expect(titles(commitMenu(ROWS[2]!, new Map()))).not.toContain("addStagedToCommit…");
+    expect(offered(2)).toEqual([]);
   });
 });
 

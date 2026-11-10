@@ -357,8 +357,9 @@ function workspaceRow(folder) {
   return `document.querySelector('aside button[title=${JSON.stringify(repoKey(folder))}]').closest("[style]")`;
 }
 async function button(text, scope = '(document.querySelector("[role=dialog]") || document)') {
+  // These are entries of the Settings & Tools menu, each of which opens a dialog.
   if (["Remotes", "Stashes", "Worktrees"].includes(text)) {
-    await toolsMenu(text);
+    await toolsMenu(text + "…");
     return;
   }
 
@@ -627,7 +628,7 @@ suite("Branchwise workflow UI", function () {
     await openRepo(dir);
     await until(() => graph.evaluate(visible(remote)), "compatibility remote history");
     await contextRef("main");
-    await menu("Focus this branch");
+    await menu("Focus This Branch");
     await until(
       () =>
         graph.evaluate(
@@ -745,7 +746,7 @@ suite("Branchwise workflow UI", function () {
     })`);
     const fullColour = await graphColours();
     await contextRef("main");
-    await menu("Focus this branch");
+    await menu("Focus This Branch");
     await until(
       () =>
         graph.evaluate(`
@@ -832,7 +833,7 @@ suite("Branchwise workflow UI", function () {
     );
     assert.deepEqual(await geometry(), before);
     await contextRef("side");
-    await menu("Focus this branch");
+    await menu("Focus This Branch");
     await until(
       () =>
         graph.evaluate(
@@ -1385,7 +1386,7 @@ suite("Branchwise workflow UI", function () {
         ),
       "rebase base row"
     );
-    await menu("Edit commits after this (interactive rebase)…");
+    await menu("Edit Commits After This (Interactive Rebase)…");
     await until(
       () => graph.evaluate('document.querySelectorAll("[role=dialog] select").length === 3'),
       "interactive plan"
@@ -1734,7 +1735,7 @@ suite("Branchwise workflow UI", function () {
 
   test("explains every symbol of the graph in the legend", async () => {
     await openRepo(repo);
-    await toolsMenu("Legend");
+    await toolsMenu("Legend…");
     const entries = () =>
       graph.evaluate(
         '[...document.querySelectorAll("[role=dialog] [data-legend-entry]")].map(entry => [entry.dataset.legendEntry, entry.querySelector("p").textContent, !!entry.firstElementChild.inert])'
@@ -2019,7 +2020,7 @@ suite("Branchwise workflow UI", function () {
       () => graph.evaluate('!document.querySelector("tbody").innerText.includes("lost contents")'),
       "graph without the reset commit"
     );
-    await toolsMenu("Recover lost commits (reflog)");
+    await toolsMenu("Recover Lost Commits (Reflog)");
     // The reflog opens as a tab; only commits no branch reaches are the ones worth recovering.
     await until(
       () =>
@@ -2695,7 +2696,7 @@ suite("Branchwise workflow UI", function () {
       git(["status", "--porcelain"], dir)
     ];
     await openRepo(dir);
-    await refMenuEntry("applied-topic", "Focus this branch");
+    await refMenuEntry("applied-topic", "Focus This Branch");
     const mark = (hash) =>
       graph.evaluate(
         `document.querySelector('tr[data-commit-hash="${hash}"] [data-applied-as]')?.dataset.appliedAs ?? null`
@@ -3260,7 +3261,7 @@ suite("Branchwise workflow UI", function () {
     await openRepo(dir);
 
     await contextRef("main");
-    await menu("Move the current branch onto this (rebase)…");
+    await menu("Move Current Branch onto This (Rebase)…");
     const forecast = () =>
       graph.evaluate(`(() => {
         const line = document.querySelector("[role=dialog] [data-replay-forecast]");
@@ -3512,12 +3513,12 @@ suite("Branchwise workflow UI", function () {
     git(["add", "a"], fix);
     await openRepo(fix);
     await contextCommit("fixup target");
-    await menu("Fold staged changes into this commit (fixup)…");
+    await menu("Create Fixup Commit for This Commit…");
     await button("Create Fixup Commit");
     await finished();
     assert.equal(git(["log", "-1", "--format=%s"], fix), "fixup! fixup target");
     await contextCommit("fixup base");
-    await menu("Edit commits after this (interactive rebase)…");
+    await menu("Edit Commits After This (Interactive Rebase)…");
     await button("Arrange Fixup / Squash Commits");
     assert.equal(
       await graph.evaluate(
@@ -3547,7 +3548,7 @@ suite("Branchwise workflow UI", function () {
         ),
       "keyboard focus on the next commit"
     );
-    await toolsMenu("Git Activity");
+    await toolsMenu("Git Activity…");
     assert.equal(
       await graph.evaluate(
         'document.querySelector("[role=dialog]").innerText.includes("Create Fixup Commit")'
@@ -3721,7 +3722,7 @@ suite("Branchwise workflow UI", function () {
     assert.equal(git(["show", "HEAD^:a"], edit), "corrected");
     assert.equal(git(["status", "--porcelain"], edit), "");
     await button("Settings & Tools");
-    await menu("Git Activity");
+    await menu("Git Activity…");
     await until(
       () =>
         graph.evaluate(
@@ -4059,7 +4060,7 @@ suite("Branchwise workflow UI", function () {
     commit("t", "peer topic", peer);
     git(["push", "origin", "main", "topic"], peer);
     await openRepo(local);
-    await toolsMenu("Fast-forward Branches");
+    await toolsMenu("Fast-forward Branches…");
     const dialog = 'document.querySelector("[role=dialog]")';
     await until(
       () => graph.evaluate(`${dialog}?.innerText.includes("No branch can move")`),
@@ -4139,7 +4140,7 @@ suite("Branchwise workflow UI", function () {
       () => graph.evaluate('document.querySelector("tbody").innerText.includes("merged-cleanup")'),
       "graph with the new branch"
     );
-    await toolsMenu("Clean Up Merged Branches");
+    await toolsMenu("Clean Up Merged Branches…");
     await until(
       () =>
         graph.evaluate(
@@ -4181,7 +4182,7 @@ suite("Branchwise workflow UI", function () {
     git(["remote", "add", "origin", path.join(broken, "missing-remote")], broken);
     await openRepo(broken);
     await openRepo(local);
-    await toolsMenu("Workspace Fetch & Update");
+    await toolsMenu("Workspace Fetch & Update…");
     for (const dir of [local, broken]) {
       await until(
         () =>
@@ -4200,7 +4201,7 @@ suite("Branchwise workflow UI", function () {
       "independent fetch results"
     );
     await button("Close");
-    await toolsMenu("Workspace Fetch & Update");
+    await toolsMenu("Workspace Fetch & Update…");
     assert.equal(
       await graph.evaluate('document.querySelector("[role=dialog]").innerText.includes("Failed")'),
       true
@@ -4564,7 +4565,7 @@ suite("Branchwise workflow UI", function () {
         await button("Branches", 'document.querySelector("header")');
       }
       await contextRef("topic");
-      await menu("Focus this branch");
+      await menu("Focus This Branch");
       await headerChoice("View", "Focus all ancestors");
       await graph.evaluate(`(() => {
         const dimming = document.querySelector('select[aria-label="Dimming"]');
@@ -4596,7 +4597,7 @@ suite("Branchwise workflow UI", function () {
       );
       await checkStart();
       await contextRef("main");
-      await menu("Focus this branch");
+      await menu("Focus This Branch");
       await openRepo(first);
       await checkFirst();
       await checkStart();

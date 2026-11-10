@@ -414,6 +414,7 @@ export function commitMenu(
       { title: more(l10n.merge), onClick: () => mergeCommit(hash), shortcut: "merge" },
       { title: more(l10n.reset), onClick: () => resetToCommit(hash), shortcut: "reset" }
     ],
+    // Rewriting: one commit in place, or the commits after this one.
     [
       // Editing in place rewrites the checked-out branch, so only its own commits offer it.
       ...(onCheckedOutLine(hash)
@@ -432,21 +433,32 @@ export function commitMenu(
               : [])
           ]
         : []),
+      // A fixup is made of what is staged, as the entry above is, and offered as it is.
+      ...(hasStagedChanges()
+        ? [{ title: more(l10n.createFixupMenu), onClick: () => openFixup(hash) }]
+        : []),
       {
         title: more(l10n.interactiveRebase),
         onClick: () => openInteractiveRebase(hash),
         shortcut: "interactiveRebase"
-      },
-      { title: more(l10n.createFixupMenu), onClick: () => openFixup(hash) },
+      }
+    ],
+    // Looking: what the commit changed, and where else that is.
+    [
       { title: l10n.openAllChanges, onClick: () => openAllCommitChanges(hash) },
       compareEntry(hash),
       // A commit of another branch may have been picked onto this one under another ID. A merge
       // has no single change to look for.
       ...(!onCheckedOutLine(hash) && commit.parentHashes.length < 2 && commitHead.value !== null
         ? [{ title: l10n.findEquivalentCommit, onClick: () => findEquivalentCommit(hash) }]
-        : []),
+        : [])
+    ],
+    [
       { title: l10n.bisectChooseGood, onClick: () => chooseBisectCommit("good", hash) },
-      { title: l10n.bisectChooseBad, onClick: () => chooseBisectCommit("bad", hash) },
+      { title: l10n.bisectChooseBad, onClick: () => chooseBisectCommit("bad", hash) }
+    ],
+    // Taking the commit elsewhere: its page on the host, its ID on the clipboard.
+    [
       ...hostEntry(l10n.openCommitOnHost, commitPage(repositoryState.peek(), hash), "openOnHost"),
       { title: l10n.copyCommitHash, onClick: () => copyCommitId(hash), shortcut: "copyFullId" },
       {
@@ -532,30 +544,31 @@ function localBranchMenu(gitRef: GitRef, isHeadBranch: boolean) {
   const push = { title: more(l10n.pushBranch), onClick: () => openRemoteAction("push", name) };
   const rename = { title: more(l10n.renameBranch), onClick: () => renameBranch(gitRef) };
 
-  // Rebasing onto, checking out, deleting, or merging the checked-out branch has nothing to do;
-  // pulling into it is offered instead.
-  const tools: Array<Entry> = isHeadBranch
-    ? [
-        upstream,
-        worktree,
-        push,
-        { title: more(l10n.pullBranch), onClick: () => openRemoteAction("pull", name) },
-        rename
-      ]
+  // What is done with the branch, the commonest first. Checking out, merging, rebasing onto or
+  // deleting the checked-out branch has nothing to do; pulling into it is offered instead.
+  const act: Array<Entry> = isHeadBranch
+    ? [{ title: more(l10n.pullBranch), onClick: () => openRemoteAction("pull", name) }, push]
     : [
-        upstream,
-        worktree,
-        { title: more(l10n.rebaseOnto), onClick: () => openRebase(fullName), shortcut: "rebase" },
         { title: l10n.checkoutBranch, onClick: () => checkoutBranchAction(gitRef) },
+        { title: more(l10n.merge), onClick: () => mergeBranch(gitRef), shortcut: "merge" },
+        { title: more(l10n.rebaseOnto), onClick: () => openRebase(fullName), shortcut: "rebase" }
+      ];
+  // What is done to the branch itself, deleting it last.
+  const manage: Array<Entry> = isHeadBranch
+    ? [upstream, rename, worktree]
+    : [
         push,
+        upstream,
         rename,
-        { title: more(l10n.deleteBranch), onClick: () => deleteBranch(gitRef) },
-        { title: more(l10n.merge), onClick: () => mergeBranch(gitRef), shortcut: "merge" }
+        worktree,
+        { title: more(l10n.deleteBranch), onClick: () => deleteBranch(gitRef) }
       ];
   const held = branchWorktree(name);
+  // Looking comes first: the entry under the pointer when the menu opens changes nothing.
   return grouped(
     [focusEntry(name), compareEntry(gitRef.hash)],
-    tools,
+    act,
+    manage,
     held === undefined ? [] : worktreeEntries(held),
     [
       ...hostEntry(l10n.openBranchOnHost, branchPage(repositoryState.peek(), name)),
@@ -579,19 +592,24 @@ function remoteBranchMenu(gitRef: GitRef) {
   const fetch = { title: more(l10n.fetch), onClick: () => openRemoteAction("fetch", "", name) };
 
   if (isRemoteHead(gitRef)) {
-    return grouped([compareEntry(gitRef.hash)], [rebase, worktree, fetch], [copyBranchEntry(name)]);
+    return grouped(
+      [compareEntry(gitRef.hash)],
+      [rebase],
+      [fetch, worktree],
+      [copyBranchEntry(name)]
+    );
   }
+  // In the order of a local branch's menu: looking, then acting, then the branch itself.
   return grouped(
     [focusEntry("remotes/" + name), compareEntry(gitRef.hash)],
+    [{ title: more(l10n.checkoutBranch), onClick: () => checkoutBranchAction(gitRef) }, rebase],
     [
-      rebase,
+      fetch,
       worktree,
       {
         title: more(l10n.deleteRemoteBranch),
         onClick: () => openRemoteAction("branchDelete", "", name)
-      },
-      fetch,
-      { title: more(l10n.checkoutBranch), onClick: () => checkoutBranchAction(gitRef) }
+      }
     ],
     [...remoteReviewEntry(name), copyBranchEntry(name), hideLikeEntry(gitRef)]
   );
@@ -603,8 +621,8 @@ function tagMenu(gitRef: GitRef) {
   return grouped(
     [compareEntry(gitRef.hash)],
     [
-      { title: more(l10n.deleteTag), onClick: () => deleteTag(gitRef) },
       { title: more(l10n.pushTag), onClick: () => openRemoteAction("tagPush", name) },
+      { title: more(l10n.deleteTag), onClick: () => deleteTag(gitRef) },
       { title: more(l10n.deleteRemoteTag), onClick: () => openRemoteAction("tagDelete", name) }
     ],
     [

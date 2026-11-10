@@ -46,11 +46,13 @@ const COMMIT_MENU = [
   "reset…",
   null,
   "interactiveRebase…",
-  "createFixupMenu…",
+  null,
   "openAllChanges",
   "compareWith",
+  null,
   "bisectChooseGood",
   "bisectChooseBad",
+  null,
   "copyCommitHash",
   "copyShortCommitHash"
 ];

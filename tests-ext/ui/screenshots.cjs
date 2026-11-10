@@ -239,7 +239,7 @@ module.exports = async function screenshots({
   await show("Light Modern", "vscode-light");
   await branches(true);
   await contextRef("feature/offline-maps");
-  await menu("Focus this branch");
+  await menu("Focus This Branch");
   await until(
     () => graph().evaluate(`!!document.querySelector('tr[data-branch-relation="unrelated"]')`),
     "branch focus"

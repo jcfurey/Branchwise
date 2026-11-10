@@ -30,7 +30,7 @@ function openLegend() {
       new MouseEvent("click", { bubbles: true, detail: 1 })
     );
   });
-  const entry = stores.contextMenu.value?.entries.find((each) => each?.title === "legend");
+  const entry = stores.contextMenu.value?.entries.find((each) => each?.title === "legend…");
   expect(entry).toBeDefined();
   act(() => {
     closeContextMenu();

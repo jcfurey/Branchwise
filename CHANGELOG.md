@@ -10,6 +10,12 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ### Changed
 
+- The menus are put in order. See [the Branches pane](docs/git-actions.md#branches-pane).
+  - A branch's menu lists what is done most first: after **Focus This Branch** and **Compare with…** come **Check Out Branch**, **Merge into Current Branch…** and **Move Current Branch onto This (Rebase)…**, then the entries for the branch itself, with **Delete Local Branch…** last. **Check Out Branch** was sixth. The checked-out branch starts its actions with **Pull Branch…** and **Push Branch…**, and a tag's menu puts **Push Tag to Remote…** before the two deletions.
+  - A commit's menu separates rewriting, looking, bisecting and copying with dividers, where one group of up to thirteen entries stood.
+  - **Fold staged changes into this commit (fixup)…** is now **Create Fixup Commit for This Commit…**, so that it no longer reads as a second **Add Staged Changes to This Commit…**, and like that entry it shows only while changes are staged.
+  - Every entry is in title case: **Focus This Branch**, **Edit Commits After This (Interactive Rebase)…**, **Move Current Branch onto This (Rebase)…**, **Recover Lost Commits (Reflog)** and **Learn More**.
+  - In **Settings & Tools**, every entry that opens a dialog ends in an ellipsis, such as **Stashes…** and **Keyboard Shortcuts…**, and one that acts or goes somewhere at once has none. Three of fifteen had one. The entries for help stand in a group of their own, and **File History…** sits beside **Go to Branch, Tag or Commit…**.
 - In a narrow graph, such as an editor split in two or one with details docked beside it, the columns give way so that the commit message stays readable: **ID** is left out first, then **Author**, then **Date**, while **Message** has under 200 pixels, and they return once there is room. Your choice of columns and their widths are untouched. See [row height and columns](docs/git-actions.md#row-height-and-columns).
 - The Branches and Workspace panes stay beside the graph down to a width of 640 pixels instead of 768, where they used to move above it and take half the height of half a window.
 - A run of rows on one branch names its nearest branch once, at the top, instead of repeating "on main" on every row; the name returns wherever rows of another branch come between. See [the Branches pane](docs/git-actions.md#branches-pane).

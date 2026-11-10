@@ -3,7 +3,7 @@
 import { Fragment, h, render } from "preact";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import type { GitCommitNode, GitRef } from "@/backend/types";
+import type { GitCommitNode, GitRef, RepositoryState } from "@/backend/types";
 import type { DialogState } from "@/webview/types";
 
 import { vscodeApi } from "@tests/webview/setup";
@@ -12,6 +12,7 @@ import { setupWebviewTest } from "@tests/webview/test-utils";
 let menus: typeof import("@/webview/lib/menus");
 let stores: typeof import("@/webview/lib/stores");
 let remoteActions: typeof import("@/webview/lib/remote-actions");
+let repositoryActions: typeof import("@/webview/lib/repository-actions");
 
 const hash = "c".repeat(40);
 const commit: GitCommitNode = {
@@ -36,13 +37,31 @@ beforeAll(async () => {
   menus = await import("@/webview/lib/menus");
   stores = await import("@/webview/lib/stores");
   remoteActions = await import("@/webview/lib/remote-actions");
+  repositoryActions = await import("@/webview/lib/repository-actions");
 });
 
 beforeEach(() => {
   vscodeApi.postMessage.mockClear();
   stores.dialog.value = null;
   stores.selectedRepo.value = "/repo";
+  repositoryActions.repositoryState.value = null;
 });
+
+/** Say that `count` paths have staged changes, which some entries are only offered with. */
+function stage(count: number) {
+  repositoryActions.repositoryState.value = {
+    remotes: [],
+    pushDefault: null,
+    branches: [],
+    remoteBranches: [],
+    tags: [],
+    worktrees: [],
+    head: "main",
+    operation: null,
+    conflicts: [],
+    staged: count
+  } satisfies RepositoryState;
+}
 
 type Entries = ReturnType<typeof menus.commitMenu>;
 
@@ -114,6 +133,7 @@ describe("commit menu dialogs", () => {
   });
 
   it("opens the history tools for the commit", () => {
+    stage(1);
     for (const title of [
       "interactiveRebase…",
       "createFixupMenu…",
@@ -296,6 +316,11 @@ describe("tool arguments", () => {
       repo: "/repo",
       query: { kind: "rebasePlan", base: hash, autosquash: false }
     });
+    // A fixup is made of what is staged, and offered only then.
+    expect(menus.commitMenu(commit, new Map()).map((entry) => entry?.title)).not.toContain(
+      "createFixupMenu…"
+    );
+    stage(2);
     choose(menus.commitMenu(commit, new Map()), "createFixupMenu…");
     expect(lastRequest()).toMatchObject({
       command: "repositoryQuery",
