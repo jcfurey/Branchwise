@@ -152,6 +152,30 @@ describe("showing the picker", () => {
     expect(picker().items[0]).toMatchObject({ typed: "1234abcd" });
   });
 
+  it("hands the entries over again only when the typed commit ID changes", async () => {
+    showGoTo({ repo: "/repo" });
+    await settle();
+    const listed = picker().items;
+
+    // VS Code filters by name itself.
+    picker().type("m");
+    picker().type("mai");
+    picker().type("feature/x");
+    expect(picker().items).toBe(listed);
+
+    picker().type("abc1");
+    expect(picker().items).not.toBe(listed);
+    expect(picker().items[0]).toMatchObject({ typed: "abc1" });
+    const withId = picker().items;
+    picker().type(" abc1 ");
+    expect(picker().items).toBe(withId);
+    picker().type("abc12");
+    expect(picker().items[0]).toMatchObject({ typed: "abc12" });
+
+    picker().type("abc12x");
+    expect(picker().items).toEqual(listed);
+  });
+
   it("tells the page to show the chosen ref's commit, and closes", async () => {
     showGoTo({ repo: "/repo" });
     await settle();

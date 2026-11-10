@@ -80,13 +80,24 @@ async function pickTarget(repo: string) {
 
   let targets: RefTarget[] = [];
   let open = true;
-  const update = () => {
-    // The refs may arrive after the user closed the picker.
-    if (open) {
-      picker.items = goToItems(targets, picker.value.trim());
-    }
+  /** The text the entries were listed for, when it may be a commit ID. */
+  let listedId: string | undefined;
+  const typedId = () => {
+    const typed = picker.value.trim();
+    return COMMIT_ID.test(typed) ? typed : undefined;
   };
-  picker.onDidChangeValue(update);
+  const list = () => {
+    listedId = typedId();
+    picker.items = goToItems(targets, picker.value.trim());
+  };
+  // VS Code filters the entries as the user types. Only the entry for a typed commit ID depends
+  // on the text, so the others, thousands in a large repository, are not handed over again
+  // with every key.
+  picker.onDidChangeValue(() => {
+    if (open && typedId() !== listedId) {
+      list();
+    }
+  });
   picker.onDidHide(() => {
     open = false;
     picker.dispose();
@@ -137,7 +148,10 @@ async function pickTarget(repo: string) {
     );
   }
   picker.busy = false;
-  update();
+  // The refs may arrive after the user closed the picker.
+  if (open) {
+    list();
+  }
 }
 
 /**
