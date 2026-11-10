@@ -15,6 +15,14 @@ const PLACEHOLDER = /\{([0-9]+)\}/;
  * without a part becomes `undefined`, which renders as nothing; parts no placeholder names are
  * ignored. Anything else in braces is plain text.
  */
+/**
+ * How many things there are, in words: `one` for exactly one, otherwise `many` with `count` in
+ * place of `{0}`. The singular is a template of its own, since a noun is rarely all that changes.
+ */
+export function counted(count: number, one: string, many: string): string {
+  return count === 1 ? one : many.replace("{0}", String(count));
+}
+
 export function format(
   template: string,
   ...parts: Array<ComponentChildren>

@@ -11,6 +11,7 @@ import {
   workspaceBusy,
   workspaceJobs
 } from "@/webview/lib/workspace-actions";
+import { counted } from "@/webview/utils/format";
 
 import { QueryStatus } from "./QueryControls";
 
@@ -69,12 +70,18 @@ function steps(review: Review, operation: BulkOperation): ComponentChildren[] {
   }
   const { plan } = review;
   return [
-    ...plan.syncs.map((sync) =>
-      (operation === "pull" ? window.l10n.fastForwardBehind : window.l10n.bulkPushStep)
-        .replace("{0}", sync.branch)
-        .replace("{1}", `${sync.remote}/${sync.remoteBranch}`)
-        .replace("{2}", String(operation === "pull" ? sync.behind : sync.ahead))
-    ),
+    ...plan.syncs.map((sync) => {
+      const commits = operation === "pull" ? sync.behind : sync.ahead;
+      const [one, many] =
+        operation === "pull"
+          ? [window.l10n.fastForwardBehindOne, window.l10n.fastForwardBehind]
+          : [window.l10n.bulkPushStepOne, window.l10n.bulkPushStep];
+      // The count first, and the names as they are: a name may hold "{1}" or "$&".
+      return (commits === 1 ? one : many)
+        .replace("{2}", String(commits))
+        .replace("{0}", () => sync.branch)
+        .replace("{1}", () => `${sync.remote}/${sync.remoteBranch}`);
+    }),
     ...plan.skipped.map(({ branch, reason }) => {
       const text = reasonText(reason, plan.operation);
       return branch === ""
@@ -228,12 +235,11 @@ export function BulkView({
             </p>
           ) : (
             <Button variant="primary" disabled={started || busy || !ready.length} onClick={run}>
-              {(operation === "fetch"
-                ? window.l10n.bulkRunFetch
+              {operation === "fetch"
+                ? counted(ready.length, window.l10n.bulkRunFetchOne, window.l10n.bulkRunFetch)
                 : operation === "pull"
-                  ? window.l10n.fastForwardRun
-                  : window.l10n.bulkRunPush
-              ).replace("{0}", String(operation === "fetch" ? ready.length : branches))}
+                  ? counted(branches, window.l10n.fastForwardRunOne, window.l10n.fastForwardRun)
+                  : counted(branches, window.l10n.bulkRunPushOne, window.l10n.bulkRunPush)}
             </Button>
           )}
         </>

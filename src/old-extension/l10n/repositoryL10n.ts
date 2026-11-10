@@ -125,6 +125,7 @@ export function getRepositoryLocalizedStrings() {
     splitHunks: vscode.l10n.t("{0} hunks: choose a part for each"),
     splitByHunk: vscode.l10n.t("By hunk"),
     splitMoreLines: vscode.l10n.t("{0} more lines"),
+    splitMoreLine: vscode.l10n.t("1 more line"),
     splitPreview: vscode.l10n.t("{0} commits: {1}"),
     splitPartFiles: vscode.l10n.t("Part {0} ({1} files)"),
     splitPartOneFile: vscode.l10n.t("Part {0} (1 file)"),

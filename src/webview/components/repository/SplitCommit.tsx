@@ -8,7 +8,7 @@ import { Select } from "@/webview/components/ui/Select";
 import { openContentDialog } from "@/webview/lib/actions";
 import { requestRepositoryQuery, sendRepositoryAction } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
-import { format } from "@/webview/utils/format";
+import { counted, format } from "@/webview/utils/format";
 
 /** A localized template filled with text only, as one string. */
 const text = (template: string, ...parts: string[]) => format(template, ...parts).join("");
@@ -121,7 +121,9 @@ function FileChoice({
                   </div>
                 ))}
                 {hunk.hidden > 0 && (
-                  <div class="text-muted">{text(l10n.splitMoreLines, String(hunk.hidden))}</div>
+                  <div class="text-muted">
+                    {counted(hunk.hidden, l10n.splitMoreLine, l10n.splitMoreLines)}
+                  </div>
                 )}
               </pre>
             </div>

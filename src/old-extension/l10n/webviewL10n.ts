@@ -172,6 +172,7 @@ export function getWebviewLocalizedStrings() {
     commitUnpulled: vscode.l10n.t("Not pulled: only the tracked remote branch has this commit"),
     conflictForecast: vscode.l10n.t("Merging this branch into {0} would conflict in:"),
     conflictForecastMore: vscode.l10n.t("and {0} more files"),
+    conflictForecastMoreOne: vscode.l10n.t("and 1 more file"),
     // A remote branch: {0} is the checked-out branch, then the files follow, one per line.
     teamConflictForecast: vscode.l10n.t("Would conflict with your branch {0} in:"),
     // {0} is the committer's name, {1} how long ago, such as "2 days ago".

@@ -13,6 +13,7 @@ import { repositoryState } from "@/webview/lib/repository-actions";
 import { activeSource } from "@/webview/lib/stores";
 import { branchWorktree } from "@/webview/lib/worktrees";
 import { getRelativeDate } from "@/webview/utils/date";
+import { counted } from "@/webview/utils/format";
 
 /** What the repository state says about a local branch: its tracking and where it is checked out. */
 function localBranchFacts(gitRef: GitRef) {
@@ -52,7 +53,13 @@ export function ConflictBadge({ entry }: { entry: ConflictForecastEntry }) {
   );
   const lines = [summary, ...files.slice(0, CONFLICTS_LISTED)];
   if (files.length > CONFLICTS_LISTED) {
-    lines.push(l10n.conflictForecastMore.replace("{0}", String(files.length - CONFLICTS_LISTED)));
+    lines.push(
+      counted(
+        files.length - CONFLICTS_LISTED,
+        l10n.conflictForecastMoreOne,
+        l10n.conflictForecastMore
+      )
+    );
   }
   if (entry.remote) {
     lines.push(lastCommitBy(entry));

@@ -9,6 +9,7 @@ import { branchPatternScope, visibleBranchList } from "@/webview/lib/stores/hidd
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 import { getWebviewConfig } from "@/webview/lib/webview-config";
 import { getFullDate } from "@/webview/utils/date";
+import { counted } from "@/webview/utils/format";
 import { initials } from "@/webview/utils/initials";
 
 import { QueryStatus } from "./QueryControls";
@@ -140,7 +141,7 @@ function ActivityGrid({ activity }: { activity: Record<string, number> }) {
       <div class="overflow-x-auto">
         <svg
           role="img"
-          aria-label={format(l10n.statsActivitySummary, total)}
+          aria-label={counted(total, l10n.statsActivitySummaryOne, l10n.statsActivitySummary)}
           width={width}
           height={height}
           viewBox={`0 0 ${width} ${height}`}

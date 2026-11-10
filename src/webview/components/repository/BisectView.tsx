@@ -7,6 +7,7 @@ import { focusHistory } from "@/webview/lib/navigation";
 import { confirmRepositoryAction, sendRepositoryAction } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
+import { counted } from "@/webview/utils/format";
 
 const drafts = new Map<string, { good: string; bad: string }>();
 
@@ -34,7 +35,13 @@ function BisectView({ repo }: { repo: string }) {
           ) : state.ambiguous ? (
             <p role="status">{window.l10n.bisectAmbiguous}</p>
           ) : (
-            <p>{window.l10n.bisectRemaining.replace("{0}", String(state.remaining))}</p>
+            <p>
+              {counted(
+                state.remaining,
+                window.l10n.bisectRemainingOne,
+                window.l10n.bisectRemaining
+              )}
+            </p>
           )}
           <button
             class="block w-full cursor-pointer rounded border border-line-soft p-3 text-left hover:bg-row-hover"

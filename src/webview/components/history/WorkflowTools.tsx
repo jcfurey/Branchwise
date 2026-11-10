@@ -18,6 +18,7 @@ import {
   workspaceBusy,
   workspaceJobs
 } from "@/webview/lib/workspace-actions";
+import { counted } from "@/webview/utils/format";
 
 import { openCompare } from "./HistoryTools";
 import { PageControls, QueryStatus } from "./QueryControls";
@@ -636,7 +637,9 @@ function FastForwardView({ repo }: { repo: string }) {
         loading={busy || (query.loading && plan === undefined)}
         error={error || query.error}
       />
-      {moved !== null && <p role="status">{l10n.fastForwardDone.replace("{0}", String(moved))}</p>}
+      {moved !== null && (
+        <p role="status">{counted(moved, l10n.fastForwardDoneOne, l10n.fastForwardDone)}</p>
+      )}
       {plan && (
         <>
           {plan.branches.length === 0 && <p>{l10n.noFastForwards}</p>}
@@ -644,10 +647,10 @@ function FastForwardView({ repo }: { repo: string }) {
             {plan.branches.map((branch) => (
               <li key={branch.name} data-fast-forward-branch={branch.name}>
                 <Checkbox
-                  label={l10n.fastForwardBehind
+                  label={(branch.behind === 1 ? l10n.fastForwardBehindOne : l10n.fastForwardBehind)
+                    .replace("{2}", String(branch.behind))
                     .replace("{0}", () => branch.name)
-                    .replace("{1}", () => branch.upstream)
-                    .replace("{2}", String(branch.behind))}
+                    .replace("{1}", () => branch.upstream)}
                   checked={!excluded.includes(branch.name)}
                   onInput={(event) =>
                     setExcluded(
@@ -677,7 +680,7 @@ function FastForwardView({ repo }: { repo: string }) {
             disabled={busy || query.loading || chosen.length === 0}
             onClick={() => run({ kind: "fastForward", branches: chosen }, chosen.length)}
           >
-            {l10n.fastForwardRun.replace("{0}", String(chosen.length))}
+            {counted(chosen.length, l10n.fastForwardRunOne, l10n.fastForwardRun)}
           </Button>
         </>
       )}
