@@ -84,6 +84,12 @@ export function createGit(repoPath: string, gitPath: string, abort?: AbortSignal
       // as a log or ref list still in the pipe, without any error.
       completion: { onClose: true, onExit: false },
       unsafe: { allowUnsafeCustomBinary: true },
+      // simple-git drops every `GIT_` variable from a process's environment unless it is named
+      // here. They are the user's own settings: a configuration file or `safe.directory` given
+      // that way, as containers do, must count for these commands as it does in a terminal and
+      // for the commands started with `runGit`, or the same repository is trusted by one and
+      // refused by the other. An editor or a pager named there stays out.
+      allowEnvironment: Object.keys(process.env).filter((name) => /^GIT_/i.test(name)),
       ...(abort ? { abort } : {})
     })
   );
