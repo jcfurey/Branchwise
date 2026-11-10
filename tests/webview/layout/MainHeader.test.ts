@@ -263,6 +263,28 @@ describe("Jump to HEAD", () => {
     expect(jump.title).toBe("jumpToHeadOutOfSight");
     expect(jump.className).toContain("bg-action");
   });
+
+  it("does not stand out on the other tabs, which show no graph to find HEAD in", () => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    });
+    mount();
+    act(() => {
+      stores.commitList.value = [commit("other")];
+    });
+    const jump = headerButton("jumpToHead");
+    expect(jump.title).toBe("jumpToHeadOutOfSight");
+    try {
+      act(() => navigation.showTab("reflog"));
+      expect(jump.title).toBe("jumpToHead");
+      expect(jump.className).not.toContain("bg-action");
+      act(() => navigation.showTab("graph"));
+      expect(jump.title).toBe("jumpToHeadOutOfSight");
+    } finally {
+      act(() => navigation.showTab("graph"));
+    }
+  });
 });
 
 describe("the pane toggles", () => {

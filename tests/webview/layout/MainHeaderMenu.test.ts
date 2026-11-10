@@ -102,7 +102,7 @@ describe("the Settings & Tools menu", () => {
       "fileHistory",
       "operationActivity",
       null,
-      "✓ showRemoteBranches",
+      "showRemoteBranches",
       "hiddenBranches…",
       "columns…",
       "gettingStarted",
@@ -110,6 +110,10 @@ describe("the Settings & Tools menu", () => {
       "keyboardShortcuts",
       "learnMore",
       "openSettings"
+    ]);
+    // A check box, as the columns' menu has, and not a tick typed into the title.
+    expect(menu.entries.filter((entry) => entry?.checked !== undefined)).toEqual([
+      expect.objectContaining({ title: "showRemoteBranches", checked: true })
     ]);
   });
 
@@ -162,12 +166,14 @@ describe("the Settings & Tools menu", () => {
 
   it("hides and shows remote branches, reloading the graph", () => {
     mount();
-    runEntry("✓ showRemoteBranches");
+    runEntry("showRemoteBranches");
     expect(stores.showRemoteBranch.value).toBe(false);
     const sent = vscodeApi.postMessage.mock.calls.map(([message]) => message.command);
     expect(sent).toEqual(expect.arrayContaining(["loadBranches", "saveRepoState"]));
 
-    expect(openTools().entries.map((entry) => entry?.title)).toContain("showRemoteBranches");
+    expect(openTools().entries).toContainEqual(
+      expect.objectContaining({ title: "showRemoteBranches", checked: false })
+    );
     runEntry("showRemoteBranches");
     expect(stores.showRemoteBranch.value).toBe(true);
   });

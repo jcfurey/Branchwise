@@ -214,7 +214,8 @@ function toolsMenu(): Array<ContextMenuEntry> {
     { title: l10n.operationActivity, onClick: openActivity },
     null,
     {
-      title: (remotesShown ? "✓ " : "") + l10n.showRemoteBranches,
+      title: l10n.showRemoteBranches,
+      checked: remotesShown,
       onClick: () => setShowRemoteBranch(!remotesShown)
     },
     { title: l10n.hiddenBranches + "…", onClick: () => openHiddenBranches() },

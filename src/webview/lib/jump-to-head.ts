@@ -3,6 +3,7 @@ import { useEffect, useState } from "preact/hooks";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
 import { detailsPosition, paneSizes } from "@/webview/lib/details-pane";
 import {
+  activeTab,
   emptyFilter,
   focusHistory,
   focusedCommit,
@@ -69,10 +70,12 @@ export function revealCommit(hash: string, details = false) {
 /**
  * Whether the checked-out commit's row is out of sight: behind the sticky header, past the bottom
  * of the window or behind docked details, or not among the rows shown. False while there is no
- * HEAD to jump to, and while the graph is still loading.
+ * HEAD to jump to, while the graph is still loading, and on the other tabs, which show no graph
+ * for it to be out of sight in.
  */
 export function useHeadOutOfSight() {
   const [hidden, setHidden] = useState(false);
+  const graphShown = activeTab.value === "graph";
   const head = commitHead.value;
   const rows = commitList.value;
   const searching = historyActive.value;
@@ -81,7 +84,7 @@ export function useHeadOutOfSight() {
   const open = expandedCommit.value !== null;
   const sizes = paneSizes.value;
   useEffect(() => {
-    if (head === null || head === UNCOMMITTED_CHANGES) {
+    if (head === null || head === UNCOMMITTED_CHANGES || !graphShown) {
       setHidden(false);
       return;
     }
@@ -108,6 +111,6 @@ export function useHeadOutOfSight() {
       stopScroll();
       window.removeEventListener("resize", check);
     };
-  }, [head, rows, searching, position, open, sizes]);
+  }, [head, rows, searching, position, open, sizes, graphShown]);
   return hidden;
 }
