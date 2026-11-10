@@ -20,6 +20,7 @@ import {
   sendRepositoryAction
 } from "@/webview/lib/repository-actions";
 import { commitHead, headBranch, selectedRepo } from "@/webview/lib/stores";
+import { useUnsavedWork } from "@/webview/lib/unsaved-work";
 import { moveButton, useListMove } from "@/webview/lib/use-list-move";
 import { format } from "@/webview/utils/format";
 
@@ -29,6 +30,19 @@ export function RebaseEditor({ plan, repo }: { plan: RebasePlan; repo: string })
   // combination until its message is edited, and only an edited message is sent, so leaving it
   // alone lets Git combine the messages exactly as it would without the editor.
   const [edited, setEdited] = useState<Record<string, string>>({});
+  // Whatever the plan arrived with, such as commits already marked to squash, is not the
+  // user's work; a change to an action, a message or the order is.
+  useUnsavedWork(
+    Object.keys(edited).length > 0 ||
+      entries.some((entry, index) => {
+        const offered = plan.entries[index];
+        return (
+          offered?.hash !== entry.hash ||
+          offered.action !== entry.action ||
+          offered.message !== entry.message
+        );
+      })
+  );
   const groups = squashGroups(entries).map((group) => {
     const combined = combinedMessage(group);
     return { group, combined, message: edited[group[0]!.hash] ?? combined };

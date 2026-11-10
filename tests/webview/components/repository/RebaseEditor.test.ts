@@ -6,6 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { RebaseEntry, RebasePlan } from "@/backend/types";
 import { RebaseEditor } from "@/webview/components/repository/RebaseEditor";
 import { selectedRepo } from "@/webview/lib/stores";
+import { holdsUnsavedWork } from "@/webview/lib/unsaved-work";
 
 import { vscodeApi } from "@tests/webview/setup";
 import { setupWebviewTest } from "@tests/webview/test-utils";
@@ -83,6 +84,40 @@ beforeEach(() => {
 afterEach(() => {
   act(() => render(null, container));
   container.remove();
+});
+
+describe("unsaved work in the plan", () => {
+  const settled = () => act(async () => {});
+
+  it("is a changed action, order or combined message, and nothing the plan arrived with", async () => {
+    await settled();
+    expect(holdsUnsavedWork()).toBe(false);
+
+    choose(B, "squash");
+    await settled();
+    expect(holdsUnsavedWork()).toBe(true);
+    type(message(A), "One message for both");
+    choose(B, "pick");
+    await settled();
+    // The message written for the group is still kept, should the group come back.
+    expect(holdsUnsavedWork()).toBe(true);
+  });
+
+  it("ends when every change is taken back", async () => {
+    choose(D, "drop");
+    await settled();
+    expect(holdsUnsavedWork()).toBe(true);
+    choose(D, "pick");
+    await settled();
+    expect(holdsUnsavedWork()).toBe(false);
+
+    const later = container.querySelector<HTMLButtonElement>(
+      `[data-entry="${A}"] [data-move="later"]`
+    )!;
+    act(() => later.click());
+    await settled();
+    expect(holdsUnsavedWork()).toBe(true);
+  });
 });
 
 describe("the combined message of a squash", () => {

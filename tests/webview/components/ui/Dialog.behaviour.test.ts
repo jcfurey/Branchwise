@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { h, render } from "preact";
+import { useState } from "preact/hooks";
 import { act } from "preact/test-utils";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,6 +15,7 @@ import {
 } from "@/webview/lib/actions";
 import { rpcClient } from "@/webview/lib/rpc/rpc-client";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
+import { useUnsavedWork } from "@/webview/lib/unsaved-work";
 import type { DialogInput, DialogState } from "@/webview/types";
 
 import { setupWebviewTest } from "@tests/webview/test-utils";
@@ -776,16 +778,17 @@ describe("error dialogs", () => {
   });
 
   it("treats an empty reason as no reason", () => {
+    const parts = () => panel()!.querySelector("[data-dialog-body]")!.childElementCount;
     act(() => openErrorDialog("E"));
-    const without = panel()!.childElementCount;
+    const without = parts();
     expect(panel()!.textContent).toBe("EdialogDismiss");
     expect(labels()).toEqual(["dialogDismiss"]);
     act(() => openErrorDialog("E", ""));
-    expect(panel()!.childElementCount).toBe(without);
+    expect(parts()).toBe(without);
     expect(panel()!.textContent).toBe("EdialogDismiss");
     expect(labels()).toEqual(["dialogDismiss"]);
     act(() => openErrorDialog("E", "r"));
-    expect(panel()!.childElementCount).toBe(without + 1);
+    expect(parts()).toBe(without + 1);
   });
 
   it("copies the reason and stays open", async () => {
@@ -808,6 +811,145 @@ describe("error dialogs", () => {
     act(() => openErrorDialog("E", "r"));
     act(() => button("dialogDismiss").click());
     expect(dialog.value).toBeNull();
+  });
+});
+
+describe("a dialog that holds unsaved work", () => {
+  /** An editor that holds work once its field differs from what it opened with. */
+  function Editor() {
+    const [text, setText] = useState("as it was");
+    useUnsavedWork(text !== "as it was");
+    return h("textarea", {
+      value: text,
+      onInput: (event: Event) => setText((event.target as HTMLTextAreaElement).value)
+    });
+  }
+  const field = () => panel()!.querySelector("textarea")!;
+  const question = () => panel()!.querySelector("[data-discard-question]");
+  const overlay = () => container.querySelector(".fixed.inset-0")!;
+  const clickOverlay = () =>
+    act(() => {
+      overlay().dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+    });
+  const open = async () => {
+    act(() => openContentDialog("Edit", h(Editor, null)));
+    // The editor reports its work after it has drawn.
+    await act(async () => {});
+  };
+  const edit = async (value: string) => {
+    type(field(), value);
+    await act(async () => {});
+  };
+
+  it("closes as any other while nothing in it was changed", async () => {
+    await open();
+    press(field(), "Escape");
+    expect(dialog.value).toBeNull();
+
+    await open();
+    clickOverlay();
+    expect(dialog.value).toBeNull();
+
+    await open();
+    act(() => button("close").click());
+    expect(dialog.value).toBeNull();
+  });
+
+  it.each([
+    ["Escape", () => void press(field(), "Escape")],
+    ["a click beside it", clickOverlay],
+    ["Close", () => act(() => button("close").click())]
+  ])("asks before %s throws the work away", async (_how, dismiss) => {
+    await open();
+    await edit("something new");
+    field().focus();
+
+    dismiss();
+
+    expect(dialog.value).not.toBeNull();
+    expect(question()?.getAttribute("role")).toBe("alertdialog");
+    expect(question()?.textContent).toBe("discardChangesQuestionkeepEditingdiscardChanges");
+    // It starts on the answer that loses nothing, and the work is out of reach meanwhile.
+    expect(document.activeElement).toBe(button("keepEditing"));
+    expect(field().closest("[inert]")).not.toBeNull();
+    expect(field().value).toBe("something new");
+  });
+
+  it("counts the work as soon as it is drawn, before a frame has passed", async () => {
+    await open();
+    // As a person types: no test helper flushes what the page would do later.
+    field().value = "typed a moment ago";
+    field().dispatchEvent(new Event("input", { bubbles: true }));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    field().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await act(async () => {});
+
+    expect(dialog.value).not.toBeNull();
+    expect(question()).not.toBeNull();
+  });
+
+  it("keeps the work, and returns to it, on Keep Editing and on Escape", async () => {
+    await open();
+    await edit("something new");
+    field().focus();
+    press(field(), "Escape");
+
+    act(() => button("keepEditing").click());
+    expect(question()).toBeNull();
+    expect(field().value).toBe("something new");
+    expect(field().closest("[inert]")).toBeNull();
+    expect(document.activeElement).toBe(field());
+
+    press(field(), "Escape");
+    expect(question()).not.toBeNull();
+    press(button("keepEditing"), "Escape");
+    expect(question()).toBeNull();
+    expect(dialog.value).not.toBeNull();
+    expect(document.activeElement).toBe(field());
+  });
+
+  it("closes on Discard, and leaves a click beside the question alone", async () => {
+    await open();
+    await edit("something new");
+    clickOverlay();
+    clickOverlay();
+    expect(dialog.value).not.toBeNull();
+    expect(panel()!.querySelectorAll("[data-discard-question]")).toHaveLength(1);
+
+    act(() => button("discardChanges").click());
+    expect(dialog.value).toBeNull();
+  });
+
+  it("stops asking once the work is as it was, and for the next dialog", async () => {
+    await open();
+    await edit("something new");
+    await edit("as it was");
+    press(field(), "Escape");
+    expect(dialog.value).toBeNull();
+
+    // A dialog replaced while it held work leaves nothing behind for the one after it.
+    await open();
+    await edit("something new");
+    act(() => openErrorDialog("E"));
+    await act(async () => {});
+    press(panel()!, "Escape");
+    expect(dialog.value).toBeNull();
+  });
+
+  it("keeps the round of the Tab key inside the question while it asks", async () => {
+    await open();
+    await edit("something new");
+    press(field(), "Escape");
+
+    button("discardChanges").focus();
+    const forward = press(button("discardChanges"), "Tab");
+    expect(forward.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(button("keepEditing"));
+    const back = press(button("keepEditing"), "Tab", { shiftKey: true });
+    expect(back.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(button("discardChanges"));
   });
 });
 

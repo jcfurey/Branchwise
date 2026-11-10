@@ -1,5 +1,5 @@
 import { Fragment, type ComponentChildren } from "preact";
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { Button } from "@/webview/components/ui/Button";
 import { Checkbox } from "@/webview/components/ui/Checkbox";
@@ -9,6 +9,7 @@ import { Select } from "@/webview/components/ui/Select";
 import { closeDialog } from "@/webview/lib/actions";
 import { copyToClipboard } from "@/webview/lib/copy";
 import { dialog } from "@/webview/lib/stores";
+import { holdsUnsavedWork } from "@/webview/lib/unsaved-work";
 import type { DialogInput, DialogState } from "@/webview/types";
 import { formatSeconds } from "@/webview/utils/date";
 import { hasInvalidRefChars } from "@/webview/utils/ref";
@@ -17,6 +18,9 @@ type Kind<K extends DialogState["kind"]> = Extract<DialogState, { kind: K }>;
 
 /** What each kind of dialog draws inside the panel. `titleId` names the panel. */
 type BodyProps<K extends DialogState["kind"]> = { state: Kind<K>; titleId: string };
+
+/** A body with a Close button of its own, which asks first when the dialog holds work. */
+type ClosableProps<K extends DialogState["kind"]> = BodyProps<K> & { onClose: () => void };
 
 type Value = string | boolean;
 
@@ -402,7 +406,7 @@ function ErrorBody({ state, titleId }: BodyProps<"error">) {
   );
 }
 
-function ContentBody({ state, titleId }: BodyProps<"content">) {
+function ContentBody({ state, titleId, onClose }: ClosableProps<"content">) {
   return (
     <>
       <h2 id={titleId} class="mb-3 font-bold">
@@ -410,13 +414,13 @@ function ContentBody({ state, titleId }: BodyProps<"content">) {
       </h2>
       {state.content}
       <div class="mt-3">
-        <Button onClick={() => closeDialog()}>{window.l10n.close}</Button>
+        <Button onClick={onClose}>{window.l10n.close}</Button>
       </div>
     </>
   );
 }
 
-function Body({ state, titleId }: { state: DialogState; titleId: string }) {
+function Body({ state, titleId, onClose }: ClosableProps<DialogState["kind"]>) {
   switch (state.kind) {
     case "form":
       return <FormBody state={state} titleId={titleId} />;
@@ -425,8 +429,40 @@ function Body({ state, titleId }: { state: DialogState; titleId: string }) {
     case "error":
       return <ErrorBody state={state} titleId={titleId} />;
     case "content":
-      return <ContentBody state={state} titleId={titleId} />;
+      return <ContentBody state={state} titleId={titleId} onClose={onClose} />;
   }
+}
+
+/**
+ * The question a dialog asks before it throws away work done in it. It starts on the answer
+ * that loses nothing.
+ */
+function DiscardQuestion({ onKeep }: { onKeep: () => void }) {
+  const question = useRef<HTMLDivElement>(null);
+  useLayoutEffect(
+    () => question.current?.querySelector("button")?.focus({ preventScroll: true }),
+    []
+  );
+  return (
+    <div
+      ref={question}
+      role="alertdialog"
+      aria-label={window.l10n.discardChangesQuestion}
+      data-discard-question
+      // Over the panel's own padding, at rest and while the panel is scrolled: what sticks is
+      // measured from inside the padding, so its place is that far above.
+      class="sticky -top-5 z-10 -mx-5 -mt-5 mb-3 flex flex-wrap items-center justify-center gap-2 border-b border-line bg-menu px-5 py-2"
+    >
+      <span class="flex items-center gap-1.5">
+        <WarningGlyph />
+        {window.l10n.discardChangesQuestion}
+      </span>
+      <Button variant="primary" onClick={onKeep}>
+        {window.l10n.keepEditing}
+      </Button>
+      <Button onClick={() => closeDialog()}>{window.l10n.discardChanges}</Button>
+    </div>
+  );
 }
 
 /** One dialog, from the moment its token is stored until another token or `null` replaces it. */
@@ -442,11 +478,45 @@ function Modal({ state }: { state: DialogState }) {
     }
   }, []);
 
-  // Escape closes from anywhere, unless a control already used it for itself.
+  // A dialog that holds work, such as an edited message, asks before it throws that away. While
+  // it asks, the work is out of reach, and where the keyboard was is kept for "Keep Editing".
+  const [asking, setAsking] = useState(false);
+  const cameFrom = useRef<HTMLElement | null>(null);
+  const live = useRef({ asking, dismiss: () => {}, keep: () => {} });
+  live.current = {
+    asking,
+    dismiss: () => {
+      if (!holdsUnsavedWork()) {
+        closeDialog();
+      } else if (!asking) {
+        cameFrom.current =
+          document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        setAsking(true);
+      }
+    },
+    keep: () => setAsking(false)
+  };
+  const dismiss = useCallback(() => live.current.dismiss(), []);
+  // After the work can be reached again, so that the keyboard returns into it.
+  useLayoutEffect(() => {
+    if (!asking && cameFrom.current !== null) {
+      (cameFrom.current.isConnected ? cameFrom.current : panel.current)?.focus({
+        preventScroll: true
+      });
+      cameFrom.current = null;
+    }
+  }, [asking]);
+
+  // Escape closes from anywhere, unless a control already used it for itself. Pressed at the
+  // question, it keeps the work.
   useLayoutEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !event.defaultPrevented) {
-        closeDialog();
+        if (live.current.asking) {
+          live.current.keep();
+        } else {
+          live.current.dismiss();
+        }
       }
     };
     document.addEventListener("keydown", onKeyDown);
@@ -462,7 +532,7 @@ function Modal({ state }: { state: DialogState }) {
         class="fixed inset-0 z-30 bg-black/20"
         onClick={(event) => {
           if (event.detail < 2) {
-            closeDialog();
+            dismiss();
           }
         }}
       />
@@ -478,7 +548,10 @@ function Modal({ state }: { state: DialogState }) {
         onKeyDownCapture={blockHeldKeys}
         onKeyDown={(event) => containTab(event, panel.current)}
       >
-        <Body state={state} titleId={titleId} />
+        {asking && <DiscardQuestion onKeep={live.current.keep} />}
+        <div data-dialog-body inert={asking}>
+          <Body state={state} titleId={titleId} onClose={dismiss} />
+        </div>
       </div>
     </>
   );

@@ -10,6 +10,7 @@ import {
   sendRepositoryAction
 } from "@/webview/lib/repository-actions";
 import { commitHead, commitList, headBranch, selectedRepo } from "@/webview/lib/stores";
+import { useUnsavedWork } from "@/webview/lib/unsaved-work";
 import { format } from "@/webview/utils/format";
 
 /**
@@ -73,6 +74,7 @@ export function RewordEditor({ plan, repo }: { plan: EditPlan; repo: string }) {
   const [message, setMessage] = useState(plan.message);
   // An empty message is refused, and an unchanged one would rewrite history for nothing.
   const blocked = !message.trim() || message.trimEnd() === plan.message;
+  useUnsavedWork(message !== plan.message);
   return (
     <form
       class="space-y-3 text-left"

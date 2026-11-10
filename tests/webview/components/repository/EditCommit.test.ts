@@ -20,6 +20,7 @@ import { Dialog } from "@/webview/components/ui/Dialog";
 import { commitMenu } from "@/webview/lib/menus";
 import { handleRepositoryQuery, repositoryState } from "@/webview/lib/repository-actions";
 import { commitHead, commitList, dialog, headBranch, selectedRepo } from "@/webview/lib/stores";
+import { holdsUnsavedWork } from "@/webview/lib/unsaved-work";
 import type { ContextMenuEntry } from "@/webview/types";
 
 import { vscodeApi } from "@tests/webview/setup";
@@ -142,6 +143,30 @@ describe("which commits can be edited in place", () => {
 });
 
 describe("the Edit Message dialog", () => {
+  it("holds unsaved work only while the message differs from the commit's", async () => {
+    openEditMessage(B);
+    respond({ kind: "editPlan", plan: PLAN });
+    act(() => render(h(Dialog, {}), container));
+    await act(async () => {});
+    expect(holdsUnsavedWork()).toBe(false);
+
+    type("A message half written");
+    await act(async () => {});
+    expect(holdsUnsavedWork()).toBe(true);
+    // Escape asks, and the message is still there to keep.
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(dialog.value).not.toBeNull();
+    expect(container.querySelector("[data-discard-question]")).not.toBeNull();
+    expect(container.querySelector("textarea")!.value).toBe("A message half written");
+    act(() => button("keepEditing")!.click());
+
+    type(PLAN.message);
+    await act(async () => {});
+    expect(holdsUnsavedWork()).toBe(false);
+  });
+
   it("prefills the message and sends the edit with the plan it was opened with", () => {
     openEditMessage(B);
     expect(lastPosted()).toMatchObject({

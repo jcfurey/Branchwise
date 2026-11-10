@@ -15,6 +15,7 @@ import { Dialog } from "@/webview/components/ui/Dialog";
 import { commitMenu } from "@/webview/lib/menus";
 import { handleRepositoryQuery } from "@/webview/lib/repository-actions";
 import { commitHead, commitList, dialog, headBranch, selectedRepo } from "@/webview/lib/stores";
+import { holdsUnsavedWork } from "@/webview/lib/unsaved-work";
 import type { ContextMenuEntry } from "@/webview/types";
 
 import { vscodeApi } from "@tests/webview/setup";
@@ -231,6 +232,31 @@ describe("the Split Commit dialog", () => {
     expect(submit().disabled).toBe(true);
     // Two parts are the fewest a split makes.
     expect(button("Remove Part 2")).toBeUndefined();
+  });
+
+  it("holds unsaved work once a change is moved, a message written or a part added", async () => {
+    const settled = () => act(async () => {});
+    open();
+    await settled();
+    expect(holdsUnsavedWork()).toBe(false);
+
+    choose("Part for obsolete", 2);
+    await settled();
+    expect(holdsUnsavedWork()).toBe(true);
+    choose("Part for obsolete", 1);
+    await settled();
+    expect(holdsUnsavedWork()).toBe(false);
+
+    type(2, "A message for the second part");
+    await settled();
+    expect(holdsUnsavedWork()).toBe(true);
+    type(2, "");
+    await settled();
+    expect(holdsUnsavedWork()).toBe(false);
+
+    act(() => button("addSplitPart")!.click());
+    await settled();
+    expect(holdsUnsavedWork()).toBe(true);
   });
 
   it("sends the parts once each has a change and a message", () => {

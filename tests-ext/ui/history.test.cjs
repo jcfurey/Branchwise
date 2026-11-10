@@ -3524,6 +3524,39 @@ suite("Branchwise workflow UI", function () {
       await graph.evaluate('document.querySelector("[role=dialog] [role=alert]")?.textContent'),
       /already on a remote/
     );
+    // A message half written is not thrown away by a stray Escape: the dialog asks first.
+    await typeMessage("edit target, half written");
+    await graph.evaluate('document.querySelector("[role=dialog] textarea").focus()');
+    await keypress("Escape");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog] [data-discard-question]")?.textContent.includes("Discard your changes?") === true'
+        ),
+      "question before discarding"
+    );
+    assert.equal(
+      await graph.evaluate("document.activeElement?.textContent"),
+      "Keep Editing",
+      "the question starts on the answer that loses nothing"
+    );
+    const shot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "discard-question.png"),
+      Buffer.from(shot.data, "base64")
+    );
+    await button("Keep Editing");
+    await until(
+      () =>
+        graph.evaluate(
+          '!document.querySelector("[data-discard-question]") && document.activeElement === document.querySelector("[role=dialog] textarea")'
+        ),
+      "back in the message"
+    );
+    assert.equal(
+      await graph.evaluate('document.querySelector("[role=dialog] textarea").value'),
+      "edit target, half written"
+    );
     await typeMessage("edit target reworded\n\n#7 stays");
     await button("Save Message");
     await finished();

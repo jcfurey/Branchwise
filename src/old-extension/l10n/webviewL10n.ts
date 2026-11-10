@@ -294,6 +294,9 @@ export function getWebviewLocalizedStrings() {
     dialogYesReset: vscode.l10n.t("Reset"),
     dialogCancel: vscode.l10n.t("Cancel"),
     dialogDismiss: vscode.l10n.t("Dismiss"),
+    discardChangesQuestion: vscode.l10n.t("Discard your changes?"),
+    keepEditing: vscode.l10n.t("Keep Editing"),
+    discardChanges: vscode.l10n.t("Discard"),
 
     // Relative dates come from Intl.RelativeTimeFormat in the page (src/webview/utils/date.ts),
     // so this table declares no time units.
