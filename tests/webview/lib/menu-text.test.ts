@@ -79,41 +79,44 @@ describe("English titles", () => {
     expect(titles(menus.commitMenu({ ...commit, parentHashes }, new Map()))).toBe(
       "Create Tag… | Create Branch… | --- | Check Out… | Cherry-pick… | Revert… | --- | " +
         "Merge into Current Branch… | Reset Current Branch to This Commit… | --- | " +
-        "Edit commits after this (interactive rebase)… | " +
-        "Fold staged changes into this commit (fixup)… | Open All Changes | Compare with… | " +
-        "Use as Good Bisect Commit | Use as Bad Bisect Commit | Copy Commit ID | Copy Short Commit ID"
+        "Edit Commits After This (Interactive Rebase)… | --- | " +
+        "Open All Changes | Compare with… | --- | " +
+        "Use as Good Bisect Commit | Use as Bad Bisect Commit | --- | " +
+        "Copy Commit ID | Copy Short Commit ID"
     );
   });
 
   it("lists the menu of a branch that is not checked out", () => {
     expect(titles(menus.refMenu(topic, false))).toBe(
-      "Focus this branch | Compare with… | --- | Configure Upstream… | Create Worktree… | " +
-        "Move the current branch onto this (rebase)… | Check Out Branch | Push Branch… | " +
-        "Rename Branch… | Delete Local Branch… | Merge into Current Branch… | --- | " +
-        "Copy Branch Name | Hide Branches Like This…"
+      "Focus This Branch | Compare with… | --- | " +
+        "Check Out Branch | Merge into Current Branch… | " +
+        "Move Current Branch onto This (Rebase)… | --- | " +
+        "Push Branch… | Configure Upstream… | Rename Branch… | Create Worktree… | " +
+        "Delete Local Branch… | --- | Copy Branch Name | Hide Branches Like This…"
     );
   });
 
   it("lists the menu of the checked-out branch", () => {
     expect(titles(menus.refMenu(main, true))).toBe(
-      "Focus this branch | Compare with… | --- | Configure Upstream… | Create Worktree… | " +
-        "Push Branch… | Pull Branch… | Rename Branch… | --- | Copy Branch Name | " +
-        "Hide Branches Like This…"
+      "Focus This Branch | Compare with… | --- | Pull Branch… | Push Branch… | --- | " +
+        "Configure Upstream… | Rename Branch… | Create Worktree… | --- | " +
+        "Copy Branch Name | Hide Branches Like This…"
     );
   });
 
   it.each([false, true])("lists the menus of remote branches and tags (%s)", (isHead) => {
     expect(titles(menus.refMenu(remote, isHead))).toBe(
-      "Focus this branch | Compare with… | --- | Move the current branch onto this (rebase)… | " +
-        "Create Worktree… | Delete Remote Branch… | Fetch… | Check Out Branch… | --- | " +
+      "Focus This Branch | Compare with… | --- | " +
+        "Check Out Branch… | Move Current Branch onto This (Rebase)… | --- | " +
+        "Fetch… | Create Worktree… | Delete Remote Branch… | --- | " +
         "Copy Branch Name | Hide Branches Like This…"
     );
     expect(titles(menus.refMenu({ ...remote, name: "origin/HEAD" }, isHead))).toBe(
-      "Compare with… | --- | Move the current branch onto this (rebase)… | Create Worktree… | " +
-        "Fetch… | --- | Copy Branch Name"
+      "Compare with… | --- | Move Current Branch onto This (Rebase)… | --- | " +
+        "Fetch… | Create Worktree… | --- | Copy Branch Name"
     );
     expect(titles(menus.refMenu(tag, isHead))).toBe(
-      "Compare with… | --- | Delete Local Tag… | Push Tag to Remote… | Delete Remote Tag… | " +
+      "Compare with… | --- | Push Tag to Remote… | Delete Local Tag… | Delete Remote Tag… | " +
         "--- | Copy Tag Name"
     );
   });
@@ -167,7 +170,7 @@ describe("English questions", () => {
       () => menus.commitMenu(commit, new Map()),
       `Reset ${current} to commit ${hashName}?` +
         explain(
-          "Soft and mixed keep your files. Hard discards uncommitted changes. The previous position stays in the reflog, so Recover lost commits can bring it back."
+          "Soft and mixed keep your files. Hard discards uncommitted changes. The previous position stays in the reflog, so Recover Lost Commits can bring it back."
         )
     ],
     [
@@ -180,7 +183,7 @@ describe("English questions", () => {
       () => menus.refMenu(topic, false),
       "Delete local branch <b><i>topic</i></b>?" +
         explain(
-          "The commits stay in the repository for a while. Recover lost commits lists the branch tip if you need it back."
+          "The commits stay in the repository for a while. Recover Lost Commits lists the branch tip if you need it back."
         )
     ],
     [

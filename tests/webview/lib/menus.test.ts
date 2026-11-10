@@ -53,6 +53,7 @@ const REMOTE: GitRef = { type: "remote", name: "upstream/wip", hash: H };
 const TAG: GitRef = { type: "tag", name: "v2.0", hash: H };
 const remoteRef = (name: string, hash = H): GitRef => ({ type: "remote", name, hash });
 
+// Nothing is staged and no rows are loaded, so the entries that need either are left out.
 const COMMIT_TITLES = [
   "addTag…",
   "createBranch…",
@@ -65,26 +66,30 @@ const COMMIT_TITLES = [
   "reset…",
   null,
   "interactiveRebase…",
-  "createFixupMenu…",
+  null,
   "openAllChanges",
   "compareWith",
+  null,
   "bisectChooseGood",
   "bisectChooseBad",
+  null,
   "copyCommitHash",
   "copyShortCommitHash"
 ];
+// Looking first, then what is done with the branch, then what is done to it, deleting last.
 const LOCAL_TITLES = [
   "focusThisBranch",
   "compareWith",
   null,
-  "configureUpstream…",
-  "addWorktree…",
-  "rebaseOnto…",
   "checkoutBranch",
-  "pushBranch…",
-  "renameBranch…",
-  "deleteBranch…",
   "merge…",
+  "rebaseOnto…",
+  null,
+  "pushBranch…",
+  "configureUpstream…",
+  "renameBranch…",
+  "addWorktree…",
+  "deleteBranch…",
   null,
   "copyBranchName",
   "hideBranchesLikeThis…"
@@ -93,11 +98,12 @@ const CHECKED_OUT_TITLES = [
   "focusThisBranch",
   "compareWith",
   null,
-  "configureUpstream…",
-  "addWorktree…",
-  "pushBranch…",
   "pullBranch…",
+  "pushBranch…",
+  null,
+  "configureUpstream…",
   "renameBranch…",
+  "addWorktree…",
   null,
   "copyBranchName",
   "hideBranchesLikeThis…"
@@ -106,11 +112,12 @@ const REMOTE_TITLES = [
   "focusThisBranch",
   "compareWith",
   null,
+  "checkoutBranch…",
   "rebaseOnto…",
+  null,
+  "fetch…",
   "addWorktree…",
   "deleteRemoteBranch…",
-  "fetch…",
-  "checkoutBranch…",
   null,
   "copyBranchName",
   "hideBranchesLikeThis…"
@@ -119,16 +126,17 @@ const REMOTE_HEAD_TITLES = [
   "compareWith",
   null,
   "rebaseOnto…",
-  "addWorktree…",
+  null,
   "fetch…",
+  "addWorktree…",
   null,
   "copyBranchName"
 ];
 const TAG_TITLES = [
   "compareWith",
   null,
-  "deleteTag…",
   "pushTag…",
+  "deleteTag…",
   "deleteRemoteTag…",
   null,
   "copyTagName"
@@ -226,7 +234,7 @@ describe("what each menu offers", () => {
     expect(titles(commitMenu(commitNode(H, parentHashes), NO_MESSAGES))).toEqual(COMMIT_TITLES);
   });
 
-  it("a local branch that is not checked out can be rebased onto, checked out, deleted, merged", () => {
+  it("a local branch that is not checked out can be checked out, merged, rebased onto and deleted", () => {
     expect(titles(refMenu(LOCAL, false))).toEqual(LOCAL_TITLES);
   });
 

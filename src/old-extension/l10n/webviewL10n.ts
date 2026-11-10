@@ -31,7 +31,7 @@ export function getWebviewLocalizedStrings() {
     focusDirectHistory: vscode.l10n.t("Focus direct history"),
     focusAllAncestors: vscode.l10n.t("Focus all ancestors"),
     branchFocus: vscode.l10n.t("Focus: {0}"),
-    focusThisBranch: vscode.l10n.t("Focus this branch"),
+    focusThisBranch: vscode.l10n.t("Focus This Branch"),
     focusBadge: vscode.l10n.t("Focus"),
     focusPausedBadge: vscode.l10n.t("Paused"),
     branchFocusPaused: vscode.l10n.t("Focus paused: {0}"),

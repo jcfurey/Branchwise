@@ -264,7 +264,6 @@ describe("menu hints", () => {
       ["merge…", "M", "M"],
       ["reset…", "X", "X"],
       ["interactiveRebase…", "I", "I"],
-      ["createFixupMenu…", null, null],
       ["openAllChanges", null, null],
       ["compareWith", null, null],
       ["bisectChooseGood", null, null],
@@ -282,8 +281,8 @@ describe("menu hints", () => {
     const items = showMenu(refMenu(FEATURE, false));
     const keyed = hints(items).filter(([, key]) => key !== null);
     expect(keyed).toEqual([
-      ["rebaseOnto…", "R", "R"],
-      ["merge…", "M", "M"]
+      ["merge…", "M", "M"],
+      ["rebaseOnto…", "R", "R"]
     ]);
   });
 

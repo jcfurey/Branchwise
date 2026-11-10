@@ -184,6 +184,11 @@ function askForFileHistory() {
   });
 }
 
+/** The title of an entry that opens a dialog, as against one that acts or goes somewhere at once. */
+function dialog(title: string) {
+  return title + "…";
+}
+
 /** The Settings & Tools entries, built when the menu opens so the check mark is current. */
 function toolsMenu(): Array<ContextMenuEntry> {
   const l10n = window.l10n;
@@ -199,33 +204,39 @@ function toolsMenu(): Array<ContextMenuEntry> {
           null
         ]
       : []),
-    { title: l10n.manageRemotes, onClick: openRemotes },
-    { title: l10n.stashes, onClick: openStashes },
-    { title: l10n.worktrees, onClick: openWorktrees },
-    { title: l10n.workspaceSync, onClick: openWorkspaceSync },
-    { title: l10n.fastForwardTitle, onClick: openFastForward },
-    { title: l10n.cleanupBranches, onClick: openCleanup },
-    { title: l10n.bisectTitle, onClick: openBisect },
+    { title: dialog(l10n.manageRemotes), onClick: openRemotes },
+    { title: dialog(l10n.stashes), onClick: openStashes },
+    { title: dialog(l10n.worktrees), onClick: openWorktrees },
+    { title: dialog(l10n.workspaceSync), onClick: openWorkspaceSync },
+    { title: dialog(l10n.fastForwardTitle), onClick: openFastForward },
+    { title: dialog(l10n.cleanupBranches), onClick: openCleanup },
+    { title: dialog(l10n.bisectTitle), onClick: openBisect },
     null,
-    { title: l10n.goTo, onClick: openGoTo },
+    { title: dialog(l10n.goTo), onClick: openGoTo },
+    { title: dialog(l10n.fileHistory), onClick: askForFileHistory },
+    // The Reflog tab under the name of what it is for.
     { title: l10n.reflog, onClick: openReflog },
-    { title: l10n.safetyNet + "…", onClick: openSafetyNet },
-    { title: l10n.fileHistory, onClick: askForFileHistory },
-    { title: l10n.operationActivity, onClick: openActivity },
+    { title: dialog(l10n.safetyNet), onClick: openSafetyNet },
+    { title: dialog(l10n.operationActivity), onClick: openActivity },
     null,
     {
       title: l10n.showRemoteBranches,
       checked: remotesShown,
       onClick: () => setShowRemoteBranch(!remotesShown)
     },
-    { title: l10n.hiddenBranches + "…", onClick: () => openHiddenBranches() },
-    { title: l10n.columns + "…", onClick: openColumnsDialog },
+    { title: dialog(l10n.hiddenBranches), onClick: () => openHiddenBranches() },
+    { title: dialog(l10n.columns), onClick: openColumnsDialog },
+    null,
     {
       title: l10n.gettingStarted,
       onClick: () => void rpcClient.request("walkthrough.open", null)
     },
-    { title: l10n.legend, onClick: openLegend },
-    { title: l10n.keyboardShortcuts, onClick: openShortcutSheet, shortcut: "shortcutSheet" },
+    { title: dialog(l10n.legend), onClick: openLegend },
+    {
+      title: dialog(l10n.keyboardShortcuts),
+      onClick: openShortcutSheet,
+      shortcut: "shortcutSheet"
+    },
     { title: l10n.learnMore, onClick: () => void rpcClient.request("docs.open", null) },
     { title: l10n.openSettings, onClick: () => void rpcClient.request("settings.open", null) }
   ];

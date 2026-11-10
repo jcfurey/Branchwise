@@ -87,27 +87,30 @@ describe("the Settings & Tools menu", () => {
     mount();
     const menu = openTools();
     expect(menu.source).toBe("repository-tools");
+    // An entry that opens a dialog ends in an ellipsis; one that acts or goes somewhere at once
+    // has none.
     expect(menu.entries.map((entry) => entry?.title ?? null)).toEqual([
-      "manageRemotes",
-      "stashes",
-      "worktrees",
-      "workspaceSync",
-      "fastForwardTitle",
-      "cleanupBranches",
-      "bisectTitle",
+      "manageRemotes…",
+      "stashes…",
+      "worktrees…",
+      "workspaceSync…",
+      "fastForwardTitle…",
+      "cleanupBranches…",
+      "bisectTitle…",
       null,
-      "goTo",
+      "goTo…",
+      "fileHistory…",
       "reflog",
       "safetyNet…",
-      "fileHistory",
-      "operationActivity",
+      "operationActivity…",
       null,
       "showRemoteBranches",
       "hiddenBranches…",
       "columns…",
+      null,
       "gettingStarted",
-      "legend",
-      "keyboardShortcuts",
+      "legend…",
+      "keyboardShortcuts…",
       "learnMore",
       "openSettings"
     ]);
@@ -143,16 +146,16 @@ describe("the Settings & Tools menu", () => {
   });
 
   it.each([
-    ["manageRemotes", "openRemotes"],
-    ["stashes", "openStashes"],
-    ["worktrees", "openWorktrees"],
-    ["workspaceSync", "openWorkspaceSync"],
-    ["fastForwardTitle", "openFastForward"],
-    ["cleanupBranches", "openCleanup"],
-    ["bisectTitle", "openBisect"],
+    ["manageRemotes…", "openRemotes"],
+    ["stashes…", "openStashes"],
+    ["worktrees…", "openWorktrees"],
+    ["workspaceSync…", "openWorkspaceSync"],
+    ["fastForwardTitle…", "openFastForward"],
+    ["cleanupBranches…", "openCleanup"],
+    ["bisectTitle…", "openBisect"],
     ["reflog", "openReflog"],
     ["safetyNet…", "openSafetyNet"],
-    ["operationActivity", "openActivity"]
+    ["operationActivity…", "openActivity"]
   ] as const)("opens %s with %s", (title, opener) => {
     mount();
     runEntry(title);
@@ -252,14 +255,14 @@ describe("Undo", () => {
   it("is left out when nothing can be undone", () => {
     withUndo(null);
     mount();
-    expect(openTools().entries[0]?.title).toBe("manageRemotes");
+    expect(openTools().entries[0]?.title).toBe("manageRemotes…");
   });
 });
 
 describe("Go to", () => {
   it("asks the extension for the picker of the selected repository", () => {
     mount();
-    runEntry("goTo");
+    runEntry("goTo…");
     expect(vscodeApi.postMessage).toHaveBeenLastCalledWith({
       kind: "rpc.request",
       method: "goTo.show",
@@ -272,9 +275,11 @@ describe("Go to", () => {
 describe("Keyboard Shortcuts", () => {
   it("opens the shortcut sheet, and shows its own key", () => {
     mount();
-    const entry = openTools().entries.find((candidate) => candidate?.title === "keyboardShortcuts");
+    const entry = openTools().entries.find(
+      (candidate) => candidate?.title === "keyboardShortcuts…"
+    );
     expect(entry?.shortcut).toBe("shortcutSheet");
-    runEntry("keyboardShortcuts");
+    runEntry("keyboardShortcuts…");
     expect(stores.dialog.value).toMatchObject({ kind: "content", message: "keyboardShortcuts" });
   });
 });
@@ -282,7 +287,7 @@ describe("Keyboard Shortcuts", () => {
 describe("File History", () => {
   function submitPath(path: string) {
     mount(h(Fragment, null, h(MainHeader, { repos: REPOS }), h(Dialog, {})));
-    runEntry("fileHistory");
+    runEntry("fileHistory…");
     const dialog = stores.dialog.value;
     expect(dialog).toMatchObject({
       kind: "form",

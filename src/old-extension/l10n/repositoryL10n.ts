@@ -72,11 +72,11 @@ export function getRepositoryLocalizedStrings() {
     revealWorktreeWindows: vscode.l10n.t("Reveal in File Explorer"),
     revealWorktreeMac: vscode.l10n.t("Reveal in Finder"),
     revealWorktreeOther: vscode.l10n.t("Open Containing Folder"),
-    rebaseOnto: vscode.l10n.t("Move the current branch onto this (rebase)"),
+    rebaseOnto: vscode.l10n.t("Move Current Branch onto This (Rebase)"),
     rebaseConfirm: vscode.l10n.t(
       "Rebase {0} onto {1}? This rewrites commits on the current branch and preserves merge structure. Commit or stash your changes first."
     ),
-    interactiveRebase: vscode.l10n.t("Edit commits after this (interactive rebase)"),
+    interactiveRebase: vscode.l10n.t("Edit Commits After This (Interactive Rebase)"),
     rebasePlanTitle: vscode.l10n.t("Interactive Rebase"),
     rebasePlanDescription: vscode.l10n.t(
       "Commits run from top to bottom. Squash combines a commit with the previous retained commit. Reword edits its message. Drop removes it from this branch."
@@ -221,7 +221,7 @@ export function getRepositoryLocalizedStrings() {
     settingsTools: vscode.l10n.t("Settings & Tools"),
     openSettings: vscode.l10n.t("Open Extension Settings"),
     gettingStarted: vscode.l10n.t("Getting Started"),
-    learnMore: vscode.l10n.t("Learn more"),
+    learnMore: vscode.l10n.t("Learn More"),
 
     // The legend: each symbol the graph uses, its name, then what it means.
     legend: vscode.l10n.t("Legend"),
@@ -295,13 +295,13 @@ export function getRepositoryLocalizedStrings() {
     ),
     commitActions: vscode.l10n.t("Actions for commit {0}"),
     explainReset: vscode.l10n.t(
-      "Soft and mixed keep your files. Hard discards uncommitted changes. The previous position stays in the reflog, so Recover lost commits can bring it back."
+      "Soft and mixed keep your files. Hard discards uncommitted changes. The previous position stays in the reflog, so Recover Lost Commits can bring it back."
     ),
     explainDetachedHead: vscode.l10n.t(
       "You can build and test here. Create a branch from this commit to keep new work, or check out a branch to return."
     ),
     explainDeleteBranch: vscode.l10n.t(
-      "The commits stay in the repository for a while. Recover lost commits lists the branch tip if you need it back."
+      "The commits stay in the repository for a while. Recover Lost Commits lists the branch tip if you need it back."
     ),
     explainForcePush: vscode.l10n.t(
       "Anyone who already fetched the old history has to rebase their work onto the new one."

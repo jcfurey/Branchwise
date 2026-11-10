@@ -110,7 +110,7 @@ Turn it off to give the table those 10 pixels back. See
 
 `branchwise.branchHoverPreview` (default `true`) highlights a branch's or tag's commits, more
 lightly than branch focus, while the pointer rests on its label in the graph or its row in the
-Branches pane. Turn it off if the highlight distracts you; **Focus this branch** still works.
+Branches pane. Turn it off if the highlight distracts you; **Focus This Branch** still works.
 
 `branchwise.showNearestBranch` (default `true`) names, in faint text after the message of a commit
 without a branch label of its own, the nearest branch that contains it, such as "on main". It is
