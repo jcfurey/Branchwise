@@ -21,8 +21,9 @@ import { commitDetails } from "@/backend/queries/commitDetails";
 import { loadBatchPlan, loadStagedPlan, sourceFile } from "@/backend/queries/history";
 import { lineChanges, lineSpan } from "@/backend/queries/lineHistory";
 import { loadWorkspace, submoduleLinks } from "@/backend/queries/workspace";
-import type { HistoryAction, RestoreBackup } from "@/backend/types";
+import type { HistoryAction, RestoreBackup, WorkspaceEntry } from "@/backend/types";
 import { checkedWorktreePath, fileSnapshot, repoFile } from "@/backend/utils/history";
+import { keptOnlyByHead } from "@/backend/utils/keptCommits";
 import { readBlob, runGit, writeBlob } from "@/backend/utils/runGit";
 import { abbrevCommit } from "@/backend/utils/string";
 import { requireBranchName, requireCurrentBranch, resolveCommit } from "@/backend/utils/validation";
@@ -50,6 +51,31 @@ async function backupFile(
   return blob === source.blob && mode === source.mode
     ? null
     : { blob, mode: stat.mode, symlink: symlinked };
+}
+
+/**
+ * Refuse to update a submodule whose detached HEAD holds commits made there. An update checks
+ * out the recorded commit, and commits on no branch are then only in the submodule's reflog. A
+ * HEAD that a checkout put where it is holds nobody's work, even at a commit no branch has: an
+ * update itself fetches a recorded commit by its ID when no branch of the remote contains it.
+ */
+async function requireNoWorkOnDetachedHead(child: SimpleGit, entry: WorkspaceEntry) {
+  if (!entry.detached || entry.head === null || entry.head === entry.recorded) {
+    return;
+  }
+  if (!(await keptOnlyByHead(child, entry.head))) {
+    return;
+  }
+  const arrival = await child.raw(["reflog", "-1", "--format=%gs", "HEAD"]).catch(() => "");
+  if (arrival.startsWith("checkout:")) {
+    return;
+  }
+  throw new Error(
+    l10n.t(
+      "The submodule {0} has commits on a detached HEAD that no branch or tag keeps, and updating it would leave them behind. Create a branch there first.",
+      entry.submodulePath ?? entry.path
+    )
+  );
 }
 
 export async function runHistoryAction(
@@ -158,7 +184,11 @@ export async function runHistoryAction(
         await Promise.all(
           children
             .filter((entry) => entry.initialized)
-            .map((entry) => requireIdle(gitClientFactory(entry.path, binary).getInstance()))
+            .map(async (entry) => {
+              const child = gitClientFactory(entry.path, binary).getInstance();
+              await requireIdle(child);
+              await requireNoWorkOnDetachedHead(child, entry);
+            })
         );
       }
       const args =
@@ -259,11 +289,16 @@ export async function runHistoryAction(
         action.plan.entries.map((entry) => entry.hash)
       );
       const merges = current.entries.filter((entry) => entry.parentHashes.length > 1);
+      // Git applies the mainline to every commit, and refuses one with a single parent for any
+      // mainline but the first. Checked here, since Git finds out only on reaching that commit,
+      // with those before it applied.
       if (
         merges.length > 0 &&
         (!Number.isSafeInteger(action.mainline) ||
           action.mainline < 1 ||
-          merges.some((entry) => entry.parentHashes.length < action.mainline))
+          current.entries.some(
+            (entry) => entry.parentHashes.length > 0 && entry.parentHashes.length < action.mainline
+          ))
       ) {
         throw new Error(l10n.t("Choose a valid mainline parent for the selected merge commits."));
       }
