@@ -3,7 +3,7 @@ import type { SimpleGit } from "simple-git";
 
 import type { HistoryFilter } from "@/backend/types";
 import { literalPath, repoFile } from "@/backend/utils/history";
-import { readGitWithInput } from "@/backend/utils/runGit";
+import { readGit, readGitWithInput } from "@/backend/utils/runGit";
 import { resolveCommit } from "@/backend/utils/validation";
 
 /** The most commits a line history lists, however far back the lines go. */
@@ -158,7 +158,7 @@ export async function lineChanges(
     resolveCommit(git, hash),
     resolveCommit(git, revision || "HEAD")
   ]);
-  const output = await git.raw([
+  const output = await readGit(git, [
     "log",
     "--format=%x00%H%x00commit %H%nAuthor: %an <%ae>%nDate:   %aI%n%n    %s%n",
     "--no-ext-diff",

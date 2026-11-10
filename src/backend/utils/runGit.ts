@@ -2,7 +2,7 @@ import { type ChildProcess, execFile, spawn } from "node:child_process";
 
 import type { SimpleGit } from "simple-git";
 
-import { gitProcessOf, PARSED_OUTPUT_ARGS } from "@/backend/gitClient";
+import { gitFolderOf, gitProcessOf, PARSED_OUTPUT_ARGS } from "@/backend/gitClient";
 
 type GitResult = { stdout: Buffer; stderr: string; code: number };
 
@@ -15,7 +15,7 @@ function start(
   args: string[],
   cwd: string,
   env: NodeJS.ProcessEnv,
-  options: { input?: Uint8Array; stoppable?: boolean; codes?: number[] } = {}
+  options: { input?: Uint8Array; stoppable?: boolean; codes?: number[]; reads?: boolean } = {}
 ) {
   const codes = options.codes ?? [0];
   const child = spawn(binary, [...PARSED_OUTPUT_ARGS, ...args], {
@@ -39,7 +39,10 @@ function start(
       if (code !== null && codes.includes(code)) {
         resolve(result);
       } else {
-        const message = [result.stdout.toString(), result.stderr].filter(Boolean).join("\n");
+        // A command that failed may have said why on either stream. One that only reads has
+        // said it on standard error; what it printed before failing is half an answer.
+        const said = options.reads ? [result.stderr] : [result.stdout.toString(), result.stderr];
+        const message = said.filter(Boolean).join("\n");
         reject(new Error(message || `git ${args[0] ?? ""} exited with ${code}`));
       }
     });
@@ -96,10 +99,36 @@ export async function runGit(
   binary = gitProcessOf(git)?.gitPath ?? "git",
   env: NodeJS.ProcessEnv = process.env
 ) {
-  const cwd = await topLevel(git);
+  return runIn(await topLevel(git), git, args, binary, env);
+}
+
+/**
+ * Run a read-only Git command in the client's own folder, with nothing between its arguments
+ * and Git, and return what it prints. simple-git reads the arguments itself first and refuses a
+ * command when one of them holds the name of an option it guards, such as `--template` or
+ * `--upload-pack`, even inside a value attached to another option: text to search changes for
+ * (`-S--template`), or the file of a line history (`-L1,5:docs/--template.md`). Commands that
+ * carry a person's text that way are read here. Cancelling the client's signal stops the process.
+ */
+export async function readGit(git: SimpleGit, args: string[]) {
+  const cwd = gitFolderOf(git) ?? (await readDirectory(git));
+  return runIn(cwd, git, args, gitProcessOf(git)?.gitPath ?? "git", process.env, true);
+}
+
+async function runIn(
+  cwd: string,
+  git: SimpleGit,
+  args: string[],
+  binary: string,
+  env: NodeJS.ProcessEnv,
+  reads = false
+) {
   const signal = gitProcessOf(git)?.abort;
   signal?.throwIfAborted();
-  const { child, done } = start(binary, args, cwd, env, { stoppable: signal !== undefined });
+  const { child, done } = start(binary, args, cwd, env, {
+    stoppable: signal !== undefined,
+    reads
+  });
   const { promise: stopped, reject } = Promise.withResolvers<never>();
   const stop = () => {
     killTree(child);

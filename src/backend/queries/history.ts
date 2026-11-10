@@ -31,7 +31,7 @@ import {
   repoFile
 } from "@/backend/utils/history";
 import { remoteVisibility, type RemoteVisibility } from "@/backend/utils/remoteVisibility";
-import { readGitWithInput } from "@/backend/utils/runGit";
+import { readGit, readGitWithInput } from "@/backend/utils/runGit";
 import { resolveCommit } from "@/backend/utils/validation";
 
 const logArgs = (offset: number, count = HISTORY_PAGE_SIZE + 1) => [
@@ -233,9 +233,10 @@ export async function loadHistory(
   if (filter.path && !lines) {
     args.push(literalPath(filter.path));
   }
+  // Read without simple-git, which would refuse text or a file's name that holds an option's.
   const output = commits
     ? await readGitWithInput(git, args, commits.join("\n") + "\n")
-    : await git.raw(args);
+    : await readGit(git, args);
   const entries = parseHistory(lines ? lineLogRecords(output, "NGG-HISTORY", 6) : output);
   return { ...historyPage(entries.slice(skip)), ...(refs ? { refs } : {}) };
 }
