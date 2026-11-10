@@ -74,6 +74,40 @@ function markup(children: Parameters<typeof h>[2]) {
 }
 
 describe("English titles", () => {
+  it("are in title case in every menu, with or without staged changes", async () => {
+    const repositoryActions = await import("@/webview/lib/repository-actions");
+    // Words that title case leaves small, unless they come first.
+    const small = new Set(["a", "as", "for", "into", "of", "on", "onto", "or", "to", "with"]);
+    const listed = () => [
+      ...menus.commitMenu(commit, new Map()),
+      ...menus.refMenu(topic, false),
+      ...menus.refMenu(main, true),
+      ...menus.refMenu(remote, false),
+      ...menus.refMenu({ ...remote, name: "origin/HEAD" }, false),
+      ...menus.refMenu(tag, false)
+    ];
+    const state = { remotes: [], branches: [], worktrees: [], staged: 2 };
+    const titlesOf = (entries: Array<ContextMenuEntry>) =>
+      entries.flatMap((entry) => (entry === null ? [] : [entry.title]));
+    const plain = titlesOf(listed());
+    repositoryActions.repositoryState.value = state as never;
+    const staged = titlesOf(listed());
+    repositoryActions.repositoryState.value = null;
+    // The entries for staged changes are among them.
+    expect(staged).toContain("Create Fixup Commit for This Commit…");
+    expect(staged.length).toBeGreaterThan(plain.length);
+
+    const strings = window.l10n;
+    const tools = [strings.reflog, strings.learnMore, strings.goTo, strings.bisectTitle];
+    for (const title of new Set([...plain, ...staged, ...tools])) {
+      const words = title.replaceAll(/[()…,]/g, "").split(/\s+/);
+      for (const [index, word] of words.entries()) {
+        const lower = word === word.toLowerCase() && /[a-z]/.test(word);
+        expect(lower && (index === 0 || !small.has(word)), `"${word}" in "${title}"`).toBe(false);
+      }
+    }
+  });
+
   it.each([0, 1, 2])("lists the commit menu of a commit with %i parents", (count) => {
     const parentHashes = ["a".repeat(40), "b".repeat(40)].slice(0, count);
     expect(titles(menus.commitMenu({ ...commit, parentHashes }, new Map()))).toBe(
