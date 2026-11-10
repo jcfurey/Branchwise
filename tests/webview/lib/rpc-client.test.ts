@@ -230,6 +230,25 @@ describe("the deadline", () => {
     expect(escaped).toEqual([]);
   });
 
+  it.each(["git.clone", "git.init", "folder.open"] as const)(
+    "sets no deadline for %s, which takes as long as the person it asks",
+    async (method) => {
+      vi.useFakeTimers();
+      const outcome = watch(rpcClient.request(method, null));
+      const { id } = lastPosted();
+      // Choosing an address and a folder, and then the clone itself, can take many minutes.
+      expect(vi.getTimerCount()).toBe(0);
+      await vi.advanceTimersByTimeAsync(DEADLINE * 20);
+      expect(outcome.settled).toBe("pending");
+
+      answer(id, true);
+      await oneMicrotask();
+      expect(outcome.settled).toBe("fulfilled");
+      expect(outcome.value).toBe(true);
+      expect(escaped).toEqual([]);
+    }
+  );
+
   it("rejects with a plain Error that names the method", async () => {
     vi.useFakeTimers();
     const failure = rejectionOf(rpcClient.request("docs.open", null));
