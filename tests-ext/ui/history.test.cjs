@@ -2371,6 +2371,21 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await push(local)) === "unpushed", "unpushed dot");
     assert.equal(await push(fetched), "unpulled");
     assert.equal(await push(base), null);
+    // One commit to push and one to pull: the strip under the header offers both, beside the
+    // counts that call for them.
+    await until(
+      () =>
+        graph.evaluate(`(() => {
+          const strip = [...document.querySelectorAll('[role="status"]')].find((item) =>
+            item.textContent.includes("origin/main")
+          );
+          const offered = [...(strip?.querySelectorAll("button") ?? [])].map((b) => b.textContent);
+          return offered.join("|") === "Pull Branch…|Push Branch…|Configure Upstream";
+        })()`),
+      "Pull and Push in the status strip"
+    );
+    const strip = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(path.join(artifacts, "status-strip.png"), Buffer.from(strip.data, "base64"));
 
     await graph.evaluate(`document.querySelector('tr[data-commit-hash="${local}"]').click()`);
     await until(
