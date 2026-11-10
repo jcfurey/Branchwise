@@ -13,6 +13,8 @@ const world = vi.hoisted(() => {
     sent: [] as unknown[][],
     editorColumn: 2 as number | undefined,
     iconTheme: "colour",
+    /** What the config watcher was given to call when the tab icon's setting changes. */
+    onTabIcon: undefined as undefined | (() => void),
     createPanel: vi.fn(),
     workTreeRoot: vi.fn(),
     addSessionRepo: vi.fn(),
@@ -50,7 +52,10 @@ vi.mock("@/extension/rpc/rpc-notify", () => ({
   rpcNotify: { notify: world.notify }
 }));
 vi.mock("@/extension/watchers/config.watcher", () => ({
-  initConfigWatcher: () => world.service("config watcher")
+  initConfigWatcher: (onTabIcon: () => void) => {
+    world.onTabIcon = onTabIcon;
+    return world.service("config watcher");
+  }
 }));
 vi.mock("@/extension/watchers/git.watcher", () => ({
   watchGitDir: () => world.service(".git watcher")
@@ -193,6 +198,20 @@ describe("the graph panel", () => {
   test("uses the grey icon pair for the grey theme", () => {
     world.iconTheme = "grey";
     createViewCommand(ctx)();
+    expect(newest().panel.iconPath).toEqual({
+      light: "EXT/resources/webview-icon-light.svg",
+      dark: "EXT/resources/webview-icon-dark.svg"
+    });
+  });
+
+  test("changes the icon of the open tab when its setting changes", () => {
+    createViewCommand(ctx)();
+    expect(newest().panel.iconPath).toBe("EXT/resources/webview-icon.svg");
+
+    // The setting used to be read once, when the tab opened.
+    world.iconTheme = "grey";
+    world.onTabIcon?.();
+
     expect(newest().panel.iconPath).toEqual({
       light: "EXT/resources/webview-icon-light.svg",
       dark: "EXT/resources/webview-icon-dark.svg"

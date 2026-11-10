@@ -128,19 +128,23 @@ export function createViewCommand(ctx: vscode.ExtensionContext): ViewCommand {
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, "out")]
       }
     );
-    panel.iconPath =
-      extConfig.tabIconColourTheme() === "colour"
-        ? vscode.Uri.joinPath(extensionUri, "resources", "webview-icon.svg")
-        : {
-            light: vscode.Uri.joinPath(extensionUri, "resources", "webview-icon-light.svg"),
-            dark: vscode.Uri.joinPath(extensionUri, "resources", "webview-icon-dark.svg")
-          };
+    /** Give the tab the icon its setting asks for: at first, and again when that changes. */
+    const showTabIcon = () => {
+      panel.iconPath =
+        extConfig.tabIconColourTheme() === "colour"
+          ? vscode.Uri.joinPath(extensionUri, "resources", "webview-icon.svg")
+          : {
+              light: vscode.Uri.joinPath(extensionUri, "resources", "webview-icon-light.svg"),
+              dark: vscode.Uri.joinPath(extensionUri, "resources", "webview-icon-dark.svg")
+            };
+    };
+    showTabIcon();
 
     const attachments = [
       protocol.attach(panel),
       rpcServer.attach(panel.webview),
       initRpcNotify(panel.webview),
-      initConfigWatcher(),
+      initConfigWatcher(showTabIcon),
       watchGitDir(),
       watchGitRepo()
     ];
