@@ -2,6 +2,7 @@ import { access, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { findGitRepos } from "@/backend/queries/repoSearch";
+import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { searchDirectoryForRepos } from "@/backend/utils/repoSearch";
 import { logger } from "@/extension/util/logger";
 import { workspaceFolderPaths } from "@/extension/workspace-folders";
@@ -11,6 +12,8 @@ let cache: { key: string; repos: Promise<string[]> } | undefined;
 const sessionRepos = new Set<string>();
 /** The repositories cloned inside each session repository, searched once per Git path and depth. */
 const sessionNested = new Map<string, { key: string; repos: Promise<string[]> }>();
+/** The repositories `listRepos` answered with last. */
+let offered: string[] = [];
 
 /**
  * Repositories under the workspace folders. Walking the folders is expensive,
@@ -87,9 +90,19 @@ export async function listRepos(
   const nested = await Promise.all(
     opened.map((repo) => nestedIn(repo, gitPath, nestedDepth).catch(() => []))
   );
-  return [...new Set([...scanned, ...opened, ...nested.flat()])].toSorted((a, b) =>
+  offered = [...new Set([...scanned, ...opened, ...nested.flat()])].toSorted((a, b) =>
     a.localeCompare(b)
   );
+  return offered;
+}
+
+/**
+ * Whether `folder` is a repository that was offered last, or holds one. Such a folder that has
+ * gone took its repositories along, which no other event reports.
+ */
+export function holdsOfferedRepo(folder: string): boolean {
+  const gone = normalizeRepoPath(folder).replace(/\/+$/, "");
+  return offered.some((repo) => repo === gone || repo.startsWith(gone + "/"));
 }
 
 /**

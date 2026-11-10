@@ -3,6 +3,7 @@ import { applyWebviewConfig, refresh, selectRepo } from "@/webview/lib/actions";
 import { openGoTo, revealChoice } from "@/webview/lib/go-to";
 import { loadRepoList } from "@/webview/lib/load-repos";
 import { showPane } from "@/webview/lib/navigation";
+import { repositoryRevision } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
 import { repoListStore } from "@/webview/lib/stores/repo-list.store";
 
@@ -48,8 +49,11 @@ const notifications: Record<RpcNotificationName, (message: unknown) => void> = {
     }
   },
   "repo.rescan": () => {
-    // Not awaited: the scan never rejects, and keeps its own error for the picker.
-    void loadRepoList();
+    // Not awaited: the scan never rejects, and keeps its own error for the picker. The Workspace
+    // pane lists the same repositories with a read of its own, which the revision starts again.
+    void loadRepoList().then(() => {
+      repositoryRevision.value++;
+    });
   },
   "config.changed": (message) => {
     // The extension sends its whole configuration. Beyond being an object, it is trusted.

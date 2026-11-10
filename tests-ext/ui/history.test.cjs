@@ -3812,6 +3812,32 @@ suite("Branchwise workflow UI", function () {
     );
   });
 
+  test("lists a repository cloned into the workspace until its folder is moved away", async () => {
+    // The window's folder is a repository, and one cloned inside it is listed with it.
+    const workspace = fs.realpathSync.native(vscode.workspace.workspaceFolders[0].uri.fsPath);
+    const cloned = path.join(workspace, "cloned-here");
+    try {
+      if (!(await graph.evaluate('!!document.querySelector("aside")'))) {
+        await button("Workspace");
+      }
+      // On Linux, VS Code reports the new folder but not the `.git` folder made in it at once.
+      git(["clone", "-q", repo, cloned]);
+      const row = `document.querySelector('aside button[title=${JSON.stringify(repoKey(cloned))}]')`;
+      await until(() => graph.evaluate(`!!${row}`), "cloned repository listed");
+      // VS Code reports a folder that moved alone, and nothing for the `.git` folder it held.
+      // Beside the workspace, which the run removes with it, and on the same volume.
+      const away = path.join(path.dirname(workspace), "moved-out-of-the-workspace");
+      await until(() => {
+        // A Git process reading the repository's status can hold the folder for a moment.
+        fs.renameSync(cloned, away);
+        return true;
+      }, "folder moved away");
+      await until(() => graph.evaluate(`!${row}`), "moved repository no longer listed");
+    } finally {
+      fs.rmSync(cloned, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    }
+  });
+
   test("reviews submodule commits and stages only the parent pointer", async () => {
     const child = directory();
     init(child);

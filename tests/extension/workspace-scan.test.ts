@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import {
   addSessionRepo,
+  holdsOfferedRepo,
   invalidateWorkspaceScan,
   listRepos,
   scanWorkspaceRepos
@@ -109,5 +110,27 @@ describe("repositories offered by the picker and the Workspace pane", () => {
     expect(await listRepos("git", 0, 2)).toEqual([opened, nested]);
     expect(await listRepos("git", 0, 1)).toEqual([opened]);
     expect(await listRepos("git", 0)).toEqual([opened]);
+  });
+
+  it("knows which folders hold a repository it offered", async () => {
+    mocks.findGitRepos.mockResolvedValue(["/ws/libs/app", "/ws/tool"]);
+    const opened = repository("opened");
+    addSessionRepo(opened);
+    await listRepos("git", 2);
+
+    for (const folder of ["/ws/libs/app", "/ws/libs", "/ws", "/ws/tool", opened, root]) {
+      expect(holdsOfferedRepo(folder), folder).toBe(true);
+    }
+    // A folder inside a repository, and one whose name only starts the same, hold none.
+    for (const folder of ["/ws/libs/app/src", "/ws/libs/application", "/ws/to", "/elsewhere"]) {
+      expect(holdsOfferedRepo(folder), folder).toBe(false);
+    }
+    expect(holdsOfferedRepo(path.join("/ws", "libs") + path.sep)).toBe(true);
+
+    // What the next answer leaves out is no longer looked for.
+    mocks.findGitRepos.mockResolvedValue(["/ws/tool"]);
+    invalidateWorkspaceScan();
+    await listRepos("git", 2);
+    expect(holdsOfferedRepo("/ws/libs")).toBe(false);
   });
 });

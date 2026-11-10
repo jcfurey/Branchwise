@@ -3,6 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 import type { RpcRequest } from "@/types";
 import { repoListError } from "@/webview/lib/load-repos";
+import { repositoryRevision } from "@/webview/lib/repository-actions";
 import { rpcClient } from "@/webview/lib/rpc/rpc-client";
 import { repoListStore } from "@/webview/lib/stores/repo-list.store";
 
@@ -170,6 +171,23 @@ describe("repo.rescan", () => {
     await vi.waitFor(() => {
       expect(repoListStore.get()).toEqual([{ name: "z", path: "/z" }]);
     });
+  });
+
+  it("has the Workspace pane read again once the answer is in", async () => {
+    // The pane lists the same repositories with a read of its own, which follows the revision.
+    const before = repositoryRevision.value;
+
+    send(rescan);
+    expect(repositoryRevision.value).toBe(before);
+    respond(lastRequestId("repo.scan"), {
+      success: true,
+      result: { repos: [{ name: "new", path: "/new" }] }
+    });
+
+    await vi.waitFor(() => {
+      expect(repositoryRevision.value).toBe(before + 1);
+    });
+    expect(repoListStore.get()).toEqual([{ name: "new", path: "/new" }]);
   });
 
   it("reports a failed scan and keeps the list shown", async () => {
