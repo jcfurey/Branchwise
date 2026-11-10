@@ -2,7 +2,7 @@ import type { ConflictForecastEntry } from "@/backend/types";
 import { CONFLICTS_LISTED, lastCommitBy } from "@/webview/components/commit/RefLabel";
 import { ConflictIcon, RemoteIcon } from "@/webview/components/ui/Icons";
 import { closeDialog, focusBranchInGraph, openContentDialog } from "@/webview/lib/actions";
-import { repositoryState } from "@/webview/lib/repository-actions";
+import { checkedOutName } from "@/webview/lib/repository-actions";
 import { counted } from "@/webview/utils/format";
 
 const LINK_CLASS =
@@ -55,7 +55,7 @@ function TeamOverlapList({ entries }: { entries: ReadonlyArray<ConflictForecastE
 }
 
 function openTeamOverlap(entries: ReadonlyArray<ConflictForecastEntry>) {
-  const into = repositoryState.value?.head || "HEAD";
+  const into = checkedOutName();
   // A function replacement inserts the name as written, even when it contains `$`.
   const title = window.l10n.teamOverlapTitle.replace("{0}", () => into);
   openContentDialog(title, <TeamOverlapList entries={entries} />);

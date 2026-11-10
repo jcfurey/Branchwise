@@ -30,6 +30,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - The search row no longer carries a chosen saved filter over to another repository, where **Delete** removed that repository's filter of the same name.
 - A repository state that fails to load once no longer empties the Branches pane to an endless spinner: what was loaded stays, and the message from Git is shown with a way to retry.
 - Counts of one are in the singular: "1 changed file", "1 stash", "1 other branch ahead", **Fast-forward 1 Branch**, **Fetch 1 Repository** and so on.
+- The conflict mark on a branch label, its row's summary and the list of teammates' branches name the checked-out branch from the start. They said "HEAD" until the repository state had been read, which can be after the graph is drawn.
 
 ## [0.10.0] - 2026-10-09
 

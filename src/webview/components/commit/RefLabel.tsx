@@ -9,7 +9,7 @@ import { openContextMenu } from "@/webview/lib/actions";
 import { refPreviewTarget, usePreviewHandlers } from "@/webview/lib/branch-preview";
 import { DROP_TARGET_CLASS, refDragAttributes } from "@/webview/lib/drag-drop";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
-import { repositoryState } from "@/webview/lib/repository-actions";
+import { checkedOutName, repositoryState } from "@/webview/lib/repository-actions";
 import { activeSource } from "@/webview/lib/stores";
 import { branchWorktree } from "@/webview/lib/worktrees";
 import { getRelativeDate } from "@/webview/utils/date";
@@ -46,7 +46,7 @@ export function lastCommitBy(entry: ConflictForecastEntry): string {
 export function ConflictBadge({ entry }: { entry: ConflictForecastEntry }) {
   const l10n = window.l10n;
   const { files } = entry;
-  const into = repositoryState.value?.head || "HEAD";
+  const into = checkedOutName();
   const summary = (entry.remote ? l10n.teamConflictForecast : l10n.conflictForecast).replace(
     "{0}",
     () => into

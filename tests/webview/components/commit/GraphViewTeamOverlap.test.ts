@@ -117,8 +117,9 @@ describe("the team overlap summary", () => {
     act(() => summary()!.querySelector("button")!.click());
 
     const body = stores.dialog.value;
+    // The graph names the checked-out branch itself; the repository state has not been read.
     expect(body?.kind === "content" && body.message).toBe(
-      "Remote branches that would conflict with HEAD"
+      "Remote branches that would conflict with main"
     );
     const host = showDialogContent();
     const entries = [...host.querySelectorAll<HTMLButtonElement>("[data-team-overlap-branch]")];

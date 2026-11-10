@@ -16,7 +16,7 @@ import {
   openRunningDialog
 } from "@/webview/lib/actions";
 import { sendRemoteAction } from "@/webview/lib/remote-actions";
-import { dialog, selectedRepo } from "@/webview/lib/stores";
+import { dialog, headBranch, selectedRepo } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
 import { requestWorktreeChanges } from "@/webview/lib/worktrees";
 import type { DialogState } from "@/webview/types";
@@ -170,6 +170,16 @@ export function requestPanelQuery(
       postCancel({ repo, requestId });
     }
   };
+}
+
+/**
+ * The checked-out branch's name for a sentence, or `HEAD` while it is detached. The repository
+ * state names it, but that is read apart from the graph and can arrive after the graph is
+ * drawn. Until it does, the branch list the graph was drawn from names the branch, so nothing
+ * in the graph says `HEAD` for a moment first.
+ */
+export function checkedOutName(): string {
+  return repositoryState.value?.head || headBranch.value || "HEAD";
 }
 
 /** Forget the loaded state, as when another repository is selected. */
