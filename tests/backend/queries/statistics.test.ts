@@ -164,3 +164,31 @@ describe("statistics of a repository without commits", () => {
     });
   });
 });
+
+it("counts the lines of people whose commits carry no email address", async () => {
+  const repo = makeRepo();
+  try {
+    const commitAs = (author: string, file: string, content: string) => {
+      fs.writeFileSync(path.join(repo, file), content);
+      git(["add", file], repo);
+      execFileSync("git", ["commit", "-q", `--author=${author}`, "-m", file], { cwd: repo });
+    };
+    // Imports from other systems often leave the address empty; the name is all there is.
+    commitAs("Build Robot <>", "a.txt", "1\n2\n3\n");
+    commitAs("Other Robot <>", "b.txt", "1\n");
+    commitAs("Build Robot <>", "a.txt", "1\n3\n");
+
+    const stats = await loadStatistics(
+      createGit(repo, "git"),
+      { branch: "", range: "all", lines: true },
+      Math.floor(Date.now() / 1000) + 60
+    );
+
+    const lines = Object.fromEntries(
+      stats.contributors.map((person) => [person.name, [person.added, person.deleted]])
+    );
+    expect(lines).toMatchObject({ "Build Robot": [3, 1], "Other Robot": [1, 0] });
+  } finally {
+    fs.rmSync(repo, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+});

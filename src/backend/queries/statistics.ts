@@ -97,14 +97,16 @@ export async function loadStatistics(
       "--no-merges",
       "--numstat",
       "--no-renames",
-      "--format=%x00%aE",
+      "--format=%x00%aE%x00%aN",
       ...since,
       ...revisions
     ]);
     let person: Contributor | undefined;
     for (const line of numstat.split("\n")) {
       if (line.startsWith("\0")) {
-        person = people.get(line.slice(1).toLowerCase());
+        // The same key as above: the address, or the name of someone who gave none.
+        const [, email = "", name = ""] = line.split("\0");
+        person = people.get(email.toLowerCase() || name);
         if (person !== undefined) {
           person.added ??= 0;
           person.deleted ??= 0;
