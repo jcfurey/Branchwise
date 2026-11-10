@@ -133,4 +133,23 @@ describe("repositories offered by the picker and the Workspace pane", () => {
     await listRepos("git", 2);
     expect(holdsOfferedRepo("/ws/libs")).toBe(false);
   });
+
+  it("knows a repository whose workspace folder was opened through a link", async () => {
+    // Git names the repository by where it really is; VS Code names what goes by the link.
+    const real = path.join(root, "real");
+    const link = path.join(root, "link");
+    fs.mkdirSync(real);
+    fs.symlinkSync(real, link, "junction");
+    mocks.folders = [{ uri: { scheme: "file", fsPath: link } }];
+    mocks.findGitRepos.mockResolvedValue([normalizeRepoPath(path.join(real, "libs", "app"))]);
+    await listRepos("git", 2);
+
+    for (const folder of [link, path.join(link, "libs"), path.join(link, "libs", "app")]) {
+      expect(holdsOfferedRepo(folder), folder).toBe(true);
+    }
+    for (const folder of [path.join(link, "docs"), path.join(link, "libs", "app", "src")]) {
+      expect(holdsOfferedRepo(folder), folder).toBe(false);
+    }
+    expect(holdsOfferedRepo(path.join(real, "libs"))).toBe(true);
+  });
 });

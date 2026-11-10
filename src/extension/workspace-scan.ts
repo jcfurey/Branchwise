@@ -1,4 +1,4 @@
-import { access, stat } from "node:fs/promises";
+import { access, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { findGitRepos } from "@/backend/queries/repoSearch";
@@ -7,13 +7,17 @@ import { searchDirectoryForRepos } from "@/backend/utils/repoSearch";
 import { logger } from "@/extension/util/logger";
 import { workspaceFolderPaths } from "@/extension/workspace-folders";
 
-let cache: { key: string; repos: Promise<string[]> } | undefined;
+/** A workspace folder whose path is not where it really is. */
+type Link = { given: string; real: string };
+
+let cache: { key: string; repos: Promise<string[]>; links: Promise<Link[]> } | undefined;
 /** Repositories outside the scan that this session opened from Source Control or File History. */
 const sessionRepos = new Set<string>();
 /** The repositories cloned inside each session repository, searched once per Git path and depth. */
 const sessionNested = new Map<string, { key: string; repos: Promise<string[]> }>();
-/** The repositories `listRepos` answered with last. */
+/** The repositories `listRepos` answered with last, and the links of the folders it scanned. */
 let offered: string[] = [];
+let links: Link[] = [];
 
 /**
  * Repositories under the workspace folders. Walking the folders is expensive,
@@ -29,7 +33,11 @@ export function scanWorkspaceRepos(
   const key = JSON.stringify([folders, gitPath, maxDepth, nestedDepth]);
   if (cache?.key !== key) {
     folders.forEach(warnIfUnreadable);
-    const entry = { key, repos: findGitRepos(folders, gitPath, maxDepth, nestedDepth) };
+    const entry = {
+      key,
+      repos: findGitRepos(folders, gitPath, maxDepth, nestedDepth),
+      links: linkedFolders(folders)
+    };
     entry.repos.catch(() => {
       if (cache === entry) {
         cache = undefined;
@@ -38,6 +46,22 @@ export function scanWorkspaceRepos(
     cache = entry;
   }
   return cache.repos;
+}
+
+/**
+ * Those of `folders` that are reached through a symbolic link, or on Windows under a short name.
+ * Git names a repository by where it really is, and VS Code a file by the way its folder was
+ * opened, so the two can only be compared knowing both.
+ */
+async function linkedFolders(folders: string[]): Promise<Link[]> {
+  const found = await Promise.all(
+    folders.map(async (folder) => {
+      const given = normalizeRepoPath(folder);
+      const real = await realpath(folder).then(normalizeRepoPath, () => given);
+      return real === given ? [] : [{ given, real }];
+    })
+  );
+  return found.flat();
 }
 
 /** The scan finds nothing in such a folder, without hiding the repositories of the others. */
@@ -90,6 +114,7 @@ export async function listRepos(
   const nested = await Promise.all(
     opened.map((repo) => nestedIn(repo, gitPath, nestedDepth).catch(() => []))
   );
+  links = (await cache?.links) ?? [];
   offered = [...new Set([...scanned, ...opened, ...nested.flat()])].toSorted((a, b) =>
     a.localeCompare(b)
   );
@@ -102,7 +127,16 @@ export async function listRepos(
  */
 export function holdsOfferedRepo(folder: string): boolean {
   const gone = normalizeRepoPath(folder).replace(/\/+$/, "");
-  return offered.some((repo) => repo === gone || repo.startsWith(gone + "/"));
+  // The folder as it was named, and as Git names it when its workspace folder is a link.
+  const places = [gone];
+  for (const { given, real } of links) {
+    if (gone === given || gone.startsWith(given + "/")) {
+      places.push(real + gone.slice(given.length));
+    }
+  }
+  return offered.some((repo) =>
+    places.some((place) => repo === place || repo.startsWith(place + "/"))
+  );
 }
 
 /**
