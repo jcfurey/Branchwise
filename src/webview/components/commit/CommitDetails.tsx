@@ -197,7 +197,8 @@ function CopyButton({ label, text }: { label: string; text: string }) {
       class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
       title={text}
       onClick={() => {
-        void copyToClipboard(window.l10n.typeCommitHash, text).then(setCopied);
+        // The button itself reads "Copied" for a moment.
+        void copyToClipboard(window.l10n.typeCommitHash, text, true).then(setCopied);
       }}
     >
       {/* The label keeps its width while it reads "Copied". */}

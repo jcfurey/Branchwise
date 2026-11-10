@@ -3025,6 +3025,17 @@ suite("Branchwise workflow UI", function () {
       async () => (await vscode.env.clipboard.readText()) === target.slice(0, 8),
       "short ID copied"
     );
+    // A key leaves nothing else to see, so a notice says that it worked, and goes again.
+    await until(
+      () => graph.evaluate('document.querySelector("[data-notice]")?.textContent === "Copied"'),
+      "notice of the copy"
+    );
+    const copied = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(path.join(artifacts, "copied-notice.png"), Buffer.from(copied.data, "base64"));
+    await until(
+      () => graph.evaluate('!document.querySelector("[data-notice]")'),
+      "notice taken down"
+    );
     await keypress("Y", 8);
     await until(async () => (await vscode.env.clipboard.readText()) === target, "full ID copied");
     assert.equal(git(["rev-parse", "HEAD"], dir), git(["rev-parse", "main"], dir));

@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
+import { h, render } from "preact";
+import { act } from "preact/test-utils";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { GitCommitNode, GitRef } from "@/backend/types";
+import { Announcer, NOTICE_FOR } from "@/webview/components/ui/Announcer";
+import { copyToClipboard } from "@/webview/lib/copy";
 import { commitMenu, refMenu } from "@/webview/lib/menus";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 import type { ContextMenuEntry } from "@/webview/types";
@@ -49,9 +53,10 @@ beforeEach(() => {
 
 afterEach(() => {
   // Settle whatever is still waiting, so that no request's deadline outlives its test. The
-  // handler ignores an answer to a request that has been answered already.
+  // handler ignores an answer to a request that has been answered already. A refusal leaves no
+  // notice behind for the next test, and the dialog it opens is cleared before each.
   for (const request of requests()) {
-    answer(request.id, true);
+    answer(request.id, false);
   }
 });
 
@@ -99,4 +104,86 @@ describe("copying from a menu", () => {
       expect(request.id).toEqual(expect.any(String));
     }
   );
+});
+
+describe("what a copy that worked shows", () => {
+  let container: HTMLDivElement;
+  beforeEach(() => {
+    // The notice is taken down by a timer, which each test here runs out before the next.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    container = document.createElement("div");
+    document.body.append(container);
+    act(() => render(h(Announcer, null), container));
+  });
+  afterEach(() => {
+    pass(NOTICE_FOR);
+    vi.useRealTimers();
+    act(() => render(null, container));
+    container.remove();
+  });
+  /** Let `ms` milliseconds pass, and the page draw what they change. */
+  const pass = (ms: number) =>
+    act(() => {
+      vi.advanceTimersByTime(ms);
+    });
+  const notice = () => container.querySelector("[data-notice]");
+  const said = () => container.querySelector("[data-announcer]")!.textContent;
+  /** Answer the copy the page last asked for, and let the page take the answer. */
+  const answered = async (result: boolean) => {
+    answer(requests().at(-1)!.id, result);
+    await act(async () => {});
+  };
+
+  it.each([
+    [
+      "a commit ID from the commit menu",
+      () => choose(commitMenu(COMMIT, new Map()), "copyCommitHash")
+    ],
+    [
+      "a branch name from its menu",
+      () => choose(refMenu({ type: "head", name: "hotfix", hash: "tip" }, false), "copyBranchName")
+    ],
+    [
+      "a tag name from its menu",
+      () => choose(refMenu({ type: "tag", name: "v0.3", hash: "tip" }, false), "copyTagName")
+    ]
+  ])("says so in a notice that is seen and heard, for %s", async (_what, copy) => {
+    copy();
+    expect(notice()).toBeNull();
+    await answered(true);
+
+    expect(notice()?.textContent).toBe("copiedToClipboard");
+    // Seen by eye; a screen reader hears the live region, once.
+    expect(notice()?.getAttribute("aria-hidden")).toBe("true");
+    expect(said()).toBe("copiedToClipboard");
+    expect(dialog.value).toBeNull();
+  });
+
+  it("takes the notice down again, and counts from the last copy", async () => {
+    choose(commitMenu(COMMIT, new Map()), "copyCommitHash");
+    await answered(true);
+    pass(NOTICE_FOR - 500);
+    expect(notice()).not.toBeNull();
+
+    choose(commitMenu(COMMIT, new Map()), "copyShortCommitHash");
+    await answered(true);
+    pass(NOTICE_FOR - 1);
+    expect(notice()).not.toBeNull();
+    pass(1);
+    expect(notice()).toBeNull();
+    // The words stay in the live region, where nothing reads them again.
+    expect(said()).toBe("copiedToClipboard");
+  });
+
+  it("shows none for a copy the clipboard refused, or for a caller that shows its own", async () => {
+    choose(commitMenu(COMMIT, new Map()), "copyCommitHash");
+    await answered(false);
+    expect(notice()).toBeNull();
+    expect(dialog.value).toMatchObject({ kind: "error" });
+
+    const copied = copyToClipboard("what", "text", true);
+    await answered(true);
+    await expect(copied).resolves.toBe(true);
+    expect(notice()).toBeNull();
+  });
 });

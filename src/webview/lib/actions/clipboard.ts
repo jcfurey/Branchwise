@@ -1,16 +1,21 @@
+import { notify } from "@/webview/components/ui/Announcer";
 import { openErrorDialog } from "@/webview/lib/actions";
 import { rpcClient } from "@/webview/lib/rpc/rpc-client";
 
 /**
  * Have the extension put `data` on the clipboard. `type` names what is copied in the message
- * shown when that fails, together with the reason when the request itself failed. The promise
- * settles once the attempt is over, with whether the text was copied, and never rejects.
+ * shown when that fails, together with the reason when the request itself failed. A copy that
+ * worked says so in a notice, unless the caller is `quiet` because it shows that itself. The
+ * promise settles once the attempt is over, with whether the text was copied, and never rejects.
  */
-export async function copyToClipboard(type: string, data: string): Promise<boolean> {
+export async function copyToClipboard(type: string, data: string, quiet = false): Promise<boolean> {
   let reason: string | null = null;
   try {
     // A falsy result is the clipboard refusing the text, which has no reason to give.
     if (await rpcClient.request("clipboard.copy", data)) {
+      if (!quiet) {
+        notify(window.l10n.copiedToClipboard);
+      }
       return true;
     }
   } catch (error: unknown) {

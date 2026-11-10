@@ -16,7 +16,6 @@ import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { ReplayForecastFor } from "@/webview/components/repository/ReplayForecast";
 import { openSplitCommit } from "@/webview/components/repository/SplitCommit";
 import { openAddWorktree } from "@/webview/components/repository/WorktreeManager";
-import { announce } from "@/webview/components/ui/Announcer";
 import { Explain } from "@/webview/components/ui/Explain";
 import {
   closeDialog,
@@ -222,13 +221,9 @@ export function worktreeEntries(marker: WorktreeMarker): Array<Entry> {
 
 // Commit menu
 
-/** Copy a commit ID, and tell a screen reader once it is on the clipboard. */
+/** Copy a commit ID. A notice, which a screen reader hears too, says once it is copied. */
 function copyCommitId(id: string) {
-  void copyToClipboard(window.l10n.typeCommitHash, id).then((copied) => {
-    if (copied) {
-      announce(window.l10n.copiedToClipboard);
-    }
-  });
+  void copyToClipboard(window.l10n.typeCommitHash, id);
 }
 
 function addTag(hash: string) {
