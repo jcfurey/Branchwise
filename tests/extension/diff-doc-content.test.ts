@@ -21,18 +21,34 @@ import { makeRepo } from "@tests/backend/helpers";
  */
 const ODD_NAME = process.platform === "win32" ? "odd #%&[] {x}.txt" : "odd #?\tname.txt";
 
+/** The files VS Code was asked to decode content for, as it would read each of them. */
+const decoded = vi.hoisted(() => [] as string[]);
+
 vi.mock("vscode", () => ({
   Uri: {
     from: (parts: { scheme: string; path: string; query: string }) => ({
       ...parts,
       toString: () => `${parts.scheme}:${encodeURIComponent(parts.path)}?${parts.query}`
-    })
+    }),
+    file: (fsPath: string) => ({ scheme: "file", fsPath })
   },
   EventEmitter: class {
     event = () => ({ dispose() {} });
     dispose() {}
   },
-  workspace: { onDidCloseTextDocument: () => ({ dispose() {} }) }
+  workspace: {
+    onDidCloseTextDocument: () => ({ dispose() {} }),
+    // As VS Code decodes: by the encoding its settings give the file, here ISO-8859-1 for
+    // `latin1.txt` and UTF-8 for the rest, and with a refusal of content that is not text.
+    decode: async (content: Uint8Array, options: { uri: { fsPath: string } }) => {
+      decoded.push(options.uri.fsPath);
+      if (content.includes(0)) {
+        throw new Error("The content is binary");
+      }
+      const latin = options.uri.fsPath.endsWith("latin1.txt");
+      return Buffer.from(content).toString(latin ? "latin1" : "utf8");
+    }
+  }
 }));
 
 /** Run Git in `cwd`, feeding it `input`, and return what it printed without the final newline. */
@@ -139,7 +155,8 @@ describe("files at a commit", () => {
   test.each([
     ["crlf.txt", "l1\r\nl2\r\n"],
     ["bom.txt", "﻿bom"],
-    ["latin1.txt", "caf�\n"],
+    // Read as VS Code reads the file itself, where UTF-8 would put a replacement character.
+    ["latin1.txt", "café\n"],
     ["bin.dat", "\u0000\u0001\u0002�\n"],
     ["empty.txt", ""],
     ["conv.txt", "raw text\n"],
@@ -149,6 +166,18 @@ describe("files at a commit", () => {
     ["dir/b.txt", "B"]
   ])("shows %j exactly as stored", async (file, text) => {
     expect(await fileAt(file, second)).toBe(text);
+  });
+
+  test("is decoded as VS Code decodes the work tree's file of that name", async () => {
+    // A diff sets the version at a commit beside the file on disk. Read in another encoding
+    // than VS Code reads that file in, every line with a letter outside ASCII would differ.
+    decoded.length = 0;
+    await fileAt("latin1.txt", second);
+    await fileAt("dir/b.txt", second);
+    expect(decoded.map((file) => normalizeRepoPath(file))).toEqual([
+      normalizeRepoPath(path.join(repo, "latin1.txt")),
+      normalizeRepoPath(path.join(repo, "dir", "b.txt"))
+    ]);
   });
 
   test("shows the first parent's version, which a merge takes from its first parent", async () => {

@@ -1,4 +1,4 @@
-import { isAbsolute, sep } from "node:path";
+import { isAbsolute, join, sep } from "node:path";
 
 import type { SimpleGit } from "simple-git";
 import * as vscode from "vscode";
@@ -103,6 +103,21 @@ function revisionOf({ filePath, commit = "", blob }: ReturnType<typeof decodeDif
 }
 
 /**
+ * `bytes` as text, read as VS Code would read `file`: in the encoding its settings give that
+ * file, or the one it guesses from the content. A diff sets a version from Git beside the file
+ * on disk, or beside another version; read as UTF-8 whatever the file is, each line with a
+ * letter outside ASCII would show as changed against the file VS Code opened in its own
+ * encoding. Content VS Code takes for binary, which it refuses to decode, is read as UTF-8.
+ */
+async function textOf(bytes: Buffer, file: string) {
+  try {
+    return await vscode.workspace.decode(bytes, { uri: vscode.Uri.file(file) });
+  } catch {
+    return bytes.toString("utf8");
+  }
+}
+
+/**
  * Serves `branchwise:` documents with `git show`. Anything it refuses, and anything that fails,
  * is an empty document: added and deleted files rely on that for the missing side of a diff.
  */
@@ -171,7 +186,9 @@ export class DiffDocProvider implements vscode.TextDocumentContentProvider {
     // `--end-of-options` keeps even a path that looks like an option inside the revision. The
     // final `--` stops Git from taking a revision it cannot resolve as a path to a file that
     // exists, and showing HEAD instead; on Windows `<id>:dir/../f` names the file `f`.
-    const output = this.forRepo(repo).show(["--end-of-options", revision, "--"]);
+    const output = this.forRepo(repo)
+      .showBuffer(["--end-of-options", revision, "--"])
+      .then((bytes) => textOf(bytes, join(repo, document.filePath)));
     const run: Promise<string> = Promise.resolve(output).then(
       (text) => this.finish(key, run, text),
       () => this.finish(key, run, undefined)
