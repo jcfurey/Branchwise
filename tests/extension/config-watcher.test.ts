@@ -66,3 +66,15 @@ it("scans for repositories again only when the search changes", () => {
   change("editor.fontSize");
   expect(mocks.notify).not.toHaveBeenCalled();
 });
+
+it("says when the tab icon's setting changes, and for no other setting", () => {
+  const onTabIcon = vi.fn();
+  initConfigWatcher(onTabIcon);
+
+  change("branchwise.graphStyle");
+  change("git.path");
+  expect(onTabIcon).not.toHaveBeenCalled();
+
+  change("branchwise.tabIconColourTheme");
+  expect(onTabIcon).toHaveBeenCalledOnce();
+});

@@ -17,6 +17,9 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - A list that fits on one page no longer shows disabled **Previous** and **Next** buttons, and an empty side of a comparison says **None**. **Clean Up Merged Branches** names the branch it checks against instead of a bare 40-character ID.
 - A graph behind another editor tab no longer reads the repository again each time a file is saved. It was told of every change while hidden, and each time ran its whole round of Git processes; it now catches up when it is shown, as it already did.
 - The repository state, which is read again after every change to the work tree, takes fewer Git processes: one for the addresses of every remote instead of two for each, and a status that no longer lists untracked files, which is what took long in a large work tree.
+- Changes to files that Git ignores, such as build output or a dependencies folder, no longer refresh the graph: nothing it shows depends on them. Up to 100 changed files are checked with one `git check-ignore`; with more, the graph refreshes as before. See [keeping up with the repository](docs/git-actions.md#keeping-up-with-the-repository).
+- When a repository appears or goes, as after a clone, the workspace is scanned once for everything that changed meanwhile, and the repositories opened from Source Control or File History are searched again only where the change is. Each of them used to be searched again every time, which with dozens of them took seconds.
+- The conflict forecast starts one Git process fewer for every branch it tries, and **Go to Branch, Tag or Commit…** no longer hands every branch and tag to VS Code again with each key pressed, which made typing lag in a repository with thousands of them.
 
 ### Fixed
 
@@ -59,6 +62,14 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - A Git process that ends before reading what it was sent no longer raises an error outside any request.
 - A repository that takes long to read is shown even while its files keep changing, as during a build or a long rebase in a terminal. Each change started the reads over, at least every two seconds, so reads that took longer never finished. The next refresh now waits for the page to finish reading, for up to 20 seconds.
 - A graph closed and opened again while an action was running shows the action's result once it ends. The answer went to the panel that was gone, so the new one kept showing the repository as it was before.
+- A file shown as it was at a commit, alone or as a side of a comparison, is read in the encoding VS Code reads that file in: `files.encoding`, for the folder and the language, or the guess of `files.autoGuessEncoding`. It was always read as UTF-8, so a file in another encoding showed replacement characters, and against the working file every line with a letter outside ASCII read as changed.
+- A partial clone made without file contents, as with `git clone --filter=blob:none`, no longer downloads them for what the graph reads on its own: the changed-line counts, the conflict forecast and the **applied** marks are left out there, where each used to make Git fetch file after file. See [the conflict forecast](docs/git-actions.md#conflict-forecast).
+- **Text added or removed** finds text, and **Show History of Selected Lines** follows a file, whose text or name contains the name of certain Git options, such as `--template` or `--upload-pack`. Both were refused as an unsafe operation before Git saw them.
+- The details of a commit whose author line carries no date, as some converted histories have, open while `branchwise.dateType` is **Author Date**.
+- **Open Branch on GitHub** or **GitLab**, **Create Pull Request…** and **Create Merge Request…** open the page of the right branch when its name holds a `+` or an `&`. VS Code took the address apart and put it together without the escaping, so the host read another branch name, or a stray parameter.
+- The graph's tab takes the icon chosen with `branchwise.tabIconColourTheme` as soon as the setting changes, instead of the next time the graph is opened.
+- The repository picker and the Workspace pane follow a repository that comes or goes with its folder. One whose folder was deleted, renamed or moved away stayed listed until VS Code was restarted, and one moved into the workspace, or on Linux cloned into it, never appeared. The Workspace pane also lists a new repository as soon as the picker does, instead of at the next refresh.
+- **Show Line's Commit in Graph** and **Show History of Selected Lines**, in an editor showing a staged or stashed version of a file, say that this version is in no commit, instead of that the file "is not in a Git repository".
 
 ## [0.10.0] - 2026-10-09
 

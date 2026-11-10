@@ -15,9 +15,9 @@ vi.mock("vscode", () => {
   };
   return {
     workspace: {
-      createFileSystemWatcher: () => ({
-        onDidCreate: listen("create"),
-        onDidDelete: listen("delete"),
+      createFileSystemWatcher: (pattern: string) => ({
+        onDidCreate: listen(pattern === "**/.git" ? "create" : "anything created"),
+        onDidDelete: listen(pattern === "**/.git" ? "delete" : "anything deleted"),
         dispose: () => {}
       }),
       onDidChangeWorkspaceFolders: listen("folders")
@@ -26,7 +26,10 @@ vi.mock("vscode", () => {
   };
 });
 vi.mock("@/extension/rpc/rpc-notify", () => ({ rpcNotify: { notify: mocks.notify } }));
-vi.mock("@/extension/workspace-scan", () => ({ invalidateWorkspaceScan: mocks.invalidate }));
+vi.mock("@/extension/workspace-scan", () => ({
+  invalidateWorkspaceScan: mocks.invalidate,
+  holdsOfferedRepo: () => false
+}));
 
 beforeEach(() => {
   vi.clearAllMocks();

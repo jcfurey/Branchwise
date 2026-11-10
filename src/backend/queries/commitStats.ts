@@ -3,6 +3,7 @@ import type { SimpleGit } from "simple-git";
 
 import { gitFolderOf, gitProcessOf } from "@/backend/gitClient";
 import type { CommitStats } from "@/backend/types";
+import { lacksFileContents } from "@/backend/utils/partialClone";
 import { readDirectory } from "@/backend/utils/runGit";
 
 const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -158,7 +159,13 @@ export async function loadCommitStats(
       result[hash] = known;
     }
   }
+  // Counting a commit's lines takes both versions of each file it changed. A clone without
+  // them would fetch every one from its remote, for a column nobody asked to have filled.
   const signal = gitProcessOf(git)?.abort;
+  signal?.throwIfAborted();
+  if (unknown.length > 0 && (await lacksFileContents(git))) {
+    return result;
+  }
   for (let start = 0; start < unknown.length; start += COMMIT_STATS_BATCH) {
     signal?.throwIfAborted();
     // One batch after another: the next waits for the last, so a cancelled request starts none.

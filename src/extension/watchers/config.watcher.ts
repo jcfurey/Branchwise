@@ -13,10 +13,15 @@ const REPO_SEARCH_SETTINGS = [
 
 /**
  * Tell the graph when settings change: a new repository search asks it to scan again, and any
- * Branchwise setting sends it the current display settings. Disposing the result stops both.
+ * Branchwise setting sends it the current display settings. `onTabIcon` is called when the
+ * setting for the tab's icon changes, which the tab's owner applies. Disposing the result stops
+ * all of it.
  */
-export function initConfigWatcher(): vscode.Disposable {
+export function initConfigWatcher(onTabIcon?: () => void): vscode.Disposable {
   return vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration("branchwise.tabIconColourTheme")) {
+      onTabIcon?.();
+    }
     if (REPO_SEARCH_SETTINGS.some((setting) => event.affectsConfiguration(setting))) {
       logger.info("Configuration changed");
       void rpcNotify.notify("repo.rescan", null);

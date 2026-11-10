@@ -139,14 +139,20 @@ async function lookupDone(paths = 3) {
   await new Promise((resolve) => setTimeout(resolve, 50));
 }
 
-/** Report a change of `relative` below the watcher on `base`, and let any refresh go out. */
+/**
+ * Report a change of `relative` below the watcher on `base`, and say how often the watcher
+ * counted it as a change to the repository. A file of the work tree that counts leads to a
+ * refresh only after Git has said that it is not an ignored file; that question and its answer
+ * have tests of their own.
+ */
 function reportChange(base: string, relative: string) {
+  const counted = () =>
+    probe.debug.mock.calls.filter(([line]) => String(line).startsWith("Repository file")).length;
+  const before = counted();
   const watcher = probe.watchers.find((candidate) => candidate.live && candidate.base === base);
   watcher!.onChange!({ fsPath: path.join(base, relative) });
   vi.advanceTimersByTime(250);
-  const refreshed = probe.sent.length;
-  probe.sent = [];
-  return refreshed;
+  return counted() - before;
 }
 
 describe("the Git directory lookup", () => {

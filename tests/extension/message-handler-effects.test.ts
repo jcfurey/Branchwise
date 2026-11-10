@@ -266,7 +266,8 @@ describe("submodule actions", () => {
       action: submodule
     });
 
-    expect(invalidateWorkspaceScan).toHaveBeenCalledOnce();
+    // Only what is inside the repository can have changed.
+    expect(invalidateWorkspaceScan).toHaveBeenCalledExactlyOnceWith(["/repo"]);
     expect(page.received.map((message) => "status" in message && message.status)).toEqual([
       null,
       "update failed"

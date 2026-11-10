@@ -19,11 +19,22 @@ beforeEach(() => {
 
 test.each([
   "https://github.com/owner/repo/commit/abc",
-  "http://gitlab.internal/team/project/-/tree/feature/x"
-])("opens %s in the browser", async (url) => {
+  "http://gitlab.internal/team/project/-/tree/feature/x",
+  // A branch named `fix/a+b&c`, escaped inside the value: taken apart and put together again,
+  // the `+` would read as a space and the `&` would start another parameter.
+  "https://gitlab.com/o/r/-/merge_requests/new?merge_request%5Bsource_branch%5D=fix%2Fa%2Bb%26c"
+])("opens %s in the browser exactly as written", async (url) => {
   await expect(openUrl(url)).resolves.toBe(true);
   expect(vscode.parse).toHaveBeenCalledExactlyOnceWith(url, true);
-  expect(vscode.openExternal).toHaveBeenCalledExactlyOnceWith({ parsed: url, strict: true });
+  expect(vscode.openExternal).toHaveBeenCalledExactlyOnceWith(url);
+});
+
+test("refuses an address VS Code cannot read, without opening anything", async () => {
+  vscode.parse.mockImplementationOnce(() => {
+    throw new Error("[UriError]: Scheme is missing");
+  });
+  await expect(openUrl("https://example.com/%")).rejects.toThrow("Scheme is missing");
+  expect(vscode.openExternal).not.toHaveBeenCalled();
 });
 
 test("reports a site the user declined to open", async () => {

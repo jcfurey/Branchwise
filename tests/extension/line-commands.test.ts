@@ -238,6 +238,28 @@ describe("Show Line's Commit in Graph", () => {
     expect(view.show).not.toHaveBeenCalled();
   });
 
+  it.each(["branchwise.showLineCommit", "branchwise.lineHistory"])(
+    "explains that a staged or stashed version of a file is in no commit (%s)",
+    async (command) => {
+      const repo = newRepo();
+      commitFile(repo, "a.txt", FIVE, "first");
+      const blob = gitOutput(["rev-parse", "HEAD:a.txt"], repo);
+      const staged = `commit=${blob}&repo=${encodeURIComponent(repo)}&blob=1`;
+      openEditor({ scheme: "branchwise", path: "a.txt", query: staged }, FIVE, at(2));
+      await run(command);
+      // The empty side of a comparison, which stands for a file that is not there.
+      const absent = `commit=${"0".repeat(40)}&repo=${encodeURIComponent(repo)}`;
+      openEditor({ scheme: "branchwise", path: "a.txt", query: absent }, "", at(1));
+      await run(command);
+
+      expect(mocks.info.mock.calls).toEqual([
+        ["This version of a.txt is not from a commit, so its lines have no history."],
+        ["This version of a.txt is not from a commit, so its lines have no history."]
+      ]);
+      expect(view.show).not.toHaveBeenCalled();
+    }
+  );
+
   it("counts the line in a file shown as it was at a commit", async () => {
     const repo = newRepo();
     const first = commitFile(repo, "a.txt", FIVE, "first");

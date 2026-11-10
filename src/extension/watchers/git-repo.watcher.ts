@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 
 import { createGit } from "@/backend/gitClient";
 import { isRepoWithinPath } from "@/backend/utils/repoPath";
+import { readGitWithInput } from "@/backend/utils/runGit";
 import { rpcNotify } from "@/extension/rpc/rpc-notify";
 import { logger } from "@/extension/util/logger";
 import { repositoryReadsRunning } from "@/extension/watchers/repository-reads";
@@ -18,6 +19,11 @@ const REFRESH_MAX_WAIT_MS = 2000;
  * repository for the refresh before it. A read that hangs must not stop refreshes for good.
  */
 const REFRESH_HOLD_MS = 20_000;
+/**
+ * The most changed files one refresh asks Git about. With more, the refresh is simply sent: so
+ * many changes at once are rarely all build output, and the question would cost as much.
+ */
+const IGNORE_CHECK_LIMIT = 100;
 /** How long an action's trailing file events stay ignored after the action ends. */
 const QUIET_PERIOD_MS = 1500;
 
@@ -89,6 +95,34 @@ export function setGraphVisible(visible: boolean): void {
       drop();
     }
   }
+}
+
+/**
+ * Whether Git ignores every one of `files`, given from the top of `repo`'s work tree. A change
+ * to an ignored file changes nothing the graph shows: not the uncommitted changes, not a ref. A
+ * file that matches an ignore pattern but is tracked is not ignored, and Git does not list it.
+ * `null` when Git cannot be asked at all, as for a folder that is gone.
+ */
+function onlyIgnored(repo: string, gitPath: string, files: string[]): Promise<boolean> | null {
+  let git;
+  try {
+    git = createGit(repo, gitPath);
+  } catch {
+    return null;
+  }
+  // Git prints the ignored ones of the paths it is given, and exits with 1 when there are none.
+  // It runs in the watched folder, which the paths are given from.
+  return readGitWithInput(git, ["check-ignore", "-z", "--stdin"], files.join("\0") + "\0", {
+    codes: [0, 1],
+    cwd: repo
+  }).then(
+    (output) => {
+      const ignored = new Set(output.split("\0"));
+      return files.every((file) => ignored.has(file));
+    },
+    // Unanswered, the refresh goes out: one too many costs less than one too few.
+    () => false
+  );
 }
 
 /** Git actions the extension is running, by the repository path each was muted with. */
@@ -163,6 +197,12 @@ function watchRepo(repo: string, gitPath: string): RepoWatch {
   let refresh: ReturnType<typeof setTimeout> | undefined;
   /** When the oldest event the graph has not been told about arrived. */
   let firstUnreported: number | undefined;
+  /**
+   * The work tree files changed since the last refresh, from the top of the work tree, or
+   * `null` once something changed that always counts: a file in a Git directory, or too many
+   * files to ask Git about.
+   */
+  let changed: Set<string> | null = new Set();
 
   const sendRefresh = () => {
     // A refresh makes the page read the repository again, cancelling what it was reading.
@@ -175,17 +215,41 @@ function watchRepo(repo: string, gitPath: string): RepoWatch {
     }
     refresh = undefined;
     firstUnreported = undefined;
-    logger.debug(`Sending repo.updated notification: ${repo}`);
-    void rpcNotify.notify("repo.updated", { path: repo });
+    const files = changed;
+    changed = new Set();
+    const notify = () => {
+      logger.debug(`Sending repo.updated notification: ${repo}`);
+      void rpcNotify.notify("repo.updated", { path: repo });
+    };
+    // A build that writes its output, or a server its log, would otherwise refresh the graph
+    // for as long as it runs, a round of Git processes each time, for nothing it shows.
+    const ignored =
+      files === null || files.size === 0 ? null : onlyIgnored(repo, gitPath, [...files]);
+    if (ignored === null) {
+      notify();
+      return;
+    }
+    void ignored.then((all) => {
+      if (closed) {
+        return;
+      }
+      if (all) {
+        logger.debug(`Only ignored files changed, so no refresh: ${repo}`);
+      } else {
+        notify();
+      }
+    });
   };
   const dropRefresh = () => {
     clearTimeout(refresh);
     refresh = undefined;
     firstUnreported = undefined;
+    changed = new Set();
   };
   waiting.add(dropRefresh);
 
-  const watch = (base: string, rule: Rule) => {
+  /** Watch `base`. `workTree` says that its files are the user's, which Git may ignore. */
+  const watch = (base: string, rule: Rule, workTree = false) => {
     const watcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(base, "**/*")
     );
@@ -194,6 +258,13 @@ function watchRepo(repo: string, gitPath: string): RepoWatch {
         return;
       }
       logger.debug(`Repository file ${kind}: ${uri.fsPath}`);
+      // In a bare repository every file is Git's own, and there is no work tree to ask about.
+      const file = workTree && !isGitDir ? relativePath(base, uri.fsPath) : undefined;
+      if (file === undefined || changed === null || changed.size >= IGNORE_CHECK_LIMIT) {
+        changed = null;
+      } else {
+        changed.add(file);
+      }
       const now = performance.now();
       firstUnreported ??= now;
       const deadline = firstUnreported + REFRESH_MAX_WAIT_MS;
@@ -209,7 +280,7 @@ function watchRepo(repo: string, gitPath: string): RepoWatch {
   /** Whether `repo` is itself a Git directory, as a bare repository is. */
   let isGitDir = false;
   // The work tree is watched at once and as given, so events echo the path the graph selected.
-  watch(repo, (relative) => workTreeRule(relative) && !(isGitDir && isGitLock(relative)));
+  watch(repo, (relative) => workTreeRule(relative) && !(isGitDir && isGitLock(relative)), true);
   void findGitDirs(repo, gitPath).then(
     ({ gitDir, commonDir, workTree }) => {
       if (closed) {

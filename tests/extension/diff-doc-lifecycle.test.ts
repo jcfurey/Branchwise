@@ -77,7 +77,9 @@ function setup(
   const show = vi.fn(answer);
   const provider = new DiffDocProvider((folder) => {
     folders.push(folder);
-    return { show } as unknown as SimpleGit;
+    // The provider reads bytes; the answers of these tests are text, so they are encoded.
+    const showBuffer = async (args: string[]) => Buffer.from(await show(args));
+    return { showBuffer } as unknown as SimpleGit;
   }, saved);
   return { provider, folders, show };
 }

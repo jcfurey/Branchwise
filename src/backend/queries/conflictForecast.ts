@@ -7,8 +7,9 @@ import type { SimpleGit } from "simple-git";
 import { gitProcessOf } from "@/backend/gitClient";
 import type { ConflictForecastEntry, ConflictForecastScope } from "@/backend/types";
 import { gitVersionAtLeast } from "@/backend/utils/gitVersion";
+import { lacksFileContents } from "@/backend/utils/partialClone";
 import { type RemoteVisibility, remoteVisibility } from "@/backend/utils/remoteVisibility";
-import { readGitCode } from "@/backend/utils/runGit";
+import { readDirectory, readGitCode } from "@/backend/utils/runGit";
 
 /** Local branches checked at most, those with the newest commits first. */
 export const CONFLICT_FORECAST_LIMIT = 50;
@@ -42,17 +43,22 @@ const cache = new Map<string, string[] | null>();
  * would have no forecast at all.
  */
 function scratchObjects(git: SimpleGit) {
-  let made: Promise<{ directory: string; env: NodeJS.ProcessEnv }> | undefined;
+  let made: Promise<{ directory: string; cwd: string; env: NodeJS.ProcessEnv }> | undefined;
   const make = async () => {
     // Git 2.38, which the forecast needs anyway, gives the path whole; it also suits a bare
     // repository, which has no top level to resolve a relative path from.
-    const objects = (
-      await git.raw(["rev-parse", "--path-format=absolute", "--git-path", "objects"])
-    ).replace(/\n$/, "");
+    const [objects, cwd] = await Promise.all([
+      git.raw(["rev-parse", "--path-format=absolute", "--git-path", "objects"]),
+      readDirectory(git)
+    ]);
     const directory = await mkdtemp(path.join(os.tmpdir(), "branchwise-forecast-"));
-    const alternates = [objects, process.env["GIT_ALTERNATE_OBJECT_DIRECTORIES"]];
+    const alternates = [
+      objects.replace(/\n$/, ""),
+      process.env["GIT_ALTERNATE_OBJECT_DIRECTORIES"]
+    ];
     return {
       directory,
+      cwd,
       env: {
         ...process.env,
         GIT_OBJECT_DIRECTORY: directory,
@@ -61,7 +67,11 @@ function scratchObjects(git: SimpleGit) {
     };
   };
   return {
-    env: async () => (await (made ??= make())).env,
+    /** The environment and the folder for a merge, both asked of Git once for all of them. */
+    where: async () => {
+      const { env, cwd } = await (made ??= make());
+      return { env, cwd };
+    },
     async dispose() {
       const scratch = await made?.catch(() => null);
       if (scratch) {
@@ -99,7 +109,7 @@ async function conflictedFiles(
       git,
       ["merge-tree", "--write-tree", "--name-only", "--no-messages", "-z", head, tip],
       [0, 1],
-      { env: await scratch.env() }
+      await scratch.where()
     );
     // The new tree's ID, then each conflicted path, all ending in NUL.
     return remember(code === 0 ? [] : stdout.split("\0").slice(1).filter(Boolean));
@@ -109,7 +119,10 @@ async function conflictedFiles(
       throw error;
     }
     // Status 1 with nothing printed: the two commits share no history, and never will.
-    const base = await readGitCode(git, ["merge-base", head, tip], [0, 1]).catch(() => null);
+    const base = await scratch
+      .where()
+      .then(({ cwd }) => readGitCode(git, ["merge-base", head, tip], [0, 1], { cwd }))
+      .catch(() => null);
     return base?.code === 1 ? remember(null) : null;
   }
 }
@@ -234,7 +247,10 @@ export async function loadConflictForecast(
   const head = (
     await git.raw(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]).catch(() => "")
   ).trim();
-  if (head === "") {
+  // Merging takes the contents of every file both sides changed. A clone without them would
+  // fetch each from its remote, again after every refresh, since what a forecast writes or
+  // fetches is thrown away with its scratch folder.
+  if (head === "" || (await lacksFileContents(git))) {
     return [];
   }
   const local = parseRefs(

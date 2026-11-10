@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import {
   addSessionRepo,
+  holdsOfferedRepo,
   invalidateWorkspaceScan,
   listRepos,
   scanWorkspaceRepos
@@ -109,5 +110,77 @@ describe("repositories offered by the picker and the Workspace pane", () => {
     expect(await listRepos("git", 0, 2)).toEqual([opened, nested]);
     expect(await listRepos("git", 0, 1)).toEqual([opened]);
     expect(await listRepos("git", 0)).toEqual([opened]);
+  });
+
+  it("knows which folders hold a repository it offered", async () => {
+    mocks.findGitRepos.mockResolvedValue(["/ws/libs/app", "/ws/tool"]);
+    const opened = repository("opened");
+    addSessionRepo(opened);
+    await listRepos("git", 2);
+
+    for (const folder of ["/ws/libs/app", "/ws/libs", "/ws", "/ws/tool", opened, root]) {
+      expect(holdsOfferedRepo(folder), folder).toBe(true);
+    }
+    // A folder inside a repository, and one whose name only starts the same, hold none.
+    for (const folder of ["/ws/libs/app/src", "/ws/libs/application", "/ws/to", "/elsewhere"]) {
+      expect(holdsOfferedRepo(folder), folder).toBe(false);
+    }
+    expect(holdsOfferedRepo(path.join("/ws", "libs") + path.sep)).toBe(true);
+
+    // What the next answer leaves out is no longer looked for.
+    mocks.findGitRepos.mockResolvedValue(["/ws/tool"]);
+    invalidateWorkspaceScan();
+    await listRepos("git", 2);
+    expect(holdsOfferedRepo("/ws/libs")).toBe(false);
+  });
+
+  it("knows a repository whose workspace folder was opened through a link", async () => {
+    // Git names the repository by where it really is; VS Code names what goes by the link.
+    const real = path.join(root, "real");
+    const link = path.join(root, "link");
+    fs.mkdirSync(real);
+    fs.symlinkSync(real, link, "junction");
+    mocks.folders = [{ uri: { scheme: "file", fsPath: link } }];
+    mocks.findGitRepos.mockResolvedValue([normalizeRepoPath(path.join(real, "libs", "app"))]);
+    await listRepos("git", 2);
+
+    for (const folder of [link, path.join(link, "libs"), path.join(link, "libs", "app")]) {
+      expect(holdsOfferedRepo(folder), folder).toBe(true);
+    }
+    for (const folder of [path.join(link, "docs"), path.join(link, "libs", "app", "src")]) {
+      expect(holdsOfferedRepo(folder), folder).toBe(false);
+    }
+    expect(holdsOfferedRepo(path.join(real, "libs"))).toBe(true);
+  });
+
+  it("searches again only inside the session repositories a change touches", async () => {
+    mocks.findGitRepos.mockResolvedValue([]);
+    const create = (...parts: string[]) => {
+      const repo = normalizeRepoPath(path.join(root, ...parts));
+      fs.mkdirSync(repo, { recursive: true });
+      git(["init", "-q"], repo);
+      return repo;
+    };
+    const first = create("first");
+    const second = create("second");
+    addSessionRepo(first);
+    addSessionRepo(second);
+    expect(await listRepos("git", 0, 2)).toEqual([first, second]);
+
+    // A repository is cloned inside each. Only the one a change was reported in is found: the
+    // other repository is not searched again, which takes Git processes for each of them.
+    const inFirst = create("first", "libs", "new");
+    const inSecond = create("second", "libs", "new");
+    invalidateWorkspaceScan([path.join(first, "libs", "new", ".git")]);
+    expect(await listRepos("git", 0, 2)).toEqual([first, inFirst, second]);
+
+    // A change around a repository counts for it too, and no place at all counts for every one.
+    invalidateWorkspaceScan([path.dirname(second)]);
+    expect(await listRepos("git", 0, 2)).toEqual([first, inFirst, second, inSecond]);
+    const later = create("first", "libs", "later");
+    invalidateWorkspaceScan([path.join(root, "elsewhere")]);
+    expect(await listRepos("git", 0, 2)).toEqual([first, inFirst, second, inSecond]);
+    invalidateWorkspaceScan();
+    expect(await listRepos("git", 0, 2)).toEqual([first, later, inFirst, second, inSecond]);
   });
 });

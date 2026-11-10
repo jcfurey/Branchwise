@@ -825,6 +825,7 @@
   "Try Again": "Try Again",
   "Open a file in an editor first.": "Open a file in an editor first.",
   "{0} is not in a Git repository.": "{0} is not in a Git repository.",
+  "This version of {0} is not from a commit, so its lines have no history.": "This version of {0} is not from a commit, so its lines have no history.",
   "{0} is not tracked by Git, so it has no history yet.": "{0} is not tracked by Git, so it has no history yet.",
   "Show Uncommitted Changes": "Show Uncommitted Changes",
   "This line has uncommitted changes.": "This line has uncommitted changes.",

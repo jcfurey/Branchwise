@@ -37,7 +37,7 @@ test("recognises a repository whatever the case of its drive letter or its separ
   const saved = vi.fn(() => false);
   const provider = new DiffDocProvider((folder) => {
     folders.push(folder);
-    return { show: async () => "from Windows" } as unknown as SimpleGit;
+    return { showBuffer: async () => Buffer.from("from Windows") } as unknown as SimpleGit;
   }, saved);
   const uri = {
     path: "f",

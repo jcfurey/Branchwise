@@ -60,7 +60,7 @@ vi.mock("@/extension/watchers/git-repo.watcher", () => ({
 }));
 vi.mock("@/backend/gitClient", () => ({
   gitClientFactory: fake.gitClientFactory.mockImplementation(() => ({
-    getInstance: () => ({ show: async () => "content" })
+    getInstance: () => ({ showBuffer: async () => Buffer.from("content") })
   }))
 }));
 

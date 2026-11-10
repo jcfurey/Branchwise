@@ -27,15 +27,22 @@ const DOCUMENT_COMMIT = /^(?:[0-9a-f]{40}|[0-9a-f]{64})\^?$/;
 /** The ID that `branchwise:` documents give the empty side of a diff, which has no history. */
 const NO_COMMIT = /^0+\^?$/;
 
+/** What `editorFile` answers for a version of a file that is in no commit. */
+const NO_HISTORY = "no history";
+
 /** That empty side, compared with an editor whose file HEAD does not have. */
 const EMPTY_SIDE = "0".repeat(40);
 
 /**
  * The repository and path of the file an editor shows: a file on disk, in the innermost
  * repository that holds it, or a file at a commit that Branchwise opened. Null for anything
- * else, such as an unsaved new file or a file outside every repository.
+ * else, such as an unsaved new file or a file outside every repository, and `NO_HISTORY` for a
+ * version Branchwise opened that no commit holds: a staged or stashed one, or the empty side of
+ * a comparison.
  */
-async function editorFile(document: vscode.TextDocument): Promise<EditorFile | null> {
+async function editorFile(
+  document: vscode.TextDocument
+): Promise<EditorFile | typeof NO_HISTORY | null> {
   const { uri } = document;
   if (uri.scheme === "file" || uri.scheme === "vscode-remote") {
     return locateRepoFile(uri.fsPath);
@@ -44,7 +51,10 @@ async function editorFile(document: vscode.TextDocument): Promise<EditorFile | n
     return null;
   }
   const { filePath, commit = "", repo, blob } = decodeDiffDocUri(uri);
-  if (blob || repo === undefined || !DOCUMENT_COMMIT.test(commit) || NO_COMMIT.test(commit)) {
+  if (repo !== undefined && (blob || NO_COMMIT.test(commit))) {
+    return NO_HISTORY;
+  }
+  if (repo === undefined || !DOCUMENT_COMMIT.test(commit)) {
     return null;
   }
   const root = await workTreeRoot(repo, extConfig.gitPath());
@@ -85,9 +95,15 @@ async function commandTarget() {
     return undefined;
   }
   const file = await editorFile(editor.document);
-  if (file === null) {
+  if (file === null || file === NO_HISTORY) {
+    const name = basename(editor.document.uri.path);
     void vscode.window.showInformationMessage(
-      vscode.l10n.t("{0} is not in a Git repository.", basename(editor.document.uri.path))
+      file === null
+        ? vscode.l10n.t("{0} is not in a Git repository.", name)
+        : vscode.l10n.t(
+            "This version of {0} is not from a commit, so its lines have no history.",
+            name
+          )
     );
     return undefined;
   }
