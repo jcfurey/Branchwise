@@ -1,3 +1,7 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
 import type { SimpleGit } from "simple-git";
 
 import { gitProcessOf } from "@/backend/gitClient";
@@ -31,35 +35,83 @@ const CACHE_SIZE = 1000;
 const cache = new Map<string, string[] | null>();
 
 /**
- * The files that merging `tip` into `head` would leave in conflict, from a merge Git runs
- * entirely in memory: the work tree, the index and every ref stay as they are.
+ * Where the merges of one forecast write their objects: a folder of its own, made for the first
+ * merge that runs and deleted with `dispose`, while the repository's objects are still read.
+ * `merge-tree --write-tree` writes each merged tree and file; in the repository they would pile
+ * up, a few for every branch after every refresh, and a repository that cannot be written to
+ * would have no forecast at all.
  */
-async function conflictedFiles(git: SimpleGit, head: string, tip: string) {
+function scratchObjects(git: SimpleGit) {
+  let made: Promise<{ directory: string; env: NodeJS.ProcessEnv }> | undefined;
+  const make = async () => {
+    // Git 2.38, which the forecast needs anyway, gives the path whole; it also suits a bare
+    // repository, which has no top level to resolve a relative path from.
+    const objects = (
+      await git.raw(["rev-parse", "--path-format=absolute", "--git-path", "objects"])
+    ).replace(/\n$/, "");
+    const directory = await mkdtemp(path.join(os.tmpdir(), "branchwise-forecast-"));
+    const alternates = [objects, process.env["GIT_ALTERNATE_OBJECT_DIRECTORIES"]];
+    return {
+      directory,
+      env: {
+        ...process.env,
+        GIT_OBJECT_DIRECTORY: directory,
+        GIT_ALTERNATE_OBJECT_DIRECTORIES: alternates.filter(Boolean).join(path.delimiter)
+      }
+    };
+  };
+  return {
+    env: async () => (await (made ??= make())).env,
+    async dispose() {
+      const scratch = await made?.catch(() => null);
+      if (scratch) {
+        await rm(scratch.directory, { recursive: true, force: true });
+      }
+    }
+  };
+}
+
+/**
+ * The files that merging `tip` into `head` would leave in conflict, from a merge Git runs
+ * entirely in memory: the work tree, the index and every ref stay as they are, and what the
+ * merge writes goes to `scratch`. `null` for a merge Git could not try. Only the answer for
+ * histories without a common commit is remembered as such: any other failure may pass.
+ */
+async function conflictedFiles(
+  git: SimpleGit,
+  head: string,
+  tip: string,
+  scratch: ReturnType<typeof scratchObjects>
+) {
   const key = `${head}:${tip}`;
   if (cache.has(key)) {
     return cache.get(key)!;
   }
-  let files: string[] | null;
+  const remember = (files: string[] | null) => {
+    if (cache.size >= CACHE_SIZE) {
+      cache.delete(cache.keys().next().value!);
+    }
+    cache.set(key, files);
+    return files;
+  };
   try {
     const { stdout, code } = await readGitCode(
       git,
       ["merge-tree", "--write-tree", "--name-only", "--no-messages", "-z", head, tip],
-      [0, 1]
+      [0, 1],
+      { env: await scratch.env() }
     );
     // The new tree's ID, then each conflicted path, all ending in NUL.
-    files = code === 0 ? [] : stdout.split("\0").slice(1).filter(Boolean);
+    return remember(code === 0 ? [] : stdout.split("\0").slice(1).filter(Boolean));
   } catch (error) {
     // A merge stopped because its request was cancelled says nothing about the commits.
     if (gitProcessOf(git)?.abort?.aborted === true) {
       throw error;
     }
-    files = null;
+    // Status 1 with nothing printed: the two commits share no history, and never will.
+    const base = await readGitCode(git, ["merge-base", head, tip], [0, 1]).catch(() => null);
+    return base?.code === 1 ? remember(null) : null;
   }
-  if (cache.size >= CACHE_SIZE) {
-    cache.delete(cache.keys().next().value!);
-  }
-  cache.set(key, files);
-  return files;
 }
 
 /** What `for-each-ref` reports of each branch, its fields separated by NUL. */
@@ -200,20 +252,26 @@ export async function loadConflictForecast(
     branches.push(...(await remoteCandidates(git, head, local, options)));
   }
   const conflicts: ConflictForecastEntry[] = [];
-  for (let start = 0; start < branches.length; start += PARALLEL) {
-    // A few merges at a time, so that a repository with many branches stays responsive.
-    // eslint-disable-next-line no-await-in-loop
-    const results = await Promise.all(
-      branches
-        .slice(start, start + PARALLEL)
-        .map(async (branch) => ({ branch, files: await conflictedFiles(git, head, branch.tip) }))
-    );
-    for (const { branch, files } of results) {
-      if (files !== null && files.length > 0) {
-        const { branch: name, remote, committer, date } = branch;
-        conflicts.push({ branch: name, remote, files, committer, date });
+  const scratch = scratchObjects(git);
+  try {
+    for (let start = 0; start < branches.length; start += PARALLEL) {
+      // A few merges at a time, so that a repository with many branches stays responsive.
+      // eslint-disable-next-line no-await-in-loop
+      const results = await Promise.all(
+        branches.slice(start, start + PARALLEL).map(async (branch) => ({
+          branch,
+          files: await conflictedFiles(git, head, branch.tip, scratch)
+        }))
+      );
+      for (const { branch, files } of results) {
+        if (files !== null && files.length > 0) {
+          const { branch: name, remote, committer, date } = branch;
+          conflicts.push({ branch: name, remote, files, committer, date });
+        }
       }
     }
+  } finally {
+    await scratch.dispose();
   }
   return conflicts;
 }

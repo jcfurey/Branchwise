@@ -61,6 +61,33 @@ it("names the branches that would conflict with HEAD, and their conflicted files
   expect([status(), refs()]).toEqual(before);
 });
 
+it("writes nothing into the repository, not even objects nothing refers to", async () => {
+  const lines = Array.from({ length: 12 }, (_, index) => `line ${index + 1}\n`);
+  commitFiles("shared", { shared: lines.join("") });
+  git(["checkout", "-q", "-b", "clash"], repo);
+  commitFiles("clash", { f: "clash\n" });
+  git(["checkout", "-q", "-b", "clean", "main"], repo);
+  commitFiles("clean", { shared: [...lines.slice(0, -1), "the last, on clean\n"].join("") });
+  git(["checkout", "-q", "main"], repo);
+  commitFiles("main", {
+    f: "main\n",
+    shared: ["the first, on main\n", ...lines.slice(1)].join("")
+  });
+  /** Every object the repository holds, loose or packed. */
+  const objects = () =>
+    gitOutput(["cat-file", "--batch-all-objects", "--batch-check", "--unordered"], repo)
+      .split("\n")
+      .toSorted()
+      .join("\n");
+  const before = objects();
+
+  // Each merge makes a tree, and the clean one a merged file as well. A forecast runs after
+  // every refresh, so written into the repository they would pile up until its next clean-up.
+  expect(await forecast()).toEqual([{ branch: "clash", files: ["f"] }]);
+
+  expect(objects()).toBe(before);
+});
+
 it("leaves out HEAD's own branch, merged branches, and branches with unrelated history", async () => {
   git(["checkout", "-q", "--orphan", "lone"], repo);
   commitFiles("lone", { f: "unrelated\n" });
