@@ -3122,7 +3122,8 @@ suite("Branchwise workflow UI", function () {
     await keypress("PageDown");
     await until(async () => (await where()).index > 0, "Page Down moves");
     const page = (await where()).index;
-    assert.ok(page >= 5 && page < 90, `a screenful of ${page} rows`);
+    // Three screenfuls must fit in the rows there are.
+    assert.ok(page >= 5 && 3 * page < count - 1, `a screenful of ${page} rows`);
     await turn("PageDown", 2 * page);
     await turn("PageDown", 3 * page);
     await turn("PageUp", 2 * page);
