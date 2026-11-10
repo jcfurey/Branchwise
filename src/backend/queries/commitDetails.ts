@@ -91,7 +91,7 @@ function parseHeader(output: string): Omit<GitCommitDetails, "fileChanges"> {
     fields.length !== 7 ||
     !OBJECT_ID.test(hash) ||
     !parents.every((parent) => OBJECT_ID.test(parent)) ||
-    !/^\d+$/.test(date)
+    !/^\d*$/.test(date)
   ) {
     throw new Error("Unexpected commit header");
   }
@@ -100,7 +100,9 @@ function parseHeader(output: string): Omit<GitCommitDetails, "fileChanges"> {
     parents,
     author,
     email,
-    date: Number(date),
+    // A commit whose author or committer line carries no date has none to print. The graph
+    // shows such a commit with an unknown date, and its details must open all the same.
+    date: date === "" ? Number.NaN : Number(date),
     committer,
     body: messageBody(message)
   };

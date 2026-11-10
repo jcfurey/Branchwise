@@ -1,3 +1,4 @@
+import * as cp from "node:child_process";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -15,6 +16,35 @@ describe("commitDetails header", () => {
 
     expect((await repo.details(hash, "Author Date")).commitDetails?.date).toBe(1600000100);
     expect((await repo.details(hash, "Commit Date")).commitDetails?.date).toBe(1650000100);
+  });
+
+  it("opens a commit whose author line carries no date, as old conversions left some", async () => {
+    const repo = tempRepo();
+    const parent = repo.commit("dated", { f: "x\n" });
+    const tree = repo.line(["rev-parse", `${parent}^{tree}`]);
+    // Written as it is, without Git's check of the object, as such commits once were.
+    const undated = cp
+      .execFileSync("git", ["hash-object", "-t", "commit", "-w", "--literally", "--stdin"], {
+        cwd: repo.dir,
+        input: [
+          `tree ${tree}`,
+          `parent ${parent}`,
+          "author Ann Author <ann@example.com>",
+          "committer Cal Committer <cal@example.com> 1650000100 -0500",
+          "",
+          "no author date",
+          ""
+        ].join("\n")
+      })
+      .toString()
+      .trim();
+
+    const details = (await repo.details(undated, "Author Date")).commitDetails;
+
+    // The graph's row for it already says that the date is unknown; so do the details.
+    expect(details).toMatchObject({ hash: undated, author: "Ann Author", body: "no author date" });
+    expect(details?.date).toBeNaN();
+    expect((await repo.details(undated, "Commit Date")).commitDetails?.date).toBe(1650000100);
   });
 
   it("reports the recorded author, email and committer without the mailmap", async () => {
