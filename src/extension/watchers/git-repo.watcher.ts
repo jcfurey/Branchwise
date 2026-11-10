@@ -66,6 +66,25 @@ function counts(rule: Rule, base: string, file: string): boolean {
   return relative !== undefined && rule(relative);
 }
 
+/**
+ * Whether the graph can be seen. Behind another tab it is not told of changes: each notification
+ * makes the page read the repository again, a round of Git processes for every file saved, and
+ * showing the graph refreshes it anyway.
+ */
+let graphVisible = true;
+/** The refreshes waiting to be sent, which hiding the graph drops. */
+const waiting = new Set<() => void>();
+
+/** Say whether the graph's panel is showing, as its view state reports. */
+export function setGraphVisible(visible: boolean): void {
+  graphVisible = visible;
+  if (!visible) {
+    for (const drop of waiting) {
+      drop();
+    }
+  }
+}
+
 /** Git actions the extension is running, by the repository path each was muted with. */
 const runningActions = new Map<string, number>();
 /** When the quiet period after each repository's last action ends, on `performance.now()`. */
@@ -145,13 +164,19 @@ function watchRepo(repo: string, gitPath: string): RepoWatch {
     logger.debug(`Sending repo.updated notification: ${repo}`);
     void rpcNotify.notify("repo.updated", { path: repo });
   };
+  const dropRefresh = () => {
+    clearTimeout(refresh);
+    refresh = undefined;
+    firstUnreported = undefined;
+  };
+  waiting.add(dropRefresh);
 
   const watch = (base: string, rule: Rule) => {
     const watcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(base, "**/*")
     );
     const listener = (kind: string) => (uri: vscode.Uri) => {
-      if (closed || !counts(rule, base, uri.fsPath) || isMuted(repo)) {
+      if (closed || !graphVisible || !counts(rule, base, uri.fsPath) || isMuted(repo)) {
         return;
       }
       logger.debug(`Repository file ${kind}: ${uri.fsPath}`);
@@ -200,6 +225,7 @@ function watchRepo(repo: string, gitPath: string): RepoWatch {
     dispose() {
       closed = true;
       clearTimeout(refresh);
+      waiting.delete(dropRefresh);
       for (const watcher of watchers.splice(0)) {
         watcher.dispose();
       }

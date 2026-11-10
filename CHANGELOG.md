@@ -15,6 +15,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - A run of rows on one branch names its nearest branch once, at the top, instead of repeating "on main" on every row; the name returns wherever rows of another branch come between. See [the Branches pane](docs/git-actions.md#branches-pane).
 - A refresh that changes nothing redraws nothing. Every file saved in the work tree refreshes the graph, and each refresh used to lay out and draw every row again, however many were loaded.
 - A list that fits on one page no longer shows disabled **Previous** and **Next** buttons, and an empty side of a comparison says **None**. **Clean Up Merged Branches** names the branch it checks against instead of a bare 40-character ID.
+- A graph behind another editor tab no longer reads the repository again each time a file is saved. It was told of every change while hidden, and each time ran its whole round of Git processes; it now catches up when it is shown, as it already did.
 - The repository state, which is read again after every change to the work tree, takes fewer Git processes: one for the addresses of every remote instead of two for each, and a status that no longer lists untracked files, which is what took long in a large work tree.
 
 ### Fixed

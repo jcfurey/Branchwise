@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   muteGitRepoWatcher as muteWatcher,
   selectWatchedRepo,
+  setGraphVisible,
   unmuteGitRepoWatcher,
   watchGitRepo
 } from "@/extension/watchers/git-repo.watcher";
@@ -103,6 +104,34 @@ afterEach(() => {
   // Some cases already disposed their lifetime before the simulated action ended.
   watchGitRepo().dispose();
   vi.useRealTimers();
+});
+
+describe("a graph nobody can see", () => {
+  afterEach(() => setGraphVisible(true));
+
+  it("is not told of changes, and is told again once it shows", () => {
+    // Every notification makes the page read the repository again, a round of Git processes
+    // for each file saved while the graph sits behind another tab.
+    setGraphVisible(false);
+    touch();
+    vi.advanceTimersByTime(5000);
+    expect(refreshes()).toEqual([]);
+
+    // Showing it refreshes it anyway, so what happened meanwhile needs no notification of its own.
+    setGraphVisible(true);
+    vi.advanceTimersByTime(5000);
+    expect(refreshes()).toEqual([]);
+    touch();
+    vi.advanceTimersByTime(250);
+    expect(refreshes()).toHaveLength(1);
+  });
+
+  it("drops a refresh that was still waiting when it was hidden", () => {
+    touch();
+    setGraphVisible(false);
+    vi.advanceTimersByTime(5000);
+    expect(refreshes()).toEqual([]);
+  });
 });
 
 describe("refresh timing", () => {

@@ -18,6 +18,7 @@ const fake = vi.hoisted(() => ({
   /** Handlers the fake message handler registration returned, newest last. */
   handlers: [] as { onPanelShown: () => void; dispose: () => void }[],
   registerHandlers: vi.fn(),
+  setGraphVisible: vi.fn(),
   gitClientFactory: vi.fn()
 }));
 
@@ -54,6 +55,9 @@ vi.mock("@/old-extension/messageHandler", () => ({
   })
 }));
 
+vi.mock("@/extension/watchers/git-repo.watcher", () => ({
+  setGraphVisible: fake.setGraphVisible
+}));
 vi.mock("@/backend/gitClient", () => ({
   gitClientFactory: fake.gitClientFactory.mockImplementation(() => ({
     getInstance: () => ({ show: async () => "content" })
@@ -223,6 +227,23 @@ describe("attaching a panel", () => {
 
     view.viewStateChanges(true);
     expect(view.page.postMessage).toHaveBeenCalledOnce();
+  });
+
+  test("tells the watcher whether the panel can be seen, from the moment it is attached", () => {
+    const { protocol } = start();
+    const view = panelShowing(false);
+    const attached = protocol.attach(view.panel);
+    expect(fake.setGraphVisible.mock.calls).toEqual([[false]]);
+
+    view.viewStateChanges(true);
+    view.viewStateChanges(true);
+    view.viewStateChanges(false);
+    expect(fake.setGraphVisible.mock.calls).toEqual([[false], [true], [false]]);
+
+    // The next panel starts from what it shows itself.
+    attached.dispose();
+    protocol.attach(panelShowing(true).panel);
+    expect(fake.setGraphVisible.mock.calls.at(-1)).toEqual([true]);
   });
 
   test("refreshes a panel attached while hidden when it first shows", () => {
