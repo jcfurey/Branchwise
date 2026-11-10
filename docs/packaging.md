@@ -1,6 +1,6 @@
 # Packaging and releases
 
-The checked-in manifest is the source of truth: `jcfurey.branchwise@0.10.0`.
+The checked-in manifest is the source of truth: `jcfurey.branchwise@0.20.0`.
 Keep `publisher` and `name` stable so that installed copies upgrade in place. When changing
 metadata, keep the README's [Origins and license](../README.md#origins-and-license) section, which
 credits the projects Branchwise began from and links to [Provenance](provenance.md); the manifest
@@ -17,7 +17,7 @@ Use Node.js 24 and the pnpm version pinned in `package.json`, which Corepack pro
 corepack enable pnpm
 pnpm install --frozen-lockfile
 pnpm run package:vsix
-code --install-extension ./branchwise-0.10.0.vsix --force
+code --install-extension ./branchwise-0.20.0.vsix --force
 ```
 
 `package:vsix` checks the extension identity, then runs vsce. Its prepublish hook cleans the
@@ -72,6 +72,11 @@ any registry tokens, and publishes that same file without rebuilding it.
 Publishing to two registries is not atomic, so a failure can leave a version on one of them. Fix
 the cause and run the workflow again for the same tag: both publish commands skip a version that
 is already there.
+
+If the identity check rejects a tag because the manifest still names the previous version, finish
+steps 1–3 first. Re-running the failed run uses its original commit, so it cannot pick up those
+changes. After checking what was published, correct the tag to point to the prepared release commit
+before starting a new publish run.
 
 To rehearse a release, run **Actions → publish → Run workflow**. A manual run checks and tests the
 manifest's version as if it were tagged, packages it and checks any tokens, but never publishes.

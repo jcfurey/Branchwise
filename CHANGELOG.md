@@ -8,6 +8,8 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-10
+
 ### Changed
 
 - The menus are put in order. See [the Branches pane](docs/git-actions.md#branches-pane).
