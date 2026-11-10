@@ -93,3 +93,43 @@ it("counts the paths with staged changes, not unstaged or untracked ones", async
     fs.rmSync(`${repo}/new`);
   }
 });
+
+it.skipIf(process.platform === "win32")(
+  "reads every remote's addresses in one process, and skips the untracked files it has no use for",
+  async () => {
+    const own = makeRepo();
+    const bin = fs.mkdtempSync(own + "-bin-");
+    try {
+      git(["remote", "add", "origin", "https://example.invalid/origin.git"], own);
+      git(["remote", "add", "two.dots", "https://example.invalid/first.git"], own);
+      git(["remote", "set-url", "--add", "two.dots", "https://example.invalid/second.git"], own);
+      git(["remote", "set-url", "--push", "two.dots", "ssh://example.invalid/push.git"], own);
+      git(["remote", "add", "backup", "/srv/backup = here.git"], own);
+      git(["config", "remote.pushDefault", "backup"], own);
+      fs.writeFileSync(`${own}/untracked`, "left alone");
+      const { recordingGit } = await import("@tests/backend/queries/loadCommits/fixtures");
+      const recorder = recordingGit(bin);
+
+      const state = await loadRepositoryState(createGit(own, recorder.gitPath));
+
+      expect(state.remotes).toEqual([
+        { name: "backup", fetchUrls: ["/srv/backup = here.git"], pushUrls: [] },
+        { name: "origin", fetchUrls: ["https://example.invalid/origin.git"], pushUrls: [] },
+        {
+          name: "two.dots",
+          fetchUrls: ["https://example.invalid/first.git", "https://example.invalid/second.git"],
+          pushUrls: ["ssh://example.invalid/push.git"]
+        }
+      ]);
+      expect(state.pushDefault).toBe("backup");
+      const runs = recorder.runs();
+      // The state is read again after every change to the work tree, so each process counts.
+      // Asked remote by remote, three remotes took seven processes for their settings.
+      expect(runs.filter((run) => run.startsWith("config "))).toHaveLength(1);
+      expect(runs.find((run) => run.startsWith("status "))).toContain("--untracked-files=no");
+    } finally {
+      fs.rmSync(own, { recursive: true, force: true });
+      fs.rmSync(bin, { recursive: true, force: true });
+    }
+  }
+);
