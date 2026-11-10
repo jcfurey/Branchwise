@@ -1435,7 +1435,15 @@ suite("Branchwise workflow UI", function () {
       "a\nb\nc"
     );
     assert.equal(git(["rev-parse", "HEAD^{tree}"], dir), tree);
-    await button("Clear Selection");
+    // The selected commits are gone from the graph, and the selection goes with them: nothing
+    // is left to clear, and nothing offers to cherry-pick IDs that no longer exist.
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector("main").innerText.includes("Squashed in the UI") && ![...document.querySelectorAll("button")].some((item) => item.textContent.trim() === "Clear Selection")`
+        ),
+      "the selection gone with its commits"
+    );
   });
 
   test("searches past the loaded graph and keeps saved filters per repository", async () => {
