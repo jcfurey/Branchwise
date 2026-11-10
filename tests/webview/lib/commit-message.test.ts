@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { h, render } from "preact";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RepositoryState } from "@/backend/types";
 import {
@@ -172,5 +172,50 @@ describe("CommitMessage", () => {
       "After #2\n~~~\nopen"
     ]);
     expect(links()).toEqual([["#2", "https://github.com/owner/repo/issues/2"]]);
+  });
+
+  it("reads a message with hundreds of references once, not once for each of them", () => {
+    // A release commit lists every change it gathers. Each rule used to search the rest of the
+    // paragraph again after every reference, which for thousands of them took seconds. Counted
+    // here, where time would depend on the machine: the searches of the paragraph itself.
+    const count = 500;
+    const lines = Array.from({ length: count }, (_, index) => `- Fix the thing (#${index + 1})`);
+    const paragraph = lines.join("\n");
+    const exec = vi.spyOn(RegExp.prototype, "exec");
+    try {
+      show(paragraph);
+      const searches = exec.mock.calls.filter(([text]) => text === paragraph).length;
+      // One for each reference, and a last one for each rule that then finds no more.
+      expect(searches).toBeLessThan(count + 50);
+    } finally {
+      exec.mockRestore();
+    }
+
+    const made = links();
+    expect(made).toHaveLength(count);
+    expect(made[0]).toEqual(["#1", "https://github.com/owner/repo/issues/1"]);
+    expect(made.at(-1)).toEqual([`#${count}`, `https://github.com/owner/repo/issues/${count}`]);
+    expect(container.textContent).toBe(paragraph);
+  });
+
+  it("gives each place to the form that starts first, whatever was found beyond it", () => {
+    // What a rule found further on stays good while the text before it is used up, and a
+    // match that something else covered is looked for again after it.
+    show("`#1` then #2, **bold #3** and *it* https://x.test/#4 `code` #5 !6 GH-7");
+    expect(links()).toEqual([
+      ["#2", "https://github.com/owner/repo/issues/2"],
+      ["https://x.test/#4", "https://x.test/#4"],
+      ["#5", "https://github.com/owner/repo/issues/5"],
+      ["GH-7", "https://github.com/owner/repo/issues/7"]
+    ]);
+    expect([...container.querySelectorAll("code")].map((code) => code.textContent)).toEqual([
+      "#1",
+      "code"
+    ]);
+    expect(container.querySelector("b")!.textContent).toBe("bold #3");
+    expect(container.querySelector("i")!.textContent).toBe("it");
+    expect(container.textContent).toBe(
+      "#1 then #2, bold #3 and it https://x.test/#4 code #5 !6 GH-7"
+    );
   });
 });
