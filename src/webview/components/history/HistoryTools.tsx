@@ -364,7 +364,8 @@ export function openRestoreFile(source: string, sourcePath: string, destination 
             );
           }
         },
-        repo
+        repo,
+        window.l10n.restoreHistoricalFile
       )
   });
 }
@@ -489,7 +490,8 @@ export function openBatch(operation: "cherry-pick" | "revert") {
         );
       }
     },
-    repo
+    repo,
+    operation === "revert" ? window.l10n.batchRevert : window.l10n.batchCherryPick
   );
 }
 
@@ -523,6 +525,7 @@ export function openFixup(target: string) {
         openContentDialog(window.l10n.createFixup, <FixupPreview plan={data.plan} repo={repo} />);
       }
     },
-    repo
+    repo,
+    window.l10n.createFixup
   );
 }

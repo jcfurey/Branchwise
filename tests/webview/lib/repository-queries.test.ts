@@ -308,6 +308,28 @@ describe("reads behind a loading dialog", () => {
     expect(received).not.toHaveBeenCalled();
   });
 
+  it("shows a refused plan under the name of what it was for", () => {
+    const received = vi.fn();
+    // A read that plans an action names the dialog it would open.
+    requestRepositoryQuery({ kind: "splitPlan", target: "abc" }, received, "/work", "Split Commit");
+    reply(newest(), null, "A merge commit cannot be split.");
+    expect(dialog.value).toMatchObject({
+      kind: "error",
+      message: "Split Commit",
+      reason: "A merge commit cannot be split."
+    });
+
+    // With no reason to show under it, that name would say nothing of what went wrong.
+    requestRepositoryQuery({ kind: "splitPlan", target: "abc" }, received, "/work", "Split Commit");
+    reply(newest(), null, null);
+    expect(dialog.value).toMatchObject({
+      kind: "error",
+      message: "unableToLoadRepository",
+      reason: null
+    });
+    expect(received).not.toHaveBeenCalled();
+  });
+
   it("reads only the selected repository", () => {
     requestRepositoryQuery({ kind: "stashes" }, vi.fn(), "/elsewhere");
     expect(outbox()).toEqual([]);

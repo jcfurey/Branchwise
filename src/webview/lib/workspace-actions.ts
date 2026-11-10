@@ -9,6 +9,7 @@ import type {
 } from "@/backend/types";
 import { sendRemoteAction } from "@/webview/lib/remote-actions";
 import { repositoryRevision, requestPanelQuery } from "@/webview/lib/repository-actions";
+import { selectedRepo } from "@/webview/lib/stores";
 
 export type WorkspaceJob = {
   repo: string;
@@ -23,7 +24,23 @@ export const workspaceBusy = computed(() =>
 );
 let sequence = 0;
 
-/** Work belongs to the captured repository, even when its dialog is hidden. */
+/**
+ * Whether what happens in `repo` can show in the graph of `shown`: the same repository, one
+ * inside it, such as a submodule, or one around it. A repository elsewhere changes nothing
+ * there, and should it share its refs, as a linked worktree does, the watcher reports them.
+ */
+function reaches(repo: string, shown: string | undefined) {
+  return (
+    shown !== undefined &&
+    (repo === shown || repo.startsWith(`${shown}/`) || shown.startsWith(`${repo}/`))
+  );
+}
+
+/**
+ * Work belongs to the captured repository, even when its dialog is hidden. The graph shown is
+ * read again afterwards only when the work could change it: an action in each of a workspace's
+ * repositories would otherwise read it once for every one of them.
+ */
 export function backgroundAction(repo: string, action: RepositoryAction): Promise<string | null> {
   return new Promise((resolve) => {
     sendRemoteAction(
@@ -33,7 +50,7 @@ export function backgroundAction(repo: string, action: RepositoryAction): Promis
       {
         background: true,
         otherRepo: true,
-        mutates: true,
+        mutates: reaches(repo, selectedRepo.value),
         onComplete: (error) => {
           repositoryRevision.value++;
           resolve(error);

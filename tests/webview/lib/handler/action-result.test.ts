@@ -7,7 +7,7 @@ import { openRunningDialog, runAction, selectRepo } from "@/webview/lib/actions"
 import { activity } from "@/webview/lib/activity";
 import { resetGraphRequests } from "@/webview/lib/graph-requests";
 import { handleActionResult } from "@/webview/lib/handler/action-result";
-import { sendRepositoryAction } from "@/webview/lib/repository-actions";
+import { repositoryRevision, sendRepositoryAction } from "@/webview/lib/repository-actions";
 import * as stores from "@/webview/lib/stores";
 import { backgroundAction } from "@/webview/lib/workspace-actions";
 
@@ -201,16 +201,45 @@ describe("the reload after a mutating action", () => {
     expect(reloadedRepos()).toEqual(["/r", "/r", "/r"]);
   });
 
-  it("happens for a background action in another repository while this one is shown", async () => {
-    const done = backgroundAction("/elsewhere", { kind: "fetch", remote: null });
+  it.each([
+    ["the repository shown", "/r", "/r"],
+    ["a repository inside the one shown", "/r/libs/inner", "/r"],
+    ["a repository around the one shown", "/parent", "/parent/module"]
+  ])("happens for a background action in %s", async (_, acted, shown) => {
+    stores.selectedRepo.value = shown;
+    const done = backgroundAction(acted, { kind: "fetch", remote: null });
     const request = lastAction();
     vscodeApi.postMessage.mockClear();
 
     handleActionResult({ command: "repositoryAction", status: "offline", ...request });
 
     await expect(done).resolves.toBe("offline");
-    expect(reloadedRepos()).toEqual(["/r", "/r", "/r"]);
+    expect(reloadedRepos()).toEqual([shown, shown, shown]);
     expect(stores.dialog.value).toBeNull();
+  });
+
+  it("is skipped for a background action in a repository elsewhere", async () => {
+    // Fetching every repository of a workspace must not read the graph shown again for each of
+    // them: what an unrelated repository fetches is not in it. The panes that list the other
+    // repositories still read again, which the revision asks for.
+    const revision = repositoryRevision.value;
+    const elsewhere = ["/elsewhere", "/r-too", "/other/r"].map((repo) => {
+      const done = backgroundAction(repo, { kind: "fetch", remote: null });
+      return { done, request: lastAction() };
+    });
+    vscodeApi.postMessage.mockClear();
+
+    for (const { request } of elsewhere) {
+      handleActionResult({ command: "repositoryAction", status: null, ...request });
+    }
+
+    await expect(Promise.all(elsewhere.map(({ done }) => done))).resolves.toEqual([
+      null,
+      null,
+      null
+    ]);
+    expect(reloads()).toEqual([]);
+    expect(repositoryRevision.value).toBe(revision + 3);
   });
 
   it("is skipped for a background action once another repository is shown", async () => {

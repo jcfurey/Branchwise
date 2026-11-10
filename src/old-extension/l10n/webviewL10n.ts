@@ -219,6 +219,7 @@ export function getWebviewLocalizedStrings() {
     shortcutKeysColumn: vscode.l10n.t("Keys"),
     shortcutActionColumn: vscode.l10n.t("Action"),
     shortcutMove: vscode.l10n.t("Move to the previous or next commit"),
+    shortcutPage: vscode.l10n.t("Move up or down by a screenful of commits"),
     shortcutFirstLast: vscode.l10n.t("Move to the first or last loaded commit"),
     shortcutExtendSelection: vscode.l10n.t("Move and add the commits passed to the selection"),
     shortcutSelect: vscode.l10n.t("Select or deselect the commit; with Shift, select a range"),
@@ -294,6 +295,9 @@ export function getWebviewLocalizedStrings() {
     dialogYesReset: vscode.l10n.t("Reset"),
     dialogCancel: vscode.l10n.t("Cancel"),
     dialogDismiss: vscode.l10n.t("Dismiss"),
+    discardChangesQuestion: vscode.l10n.t("Discard your changes?"),
+    keepEditing: vscode.l10n.t("Keep Editing"),
+    discardChanges: vscode.l10n.t("Discard"),
 
     // Relative dates come from Intl.RelativeTimeFormat in the page (src/webview/utils/date.ts),
     // so this table declares no time units.
@@ -402,6 +406,7 @@ export function getWebviewLocalizedStrings() {
     nestedRepository: vscode.l10n.t("nested repository"),
     conflicts: vscode.l10n.t("Conflicts"),
     noWorkingTreeChanges: vscode.l10n.t("No uncommitted changes."),
+    openSourceControl: vscode.l10n.t("Open Source Control"),
 
     // Tooltips in a commit's file tree. The line counts pick the singular when {0} is 1.
     tooltipBinaryFile: vscode.l10n.t(

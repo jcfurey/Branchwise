@@ -8,6 +8,7 @@ import { Select } from "@/webview/components/ui/Select";
 import { openContentDialog } from "@/webview/lib/actions";
 import { requestRepositoryQuery, sendRepositoryAction } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
+import { useUnsavedWork } from "@/webview/lib/unsaved-work";
 import { counted, format } from "@/webview/utils/format";
 
 /** A localized template filled with text only, as one string. */
@@ -139,6 +140,13 @@ export function SplitEditor({ plan, repo }: { plan: SplitPlan; repo: string }) {
   // Part 1 keeps the original message; every part after it needs its own.
   const [messages, setMessages] = useState(() => [plan.message, ""]);
   const [assignment, setAssignment] = useState<SplitAssignment>(() => plan.files.map(() => 0));
+  // A change moved to another part, a part added or a message written is work to ask about.
+  useUnsavedWork(
+    messages.length !== 2 ||
+      messages[0] !== plan.message ||
+      messages[1] !== "" ||
+      assignment.some((part) => part !== 0)
+  );
   const problem = splitProblem(messages, assignment);
   const options = messages.map((_, part) => ({
     label: text(l10n.splitPart, String(part + 1)),
@@ -236,6 +244,7 @@ export function openSplitCommit(hash: string) {
         );
       }
     },
-    repo
+    repo,
+    window.l10n.splitCommit
   );
 }

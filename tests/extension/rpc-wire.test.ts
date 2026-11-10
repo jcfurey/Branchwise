@@ -80,6 +80,7 @@ test.each([
   ["settings.open", ["workbench.action.openSettings", "branchwise"]],
   ["docs.open", ["branchwise.openDocumentation"]],
   ["walkthrough.open", ["branchwise.openWalkthrough"]],
+  ["scm.show", ["workbench.view.scm"]],
   ["git.clone", ["git.clone"]],
   ["folder.open", ["vscode.openFolder"]]
 ])("opens what %s asks for", async (method, command) => {

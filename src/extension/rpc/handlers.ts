@@ -32,6 +32,7 @@ export const rpcHandlers = {
   "settings.open": () => openExtensionSettings(),
   "docs.open": () => runCommand("branchwise.openDocumentation"),
   "walkthrough.open": () => runCommand("branchwise.openWalkthrough"),
+  "scm.show": () => runCommand("workbench.view.scm"),
   "goTo.show": (params) => showGoTo(params),
   "url.open": (url) => openUrl(url)
 } satisfies RpcHandlerTable;

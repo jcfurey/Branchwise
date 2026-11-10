@@ -109,7 +109,10 @@ async function keypress(key, modifiers = 0) {
     ArrowRight: 39,
     ArrowDown: 40,
     Home: 36,
-    End: 35
+    End: 35,
+    PageUp: 33,
+    PageDown: 34,
+    Escape: 27
   };
   for (const type of ["keyDown", "keyUp"]) {
     await connections[0].call("Input.dispatchKeyEvent", {
@@ -1007,6 +1010,18 @@ suite("Branchwise workflow UI", function () {
       path.join(artifacts, "uncommitted-changes.png"),
       Buffer.from(screenshot.data, "base64")
     );
+
+    // The changes are committed in VS Code's Source Control view, which the details lead to.
+    const scmShown = () =>
+      connections[0].evaluate(
+        `!!document.querySelector('.sidebar .composite.viewlet[id="workbench.view.scm"]')`
+      );
+    assert.equal(await scmShown(), false, "the side bar starts closed");
+    await button("Open Source Control", 'document.querySelector("[data-working-tree-details]")');
+    await until(scmShown, "Source Control view");
+    await vscode.commands.executeCommand("workbench.action.closeSidebar");
+    await until(async () => !(await scmShown()), "side bar closed again");
+    await until(loaded, "changes still listed");
 
     async function openFile(group, name, before, after, working) {
       await graph.evaluate(`(() => {
@@ -2368,6 +2383,21 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await push(local)) === "unpushed", "unpushed dot");
     assert.equal(await push(fetched), "unpulled");
     assert.equal(await push(base), null);
+    // One commit to push and one to pull: the strip under the header offers both, beside the
+    // counts that call for them.
+    await until(
+      () =>
+        graph.evaluate(`(() => {
+          const strip = [...document.querySelectorAll('[role="status"]')].find((item) =>
+            item.textContent.includes("origin/main")
+          );
+          const offered = [...(strip?.querySelectorAll("button") ?? [])].map((b) => b.textContent);
+          return offered.join("|") === "Pull Branch…|Push Branch…|Configure Upstream";
+        })()`),
+      "Pull and Push in the status strip"
+    );
+    const strip = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(path.join(artifacts, "status-strip.png"), Buffer.from(strip.data, "base64"));
 
     await graph.evaluate(`document.querySelector('tr[data-commit-hash="${local}"]').click()`);
     await until(
@@ -3025,9 +3055,88 @@ suite("Branchwise workflow UI", function () {
       async () => (await vscode.env.clipboard.readText()) === target.slice(0, 8),
       "short ID copied"
     );
+    // A key leaves nothing else to see, so a notice says that it worked, and goes again.
+    await until(
+      () => graph.evaluate('document.querySelector("[data-notice]")?.textContent === "Copied"'),
+      "notice of the copy"
+    );
+    const copied = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(path.join(artifacts, "copied-notice.png"), Buffer.from(copied.data, "base64"));
+    await until(
+      () => graph.evaluate('!document.querySelector("[data-notice]")'),
+      "notice taken down"
+    );
     await keypress("Y", 8);
     await until(async () => (await vscode.env.clipboard.readText()) === target, "full ID copied");
     assert.equal(git(["rev-parse", "HEAD"], dir), git(["rev-parse", "main"], dir));
+  });
+
+  test("moves through the rows a screenful at a time with Page Down and Page Up", async () => {
+    const dir = directory();
+    init(dir);
+    // Two hundred commits from one Git process.
+    const count = 200;
+    const stream = Array.from({ length: count }, (_, index) =>
+      [
+        "commit refs/heads/main",
+        `committer UI Test <ui@test> ${1700000000 + index * 60} +0000`,
+        `data ${`page ${index}`.length}`,
+        `page ${index}`,
+        "M 100644 inline f",
+        `data ${String(index).length}`,
+        String(index),
+        ""
+      ].join("\n")
+    ).join("\n");
+    cp.execFileSync("git", ["fast-import", "--quiet"], { cwd: dir, input: stream });
+    git(["reset", "-q", "--hard"], dir);
+    await openRepo(dir);
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelectorAll("tbody tr[data-commit-hash]").length >= ${count}`
+        ),
+      "every row"
+    );
+    // Where the keyboard is among the rows, and how far down the window its row is.
+    const where = () =>
+      graph.evaluate(`(() => {
+        const rows = [...document.querySelectorAll("tbody tr[data-commit-hash]")];
+        return {
+          index: rows.indexOf(document.activeElement),
+          top: Math.round(document.activeElement.getBoundingClientRect().top)
+        };
+      })()`);
+    await graph.evaluate('document.querySelector("tbody tr[data-commit-hash]").focus()');
+    const start = await where();
+    // The page turns with the keyboard: the row landed on comes to rest where the row left
+    // was, so the rows between were all in sight. The browser alone would bring it to the
+    // middle of the window, and pass the rows before it unseen.
+    const turn = async (key, to) => {
+      await keypress(key);
+      await until(async () => {
+        const now = await where();
+        return now.index === to && Math.abs(now.top - start.top) <= 1;
+      }, `${key} to row ${to}, where the row before it was`);
+    };
+    await keypress("PageDown");
+    await until(async () => (await where()).index > 0, "Page Down moves");
+    const page = (await where()).index;
+    // Three screenfuls must fit in the rows there are.
+    assert.ok(page >= 5 && 3 * page < count - 1, `a screenful of ${page} rows`);
+    await turn("PageDown", 2 * page);
+    await turn("PageDown", 3 * page);
+    await turn("PageUp", 2 * page);
+    // The ends stop it, and a screenful from the last row is counted from there.
+    await keypress("End");
+    await until(async () => (await where()).index === count - 1, "last row");
+    await keypress("PageUp");
+    await until(async () => (await where()).index === count - 1 - page, "a screenful up");
+    await keypress("Home");
+    await until(async () => (await where()).index === 0, "first row");
+    await keypress("PageUp");
+    await delay(200);
+    assert.equal((await where()).index, 0);
   });
 
   test("marks a signed commit and checks its signature when its details open", async function () {
@@ -3523,6 +3632,39 @@ suite("Branchwise workflow UI", function () {
     assert.match(
       await graph.evaluate('document.querySelector("[role=dialog] [role=alert]")?.textContent'),
       /already on a remote/
+    );
+    // A message half written is not thrown away by a stray Escape: the dialog asks first.
+    await typeMessage("edit target, half written");
+    await graph.evaluate('document.querySelector("[role=dialog] textarea").focus()');
+    await keypress("Escape");
+    await until(
+      () =>
+        graph.evaluate(
+          'document.querySelector("[role=dialog] [data-discard-question]")?.textContent.includes("Discard your changes?") === true'
+        ),
+      "question before discarding"
+    );
+    assert.equal(
+      await graph.evaluate("document.activeElement?.textContent"),
+      "Keep Editing",
+      "the question starts on the answer that loses nothing"
+    );
+    const shot = await connections[0].call("Page.captureScreenshot");
+    fs.writeFileSync(
+      path.join(artifacts, "discard-question.png"),
+      Buffer.from(shot.data, "base64")
+    );
+    await button("Keep Editing");
+    await until(
+      () =>
+        graph.evaluate(
+          '!document.querySelector("[data-discard-question]") && document.activeElement === document.querySelector("[role=dialog] textarea")'
+        ),
+      "back in the message"
+    );
+    assert.equal(
+      await graph.evaluate('document.querySelector("[role=dialog] textarea").value'),
+      "edit target, half written"
     );
     await typeMessage("edit target reworded\n\n#7 stays");
     await button("Save Message");

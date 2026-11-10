@@ -45,8 +45,9 @@ export function WorktreeManager({ state, repo }: { state: RepositoryState; repo:
           {worktree.locked && <p>{window.l10n.lockedWorktree}</p>}
           {worktree.prunable && <p>{window.l10n.prunableWorktree}</p>}
           <div class="flex flex-wrap gap-2">
+            {/* The worktree shown is open in this window already. */}
             <Button
-              disabled={worktree.bare || worktree.prunable}
+              disabled={worktree.bare || worktree.prunable || worktree.path === repo}
               onClick={() =>
                 sendRepositoryAction({ kind: "openWorktree", path: worktree.path }, repo)
               }

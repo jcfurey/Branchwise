@@ -136,6 +136,7 @@ export function openAbsorb() {
         );
       }
     },
-    repo
+    repo,
+    window.l10n.absorbStaged
   );
 }

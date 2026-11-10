@@ -3,6 +3,7 @@ import { BisectStatus } from "@/webview/components/repository/BisectView";
 import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { Button } from "@/webview/components/ui/Button";
 import { BranchIcon } from "@/webview/components/ui/Icons";
+import { openRemoteAction } from "@/webview/lib/remote-actions";
 import {
   confirmRepositoryAction,
   repositoryState,
@@ -33,6 +34,24 @@ function recover(operation: OperationState, resolution: "continue" | "abort" | "
     label,
     { kind: "recover", operation, resolution }
   );
+}
+
+type Tracking = RepositoryState["branches"][number];
+
+/** The look of an action in the strip: a link, as small as the text around it. */
+const STRIP_ACTION = "py-0.5 text-xs text-link";
+
+/** Whether the branch's upstream has commits to pull. */
+function behind(tracking: Tracking) {
+  return Boolean(tracking.upstream) && !tracking.gone && tracking.behind > 0;
+}
+
+/**
+ * Whether the branch has something to push: commits its upstream lacks, or, with a remote to
+ * push to, no upstream yet or one that was deleted.
+ */
+function unpushed(tracking: Tracking, state: RepositoryState) {
+  return tracking.upstream && !tracking.gone ? tracking.ahead > 0 : state.remotes.length > 0;
 }
 
 export function RepositoryStatus() {
@@ -84,12 +103,27 @@ function StatusStrip({ state }: { state: RepositoryState }) {
                 )
             : window.l10n.noUpstream}
         </span>
-        {tracking && (
+        {/* What the counts beside them call for, each opening the review its menu entry opens. */}
+        {tracking && operation === null && behind(tracking) && (
           <Button
             variant="ghost"
-            class="py-0.5 text-xs text-link"
-            onClick={() => openTracking(tracking.name)}
+            class={STRIP_ACTION}
+            onClick={() => openRemoteAction("pull", tracking.name)}
           >
+            {`${window.l10n.pullBranch}…`}
+          </Button>
+        )}
+        {tracking && operation === null && unpushed(tracking, state) && (
+          <Button
+            variant="ghost"
+            class={STRIP_ACTION}
+            onClick={() => openRemoteAction("push", tracking.name)}
+          >
+            {`${window.l10n.pushBranch}…`}
+          </Button>
+        )}
+        {tracking && (
+          <Button variant="ghost" class={STRIP_ACTION} onClick={() => openTracking(tracking.name)}>
             {window.l10n.configureUpstream}
           </Button>
         )}

@@ -19,7 +19,7 @@ export async function openWalkthrough(ctx: vscode.ExtensionContext): Promise<voi
   );
 }
 
-/** Runs one of this extension's commands on behalf of the webview. */
+/** Runs a command the page has a control for, on its behalf: one of this extension's or of VS Code's. */
 export async function runCommand(command: string): Promise<boolean> {
   await vscode.commands.executeCommand(command);
   return true;

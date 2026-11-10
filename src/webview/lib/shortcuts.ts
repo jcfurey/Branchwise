@@ -57,6 +57,12 @@ export const SHORTCUTS = [
     label: (l10n) => l10n.shortcutMove
   },
   {
+    id: "page",
+    group: "navigation",
+    keys: [{ key: "PageUp" }, { key: "PageDown" }],
+    label: (l10n) => l10n.shortcutPage
+  },
+  {
     id: "firstLast",
     group: "navigation",
     keys: [{ key: "Home" }, { key: "End" }],

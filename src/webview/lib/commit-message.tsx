@@ -144,6 +144,9 @@ const RULES: Rule[] = [
   }
 ];
 
+/** A part of the text that a rule or a custom link turns into an element. */
+type Part = { index: number; length: number; node: ComponentChildren };
+
 /**
  * `text` with its inline code, links, emphasis and issue references made into elements, and
  * `custom` links, given by their place in `text` and earliest first, made into links. Whatever
@@ -156,22 +159,39 @@ function inline(
   custom: readonly CustomLink[] = []
 ): ComponentChildren[] {
   const out: ComponentChildren[] = [];
+  // Each rule's next match that draws something: `undefined` before it is looked for, `null`
+  // once there is none left. A match stays the rule's next one until the text is used up past
+  // its start, so each rule reads the text once in all. Looking again from every position
+  // read the rest of the text each time, which for a message that lists thousands of
+  // references took seconds.
+  const upcoming: Array<Part | null | undefined> = RULES.map(() => undefined);
+  const nextOf = (slot: number, at: number): Part | null => {
+    const known = upcoming[slot];
+    if (known === null || (known !== undefined && known.index >= at)) {
+      return known;
+    }
+    const rule = RULES[slot]!;
+    let found: Part | null = null;
+    rule.pattern.lastIndex = at;
+    // Later matches of a rule whose earliest one renders nothing are still worth trying.
+    for (let match = rule.pattern.exec(text); match !== null; match = rule.pattern.exec(text)) {
+      const node = rule.render(match, tracker);
+      if (node !== null) {
+        found = { index: match.index, length: match[0].length, node };
+        break;
+      }
+    }
+    upcoming[slot] = found;
+    return found;
+  };
   let at = 0;
   let next = 0;
   while (at < text.length) {
-    let best: { index: number; length: number; node: ComponentChildren } | null = null;
-    for (const rule of RULES) {
-      rule.pattern.lastIndex = at;
-      // Later matches of a rule whose earliest one renders nothing are still worth trying.
-      for (let match = rule.pattern.exec(text); match !== null; match = rule.pattern.exec(text)) {
-        if (best !== null && match.index >= best.index) {
-          break;
-        }
-        const node = rule.render(match, tracker);
-        if (node !== null) {
-          best = { index: match.index, length: match[0].length, node };
-          break;
-        }
+    let best: Part | null = null;
+    for (let slot = 0; slot < RULES.length; slot++) {
+      const part = nextOf(slot, at);
+      if (part !== null && (best === null || part.index < best.index)) {
+        best = part;
       }
     }
     // Custom links that start inside what came before are covered by it.

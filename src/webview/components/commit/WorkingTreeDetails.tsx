@@ -7,6 +7,7 @@ import { openAbsorb } from "@/webview/components/repository/Absorb";
 import { Button } from "@/webview/components/ui/Button";
 import { refresh } from "@/webview/lib/actions";
 import { sendRepositoryAction } from "@/webview/lib/repository-actions";
+import { rpcClient } from "@/webview/lib/rpc/rpc-client";
 import { usePage } from "@/webview/lib/use-page";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
 
@@ -73,7 +74,13 @@ export function WorkingTreeChanges() {
     <div class="mr-8 flex h-full flex-col px-3 py-2" data-working-tree-details>
       <div class="flex shrink-0 items-center justify-between gap-3 pb-2">
         <span class="text-muted">{window.l10n.workingTreeHint}</span>
-        <Button onClick={refresh}>{window.l10n.refresh}</Button>
+        <span class="flex shrink-0 gap-2">
+          <Button onClick={refresh}>{window.l10n.refresh}</Button>
+          {/* Where these changes are committed. A request that fails changes nothing here. */}
+          <Button onClick={() => void rpcClient.request("scm.show", null).catch(() => {})}>
+            {window.l10n.openSourceControl}
+          </Button>
+        </span>
       </div>
       <div
         ref={list}
