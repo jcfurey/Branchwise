@@ -219,6 +219,7 @@ export function getWebviewLocalizedStrings() {
     shortcutKeysColumn: vscode.l10n.t("Keys"),
     shortcutActionColumn: vscode.l10n.t("Action"),
     shortcutMove: vscode.l10n.t("Move to the previous or next commit"),
+    shortcutPage: vscode.l10n.t("Move up or down by a screenful of commits"),
     shortcutFirstLast: vscode.l10n.t("Move to the first or last loaded commit"),
     shortcutExtendSelection: vscode.l10n.t("Move and add the commits passed to the selection"),
     shortcutSelect: vscode.l10n.t("Select or deselect the commit; with Shift, select a range"),

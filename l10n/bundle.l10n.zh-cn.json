@@ -193,6 +193,7 @@
   "Keys": "按键",
   "Action": "操作",
   "Move to the previous or next commit": "移到上一个或下一个提交",
+  "Move up or down by a screenful of commits": "向上或向下移动一屏提交",
   "Move to the first or last loaded commit": "移到已加载的第一个或最后一个提交",
   "Move and add the commits passed to the selection": "移动并将经过的提交加入选择",
   "Select or deselect the commit; with Shift, select a range": "选择或取消选择提交；按住 Shift 可选择一个范围",

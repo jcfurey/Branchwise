@@ -18,6 +18,7 @@ import {
   selectedRepo,
   uncommittedChanges
 } from "@/webview/lib/stores";
+import { rowHeight } from "@/webview/lib/webview-config";
 import type { FocusDimming } from "@/webview/types";
 
 import {
@@ -332,6 +333,104 @@ describe("keyboard", () => {
       expect([selection(), focused(), focusedCommit.value]).toEqual([selected, landed, landed]);
     }
     expect(chosen).toEqual([]);
+  });
+
+  it("moves by a screenful with Page Up and Page Down, less the row it leaves in sight", () => {
+    // Forty commits in a window that shows ten rows of them.
+    const many = Array.from({ length: 40 }, (_, index) =>
+      entry(`r${index}`, index === 39 ? [] : [`r${index + 1}`])
+    );
+    const scroller = document.createElement("div");
+    scroller.dataset["graphScroller"] = "";
+    scroller.getBoundingClientRect = () =>
+      ({ top: 100, bottom: 100 + rowHeight() * 10 }) as DOMRect;
+    host.append(scroller);
+    act(() =>
+      render(
+        h(
+          "table",
+          null,
+          h(
+            "tbody",
+            null,
+            many.map((commit, index) =>
+              h(CommitRow, {
+                key: commit.hash,
+                commit,
+                rows: many,
+                tabStop: index === 0,
+                isHead: index === 0,
+                headBranch: "main",
+                messages: new Map(),
+                colour: undefined,
+                expanded: false,
+                onSelect: undefined
+              })
+            )
+          )
+        ),
+        scroller
+      )
+    );
+    const at = (index: number) => row(`r${index}`);
+    const steps: Array<[number, string, KeyboardEventInit, number, number]> = [
+      // From, key, modifiers, where it lands, how many commits are then selected.
+      [0, "PageDown", {}, 9, 1],
+      [9, "PageDown", {}, 18, 1],
+      [18, "PageDown", { shiftKey: true }, 27, 10],
+      [27, "PageDown", {}, 36, 1],
+      [36, "PageDown", {}, 39, 1],
+      [39, "PageDown", {}, 39, 1],
+      [39, "PageUp", {}, 30, 1],
+      [3, "PageUp", {}, 0, 1]
+    ];
+    for (const [from, key, init, landed, selected] of steps) {
+      act(() => at(from).focus());
+      expect(press(at(from), key, init)).toBe(true);
+      expect([focused(), selectedCommits.value.length]).toEqual([`r${landed}`, selected]);
+    }
+  });
+
+  it("turns the page with a Page key, unless the row it leaves was out of sight", () => {
+    drawTable();
+    // Rows 24 pixels apart, the first of them `offset` pixels down the window.
+    let offset = 100;
+    const place = vi
+      .spyOn(HTMLTableRowElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLTableRowElement) {
+        const index = ROWS.findIndex((commit) => commit.hash === this.dataset["commitHash"]);
+        return { top: offset + index * 24, bottom: offset + index * 24 + 24 } as DOMRect;
+      });
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    try {
+      // From the uncommitted row to the last of the four, three rows further down: the page
+      // scrolls that far, and the browser is told to leave the scrolling alone.
+      act(() => row("*").focus());
+      focus.mockClear();
+      expect(press(row("*"), "PageDown")).toBe(true);
+      expect(focused()).toBe("c");
+      expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
+      expect(scrollTo.mock.calls).toEqual([[0, window.scrollY + 3 * 24]]);
+
+      // The row was scrolled away with the wheel: the browser brings the next one into view.
+      offset = -2000;
+      scrollTo.mockClear();
+      expect(press(row("c"), "PageUp")).toBe(true);
+      expect(focused()).toBe("*");
+      expect(focus).toHaveBeenLastCalledWith();
+      expect(scrollTo).not.toHaveBeenCalled();
+
+      // An arrow key leaves the scrolling to the browser wherever the row is.
+      offset = 100;
+      expect(press(row("*"), "ArrowDown")).toBe(true);
+      expect(focus).toHaveBeenLastCalledWith();
+      expect(scrollTo).not.toHaveBeenCalled();
+    } finally {
+      place.mockRestore();
+      scrollTo.mockRestore();
+      focus.mockRestore();
+    }
   });
 
   it("keeps the selection when Shift+arrow lands on the uncommitted row", () => {

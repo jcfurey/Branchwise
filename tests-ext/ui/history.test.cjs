@@ -109,7 +109,10 @@ async function keypress(key, modifiers = 0) {
     ArrowRight: 39,
     ArrowDown: 40,
     Home: 36,
-    End: 35
+    End: 35,
+    PageUp: 33,
+    PageDown: 34,
+    Escape: 27
   };
   for (const type of ["keyDown", "keyUp"]) {
     await connections[0].call("Input.dispatchKeyEvent", {
@@ -3039,6 +3042,73 @@ suite("Branchwise workflow UI", function () {
     await keypress("Y", 8);
     await until(async () => (await vscode.env.clipboard.readText()) === target, "full ID copied");
     assert.equal(git(["rev-parse", "HEAD"], dir), git(["rev-parse", "main"], dir));
+  });
+
+  test("moves through the rows a screenful at a time with Page Down and Page Up", async () => {
+    const dir = directory();
+    init(dir);
+    // Two hundred commits from one Git process.
+    const count = 200;
+    const stream = Array.from({ length: count }, (_, index) =>
+      [
+        "commit refs/heads/main",
+        `committer UI Test <ui@test> ${1700000000 + index * 60} +0000`,
+        `data ${`page ${index}`.length}`,
+        `page ${index}`,
+        "M 100644 inline f",
+        `data ${String(index).length}`,
+        String(index),
+        ""
+      ].join("\n")
+    ).join("\n");
+    cp.execFileSync("git", ["fast-import", "--quiet"], { cwd: dir, input: stream });
+    git(["reset", "-q", "--hard"], dir);
+    await openRepo(dir);
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelectorAll("tbody tr[data-commit-hash]").length >= ${count}`
+        ),
+      "every row"
+    );
+    // Where the keyboard is among the rows, and how far down the window its row is.
+    const where = () =>
+      graph.evaluate(`(() => {
+        const rows = [...document.querySelectorAll("tbody tr[data-commit-hash]")];
+        return {
+          index: rows.indexOf(document.activeElement),
+          top: Math.round(document.activeElement.getBoundingClientRect().top)
+        };
+      })()`);
+    await graph.evaluate('document.querySelector("tbody tr[data-commit-hash]").focus()');
+    const start = await where();
+    // The page turns with the keyboard: the row landed on comes to rest where the row left
+    // was, so the rows between were all in sight. The browser alone would bring it to the
+    // middle of the window, and pass the rows before it unseen.
+    const turn = async (key, to) => {
+      await keypress(key);
+      await until(async () => {
+        const now = await where();
+        return now.index === to && Math.abs(now.top - start.top) <= 1;
+      }, `${key} to row ${to}, where the row before it was`);
+    };
+    await keypress("PageDown");
+    await until(async () => (await where()).index > 0, "Page Down moves");
+    const page = (await where()).index;
+    assert.ok(page >= 5 && page < 90, `a screenful of ${page} rows`);
+    await turn("PageDown", 2 * page);
+    await turn("PageDown", 3 * page);
+    await turn("PageUp", 2 * page);
+    // The ends stop it, and a screenful from the last row is counted from there.
+    await keypress("End");
+    await until(async () => (await where()).index === count - 1, "last row");
+    await keypress("PageUp");
+    await until(async () => (await where()).index === count - 1 - page, "a screenful up");
+    await keypress("Home");
+    await until(async () => (await where()).index === 0, "first row");
+    await keypress("PageUp");
+    await delay(200);
+    assert.equal((await where()).index, 0);
   });
 
   test("marks a signed commit and checks its signature when its details open", async function () {

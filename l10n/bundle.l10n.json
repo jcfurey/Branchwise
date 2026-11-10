@@ -269,6 +269,7 @@
   "Keys": "Keys",
   "Action": "Action",
   "Move to the previous or next commit": "Move to the previous or next commit",
+  "Move up or down by a screenful of commits": "Move up or down by a screenful of commits",
   "Move to the first or last loaded commit": "Move to the first or last loaded commit",
   "Move and add the commits passed to the selection": "Move and add the commits passed to the selection",
   "Select or deselect the commit; with Shift, select a range": "Select or deselect the commit; with Shift, select a range",

@@ -386,7 +386,7 @@ Ctrl/Cmd-click selects individual commits; Shift-click selects a range. Select u
 
 ## Keyboard navigation and activity
 
-Arrow keys move between commit rows; Home/End move to the first/last loaded row. Enter opens details, Space selects, and Shift+F10 opens actions. Ctrl/Cmd+F or `/` opens and focuses history search when no dialog is active, and Ctrl+Alt+G (Cmd+Alt+G on macOS) opens **Go to Branch, Tag or Commit…**. Repository switches preserve filters and scroll position.
+Arrow keys move between commit rows, Page Up and Page Down by a screenful, turning the page as they go, and Home/End to the first/last loaded row. Enter opens details, Space selects, and Shift+F10 opens actions. Ctrl/Cmd+F or `/` opens and focuses history search when no dialog is active, and Ctrl+Alt+G (Cmd+Alt+G on macOS) opens **Go to Branch, Tag or Commit…**. Repository switches preserve filters and scroll position.
 
 Single keys act on the commit row that has focus, without opening its menu. Each one opens the same dialog or confirmation as the matching menu entry, so nothing changes until you confirm:
 

@@ -31,7 +31,9 @@ import {
   selectCommitRows,
   selectedCommits
 } from "@/webview/lib/navigation";
+import { pageScrollTop, pageViewport, scrollPageTo } from "@/webview/lib/page-scroll";
 import { activeSource, contextMenu, shownColumns, uncommittedChanges } from "@/webview/lib/stores";
+import { rowHeight } from "@/webview/lib/webview-config";
 import { type WorktreeMarker, worktreeMarkers } from "@/webview/lib/worktrees";
 import { getCommitDate } from "@/webview/utils/date";
 import { format } from "@/webview/utils/format";
@@ -95,15 +97,31 @@ const MENU_INSET = 80;
 
 /**
  * Keys that move to another row, and where each one lands from row `at`, clamped to the rows
- * there are. A row missing from the list counts as sitting just above the first.
+ * there are. A row missing from the list counts as sitting just above the first. `page` is how
+ * many rows the Page keys move by.
  */
-type Move = (at: number, last: number) => number;
+type Move = (at: number, last: number, page: number) => number;
 const MOVES = new Map<string, Move>([
   ["ArrowUp", (at) => Math.max(at - 1, 0)],
   ["ArrowDown", (at, last) => Math.min(at + 1, last)],
+  ["PageUp", (at, _last, page) => Math.max(at - page, 0)],
+  ["PageDown", (at, last, page) => Math.min(at + page, last)],
   ["Home", () => 0],
   ["End", (_at, last) => last]
 ]);
+
+/**
+ * How many rows a Page key moves by from `row`: as many as show at once under the table's
+ * heading, less one, so that the last row of one screen is the first of the next.
+ */
+function pageOf(row: HTMLTableRowElement): number {
+  const { top, bottom } = pageViewport();
+  const heading = row.closest("table")?.querySelector("thead")?.offsetHeight ?? 0;
+  // By the height every row is given, not this row's own, which a label can make a pixel
+  // taller: the same key then moves as far from any row.
+  const fit = Math.floor((bottom - top - heading) / rowHeight());
+  return Math.max(1, fit - 1);
+}
 
 /** Labels in the order they arrive, except that the checked-out branch leads. */
 function orderRefs(refs: Array<GitRef>, headBranch: string | null) {
@@ -381,7 +399,7 @@ export function CommitRow({
 
   function move(event: KeyboardEvent, row: HTMLTableRowElement, to: Move) {
     const at = rows.findIndex((entry) => entry.hash === hash);
-    const target = rows[to(at, rows.length - 1)];
+    const target = rows[to(at, rows.length - 1, pageOf(row))];
     if (target === undefined) {
       return;
     }
@@ -391,11 +409,28 @@ export function CommitRow({
     } else if (!event.shiftKey) {
       selectedCommits.value = [];
     }
-    // Without `preventScroll`: the browser scrolls the row clear of the sticky headings.
-    row
+    const landing = row
       .closest("table")
-      ?.querySelector<HTMLElement>(`tr[data-commit-hash=${JSON.stringify(target.hash)}]`)
-      ?.focus();
+      ?.querySelector<HTMLElement>(`tr[data-commit-hash=${JSON.stringify(target.hash)}]`);
+    if (landing === undefined || landing === null) {
+      return;
+    }
+    // A Page key turns the page: the rows scroll as far as the keyboard moves, so the row it
+    // lands on is where the one it left was, and every row between has been in sight. Left to
+    // the browser, the row would be brought to the middle and those before it never shown. A
+    // row that was scrolled out of sight has no place to keep, and is left to the browser.
+    const from = row.getBoundingClientRect();
+    const sight = pageViewport();
+    const turns =
+      event.key.startsWith("Page") && from.bottom > sight.top && from.top < sight.bottom;
+    if (!turns) {
+      // Without `preventScroll`: the browser scrolls the row clear of the sticky headings.
+      landing.focus();
+      return;
+    }
+    const distance = landing.getBoundingClientRect().top - from.top;
+    landing.focus({ preventScroll: true });
+    scrollPageTo(pageScrollTop() + distance);
   }
 
   function onKeyDown(event: TargetedKeyboardEvent<HTMLTableRowElement>) {
