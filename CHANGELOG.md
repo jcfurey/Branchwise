@@ -20,6 +20,12 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - Changes to files that Git ignores, such as build output or a dependencies folder, no longer refresh the graph: nothing it shows depends on them. Up to 100 changed files are checked with one `git check-ignore`; with more, the graph refreshes as before. See [keeping up with the repository](docs/git-actions.md#keeping-up-with-the-repository).
 - When a repository appears or goes, as after a clone, the workspace is scanned once for everything that changed meanwhile, and the repositories opened from Source Control or File History are searched again only where the change is. Each of them used to be searched again every time, which with dozens of them took seconds.
 - The conflict forecast starts one Git process fewer for every branch it tries, and **Go to Branch, Tag or Commit…** no longer hands every branch and tag to VS Code again with each key pressed, which made typing lag in a repository with thousands of them.
+- The status strip offers **Pull Branch…** while the checked-out branch's upstream has commits to pull, and **Push Branch…** while the branch has commits to push or no upstream yet, beside the counts that call for them. See [remotes and tracking](docs/git-actions.md#remotes-and-tracking).
+- Page Up and Page Down move through the commits a screenful at a time and turn the page with the keyboard, so no row is passed unseen; Shift extends the selection. They used to scroll the page and leave the focused row behind.
+- A copy from a menu or with Y shows **Copied** for two seconds. Only a screen reader was told before.
+- The details of the uncommitted changes offer **Open Source Control**, where the changes are committed.
+- **Fetch All**, **Pull All** and **Push All** no longer read the graph shown again for every repository of the workspace, only when the action ran in the repository shown, one inside it or one around it.
+- A commit message that lists thousands of issue references, as a release commit can, opens at once. Each rule for links and styles searched the rest of the message again after every reference, which took seconds, and again on every refresh while the details were open.
 
 ### Fixed
 
@@ -70,6 +76,9 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - The graph's tab takes the icon chosen with `branchwise.tabIconColourTheme` as soon as the setting changes, instead of the next time the graph is opened.
 - The repository picker and the Workspace pane follow a repository that comes or goes with its folder. One whose folder was deleted, renamed or moved away stayed listed until VS Code was restarted, and one moved into the workspace, or on Linux cloned into it, never appeared. The Workspace pane also lists a new repository as soon as the picker does, instead of at the next refresh.
 - **Show Line's Commit in Graph** and **Show History of Selected Lines**, in an editor showing a staged or stashed version of a file, say that this version is in no commit, instead of that the file "is not in a Git repository".
+- **Edit Message…**, **Split Commit…** and the interactive rebase editor ask **Discard your changes?** before Escape, a click beside the dialog or **Close** throws away a message being written or a plan being arranged. See [editing one commit in place](docs/git-actions.md#editing-one-commit-in-place).
+- A plan that is refused, as an interactive rebase over merge commits is, shows its reason under the name of the action, instead of under "Unable to load repository details".
+- The Worktrees dialog no longer offers **Open in New Window** for the worktree the graph shows, which opened a second window on the same folder.
 
 ## [0.10.0] - 2026-10-09
 
