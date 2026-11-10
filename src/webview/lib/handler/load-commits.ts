@@ -3,6 +3,7 @@ import { batch } from "@preact/signals";
 import type { ResponseMessage } from "@/types";
 import { closeCommitDetails } from "@/webview/lib/actions";
 import { acceptGraphResponse } from "@/webview/lib/graph-requests";
+import { historyActive } from "@/webview/lib/navigation";
 import {
   commitHead,
   commitList,
@@ -38,8 +39,13 @@ export function handleLoadCommits(msg: CommitsAnswer): void {
     commitHead.value = msg.head;
     moreCommitsAvailable.value = msg.moreCommitsAvailable;
     uncommittedChanges.value = msg.uncommittedChanges;
-    // Details stay open only while their row is still in the graph.
-    if (expanded !== null && !commits.some((commit) => commit.hash === expanded)) {
+    // Details stay open only while their row is still in the graph. Search results are other
+    // rows, which the view itself checks against what it shows.
+    if (
+      expanded !== null &&
+      !historyActive.peek() &&
+      !commits.some((commit) => commit.hash === expanded)
+    ) {
       closeCommitDetails();
     }
   });
