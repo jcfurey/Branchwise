@@ -152,6 +152,8 @@ describe("the Edit Message dialog", () => {
     respond({ kind: "editPlan", plan: PLAN });
     act(() => render(h(Dialog, {}), container));
     expect(container.querySelector("textarea")!.value).toBe(PLAN.message);
+    // The keyboard starts in the message, not on the Close button under it.
+    expect(document.activeElement).toBe(container.querySelector("textarea"));
     expect(container.textContent).toContain("rewritesOneLater");
     expect(container.querySelector("[role=alert]")).toBeNull();
     // Nothing to save until the message changes, and an empty one is never sent.

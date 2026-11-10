@@ -67,17 +67,24 @@ export function PageControls({
   more: boolean;
   change: (offset: number) => void;
 }) {
+  // One page needs no way to another, and an empty one nothing at all: the list says so itself.
+  const only = offset === 0 && !more;
+  if (only && count === 0) {
+    return null;
+  }
   return (
     <div class="flex items-center justify-between gap-3 py-3 text-ui">
       <span class="text-muted">{count === 0 ? "0" : `${offset + 1}–${offset + count}`}</span>
-      <div class="flex gap-2">
-        <Button disabled={offset === 0} onClick={() => change(Math.max(0, offset - 100))}>
-          {window.l10n.previousPage}
-        </Button>
-        <Button disabled={!more} onClick={() => change(offset + 100)}>
-          {window.l10n.nextPage}
-        </Button>
-      </div>
+      {!only && (
+        <div class="flex gap-2">
+          <Button disabled={offset === 0} onClick={() => change(Math.max(0, offset - 100))}>
+            {window.l10n.previousPage}
+          </Button>
+          <Button disabled={!more} onClick={() => change(offset + 100)}>
+            {window.l10n.nextPage}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

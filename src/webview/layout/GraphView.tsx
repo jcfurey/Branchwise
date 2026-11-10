@@ -16,6 +16,7 @@ import { GraphSkeleton, Loading } from "@/webview/components/ui/Loading";
 import { Select } from "@/webview/components/ui/Select";
 import { BATCH_LIMIT } from "@/webview/constants";
 import {
+  closeCommitDetails,
   loadMoreCommits,
   refresh,
   selectBranch,
@@ -43,6 +44,7 @@ import {
   commitHead,
   commitList,
   displayedBranch,
+  expandedCommit,
   focusDimming,
   focusPaused,
   graphErrors,
@@ -117,6 +119,28 @@ function useScrollRestore(rows: Array<HistoryEntry> | undefined, repo: string | 
     });
     return () => cancelAnimationFrame(frame);
   }, [repo, rows]);
+}
+
+/**
+ * Open details and a selection belong to rows on screen. Forget the ones the rows no longer
+ * hold, as after a rebase gave the selected commits new IDs, before the stale state is painted.
+ */
+function useRowsOnly(rows: Array<HistoryEntry> | undefined) {
+  useLayoutEffect(() => {
+    if (rows === undefined) {
+      return;
+    }
+    const shown = new Set(rows.map((row) => row.hash));
+    const expanded = expandedCommit.peek();
+    if (expanded !== null && !shown.has(expanded)) {
+      closeCommitDetails();
+    }
+    const selected = selectedCommits.peek();
+    const kept = selected.filter((commit) => shown.has(commit.hash));
+    if (kept.length !== selected.length) {
+      selectedCommits.value = kept;
+    }
+  }, [rows]);
 }
 
 export function FocusBanner({
@@ -317,6 +341,7 @@ export function GraphView() {
   );
 
   useScrollRestore(rows, selectedRepo.value);
+  useRowsOnly(rows);
 
   if (inHistory && (history.error !== null || (history.loading && history.data === null))) {
     return (

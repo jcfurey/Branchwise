@@ -9,10 +9,11 @@ import { openContextMenu } from "@/webview/lib/actions";
 import { refPreviewTarget, usePreviewHandlers } from "@/webview/lib/branch-preview";
 import { DROP_TARGET_CLASS, refDragAttributes } from "@/webview/lib/drag-drop";
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
-import { repositoryState } from "@/webview/lib/repository-actions";
+import { checkedOutName, repositoryState } from "@/webview/lib/repository-actions";
 import { activeSource } from "@/webview/lib/stores";
 import { branchWorktree } from "@/webview/lib/worktrees";
 import { getRelativeDate } from "@/webview/utils/date";
+import { counted } from "@/webview/utils/format";
 
 /** What the repository state says about a local branch: its tracking and where it is checked out. */
 function localBranchFacts(gitRef: GitRef) {
@@ -45,14 +46,20 @@ export function lastCommitBy(entry: ConflictForecastEntry): string {
 export function ConflictBadge({ entry }: { entry: ConflictForecastEntry }) {
   const l10n = window.l10n;
   const { files } = entry;
-  const into = repositoryState.value?.head || "HEAD";
+  const into = checkedOutName();
   const summary = (entry.remote ? l10n.teamConflictForecast : l10n.conflictForecast).replace(
     "{0}",
     () => into
   );
   const lines = [summary, ...files.slice(0, CONFLICTS_LISTED)];
   if (files.length > CONFLICTS_LISTED) {
-    lines.push(l10n.conflictForecastMore.replace("{0}", String(files.length - CONFLICTS_LISTED)));
+    lines.push(
+      counted(
+        files.length - CONFLICTS_LISTED,
+        l10n.conflictForecastMoreOne,
+        l10n.conflictForecastMore
+      )
+    );
   }
   if (entry.remote) {
     lines.push(lastCommitBy(entry));

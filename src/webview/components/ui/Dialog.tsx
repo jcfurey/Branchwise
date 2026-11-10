@@ -29,8 +29,9 @@ const TABBABLE = 'a[href], button, input:not([type="hidden"]), select, textarea,
 /** Where a dialog without a safe button starts: its first text field or button. */
 const STARTERS = 'input[type="text"], button';
 
+/** Whether a control can be used: not disabled, and not part of an inert sample. */
 function enabled(element: Element) {
-  return !element.matches(":disabled");
+  return !element.matches(":disabled") && element.closest("[inert]") === null;
 }
 
 function tabbable(panel: HTMLElement) {
@@ -433,10 +434,11 @@ function Modal({ state }: { state: DialogState }) {
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
-  // Before the first paint, so a key the user is still holding repeats inside the dialog.
+  // Before the first paint, so a key the user is still holding repeats inside the dialog. A long
+  // dialog stays at its top: its starting point may be the Close button under everything else.
   useLayoutEffect(() => {
     if (panel.current !== null) {
-      startingPoint(panel.current).focus();
+      startingPoint(panel.current).focus({ preventScroll: true });
     }
   }, []);
 

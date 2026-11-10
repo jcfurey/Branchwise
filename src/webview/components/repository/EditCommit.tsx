@@ -85,7 +85,9 @@ export function RewordEditor({ plan, repo }: { plan: EditPlan; repo: string }) {
     >
       <p class="break-words">{format(window.l10n.editMessageIntro, <Target plan={plan} />)}</p>
       <Consequences plan={plan} />
+      {/* Where the dialog starts: the message is what it is opened to change. */}
       <textarea
+        data-dialog-start=""
         rows={8}
         class="w-full rounded bg-input p-2 font-mono text-input-fg outline-1 outline-line focus:outline-focus"
         aria-label={window.l10n.commitMessage}

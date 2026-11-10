@@ -99,3 +99,58 @@ it("fills the new fields of a saved filter that predates them", () => {
     regex: false
   });
 });
+
+it("chooses no saved filter in another repository, and leaves the open Filters open", async () => {
+  const stores = await import("@/webview/lib/stores");
+  const before = stores.selectedRepo.value;
+  const saved = [{ name: "Mine", filter: { ...navigation.emptyFilter(), text: "first" } }];
+  stores.selectedRepo.value = "/home/me/first";
+  navigation.savedFilters.value = saved;
+  container = document.createElement("div");
+  document.body.append(container);
+  act(() => render(h(SearchBar, {}), container));
+  const press = (name: string) => {
+    const found = [...container.querySelectorAll("button")].find(
+      (item) => item.textContent === name
+    );
+    expect(found, name).toBeDefined();
+    act(() => found!.click());
+  };
+  const choice = () =>
+    container.querySelector<HTMLSelectElement>('select[aria-label="savedFilters"]');
+  const offersDelete = () =>
+    [...container.querySelectorAll("button")].some(
+      (item) => item.textContent === "deleteSavedFilter"
+    );
+  try {
+    press("historyFilters");
+    act(() => {
+      choice()!.value = "Mine";
+      choice()!.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(choice()!.value).toBe("Mine");
+    expect(offersDelete()).toBe(true);
+
+    // The other repository has a filter of the same name; it is not the one that was chosen.
+    act(() => {
+      stores.selectedRepo.value = "/home/me/second";
+      navigation.savedFilters.value = [
+        { name: "Mine", filter: { ...navigation.emptyFilter(), text: "second" } }
+      ];
+    });
+    expect(choice(), "Filters stay open").not.toBeNull();
+    expect(choice()!.value).toBe("");
+    expect(offersDelete()).toBe(false);
+    expect(navigation.savedFilters.value).toHaveLength(1);
+
+    // Back in the first repository, its choice is still the one made there.
+    act(() => {
+      stores.selectedRepo.value = "/home/me/first";
+      navigation.savedFilters.value = saved;
+    });
+    expect(choice()!.value).toBe("Mine");
+  } finally {
+    stores.selectedRepo.value = before;
+    navigation.savedFilters.value = [];
+  }
+});

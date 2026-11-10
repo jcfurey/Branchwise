@@ -10,6 +10,7 @@ import { CommitHoverCard } from "@/webview/components/commit/CommitHoverCard";
 import { CommitRow, type PushState } from "@/webview/components/commit/CommitRow";
 import { DayPill } from "@/webview/components/commit/DayPill";
 import { OverviewStrip } from "@/webview/components/commit/OverviewStrip";
+import { useColumnFit } from "@/webview/components/commit/useColumnFit";
 import { type ColumnResize, useColumnResize } from "@/webview/components/commit/useColumnResize";
 import { useGraphScroll } from "@/webview/components/commit/useGraphScroll";
 import { WorkingTreeDetails } from "@/webview/components/commit/WorkingTreeDetails";
@@ -22,7 +23,7 @@ import {
 import { GRAPH_PADDING } from "@/webview/graph/constants";
 import { commitRelations, lineRelation } from "@/webview/graph/focus";
 import { computeGraphLayout } from "@/webview/graph/layout";
-import { nearestBranches } from "@/webview/graph/nearest";
+import { nearestBranches, repeatedNearest } from "@/webview/graph/nearest";
 import { branchColour } from "@/webview/graph/palette";
 import type { BranchRelation, GraphExpansion, GraphLine } from "@/webview/graph/types";
 import { graphWidth, laneX } from "@/webview/graph/utils";
@@ -271,11 +272,17 @@ export function CommitTable({
     () => (showNearestBranch ? nearestBranches(commits, headBranch, isBranchHidden) : NO_NEAREST),
     [commits, headBranch, showNearestBranch, hiddenMatcher]
   );
+  // A run of rows on one branch says so once, at its top.
+  const nearestAbove = useMemo(
+    () => repeatedNearest(commits, nearest, isBranchHidden),
+    [commits, nearest, hiddenMatcher]
+  );
 
   const contentWidth = graphWidth(layout) + GRAPH_PADDING;
   const resize = useColumnResize(Math.min(Math.max(contentWidth, NARROWEST_GRAPH), WIDEST_GRAPH));
   const { containerRef, headRef, resizing } = resize;
   const scroll = useGraphScroll(containerRef, headRef, contentWidth);
+  useColumnFit(containerRef, headRef);
   // Written by the table's handlers and read by the graph alone, so hovering redraws only dots.
   const hovered = useSignal<string | null>(null);
   // Read here, so that a new density or column choice redraws the open graph at once.
@@ -547,6 +554,7 @@ export function CommitTable({
                     : undefined
                 }
                 nearestBranch={nearest.get(commit.hash)}
+                nearestAbove={nearestAbove.has(commit.hash)}
                 push={pushOf.get(commit.hash)}
                 conflicts={conflictsOf}
                 applied={appliedOf.get(commit.hash)}

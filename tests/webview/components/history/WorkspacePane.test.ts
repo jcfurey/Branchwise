@@ -27,14 +27,21 @@ const ENGLISH: Partial<Record<keyof LocalizedStrings, string>> = {
   workspaceBehind: "{0} behind",
   workspaceConflicted: "{0} conflicted",
   workspaceWithChanges: "{0} with changes",
-  conflictedFiles: "{0} conflicted files",
+  conflictedFileCount: "{0} conflicted files",
+  conflictedFileCountOne: "1 conflicted file",
+  dirtyFiles: "{0} changed files",
+  dirtyFile: "1 changed file",
   operationInProgress: "{0} in progress",
   mergeOperation: "Merge",
   stashCount: "{0} stashes",
+  stashCountOne: "1 stash",
   otherBranchesAhead: "{0} other branches ahead",
+  otherBranchAhead: "1 other branch ahead",
   fetchedAgo: "fetched {0}",
   fastForwardBehind: "{0} → {1}, {2} new commits",
+  fastForwardBehindOne: "{0} → {1}, 1 new commit",
   bulkPushStep: "{0} → {1}, {2} commits",
+  bulkPushStepOne: "{0} → {1}, 1 commit",
   bulkSkipBranch: "Skip {0}: {1}",
   bulkSkipRepository: "Skip: {0}",
   bulkSkipUncommitted: "uncommitted changes",
@@ -45,8 +52,11 @@ const ENGLISH: Partial<Record<keyof LocalizedStrings, string>> = {
   bulkSkipUninitialized: "not initialized",
   bulkSkipNoRemote: "no remote",
   fastForwardRun: "Fast-forward {0} Branches",
+  fastForwardRunOne: "Fast-forward 1 Branch",
   bulkRunPush: "Push {0} Branches",
+  bulkRunPushOne: "Push 1 Branch",
   bulkRunFetch: "Fetch {0} Repositories",
+  bulkRunFetchOne: "Fetch 1 Repository",
   bulkSummary: "{0} completed · {1} skipped · {2} failed"
 };
 const keyNames = window.l10n;
@@ -270,6 +280,26 @@ describe("the attention badges", () => {
     expect(rowOf("/ws/detached").querySelector("p svg")).not.toBeNull();
     expect(rowOf("/ws/app").querySelector("p svg")).toBeNull();
   });
+
+  it("count one of a thing in the singular", () => {
+    show([
+      repo("/ws/one", {
+        dirty: 1,
+        conflicts: 1,
+        operation: "merge",
+        stashes: 1,
+        aheadBranches: 1
+      }),
+      repo("/ws/none")
+    ]);
+    const one = rowOf("/ws/one").textContent;
+    expect(one).toContain("1 changed file");
+    expect(one).toContain("1 conflicted file");
+    expect(one).toContain("1 stash");
+    expect(one).toContain("1 other branch ahead");
+    expect(one).not.toMatch(/1 (changed|conflicted) files|1 stashes|1 other branches/);
+    expect(rowOf("/ws/none").textContent).toContain("0 changed files");
+  });
 });
 
 describe("bulk actions", () => {
@@ -322,7 +352,7 @@ describe("bulk actions", () => {
     expect(dialogText()).toContain("Skip: not initialized");
     expect(dialogText()).toContain("Skip: no remote");
 
-    click("Fast-forward 1 Branches");
+    click("Fast-forward 1 Branch");
     expect(actions().map((request) => [request.repo, request.action])).toStrictEqual([
       [
         "/ws/app/lib",
@@ -372,7 +402,7 @@ describe("bulk actions", () => {
     expect(listed()).toStrictEqual([
       ["/ws/app", ["Skip main: uncommitted changes"]],
       ["/ws/fork", ["Skip main: diverged"]],
-      ["/ws/lib", ["main → origin/main, 1 new commits"]],
+      ["/ws/lib", ["main → origin/main, 1 new commit"]],
       ["/ws/svc", ["dev → origin/dev, 3 new commits"]],
       ["/ws/fresh", ["Skip: not initialized"]],
       ["/ws/offline", ["Skip: no remote"]]

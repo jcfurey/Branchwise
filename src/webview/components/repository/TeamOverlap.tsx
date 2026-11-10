@@ -2,7 +2,8 @@ import type { ConflictForecastEntry } from "@/backend/types";
 import { CONFLICTS_LISTED, lastCommitBy } from "@/webview/components/commit/RefLabel";
 import { ConflictIcon, RemoteIcon } from "@/webview/components/ui/Icons";
 import { closeDialog, focusBranchInGraph, openContentDialog } from "@/webview/lib/actions";
-import { repositoryState } from "@/webview/lib/repository-actions";
+import { checkedOutName } from "@/webview/lib/repository-actions";
+import { counted } from "@/webview/utils/format";
 
 const LINK_CLASS =
   "cursor-pointer rounded px-1 text-link hover:underline focus:outline-1 focus:outline-focus";
@@ -41,7 +42,8 @@ function TeamOverlapList({ entries }: { entries: ReadonlyArray<ConflictForecastE
                 <span class="block text-xs text-muted">{lastCommitBy(entry)}</span>
                 <span class="block text-xs break-all">
                   {entry.files.slice(0, CONFLICTS_LISTED).join(", ")}
-                  {more > 0 && ` ${l10n.conflictForecastMore.replace("{0}", String(more))}`}
+                  {more > 0 &&
+                    ` ${counted(more, l10n.conflictForecastMoreOne, l10n.conflictForecastMore)}`}
                 </span>
               </button>
             </li>
@@ -53,7 +55,7 @@ function TeamOverlapList({ entries }: { entries: ReadonlyArray<ConflictForecastE
 }
 
 function openTeamOverlap(entries: ReadonlyArray<ConflictForecastEntry>) {
-  const into = repositoryState.value?.head || "HEAD";
+  const into = checkedOutName();
   // A function replacement inserts the name as written, even when it contains `$`.
   const title = window.l10n.teamOverlapTitle.replace("{0}", () => into);
   openContentDialog(title, <TeamOverlapList entries={entries} />);

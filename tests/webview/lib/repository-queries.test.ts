@@ -93,12 +93,41 @@ describe("the repository state", () => {
     expect(repositoryStateError.value).toBeNull();
   });
 
-  it("replaces a shown state with the failure", () => {
+  it("keeps a shown state under the failure of a later read", () => {
     repositoryState.value = loaded;
+    requestRepositoryState();
+    reply(newest(), null, "index.lock exists");
+    // One passing failure must not empty the Branches pane.
+    expect(repositoryState.value).toBe(loaded);
+    expect(repositoryStateError.value).toBe("index.lock exists");
+  });
+
+  it("has nothing to keep when the first read of a repository fails", () => {
     requestRepositoryState();
     reply(newest(), null, "not a repository");
     expect(repositoryState.value).toBeNull();
     expect(repositoryStateError.value).toBe("not a repository");
+  });
+
+  it("keeps the very object when a reload brings the same state", () => {
+    repositoryState.value = loaded;
+    let runs = 0;
+    const stop = effect(() => {
+      void repositoryState.value;
+      runs += 1;
+    });
+    requestRepositoryState();
+    // The same data, as a new object with its keys in another order.
+    reply(newest(), stateOf(Object.fromEntries(Object.entries(loaded).toReversed()) as never));
+    expect(repositoryState.value).toBe(loaded);
+    expect(runs).toBe(1);
+
+    requestRepositoryState();
+    const changed = { ...loaded, staged: loaded.staged + 1 };
+    reply(newest(), stateOf(changed));
+    expect(repositoryState.value).toEqual(changed);
+    expect(runs).toBe(2);
+    stop();
   });
 
   it("keeps the shown state on screen until the reload answers", () => {
@@ -190,7 +219,7 @@ describe("the repository state", () => {
     stop();
     expect(seen).toEqual([
       [loaded, null],
-      [null, "gone"],
+      [loaded, "gone"],
       [loaded, null]
     ]);
   });

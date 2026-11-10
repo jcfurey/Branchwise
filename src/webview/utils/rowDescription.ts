@@ -1,6 +1,6 @@
 import type { ConflictForecastEntry, GitRef, HistoryEntry } from "@/backend/types";
 import { UNCOMMITTED_CHANGES } from "@/webview/constants";
-import { repositoryState } from "@/webview/lib/repository-actions";
+import { checkedOutName } from "@/webview/lib/repository-actions";
 import { getRelativeDate } from "@/webview/utils/date";
 
 /** What a commit row shows, as far as its spoken summary needs it. */
@@ -127,7 +127,7 @@ export function commitRowLabel({
     parents: parentCount(commit.parentHashes),
     isHead,
     push,
-    conflictsWith: conflicting ? repositoryState.value?.head || "HEAD" : null,
+    conflictsWith: conflicting ? checkedOutName() : null,
     appliedIn: applied ? headBranch || "HEAD" : null,
     refs,
     nearest

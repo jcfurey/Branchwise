@@ -359,7 +359,52 @@ describe("keyboard", () => {
   });
 });
 
+describe("inert samples in a dialog", () => {
+  // The Legend draws its samples with the graph's own components, buttons included, in an
+  // inert wrapper. A browser refuses to focus those, which would leave the keyboard outside.
+  const legend = () =>
+    act(() =>
+      openContentDialog(
+        "Legend",
+        h("div", { inert: true }, h("button", { type: "button" }, "sample"))
+      )
+    );
+
+  it("are passed over for the dialog's first focus", () => {
+    legend();
+    expect(document.activeElement).toBe(button("close"));
+  });
+
+  it("are left out of the round the Tab key makes", () => {
+    legend();
+    const close = button("close")!;
+    for (const shiftKey of [false, true]) {
+      act(() => close.focus());
+      const event = new KeyboardEvent("keydown", {
+        key: "Tab",
+        shiftKey,
+        bubbles: true,
+        cancelable: true
+      });
+      act(() => {
+        close.dispatchEvent(event);
+      });
+      // Close is the only control, so Tab stays on it either way.
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(close);
+    }
+  });
+});
+
 describe("initial focus", () => {
+  it("leaves a long dialog at its top when the starting point is the button at its end", () => {
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    act(() => openContentDialog("Shortcuts", h("p", null, "many lines")));
+    // jsdom scrolls nothing, so the request not to scroll is what there is to see.
+    expect(focus.mock.contexts.at(-1)).toBe(button("close"));
+    expect(focus.mock.calls.at(-1)).toStrictEqual([{ preventScroll: true }]);
+  });
+
   it.each<[string, () => void, () => Element | undefined]>([
     [
       "a text area form on its submit button",

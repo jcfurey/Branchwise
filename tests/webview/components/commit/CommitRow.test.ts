@@ -6,7 +6,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { GitCommitNode, GitRef } from "@/backend/types";
 import { CommitRow, type PushState, shownRefs } from "@/webview/components/commit/CommitRow";
 import { conflictsByBranch } from "@/webview/lib/conflict-forecast";
-import { contextMenu } from "@/webview/lib/stores";
+import { repositoryState } from "@/webview/lib/repository-actions";
+import { contextMenu, headBranch as checkedOutBranch } from "@/webview/lib/stores";
 
 import { setupWebviewTest } from "@tests/webview/test-utils";
 
@@ -246,6 +247,25 @@ describe("the conflict forecast", () => {
       "ui.ts",
       "Last commit by Alice, 2 days ago"
     ]);
+  });
+
+  it("names the checked-out branch as soon as the graph knows it, before the repository state is read", () => {
+    const refs: Array<GitRef> = [{ type: "remote", name: "origin/alice/payments", hash: HASH }];
+    withStrings({ teamConflictForecast: "Would conflict with your branch {0} in:" });
+    // The branch list comes with the graph; the repository state is read apart and may follow.
+    expect(repositoryState.value).toBeNull();
+    checkedOutBranch.value = "main";
+    try {
+      drawWith(
+        commitWith("Payments", refs),
+        forecastOf(conflictOf("origin/alice/payments", ["api.ts"], true))
+      );
+      const badge = body.querySelector<HTMLElement>("[data-conflicts]")!;
+      expect(badge.getAttribute("aria-label")).toBe("Would conflict with your branch main in:");
+      expect(body.querySelector("tr")!.getAttribute("aria-label")).not.toContain("HEAD");
+    } finally {
+      checkedOutBranch.value = null;
+    }
   });
 });
 

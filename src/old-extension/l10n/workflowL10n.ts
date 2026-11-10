@@ -57,6 +57,7 @@ export function getWorkflowLocalizedStrings() {
     ),
     bulkFetchStep: vscode.l10n.t("Fetch every remote"),
     bulkPushStep: vscode.l10n.t("{0} → {1}, {2} commits"),
+    bulkPushStepOne: vscode.l10n.t("{0} → {1}, 1 commit"),
     bulkSkipBranch: vscode.l10n.t("Skip {0}: {1}"),
     bulkSkipRepository: vscode.l10n.t("Skip: {0}"),
     bulkSkipOperation: vscode.l10n.t("an operation is in progress"),
@@ -72,7 +73,9 @@ export function getWorkflowLocalizedStrings() {
     bulkSkipUnreadable: vscode.l10n.t("it could not be read"),
     bulkNothingToDo: vscode.l10n.t("Nothing to do in the listed repositories."),
     bulkRunFetch: vscode.l10n.t("Fetch {0} Repositories"),
+    bulkRunFetchOne: vscode.l10n.t("Fetch 1 Repository"),
     bulkRunPush: vscode.l10n.t("Push {0} Branches"),
+    bulkRunPushOne: vscode.l10n.t("Push 1 Branch"),
     bulkSkipped: vscode.l10n.t("Skipped"),
     bulkSummary: vscode.l10n.t("{0} completed · {1} skipped · {2} failed"),
     reviewUpdate: vscode.l10n.t("Review Update"),
@@ -91,12 +94,15 @@ export function getWorkflowLocalizedStrings() {
       "No branch can move: each one with an upstream is up to date or has commits of its own."
     ),
     fastForwardBehind: vscode.l10n.t("{0} → {1}, {2} new commits"),
+    fastForwardBehindOne: vscode.l10n.t("{0} → {1}, 1 new commit"),
     fastForwardSkipped: vscode.l10n.t("Not moved"),
     fastForwardDiverged: vscode.l10n.t("{0} has commits of its own; pull or rebase it instead"),
     fastForwardWorktree: vscode.l10n.t("{0} is checked out in another worktree"),
     fastForwardUncommitted: vscode.l10n.t("{0} is checked out here with uncommitted changes"),
     fastForwardRun: vscode.l10n.t("Fast-forward {0} Branches"),
+    fastForwardRunOne: vscode.l10n.t("Fast-forward 1 Branch"),
     fastForwardDone: vscode.l10n.t("Fast-forwarded {0} branches."),
+    fastForwardDoneOne: vscode.l10n.t("Fast-forwarded 1 branch."),
     bisectTitle: vscode.l10n.t("Find a Regression (Bisect)"),
     bisectHint: vscode.l10n.t(
       "Choose a known good and known bad commit. Git checks out candidates; test each one, then mark it good, bad, or untestable. Reset returns to your original checkout."
@@ -112,6 +118,7 @@ export function getWorkflowLocalizedStrings() {
     bisectReset: vscode.l10n.t("Reset Bisect"),
     bisectActive: vscode.l10n.t("Bisect in progress"),
     bisectRemaining: vscode.l10n.t("{0} candidate commits remain"),
+    bisectRemainingOne: vscode.l10n.t("1 candidate commit remains"),
     bisectFound: vscode.l10n.t("First bad commit"),
     bisectAmbiguous: vscode.l10n.t(
       "Skipped commits prevent identifying a single first bad commit. Reset and repeat with those commits testable."

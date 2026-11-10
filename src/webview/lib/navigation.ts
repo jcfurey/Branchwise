@@ -2,7 +2,7 @@ import { computed, signal } from "@preact/signals";
 
 import type { HistoryEntry, HistoryFilter } from "@/backend/types";
 import type { GraphPreferences, SidebarPane } from "@/types";
-import { pageScrollTop } from "@/webview/lib/page-scroll";
+import { pageScrollTop, scrollPageTo } from "@/webview/lib/page-scroll";
 import {
   branchDisplay,
   focusDimming,
@@ -173,12 +173,22 @@ export function savedFocusBranch(repo: string) {
 
 /** Show a view below the header, and remember it for the next time the panel opens. */
 export function showTab(tab: ViewTab) {
-  if (activeTab.value === tab) {
+  const from = activeTab.value;
+  if (from === tab) {
     return;
+  }
+  const repo = selectedRepo.value;
+  // The window's scroll position is the graph's: the other views are short pages of their own.
+  // Keep it on the way out, while the graph is still on screen, and go back to it on the way in.
+  if (from === "graph" && restoreScroll.value === null) {
+    leaveNavigation(repo);
   }
   activeTab.value = tab;
   saved.tab = tab;
   persist();
+  if (tab === "graph" && repo !== undefined) {
+    restoreScroll.value = saved.repos[repo]?.scroll ?? 0;
+  }
 }
 
 export function setHistoryFilter(filter: HistoryFilter) {
@@ -195,9 +205,17 @@ export function setHistoryFilter(filter: HistoryFilter) {
 }
 
 export function focusHistory(hash: string) {
-  setHistoryFilter({ ...emptyFilter(), revision: hash });
+  const filter = { ...emptyFilter(), revision: hash };
+  // Asking again for what is shown brings no new rows, which is when a pending scroll is done.
+  const shown =
+    historyOffset.value === 0 && JSON.stringify(historyFilter.value) === JSON.stringify(filter);
+  setHistoryFilter(filter);
   focusedCommit.value = hash;
-  restoreScroll.value = 0;
+  if (!shown) {
+    restoreScroll.value = 0;
+  } else if (restoreScroll.value === null) {
+    scrollPageTo(0);
+  }
 }
 
 export function saveHistoryFilter(name: string) {

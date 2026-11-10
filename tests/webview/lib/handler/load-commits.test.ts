@@ -107,6 +107,51 @@ describe("an accepted page", () => {
   });
 });
 
+describe("a reload that brings the rows already shown", () => {
+  /** How often anything that reads the rows would be redrawn while `run` runs. */
+  function redraws(run: () => void) {
+    let runs = -1;
+    const stop = effect(() => {
+      void stores.commitList.value;
+      runs += 1;
+    });
+    run();
+    stop();
+    return runs;
+  }
+
+  it("keeps the list itself, so nothing drawn from it is redrawn", () => {
+    handleLoadCommits(rowsFor(["c2", "c1"]));
+    const shown = stores.commitList.value;
+    expect(redraws(() => handleLoadCommits(rowsFor(["c2", "c1"])))).toBe(0);
+    expect(stores.commitList.value).toBe(shown);
+  });
+
+  it("keeps the objects of the rows that did not change", () => {
+    handleLoadCommits(rowsFor(["c2", "c1"]));
+    const [c2, c1] = stores.commitList.value!;
+    expect(redraws(() => handleLoadCommits(rowsFor(["c3", "c2", "c1"])))).toBe(1);
+    expect(stores.commitList.value!.map((row) => row.hash)).toEqual(["c3", "c2", "c1"]);
+    expect(stores.commitList.value![1]).toBe(c2);
+    expect(stores.commitList.value![2]).toBe(c1);
+  });
+
+  it("does not take the moment the uncommitted changes were read for a change", () => {
+    const first = rowsFor(["*", "c1"]);
+    handleLoadCommits(first);
+    const shown = stores.commitList.value;
+    const later = rowsFor(["*", "c1"]);
+    later.commits[0] = { ...later.commits[0]!, date: later.commits[0]!.date + 60 };
+    expect(redraws(() => handleLoadCommits(later))).toBe(0);
+    expect(stores.commitList.value).toBe(shown);
+
+    // A commit's own date is part of the commit.
+    const redated = rowsFor(["*", "c1"]);
+    redated.commits[1] = { ...redated.commits[1]!, date: redated.commits[1]!.date + 60 };
+    expect(redraws(() => handleLoadCommits(redated))).toBe(1);
+  });
+});
+
 describe("open details", () => {
   it("stay open while their row is on the page", () => {
     toggleCommitDetails("c2");

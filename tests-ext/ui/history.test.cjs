@@ -873,20 +873,37 @@ suite("Branchwise workflow UI", function () {
   test("previews a branch's history while the pointer rests on its label, and names nearest branches", async () => {
     const dir = directory();
     init(dir);
-    commit("base", "preview-base", dir);
-    const base = git(["rev-parse", "HEAD"], dir);
-    commit("main", "preview-main-older", dir);
-    const older = git(["rev-parse", "HEAD"], dir);
-    commit("main", "preview-main-tip", dir);
-    const tip = git(["rev-parse", "HEAD"], dir);
+    // Dated minutes apart, so that the rows come in one order whatever the clock does: main's
+    // tip, the topic's commit, then main's two older commits and the commit both started from.
+    const dated = (file, value, minutesAgo) => {
+      fs.writeFileSync(path.join(dir, file), value);
+      git(["add", "--", file], dir);
+      const date = new Date(Date.now() - minutesAgo * 60_000).toISOString();
+      cp.execFileSync("git", ["commit", "-m", value], {
+        cwd: dir,
+        stdio: "pipe",
+        env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }
+      });
+      return git(["rev-parse", "HEAD"], dir);
+    };
+    const base = dated("base", "preview-base", 50);
+    const oldest = dated("main", "preview-main-oldest", 40);
+    const older = dated("main", "preview-main-older", 30);
     git(["checkout", "-b", "preview-topic", base], dir);
-    commit("topic", "preview-topic-work", dir);
-    const work = git(["rev-parse", "HEAD"], dir);
+    const work = dated("topic", "preview-topic-work", 20);
     git(["checkout", "main"], dir);
+    const tip = dated("main", "preview-main-tip", 10);
     await openRepo(dir);
     await until(() => graph.evaluate(visible(work)), "preview fixture rows");
+    assert.deepEqual(
+      await graph.evaluate(
+        `[...document.querySelectorAll("tr[data-commit-hash]")].map((row) => row.dataset.commitHash)`
+      ),
+      [tip, work, older, oldest, base]
+    );
 
-    // Nearest branch: the unlabelled commit under main's tip names main.
+    // Nearest branch: an unlabelled commit of main names main where a row of another branch
+    // comes before it, and a run of main's rows names it once, at the top.
     const nearest = (hash) =>
       graph.evaluate(`(() => {
         const label = document.querySelector('tr[data-commit-hash="${hash}"] [data-nearest-branch]');
@@ -897,6 +914,7 @@ suite("Branchwise workflow UI", function () {
       "on main",
       "Nearest branch containing this commit: main"
     ]);
+    assert.equal(await nearest(oldest), null);
     assert.equal(await nearest(tip), null);
     assert.equal(await nearest(work), null);
 
@@ -1435,7 +1453,15 @@ suite("Branchwise workflow UI", function () {
       "a\nb\nc"
     );
     assert.equal(git(["rev-parse", "HEAD^{tree}"], dir), tree);
-    await button("Clear Selection");
+    // The selected commits are gone from the graph, and the selection goes with them: nothing
+    // is left to clear, and nothing offers to cherry-pick IDs that no longer exist.
+    await until(
+      () =>
+        graph.evaluate(
+          `document.querySelector("main").innerText.includes("Squashed in the UI") && ![...document.querySelectorAll("button")].some((item) => item.textContent.trim() === "Clear Selection")`
+        ),
+      "the selection gone with its commits"
+    );
   });
 
   test("searches past the loaded graph and keeps saved filters per repository", async () => {
@@ -4078,12 +4104,12 @@ suite("Branchwise workflow UI", function () {
       await until(
         () =>
           graph.evaluate(
-            `(() => { const text = document.querySelector("[role=dialog]")?.innerText ?? ""; return text.includes("main → origin/main, 1 new commits") && text.includes("Skip main: uncommitted changes") && text.includes("Skip main: already up to date"); })()`
+            `(() => { const text = document.querySelector("[role=dialog]")?.innerText ?? ""; return text.includes("main → origin/main, 1 new commit") && !text.includes("1 new commits") && text.includes("Skip main: uncommitted changes") && text.includes("Skip main: already up to date"); })()`
           ),
         "pull confirmation"
       );
       assert.equal(git(["rev-parse", "HEAD"], repos.behind), heads.behind);
-      await button("Fast-forward 1 Branches");
+      await button("Fast-forward 1 Branch");
       await until(
         () =>
           graph.evaluate(
@@ -5724,6 +5750,98 @@ suite("Branchwise workflow UI", function () {
       `${local}.querySelector('button[aria-label="Sort by most recent commit"]').click()`
     );
     await until(async () => (await order()) === "aged,clash,done,main", "back to names");
+  });
+
+  test("keeps the graph inside the window and its message readable as the window narrows", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "fit-base", dir);
+    git(["checkout", "-b", "fit-side"], dir);
+    commit("side", "fit-side", dir);
+    git(["checkout", "main"], dir);
+    commit("main", "fit-main", dir);
+    git(["merge", "--no-ff", "fit-side", "-m", "fit-merge"], dir);
+    await openRepo(dir);
+    const page = connections[0];
+    const size = (width, height = 800) =>
+      page.call("Emulation.setDeviceMetricsOverride", {
+        width,
+        height,
+        deviceScaleFactor: 1,
+        mobile: false
+      });
+    /** The table's headings and the message's width, and whether the page scrolls sideways. */
+    const layout = () =>
+      graph.evaluate(`(() => {
+        const heads = [...document.querySelectorAll("main thead th")];
+        const root = document.documentElement;
+        return {
+          width: innerWidth,
+          heads: heads.map((head) => head.textContent.trim()),
+          message: Math.round(heads[1]?.getBoundingClientRect().width ?? 0),
+          sideways: root.scrollWidth - root.clientWidth
+        };
+      })()`);
+    let seen;
+    const settles = (label, ready) =>
+      until(async () => {
+        seen = await layout();
+        return ready(seen);
+      }, label).catch((error) => {
+        throw new Error(`${error.message} ${JSON.stringify(seen)}`);
+      });
+    try {
+      await size(1280);
+      if (!(await graph.evaluate(`!!document.querySelector('nav[aria-label="Branches"]')`))) {
+        await button("Branches", 'document.querySelector("header")');
+      }
+      await settles(
+        "every column in a wide window",
+        (now) => now.width <= 1280 && now.heads.length === 5 && now.sideways <= 0
+      );
+
+      // A merge's details hold a line with both parents' IDs, wider than the table beside the
+      // Branches pane. It used to widen the table, and the page then scrolled sideways.
+      const merge = `[...document.querySelectorAll("tr[data-commit-hash]")].find((row) => row.textContent.includes("fit-merge"))`;
+      await graph.evaluate(`${merge}.click()`);
+      await until(
+        () =>
+          graph.evaluate(
+            `(document.querySelector("[data-details-row]")?.innerText ?? "").includes("fit-merge")`
+          ),
+        "merge details"
+      );
+      assert.equal((await layout()).sideways <= 0, true, JSON.stringify(await layout()));
+      await graph.evaluate(`${merge}.click()`);
+      await until(() => graph.evaluate(`!document.querySelector("[data-details-row]")`), "closed");
+
+      // Narrower, columns give way so that the message keeps its room: the ID first.
+      for (const width of [900, 520, 420]) {
+        await size(width);
+        await settles(
+          `a readable message in a ${width} px window`,
+          (now) =>
+            now.width <= width &&
+            now.sideways <= 0 &&
+            now.heads[1] === "Message" &&
+            (now.message >= 200 || now.heads.length === 2)
+        );
+        // Half a window still has room for every column of this small graph; less has not.
+        if (width < 900) {
+          assert.equal(seen.heads.includes("ID"), false, JSON.stringify(seen));
+        }
+      }
+
+      // With room again, they all return.
+      await size(1280);
+      await settles(
+        "every column again",
+        (now) => now.width > 1000 && now.heads.length === 5 && now.sideways <= 0
+      );
+      assert.deepEqual(seen.heads.slice(2), ["Date", "Author", "ID"]);
+    } finally {
+      await size(1440, 1000);
+    }
   });
 
   test("keeps dropdowns and the sidebar inside narrow windows", async () => {

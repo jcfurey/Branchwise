@@ -16,10 +16,11 @@ import {
   openRunningDialog
 } from "@/webview/lib/actions";
 import { sendRemoteAction } from "@/webview/lib/remote-actions";
-import { dialog, selectedRepo } from "@/webview/lib/stores";
+import { dialog, headBranch, selectedRepo } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
 import { requestWorktreeChanges } from "@/webview/lib/worktrees";
 import type { DialogState } from "@/webview/types";
+import { sameData } from "@/webview/utils/sameData";
 
 // Every `repositoryQuery` the page makes starts and ends here. There are three kinds of read:
 // panel reads, owned by a component that disposes them; the one read of the repository state
@@ -171,6 +172,16 @@ export function requestPanelQuery(
   };
 }
 
+/**
+ * The checked-out branch's name for a sentence, or `HEAD` while it is detached. The repository
+ * state names it, but that is read apart from the graph and can arrive after the graph is
+ * drawn. Until it does, the branch list the graph was drawn from names the branch, so nothing
+ * in the graph says `HEAD` for a moment first.
+ */
+export function checkedOutName(): string {
+  return repositoryState.value?.head || headBranch.value || "HEAD";
+}
+
 /** Forget the loaded state, as when another repository is selected. */
 export function resetRepositoryState(): void {
   cancelStateRead();
@@ -229,9 +240,20 @@ function answerState(message: Answer) {
     return;
   }
   const { data, status } = message;
+  const state = data?.kind === "state" ? data.state : null;
   batch(() => {
     repositoryStateError.value = status;
-    repositoryState.value = data?.kind === "state" ? data.state : null;
+    const shown = repositoryState.peek();
+    if (state === null) {
+      // A read that failed leaves what was read before on show, under the error: one passing
+      // failure must not empty the Branches pane. A new repository starts from nothing anyway.
+      if (status === null) {
+        repositoryState.value = null;
+      }
+    } else if (shown === null || !sameData(shown, state)) {
+      // A refresh that changed nothing keeps the object, so nothing drawn from it is redrawn.
+      repositoryState.value = state;
+    }
   });
   // Changes in other worktrees are checked apart, so a slow folder never holds up the state.
   requestWorktreeChanges(repositoryState.peek());

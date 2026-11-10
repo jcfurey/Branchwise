@@ -120,7 +120,12 @@ export function DetailsRow({ children }: { children: ComponentChildren }) {
         colSpan={shownColumns.value.length - 1 + (getWebviewConfig().showChangesColumn ? 1 : 0)}
         class="relative bg-btn p-0 align-top text-ui leading-4.5 whitespace-normal after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-line"
       >
-        <div class="overflow-hidden" style={{ height: `${COMMIT_DETAILS_HEIGHT - BOTTOM_LINE}px` }}>
+        {/* Sized by the columns above it, never the other way round: a long line in the details,
+            such as the two parents of a merge, must not widen the table past the window. */}
+        <div
+          class="overflow-hidden contain-inline-size"
+          style={{ height: `${COMMIT_DETAILS_HEIGHT - BOTTOM_LINE}px` }}
+        >
           {children}
         </div>
         <CloseDetailsButton onClick={close} />
@@ -250,26 +255,29 @@ export function CommitDetailsContent({
           <div class="min-w-0">
             <Fact template={l10n.detailCommit}>{details.hash}</Fact>
           </div>
-          <CopyButton label={l10n.copyCommitHashShort} text={abbrevCommit(details.hash)} />
-          <CopyButton label={l10n.copyCommitHashFull} text={details.hash} />
-          {onCheckedOutLine(details.hash) && (
-            <button
-              type="button"
-              class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
-              onClick={() => openEditMessage(details.hash)}
-            >
-              {l10n.editMessage + "…"}
-            </button>
-          )}
-          {onCheckedOutLine(details.hash) && details.parents.length < 2 && (
-            <button
-              type="button"
-              class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
-              onClick={() => openSplitCommit(details.hash)}
-            >
-              {l10n.splitCommit + "…"}
-            </button>
-          )}
+          {/* One group, so the buttons go to the next line together before they part. */}
+          <div class="flex flex-wrap items-center">
+            <CopyButton label={l10n.copyCommitHashShort} text={abbrevCommit(details.hash)} />
+            <CopyButton label={l10n.copyCommitHashFull} text={details.hash} />
+            {onCheckedOutLine(details.hash) && (
+              <button
+                type="button"
+                class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
+                onClick={() => openEditMessage(details.hash)}
+              >
+                {l10n.editMessage + "…"}
+              </button>
+            )}
+            {onCheckedOutLine(details.hash) && details.parents.length < 2 && (
+              <button
+                type="button"
+                class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
+                onClick={() => openSplitCommit(details.hash)}
+              >
+                {l10n.splitCommit + "…"}
+              </button>
+            )}
+          </div>
         </div>
         <Fact template={l10n.detailParents}>{details.parents.join(", ")}</Fact>
         <Fact template={l10n.detailAuthor}>

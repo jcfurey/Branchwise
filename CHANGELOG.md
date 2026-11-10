@@ -8,6 +8,30 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+### Changed
+
+- In a narrow graph, such as an editor split in two or one with details docked beside it, the columns give way so that the commit message stays readable: **ID** is left out first, then **Author**, then **Date**, while **Message** has under 200 pixels, and they return once there is room. Your choice of columns and their widths are untouched. See [row height and columns](docs/git-actions.md#row-height-and-columns).
+- The Branches and Workspace panes stay beside the graph down to a width of 640 pixels instead of 768, where they used to move above it and take half the height of half a window.
+- A run of rows on one branch names its nearest branch once, at the top, instead of repeating "on main" on every row; the name returns wherever rows of another branch come between. See [the Branches pane](docs/git-actions.md#branches-pane).
+- A refresh that changes nothing redraws nothing. Every file saved in the work tree refreshes the graph, and each refresh used to lay out and draw every row again, however many were loaded.
+- A list that fits on one page no longer shows disabled **Previous** and **Next** buttons, and an empty side of a comparison says **None**. **Clean Up Merged Branches** names the branch it checks against instead of a bare 40-character ID.
+
+### Fixed
+
+- The list of conflicted files, shown when a merge, rebase, cherry-pick or revert stops, is headed **Conflicted Files** again instead of the placeholder "{0} conflicted files".
+- Opening the details of a merge commit no longer widens the graph past the window, which made the whole page scroll sideways.
+- The Reflog tab fits the window: long branch names and commit IDs in its descriptions break, so **Show in Graph** is no longer pushed out of sight.
+- **Keyboard Shortcuts** opens at its top instead of scrolled to its end, **Edit Message…** opens with the keyboard in the message, and the Legend no longer leaves the keyboard behind the dialog.
+- **Jump to HEAD** no longer stands out on the Reflog and Statistics tabs, where there is no graph for HEAD to be out of sight in.
+- A selection no longer outlives its commits: after squashing or rebasing selected commits, the selection bar is gone instead of offering to cherry-pick their old IDs.
+- Details opened on a search or File History result stay open through a refresh; they used to close whenever a file was saved.
+- Switching to the Reflog or Statistics tab and back returns the graph to where it was scrolled, and no longer saves the other tab's position as the graph's.
+- Showing the history at a commit that is already shown no longer makes the next refresh jump to the top.
+- The search row no longer carries a chosen saved filter over to another repository, where **Delete** removed that repository's filter of the same name.
+- A repository state that fails to load once no longer empties the Branches pane to an endless spinner: what was loaded stays, and the message from Git is shown with a way to retry.
+- Counts of one are in the singular: "1 changed file", "1 stash", "1 other branch ahead", **Fast-forward 1 Branch**, **Fetch 1 Repository** and so on.
+- The conflict mark on a branch label, its row's summary and the list of teammates' branches name the checked-out branch from the start. They said "HEAD" until the repository state had been read, which can be after the graph is drawn.
+
 ## [0.10.0] - 2026-10-09
 
 ### Added

@@ -40,7 +40,7 @@ import {
   type WorkspaceFilter
 } from "@/webview/lib/workspace-status";
 import { getFullDate, getRelativeDate } from "@/webview/utils/date";
-import { format } from "@/webview/utils/format";
+import { counted, format } from "@/webview/utils/format";
 
 import { QueryStatus } from "./QueryControls";
 
@@ -143,7 +143,11 @@ function AttentionBadges({ entry }: { entry: WorkspaceEntry }) {
       )}
       {entry.conflicts > 0 && (
         <Badge class="text-git-conflict" icon={<ConflictIcon class={BADGE_ICON} />}>
-          {window.l10n.conflictedFiles.replace("{0}", String(entry.conflicts))}
+          {counted(
+            entry.conflicts,
+            window.l10n.conflictedFileCountOne,
+            window.l10n.conflictedFileCount
+          )}
         </Badge>
       )}
       {isUnpublished(entry) && (
@@ -156,12 +160,16 @@ function AttentionBadges({ entry }: { entry: WorkspaceEntry }) {
       )}
       {entry.aheadBranches > 0 && (
         <Badge icon={<BranchIcon class={BADGE_ICON} />} title={window.l10n.otherBranchesAheadHint}>
-          {window.l10n.otherBranchesAhead.replace("{0}", String(entry.aheadBranches))}
+          {counted(
+            entry.aheadBranches,
+            window.l10n.otherBranchAhead,
+            window.l10n.otherBranchesAhead
+          )}
         </Badge>
       )}
       {entry.stashes > 0 && (
         <Badge icon={<StashIcon class={BADGE_ICON} />}>
-          {window.l10n.stashCount.replace("{0}", String(entry.stashes))}
+          {counted(entry.stashes, window.l10n.stashCountOne, window.l10n.stashCount)}
         </Badge>
       )}
       {stale && (
@@ -283,7 +291,7 @@ function RepoRow({
       {entry.initialized && (
         <div class="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 pl-6 text-xs">
           <span class={entry.dirty ? "text-git-modified" : "text-muted"}>
-            {window.l10n.dirtyFiles.replace("{0}", String(entry.dirty))}
+            {counted(entry.dirty, window.l10n.dirtyFile, window.l10n.dirtyFiles)}
           </span>
           {(entry.ahead > 0 || entry.behind > 0) && (
             <span
@@ -458,7 +466,7 @@ export function WorkspacePane() {
   return (
     <aside
       aria-label={window.l10n.workspaceOverview}
-      class="flex max-h-72 min-h-0 w-full flex-1 flex-col overflow-y-auto border-b border-line-soft bg-editor text-ui md:max-h-none md:border-b-0"
+      class="flex max-h-72 min-h-0 w-full flex-1 flex-col overflow-y-auto border-b border-line-soft bg-editor text-ui sm:max-h-none sm:border-b-0"
     >
       <div class="space-y-3 border-b border-line-soft p-3">
         <div class="flex items-center justify-between">

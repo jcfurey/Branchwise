@@ -56,7 +56,8 @@ function HistoryRows({ entries }: { entries: HistoryEntry[] }) {
             }}
             title={entry.hash}
           >
-            <code class="shrink-0 text-muted">{entry.hash.slice(0, 8)}</code>
+            {/* At the first line of a subject that wraps, not stretched along all of them. */}
+            <code class="shrink-0 self-start text-muted">{entry.hash.slice(0, 8)}</code>
             <span class="min-w-0 break-words">{entry.message}</span>
           </button>
         </li>
@@ -86,6 +87,9 @@ function UniqueCommits({ comparison, side }: { comparison: Comparison; side: "le
       <QueryStatus {...query} />
       {page && (
         <>
+          {offset === 0 && page.entries.length === 0 && (
+            <p class="px-2 text-muted">{window.l10n.none}</p>
+          )}
           <HistoryRows entries={page.entries} />
           <PageControls
             offset={offset}

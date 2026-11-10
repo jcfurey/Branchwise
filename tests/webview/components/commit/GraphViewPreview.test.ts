@@ -307,6 +307,32 @@ describe("the nearest branch", () => {
     );
   });
 
+  it("is named once at the top of a run of rows, and in every row's summary", () => {
+    resetGraphView();
+    stores.commitList.value = [
+      { ...entry("tip", "c2"), refs: [{ type: "head", name: "main", hash: "tip" }] },
+      entry("c2", "c1"),
+      { ...entry("side", "s1"), refs: [{ type: "head", name: "topic", hash: "side" }] },
+      entry("s1", "c1"),
+      entry("c1", "c0"),
+      entry("c0")
+    ];
+    stores.commitHead.value = "tip";
+    showGraphView();
+    // c2 and s1 sit under their branches' own labels. c1, two steps under both, is on the
+    // checked-out branch and comes after topic's rows, so it names main again; c0 follows it.
+    expect(
+      [...view().querySelectorAll<HTMLElement>("[data-nearest-branch]")].map(
+        (element) => element.closest("tr")?.dataset["commitHash"]
+      )
+    ).toEqual(["c1"]);
+    for (const hash of ["c2", "s1", "c1", "c0"]) {
+      expect(
+        view().querySelector(`tr[data-commit-hash="${hash}"]`)?.getAttribute("aria-label")
+      ).toMatch(/nearestBranch$/);
+    }
+  });
+
   it("is not shown on the uncommitted row", () => {
     load();
     stores.commitList.value = [{ ...entry("*", "tip"), message: "" }, ...stores.commitList.value!];

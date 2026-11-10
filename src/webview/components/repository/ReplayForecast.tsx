@@ -5,7 +5,7 @@ import { abbrevCommit } from "@/backend/utils/string";
 import { ConflictIcon } from "@/webview/components/ui/Icons";
 import { selectedRepo } from "@/webview/lib/stores";
 import { useRepositoryQuery } from "@/webview/lib/use-repository-query";
-import { format } from "@/webview/utils/format";
+import { counted, format } from "@/webview/utils/format";
 
 /** How long an editor's order must stay unchanged before its forecast is asked for, in ms. */
 export const FORECAST_DELAY = 300;
@@ -51,7 +51,7 @@ export function forecastFiles(files: string[]) {
   const listed = files.slice(0, FILES_LISTED).join(", ");
   const more = files.length - FILES_LISTED;
   return more > 0
-    ? `${listed} ${window.l10n.conflictForecastMore.replace("{0}", String(more))}`
+    ? `${listed} ${counted(more, window.l10n.conflictForecastMoreOne, window.l10n.conflictForecastMore)}`
     : listed;
 }
 

@@ -60,6 +60,8 @@ type CommitRowProps = {
   previewBranch?: string | undefined;
   /** The nearest branch containing the commit, for a row without a branch label of its own. */
   nearestBranch?: string | undefined;
+  /** Whether the row above already names that branch, so that this row need not repeat it. */
+  nearestAbove?: boolean | undefined;
   /** Whether only this computer, or only a remote, has the commit; undefined for neither. */
   push?: PushState | undefined;
   /**
@@ -304,6 +306,7 @@ export function CommitRow({
   dimming = "subtle",
   previewBranch,
   nearestBranch,
+  nearestAbove = false,
   push,
   conflicts,
   applied,
@@ -510,14 +513,14 @@ export function CommitRow({
             </span>
           )}
           <span
-            class={`min-w-0 truncate ${nearest === undefined ? "flex-1" : ""}`}
+            class={`min-w-0 truncate ${nearest === undefined || nearestAbove ? "flex-1" : ""}`}
             data-commit-message={uncommitted ? undefined : true}
             title={hoverCards && !uncommitted ? "" : message}
           >
             {isHead || uncommitted ? <b>{message}</b> : message}
           </span>
           {applied !== undefined && <AppliedMark equivalent={applied} />}
-          {nearest !== undefined && (
+          {nearest !== undefined && !nearestAbove && (
             // Takes the room the message leaves, so the controls after it stay at the row's end.
             <span
               data-nearest-branch={nearest}

@@ -349,6 +349,28 @@ describe("operation and rebase UI", () => {
     });
   });
 
+  it("shows what Git said when the state cannot be read, above what was read before", () => {
+    repositoryState.value = state;
+    act(() => render(h(RepositoryStatus, {}), container));
+    requestRepositoryState();
+    const request = lastRequest();
+    act(() =>
+      handleRepositoryQuery({
+        repo: request.repo,
+        requestId: request.requestId,
+        data: null,
+        status: "fatal: Unable to create '.git/index.lock': File exists."
+      })
+    );
+    // The reason is on the page, not only in a tooltip, and the branch line is still there.
+    expect(container.textContent).toContain("unableToLoadRepository");
+    expect(container.textContent).toContain("index.lock");
+    expect(container.querySelector("b")?.textContent).toBe(state.head);
+
+    click("refresh");
+    expect(lastRequest()).toMatchObject({ command: "repositoryQuery", query: { kind: "state" } });
+  });
+
   it("edits and reorders an interactive plan while preserving its original branch and revision", () => {
     const plan = {
       base: "base",

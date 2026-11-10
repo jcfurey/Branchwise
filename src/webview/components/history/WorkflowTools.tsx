@@ -8,6 +8,7 @@ import { focusHistory } from "@/webview/lib/navigation";
 import {
   confirmRepositoryAction,
   repositoryRevision,
+  repositoryState,
   sendRepositoryAction
 } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
@@ -18,6 +19,7 @@ import {
   workspaceBusy,
   workspaceJobs
 } from "@/webview/lib/workspace-actions";
+import { counted } from "@/webview/utils/format";
 
 import { openCompare } from "./HistoryTools";
 import { PageControls, QueryStatus } from "./QueryControls";
@@ -72,6 +74,9 @@ function CommitRange({
       <QueryStatus {...query} />
       {current && (
         <>
+          {offset === 0 && current.entries.length === 0 && (
+            <p class="text-muted">{window.l10n.none}</p>
+          )}
           <CommitPage page={current} repo={repo} />
           <PageControls
             offset={offset}
@@ -539,7 +544,11 @@ function CleanupView() {
       <QueryStatus {...query} />
       {plan && (
         <>
-          <code class="break-all text-xs">{plan.base}</code>
+          {/* What "merged" was checked against, in short; the whole ID is in its tooltip. */}
+          <p class="text-xs text-muted">
+            {repositoryState.value?.head || "HEAD"}{" "}
+            <code title={plan.base}>{plan.base.slice(0, 8)}</code>
+          </p>
           {!plan.branches.length && <p>{window.l10n.noMergedBranches}</p>}
           <ul class="space-y-2">
             {plan.branches.map((branch) => (
@@ -636,7 +645,9 @@ function FastForwardView({ repo }: { repo: string }) {
         loading={busy || (query.loading && plan === undefined)}
         error={error || query.error}
       />
-      {moved !== null && <p role="status">{l10n.fastForwardDone.replace("{0}", String(moved))}</p>}
+      {moved !== null && (
+        <p role="status">{counted(moved, l10n.fastForwardDoneOne, l10n.fastForwardDone)}</p>
+      )}
       {plan && (
         <>
           {plan.branches.length === 0 && <p>{l10n.noFastForwards}</p>}
@@ -644,10 +655,10 @@ function FastForwardView({ repo }: { repo: string }) {
             {plan.branches.map((branch) => (
               <li key={branch.name} data-fast-forward-branch={branch.name}>
                 <Checkbox
-                  label={l10n.fastForwardBehind
+                  label={(branch.behind === 1 ? l10n.fastForwardBehindOne : l10n.fastForwardBehind)
+                    .replace("{2}", String(branch.behind))
                     .replace("{0}", () => branch.name)
-                    .replace("{1}", () => branch.upstream)
-                    .replace("{2}", String(branch.behind))}
+                    .replace("{1}", () => branch.upstream)}
                   checked={!excluded.includes(branch.name)}
                   onInput={(event) =>
                     setExcluded(
@@ -677,7 +688,7 @@ function FastForwardView({ repo }: { repo: string }) {
             disabled={busy || query.loading || chosen.length === 0}
             onClick={() => run({ kind: "fastForward", branches: chosen }, chosen.length)}
           >
-            {l10n.fastForwardRun.replace("{0}", String(chosen.length))}
+            {counted(chosen.length, l10n.fastForwardRunOne, l10n.fastForwardRun)}
           </Button>
         </>
       )}

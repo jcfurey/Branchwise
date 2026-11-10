@@ -121,6 +121,41 @@ afterEach(() => {
   container.remove();
 });
 
+describe("a repository whose state cannot be read", () => {
+  it("says why and offers to try again, instead of loading without end", () => {
+    act(() => {
+      actions.repositoryState.value = null;
+      actions.repositoryStateError.value = "fatal: not a git repository";
+    });
+    try {
+      expect(container.querySelector("[role=alert]")?.textContent).toBe(
+        "fatal: not a git repository"
+      );
+      expect(container.querySelector("nav [role=status]")).toBeNull();
+      mocks.postMessage.mockClear();
+      const retry = [...container.querySelectorAll("button")].find(
+        (button) => button.textContent === "retry"
+      );
+      act(() => retry!.click());
+      expect(mocks.postMessage.mock.calls.map((call) => call[0])).toContainEqual(
+        expect.objectContaining({ command: "repositoryQuery", query: { kind: "state" } })
+      );
+    } finally {
+      act(() => {
+        actions.repositoryStateError.value = null;
+      });
+    }
+  });
+
+  it("shows that it is loading while there is no answer yet", () => {
+    act(() => {
+      actions.repositoryState.value = null;
+    });
+    expect(container.querySelector("[role=alert]")).toBeNull();
+    expect(container.querySelector("nav [role=status]")).not.toBeNull();
+  });
+});
+
 describe("RefsPane", () => {
   it("names each row's controls with its full ref, so same-named branches stay distinct", () => {
     const names = (selector: string) =>
