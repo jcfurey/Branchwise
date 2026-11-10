@@ -46,6 +46,7 @@ import type {
   WorktreeDetails
 } from "@/backend/types";
 import { autosquashPlan } from "@/backend/utils/autosquash";
+import { gitVersionAtLeast } from "@/backend/utils/gitVersion";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { requireBranchName, requireRemote, resolveCommit } from "@/backend/utils/validation";
 
@@ -117,14 +118,21 @@ export async function loadOperationKind(
   return operation?.kind ?? (bisect === null ? null : "bisect");
 }
 
+/**
+ * The repository's worktrees, the main one first. Git 2.36 and later end each field with NUL, so
+ * that a folder may have any name. Older Git has only lines, which serve every folder but one
+ * with a line break in its name; without them the repository's state could not be read at all.
+ */
 export async function loadWorktrees(git: SimpleGit): Promise<WorktreeDetails[]> {
-  const text = await git.raw(["worktree", "list", "--porcelain", "-z"]);
+  const nul = await gitVersionAtLeast(git, 2, 36);
+  const text = await git.raw(["worktree", "list", "--porcelain", ...(nul ? ["-z"] : [])]);
+  const end = nul ? "\0" : "\n";
   return text
-    .split("\0\0")
-    .filter(Boolean)
+    .split(end + end)
+    .filter((record) => record.trim() !== "")
     .map((record) => {
       const fields = new Map(
-        record.split("\0").map((line) => {
+        record.split(end).map((line) => {
           const separator = line.indexOf(" ");
           return separator < 0 ? [line, ""] : [line.slice(0, separator), line.slice(separator + 1)];
         })
@@ -203,10 +211,29 @@ function parseBranches(text: string, merged: ReadonlySet<string>): BranchDetails
     });
 }
 
+/**
+ * Every `remote.*` setting, from all configuration files in the order Git reads them: each
+ * key, with its section and variable in lower case, and its values in that order. One process
+ * answers for every remote, where asking key by key took two for each.
+ */
+async function remoteSettings(git: SimpleGit) {
+  // Git exits with 1 when nothing matches, as in a repository without remotes.
+  const output = await git.raw(["config", "--null", "--get-regexp", "^remote\\."]).catch(() => "");
+  const settings = new Map<string, string[]>();
+  for (const entry of output.split("\0")) {
+    // The key, then a line break and the value; a key set without a value has neither.
+    const [key = "", value = ""] = entry.split(/\n(.*)/s);
+    if (key !== "") {
+      settings.set(key, [...(settings.get(key) ?? []), value]);
+    }
+  }
+  return settings;
+}
+
 export async function loadRepositoryState(git: SimpleGit): Promise<RepositoryState> {
   const [
     remotes,
-    pushDefault,
+    settings,
     branches,
     mergedBranches,
     remoteRefs,
@@ -217,7 +244,7 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
     undo
   ] = await Promise.all([
     git.getRemotes(),
-    git.getConfig("remote.pushDefault"),
+    remoteSettings(git),
     git.raw([
       "for-each-ref",
       "--format=%(refname:lstrip=2)%00%(upstream)%00%(upstream:track)%00%(objectname)%00%(committerdate:unix)",
@@ -238,28 +265,29 @@ export async function loadRepositoryState(git: SimpleGit): Promise<RepositorySta
       "refs/tags/"
     ]),
     loadWorktrees(git),
-    git.status(),
+    // Only the branch, the conflicts and the staged paths are read from it. Untracked files
+    // are none of them, and listing them all is what takes long in a large work tree.
+    git.status(["--untracked-files=no"]),
     loadOperation(git),
     // The header's Undo entry is a convenience; an unreadable journal only hides it.
     loadSafetyUndo(git).catch(() => null)
   ]);
   const defaultBranches = parseDefaultBranches(remoteRefs);
   return {
-    remotes: await Promise.all(
-      remotes.map(async ({ name }) => {
-        const remote: RemoteDetails = {
-          name,
-          fetchUrls: (await git.getConfig(`remote.${name}.url`)).values,
-          pushUrls: (await git.getConfig(`remote.${name}.pushurl`)).values
-        };
-        const defaultBranch = defaultBranches.get(name);
-        if (defaultBranch !== undefined) {
-          remote.defaultBranch = defaultBranch;
-        }
-        return remote;
-      })
-    ),
-    pushDefault: pushDefault.value,
+    remotes: remotes.map(({ name }) => {
+      const remote: RemoteDetails = {
+        name,
+        fetchUrls: settings.get(`remote.${name}.url`) ?? [],
+        pushUrls: settings.get(`remote.${name}.pushurl`) ?? []
+      };
+      const defaultBranch = defaultBranches.get(name);
+      if (defaultBranch !== undefined) {
+        remote.defaultBranch = defaultBranch;
+      }
+      return remote;
+    }),
+    // The last value read is the one Git goes by.
+    pushDefault: settings.get("remote.pushdefault")?.at(-1) ?? null,
     branches: parseBranches(branches, new Set(mergedBranches.split("\n").filter(Boolean))),
     remoteBranches: parseRefs(remoteRefs, "symref"),
     tags: parseRefs(tagRefs, "peeled"),

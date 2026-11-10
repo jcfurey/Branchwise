@@ -14,7 +14,8 @@ const mocks = vi.hoisted(() => ({
   info: vi.fn(),
   warning: vi.fn(),
   error: vi.fn(),
-  executeCommand: vi.fn()
+  executeCommand: vi.fn(),
+  notify: vi.fn()
 }));
 
 vi.mock("vscode", () => ({
@@ -38,6 +39,7 @@ vi.mock("vscode", () => ({
     from: (parts: Record<string, string>) => parts
   }
 }));
+vi.mock("@/extension/rpc/rpc-notify", () => ({ rpcNotify: { notify: mocks.notify } }));
 vi.mock("@/extension/watchers/git-repo.watcher", () => ({
   selectWatchedRepo: vi.fn(),
   muteGitRepoWatcher: vi.fn(),
@@ -62,7 +64,7 @@ afterEach(() => fs.rmSync(repo, { recursive: true, force: true }));
 function register() {
   const handlers = new Map<string, (message: unknown) => Promise<void>>();
   const post = vi.fn();
-  registerMessageHandlers(
+  const registered = registerMessageHandlers(
     {
       post,
       onMessage: (command: string, handler: (message: unknown) => Promise<void>) =>
@@ -80,7 +82,7 @@ function register() {
       requestId: kind,
       action: { kind, plan: await loadRestorePlan(createGit(repo, "git"), historical, "f", "f") }
     });
-  return { post, send };
+  return { post, send, handlers: registered };
 }
 
 const dirtyEditor = () =>
@@ -133,6 +135,25 @@ it("restores beside unsaved changes to another file of the same name", async () 
   } finally {
     fs.rmSync(elsewhere, { recursive: true, force: true });
   }
+});
+
+it("tells the graph open now when an action ends after its own panel has closed", async () => {
+  // The panel is closed, and perhaps opened again, while the action runs. Its answer goes to
+  // the panel that is gone, and the watcher is kept quiet for the action's own writes, so
+  // without this the graph showing now would never learn that the repository changed.
+  const { send, handlers } = register();
+  const running = send("restoreFile");
+  handlers.dispose();
+  await running;
+
+  expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("historical");
+  expect(mocks.notify).toHaveBeenCalledExactlyOnceWith("repo.updated", { path: repo });
+});
+
+it("leaves the refresh to its own page while that is open", async () => {
+  const { send } = register();
+  await send("restoreFile");
+  expect(mocks.notify).not.toHaveBeenCalled();
 });
 
 it("warns that a preview shows unsaved changes", async () => {

@@ -88,13 +88,21 @@ function mayHaveSubmodules(top: string) {
   );
 }
 
+/** When the `FETCH_HEAD` in `folder` was written, in seconds since 1970, or `null`. */
+function fetchedIn(folder: string) {
+  return stat(path.join(folder, "FETCH_HEAD")).then(
+    (file) => Math.floor(file.mtimeMs / 1000),
+    () => null
+  );
+}
+
 /**
  * What needs attention in a repository besides its changed files: which branches have an
  * upstream, how many other branches are ahead of theirs, how many stashes there are and when it
  * last fetched. One ref listing answers the branch questions; the stash count needs a second Git
  * process only when there is a stash.
  */
-async function attention(git: SimpleGit, directory: string) {
+async function attention(git: SimpleGit, directory: string, common: string) {
   const [refs, remotes, fetched] = await Promise.all([
     git.raw([
       "for-each-ref",
@@ -103,10 +111,15 @@ async function attention(git: SimpleGit, directory: string) {
       "refs/stash"
     ]),
     git.raw(["remote"]),
-    // FETCH_HEAD is rewritten by every fetch, even one that brings nothing new.
-    stat(path.join(directory, "FETCH_HEAD")).then(
-      (file) => Math.floor(file.mtimeMs / 1000),
-      () => null
+    // FETCH_HEAD is rewritten by every fetch, even one that brings nothing new, but only in
+    // the Git directory of the worktree the fetch ran in. The remote-tracking branches it
+    // updates belong to every worktree, so the newest of this worktree's and the main one's
+    // tells when they were last brought up to date, as far as it can be told.
+    Promise.all([...new Set([directory, common])].map(fetchedIn)).then((times) =>
+      times.reduce<number | null>(
+        (newest, time) => (time !== null && (newest === null || time > newest) ? time : newest),
+        null
+      )
     )
   ]);
   let upstream: string | null = null;
@@ -325,8 +338,8 @@ async function readEntry(repo: string, binary: string, signal?: AbortSignal) {
   };
   try {
     const git = gitClientFactory(repo, binary, signal).getInstance();
-    const [top = "", directory = ""] = (
-      await git.raw(["rev-parse", "--show-toplevel", "--absolute-git-dir"])
+    const [top = "", directory = "", common = ""] = (
+      await git.raw(["rev-parse", "--show-toplevel", "--absolute-git-dir", "--git-common-dir"])
     ).split("\n");
     if (normalizeRepoPath(top) !== repo) {
       return { entry, children: [] };
@@ -336,7 +349,7 @@ async function readEntry(repo: string, binary: string, signal?: AbortSignal) {
       readStatus(git),
       mayHaveSubmodules(top).then((has) => (has ? submoduleLinks(git) : [])),
       loadOperationKind(git, directory),
-      attention(git, directory)
+      attention(git, directory, path.resolve(repo, common || directory))
     ]);
     Object.assign(entry, extra, status, { operation });
     return { entry, children };

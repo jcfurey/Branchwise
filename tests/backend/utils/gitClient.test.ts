@@ -155,6 +155,40 @@ describe("createGit", () => {
   });
 });
 
+describe("Git's environment", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("reaches every command, so that settings given in it count as in a terminal", async () => {
+    // A container often trusts its mounted folders this way (`safe.directory`), and a proxy,
+    // a certificate bundle or another global configuration file is named the same way.
+    vi.stubEnv("GIT_CONFIG_COUNT", "1");
+    vi.stubEnv("GIT_CONFIG_KEY_0", "branchwise.probe");
+    vi.stubEnv("GIT_CONFIG_VALUE_0", "from the environment");
+    const repo = makeRepo();
+    try {
+      expect(await createGit(repo, "git").raw(["config", "--get", "branchwise.probe"])).toBe(
+        "from the environment\n"
+      );
+    } finally {
+      fs.rmSync(repo, { recursive: true, force: true });
+    }
+  });
+
+  it("does not hand Git an editor or a pager from it", async () => {
+    vi.stubEnv("PAGER", "false");
+    vi.stubEnv("EDITOR", "false");
+    const repo = makeRepo();
+    try {
+      // `var` prints what Git would run: the variables are not there, so Git's own default is.
+      const client = createGit(repo, "git");
+      expect(await client.raw(["var", "GIT_PAGER"])).not.toBe("false\n");
+      expect(await client.raw(["log", "--format=%s"])).toBe("init\n");
+    } finally {
+      fs.rmSync(repo, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("gitProcessOf", () => {
   it("reports the executable and signal a client was made with", () => {
     const repo = box.repo();

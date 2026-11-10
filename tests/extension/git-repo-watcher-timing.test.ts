@@ -5,9 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   muteGitRepoWatcher as muteWatcher,
   selectWatchedRepo,
+  setGraphVisible,
   unmuteGitRepoWatcher,
   watchGitRepo
 } from "@/extension/watchers/git-repo.watcher";
+import { repositoryReadStarted } from "@/extension/watchers/repository-reads";
 
 type Kind = "created" | "changed" | "deleted";
 type FileHandler = (uri: { fsPath: string }) => void;
@@ -103,6 +105,76 @@ afterEach(() => {
   // Some cases already disposed their lifetime before the simulated action ended.
   watchGitRepo().dispose();
   vi.useRealTimers();
+});
+
+describe("a repository the page is still reading", () => {
+  it("gets its next refresh once the reads have answered", () => {
+    // With changes arriving steadily, as from a build or a long rebase in a terminal, each
+    // refresh cancelled the reads of the one before and started them over: a repository
+    // that takes longer to read than the changes are apart was never shown.
+    const ended = repositoryReadStarted();
+    try {
+      touch();
+      vi.advanceTimersByTime(4000);
+      touch();
+      vi.advanceTimersByTime(4000);
+      expect(refreshes()).toEqual([]);
+
+      ended();
+      vi.advanceTimersByTime(250);
+      expect(refreshes()).toHaveLength(1);
+    } finally {
+      ended();
+    }
+  });
+
+  it("is refreshed all the same when a read has not answered in 20 seconds", () => {
+    const ended = repositoryReadStarted();
+    try {
+      touch();
+      vi.advanceTimersByTime(19_000);
+      expect(refreshes()).toEqual([]);
+      vi.advanceTimersByTime(1500);
+      expect(refreshes()).toHaveLength(1);
+    } finally {
+      ended();
+    }
+  });
+
+  it("waits no longer than usual when nothing is being read", () => {
+    repositoryReadStarted()();
+    touch();
+    vi.advanceTimersByTime(250);
+    expect(refreshes()).toHaveLength(1);
+  });
+});
+
+describe("a graph nobody can see", () => {
+  afterEach(() => setGraphVisible(true));
+
+  it("is not told of changes, and is told again once it shows", () => {
+    // Every notification makes the page read the repository again, a round of Git processes
+    // for each file saved while the graph sits behind another tab.
+    setGraphVisible(false);
+    touch();
+    vi.advanceTimersByTime(5000);
+    expect(refreshes()).toEqual([]);
+
+    // Showing it refreshes it anyway, so what happened meanwhile needs no notification of its own.
+    setGraphVisible(true);
+    vi.advanceTimersByTime(5000);
+    expect(refreshes()).toEqual([]);
+    touch();
+    vi.advanceTimersByTime(250);
+    expect(refreshes()).toHaveLength(1);
+  });
+
+  it("drops a refresh that was still waiting when it was hidden", () => {
+    touch();
+    setGraphVisible(false);
+    vi.advanceTimersByTime(5000);
+    expect(refreshes()).toEqual([]);
+  });
 });
 
 describe("refresh timing", () => {

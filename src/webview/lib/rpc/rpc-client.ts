@@ -3,8 +3,19 @@ import { initRpcHandler, type PendingRpcRequest } from "@/webview/lib/rpc/rpc-ha
 import { shellText } from "@/webview/lib/shell-text";
 import { vscode } from "@/webview/lib/vscode";
 
-/** How long the extension has to answer a request, the same for every method. */
+/** How long the extension has to answer a request. */
 const DEADLINE_MS = 30_000;
+
+/**
+ * The requests without a deadline. Each starts a flow of VS Code's own and is answered when it
+ * ends: the person chooses an address and a folder, and a clone then takes as long as it takes.
+ * A deadline would report a clone that is still running as one that failed.
+ */
+const WAITS_FOR_A_PERSON: ReadonlySet<RpcMethod> = new Set([
+  "git.init",
+  "git.clone",
+  "folder.open"
+]);
 
 /**
  * The requests still waiting for an answer, by id. The handler settles and removes the entries it
@@ -30,8 +41,8 @@ export const rpcClient = {
   },
 
   /**
-   * Send a request, and settle with the extension's answer or reject after the deadline. A message
-   * that cannot be posted rejects the promise instead of throwing.
+   * Send a request, and settle with the extension's answer or reject after the deadline, if the
+   * method has one. A message that cannot be posted rejects the promise instead of throwing.
    */
   request<M extends RpcMethod>(
     method: M,
@@ -49,11 +60,13 @@ export const rpcClient = {
       }
 
       const id = crypto.randomUUID();
-      const timeout = setTimeout(() => {
-        waiting.delete(id);
-        // Read now rather than when sent, so the text is whatever the shell carries at the time.
-        reject(new Error(fillTemplate(shellText("rpcTimeout"), method)));
-      }, DEADLINE_MS);
+      const timeout = WAITS_FOR_A_PERSON.has(method)
+        ? undefined
+        : setTimeout(() => {
+            waiting.delete(id);
+            // Read now rather than when sent, so the text is whatever the shell carries then.
+            reject(new Error(fillTemplate(shellText("rpcTimeout"), method)));
+          }, DEADLINE_MS);
       waiting.set(id, {
         // The extension ships with the page, so its results are trusted to match the method.
         resolve: (result) => resolve(result as RpcMethodMap[M]["result"]),

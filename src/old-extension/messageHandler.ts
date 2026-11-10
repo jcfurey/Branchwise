@@ -40,12 +40,14 @@ import { abbrevCommit } from "@/backend/utils/string";
 import type { Config } from "@/extension/config";
 import { openConflict } from "@/extension/conflicts";
 import { isImageChange, openImageDiff } from "@/extension/image-diff";
+import { rpcNotify } from "@/extension/rpc/rpc-notify";
 import { logger } from "@/extension/util/logger";
 import {
   muteGitRepoWatcher,
   selectWatchedRepo,
   unmuteGitRepoWatcher
 } from "@/extension/watchers/git-repo.watcher";
+import { repositoryReadStarted } from "@/extension/watchers/repository-reads";
 import { invalidateWorkspaceScan, listRepos } from "@/extension/workspace-scan";
 import { encodeDiffBlobUri, encodeDiffDocUri } from "@/old-extension/diffDocProvider";
 import type { RepoManager } from "@/old-extension/repoManager";
@@ -447,6 +449,9 @@ export function registerMessageHandlers(
   let undoRequests = 0;
 
   /** Post to the page. A page that is gone cannot receive anything, which is not an error here. */
+  /** The panel these handlers served has closed; actions it started may still be running. */
+  let detached = false;
+
   function send(message: ResponseMessage) {
     const lost = (error: unknown) => {
       logger.debug(`The graph page did not receive a ${message.command} message`, error);
@@ -513,6 +518,11 @@ export function registerMessageHandlers(
       if (hold !== undefined) {
         held.delete(hold);
         unmuteGitRepoWatcher(repo);
+        if (detached) {
+          // The answer below goes to a panel that is gone, and the watcher is kept quiet for
+          // the action's own writes. Whichever graph shows now is told, or it never learns.
+          void rpcNotify.notify("repo.updated", { path: repo });
+        }
       }
     }
     answerAction(request, status);
@@ -661,6 +671,8 @@ export function registerMessageHandlers(
     repositoryReads.set(requestId, { repo, controller });
     // Compared by identity afterwards: any save meanwhile means the page changed something.
     const savedBefore = query.kind === "state" ? repoManager.getRepos()[repo] : undefined;
+    // Of the page's queries, the state is the one a refresh reads again.
+    const ended = query.kind === "state" ? repositoryReadStarted() : undefined;
     let data: RepositoryQueryData | null;
     let status: string | null = null;
     try {
@@ -676,6 +688,8 @@ export function registerMessageHandlers(
     } catch (error) {
       data = null;
       status = errorText(error);
+    } finally {
+      ended?.();
     }
     repositoryReads.delete(requestId);
     if (controller.signal.aborted) {
@@ -746,6 +760,8 @@ export function registerMessageHandlers(
     graphReads.get(command)?.abort();
     const controller = new AbortController();
     graphReads.set(command, controller);
+    // The branches and the commits are what a refresh reads again; details are not.
+    const ended = command === "commitDetails" ? undefined : repositoryReadStarted();
     let message: ResponseMessage;
     try {
       message = await read(clientFor(repo, controller.signal));
@@ -758,6 +774,7 @@ export function registerMessageHandlers(
         message: errorText(error)
       };
     } finally {
+      ended?.();
       if (graphReads.get(command) === controller) {
         graphReads.delete(command);
       }
@@ -910,6 +927,7 @@ export function registerMessageHandlers(
     // Actions, their Undo offers and remote reads are left to finish: stopping a push or a
     // rebase halfway would do more harm than an answer nobody reads.
     dispose() {
+      detached = true;
       abortGraphReads();
       for (const { controller } of repositoryReads.values()) {
         controller.abort();

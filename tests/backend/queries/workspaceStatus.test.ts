@@ -186,6 +186,25 @@ it("reports when the repository last fetched", async () => {
   expect((await status(dir)).fetched).toBe(now - 3 * 86_400);
 });
 
+it("reports for a linked worktree the fetch that was run in another worktree", async () => {
+  const dir = clone();
+  const linked = dir + "-linked";
+  git(["worktree", "add", "-q", "-b", "side", linked], dir);
+  try {
+    // Never fetched there, and never anywhere: nothing to report.
+    fs.rmSync(path.join(dir, ".git", "FETCH_HEAD"), { force: true });
+    expect((await status(linked)).fetched).toBeNull();
+
+    // A fetch brings the remote-tracking branches up to date for every worktree, but Git
+    // notes it only in the Git directory of the worktree it ran in.
+    const now = Math.floor(Date.now() / 1000);
+    git(["fetch", "-q", "origin"], dir);
+    expect(Math.abs((await status(linked)).fetched! - now)).toBeLessThan(60);
+  } finally {
+    fs.rmSync(linked, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+});
+
 it("leaves every repository untouched while it reads them", async () => {
   const [stashed, detached] = [clone(), clone()];
   git(["checkout", "-q", "--detach"], detached);

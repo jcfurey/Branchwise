@@ -44,6 +44,10 @@ function start(
       }
     });
   });
+  // A Git that ends before it has read all its input fails the write. Its exit status and
+  // output already say how the command went; without a listener the failed write would be
+  // raised as an uncaught exception instead, outside every request.
+  child.stdin.on("error", () => {});
   child.stdin.end(options.input);
   return { child, done };
 }

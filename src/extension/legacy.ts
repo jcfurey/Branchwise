@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 
 import { gitClientFactory } from "@/backend/gitClient";
 import { extConfig } from "@/extension/config";
+import { setGraphVisible } from "@/extension/watchers/git-repo.watcher";
 import { DiffDocProvider } from "@/old-extension/diffDocProvider";
 import { ExtensionState } from "@/old-extension/extensionState";
 import { registerMessageHandlers } from "@/old-extension/messageHandler";
@@ -41,6 +42,8 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
      */
     attach(panel: vscode.WebviewPanel): { dispose(): void } {
       let visible = panel.visible;
+      // A panel behind another tab is not told of changes; showing it refreshes it below.
+      setGraphVisible(visible);
       const bridge = webviewBridgeFactory(panel.webview);
       const handlers = registerMessageHandlers(bridge, { config: extConfig, repoManager });
 
@@ -50,6 +53,7 @@ export function createMessageProtocol(ctx: vscode.ExtensionContext) {
           return;
         }
         visible = panel.visible;
+        setGraphVisible(visible);
         if (visible) {
           // Forget the page's repository first, so the reload the refresh starts counts as a new
           // selection. A post that fails means the panel is going away; there is nothing to do.

@@ -10,8 +10,8 @@ import { repoListStore } from "@/webview/lib/stores/repo-list.store";
 export type PendingRpcRequest = {
   resolve: (result: unknown) => void;
   reject: (reason: unknown) => void;
-  /** The client's deadline for the answer. The answer cancels it. */
-  timeout: ReturnType<typeof setTimeout>;
+  /** The client's deadline for the answer, if the request has one. The answer cancels it. */
+  timeout: ReturnType<typeof setTimeout> | undefined;
 };
 
 type Fields = Record<string, unknown>;

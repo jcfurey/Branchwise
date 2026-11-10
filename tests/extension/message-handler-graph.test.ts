@@ -87,6 +87,38 @@ beforeEach(() => {
   vi.mocked(loadCommits).mockResolvedValue(noCommits);
 });
 
+describe("what a refresh would read again", () => {
+  it("counts as running until it has answered, so that the watcher can wait for it", async () => {
+    const { repositoryReadsRunning } = await import("@/extension/watchers/repository-reads");
+    const { promise, resolve } = Promise.withResolvers<Commits>();
+    vi.mocked(loadCommits).mockReturnValueOnce(promise);
+    vi.mocked(commitDetails).mockResolvedValue({ commitDetails: null });
+    const page = legacyPage({ config: settings });
+    expect(repositoryReadsRunning()).toBe(false);
+
+    const reading = page.send(commitsOf("/r", "c"));
+    await Promise.resolve();
+    expect(repositoryReadsRunning()).toBe(true);
+    // A commit's details are not read again by a refresh, and hold nothing back.
+    await page.send({ command: "commitDetails", repo: "/r", requestId: "d", commitHash: HASH });
+    expect(repositoryReadsRunning()).toBe(true);
+
+    resolve(noCommits);
+    await reading;
+    expect(repositoryReadsRunning()).toBe(false);
+  });
+
+  it("stops counting when the read fails or is cancelled", async () => {
+    const { repositoryReadsRunning } = await import("@/extension/watchers/repository-reads");
+    vi.mocked(loadCommits).mockRejectedValueOnce(new Error("no such repository"));
+    const page = legacyPage({ config: settings });
+
+    await page.send(commitsOf("/r", "c"));
+
+    expect(repositoryReadsRunning()).toBe(false);
+  });
+});
+
 describe("graph reads", () => {
   it("pass the request's options and the current settings to the backend", async () => {
     vi.mocked(loadBranches).mockResolvedValue({

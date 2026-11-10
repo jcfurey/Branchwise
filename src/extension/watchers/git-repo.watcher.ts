@@ -7,11 +7,17 @@ import { createGit } from "@/backend/gitClient";
 import { isRepoWithinPath } from "@/backend/utils/repoPath";
 import { rpcNotify } from "@/extension/rpc/rpc-notify";
 import { logger } from "@/extension/util/logger";
+import { repositoryReadsRunning } from "@/extension/watchers/repository-reads";
 
 /** Quiet time after the last relevant file event before the graph is told to refresh. */
 const REFRESH_DELAY_MS = 250;
 /** The longest a steady stream of events can hold back a refresh, from its first event. */
 const REFRESH_MAX_WAIT_MS = 2000;
+/**
+ * The longest a refresh waits, from its first event, for the page to finish reading the
+ * repository for the refresh before it. A read that hangs must not stop refreshes for good.
+ */
+const REFRESH_HOLD_MS = 20_000;
 /** How long an action's trailing file events stay ignored after the action ends. */
 const QUIET_PERIOD_MS = 1500;
 
@@ -64,6 +70,25 @@ function relativePath(base: string, file: string): string | undefined {
 function counts(rule: Rule, base: string, file: string): boolean {
   const relative = relativePath(base, file);
   return relative !== undefined && rule(relative);
+}
+
+/**
+ * Whether the graph can be seen. Behind another tab it is not told of changes: each notification
+ * makes the page read the repository again, a round of Git processes for every file saved, and
+ * showing the graph refreshes it anyway.
+ */
+let graphVisible = true;
+/** The refreshes waiting to be sent, which hiding the graph drops. */
+const waiting = new Set<() => void>();
+
+/** Say whether the graph's panel is showing, as its view state reports. */
+export function setGraphVisible(visible: boolean): void {
+  graphVisible = visible;
+  if (!visible) {
+    for (const drop of waiting) {
+      drop();
+    }
+  }
 }
 
 /** Git actions the extension is running, by the repository path each was muted with. */
@@ -140,18 +165,32 @@ function watchRepo(repo: string, gitPath: string): RepoWatch {
   let firstUnreported: number | undefined;
 
   const sendRefresh = () => {
+    // A refresh makes the page read the repository again, cancelling what it was reading.
+    // While it still reads for the last one, this one waits, or steady changes would start
+    // the reads over again and again without one of them ever being shown.
+    const waited = performance.now() - (firstUnreported ?? performance.now());
+    if (repositoryReadsRunning() && waited < REFRESH_HOLD_MS) {
+      refresh = setTimeout(sendRefresh, REFRESH_DELAY_MS);
+      return;
+    }
     refresh = undefined;
     firstUnreported = undefined;
     logger.debug(`Sending repo.updated notification: ${repo}`);
     void rpcNotify.notify("repo.updated", { path: repo });
   };
+  const dropRefresh = () => {
+    clearTimeout(refresh);
+    refresh = undefined;
+    firstUnreported = undefined;
+  };
+  waiting.add(dropRefresh);
 
   const watch = (base: string, rule: Rule) => {
     const watcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(base, "**/*")
     );
     const listener = (kind: string) => (uri: vscode.Uri) => {
-      if (closed || !counts(rule, base, uri.fsPath) || isMuted(repo)) {
+      if (closed || !graphVisible || !counts(rule, base, uri.fsPath) || isMuted(repo)) {
         return;
       }
       logger.debug(`Repository file ${kind}: ${uri.fsPath}`);
@@ -200,6 +239,7 @@ function watchRepo(repo: string, gitPath: string): RepoWatch {
     dispose() {
       closed = true;
       clearTimeout(refresh);
+      waiting.delete(dropRefresh);
       for (const watcher of watchers.splice(0)) {
         watcher.dispose();
       }
