@@ -8,6 +8,7 @@ import { focusHistory } from "@/webview/lib/navigation";
 import {
   confirmRepositoryAction,
   repositoryRevision,
+  repositoryState,
   sendRepositoryAction
 } from "@/webview/lib/repository-actions";
 import { selectedRepo } from "@/webview/lib/stores";
@@ -73,6 +74,9 @@ function CommitRange({
       <QueryStatus {...query} />
       {current && (
         <>
+          {offset === 0 && current.entries.length === 0 && (
+            <p class="text-muted">{window.l10n.none}</p>
+          )}
           <CommitPage page={current} repo={repo} />
           <PageControls
             offset={offset}
@@ -540,7 +544,11 @@ function CleanupView() {
       <QueryStatus {...query} />
       {plan && (
         <>
-          <code class="break-all text-xs">{plan.base}</code>
+          {/* What "merged" was checked against, in short; the whole ID is in its tooltip. */}
+          <p class="text-xs text-muted">
+            {repositoryState.value?.head || "HEAD"}{" "}
+            <code title={plan.base}>{plan.base.slice(0, 8)}</code>
+          </p>
           {!plan.branches.length && <p>{window.l10n.noMergedBranches}</p>}
           <ul class="space-y-2">
             {plan.branches.map((branch) => (

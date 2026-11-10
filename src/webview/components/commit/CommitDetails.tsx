@@ -255,26 +255,29 @@ export function CommitDetailsContent({
           <div class="min-w-0">
             <Fact template={l10n.detailCommit}>{details.hash}</Fact>
           </div>
-          <CopyButton label={l10n.copyCommitHashShort} text={abbrevCommit(details.hash)} />
-          <CopyButton label={l10n.copyCommitHashFull} text={details.hash} />
-          {onCheckedOutLine(details.hash) && (
-            <button
-              type="button"
-              class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
-              onClick={() => openEditMessage(details.hash)}
-            >
-              {l10n.editMessage + "…"}
-            </button>
-          )}
-          {onCheckedOutLine(details.hash) && details.parents.length < 2 && (
-            <button
-              type="button"
-              class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
-              onClick={() => openSplitCommit(details.hash)}
-            >
-              {l10n.splitCommit + "…"}
-            </button>
-          )}
+          {/* One group, so the buttons go to the next line together before they part. */}
+          <div class="flex flex-wrap items-center">
+            <CopyButton label={l10n.copyCommitHashShort} text={abbrevCommit(details.hash)} />
+            <CopyButton label={l10n.copyCommitHashFull} text={details.hash} />
+            {onCheckedOutLine(details.hash) && (
+              <button
+                type="button"
+                class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
+                onClick={() => openEditMessage(details.hash)}
+              >
+                {l10n.editMessage + "…"}
+              </button>
+            )}
+            {onCheckedOutLine(details.hash) && details.parents.length < 2 && (
+              <button
+                type="button"
+                class="ml-1.5 shrink-0 cursor-pointer rounded-sm px-1 text-xs text-muted hover:bg-btn-hover hover:text-fg focus:outline-1 focus:outline-focus"
+                onClick={() => openSplitCommit(details.hash)}
+              >
+                {l10n.splitCommit + "…"}
+              </button>
+            )}
+          </div>
         </div>
         <Fact template={l10n.detailParents}>{details.parents.join(", ")}</Fact>
         <Fact template={l10n.detailAuthor}>
