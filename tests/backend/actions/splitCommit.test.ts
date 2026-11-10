@@ -339,3 +339,78 @@ it("finds the plan without changing anything on disk", async () => {
   await loadSplitPlan(git(), target);
   expect(snapshot()).toEqual(before);
 });
+
+describe("authors whose names are not UTF-8", () => {
+  /** The raw bytes of a commit's author name. */
+  const authorBytes = (rev: string) => {
+    const raw = execFileSync("git", ["cat-file", "commit", rev], { cwd: repo });
+    const line = raw.subarray(raw.indexOf("author ") + 7);
+    return line.subarray(0, line.indexOf(" <")).toString("latin1");
+  };
+  /** Commit the index on HEAD with an author and a message given byte for byte. */
+  function commitBytes(author: Buffer, message: Buffer, encoding: string | null) {
+    const head = (name: string) => Buffer.from(name + "\n", "latin1");
+    const object = Buffer.concat([
+      head("tree " + read(["write-tree"])),
+      head("parent " + read(["rev-parse", "HEAD"])),
+      Buffer.from("author "),
+      author,
+      head(" <jose@example.invalid> 981169506 +0100"),
+      head("committer T <t@t.com> 981169506 +0100"),
+      ...(encoding === null ? [] : [head("encoding " + encoding)]),
+      Buffer.from("\n"),
+      message
+    ]);
+    const hash = execFileSync("git", ["hash-object", "-t", "commit", "-w", "--stdin"], {
+      cwd: repo,
+      input: object
+    })
+      .toString()
+      .trim();
+    read(["update-ref", "refs/heads/main", hash]);
+    return hash;
+  }
+  // "José Nuñez" and "añadido" as ISO-8859-1 writes them: one byte for each letter.
+  const latin = Buffer.from("Jos\xe9 Nu\xf1ez", "latin1");
+  const latinMessage = Buffer.from("a\xf1adido\n", "latin1");
+
+  it.each([
+    ["declares its encoding", "ISO-8859-1"],
+    ["declares none, as old commits often do", null]
+  ])("keeps the author's name of a commit that %s", async (_, encoding) => {
+    write("a", "a\n");
+    write("b", "b\n");
+    read(["add", "--", "a", "b"]);
+    const target = commitBytes(latin, latinMessage, encoding);
+    write("c", "c\n");
+    read(["add", "--", "c"]);
+    const later = commitBytes(latin, latinMessage, encoding);
+    const messageOf = (rev: string) => {
+      const raw = execFileSync("git", ["cat-file", "commit", rev], { cwd: repo });
+      return raw.subarray(raw.indexOf("\n\n") + 2).toString("latin1");
+    };
+    expect(authorBytes(later)).toBe("Jos\xe9 Nu\xf1ez");
+
+    await split(await loadSplitPlan(git(), target), ["first", "second"], [0, 1]);
+
+    expect(subjects("HEAD~2..HEAD~1")).toBe("second");
+    const inUtf8 = "Jos\xc3\xa9 Nu\xc3\xb1ez";
+    if (encoding === null) {
+      // Git writes a commit that declares no encoding as UTF-8, and takes bytes that are not
+      // UTF-8 for ISO-8859-1 as it does: the name and the message come out readable.
+      expect(authorBytes("HEAD")).toBe(inUtf8);
+      expect(messageOf("HEAD")).toBe("a\xc3\xb1adido\n");
+    } else {
+      // The later commit is made again as it was: the same bytes under the same encoding.
+      expect(authorBytes("HEAD")).toBe("Jos\xe9 Nu\xf1ez");
+      expect(messageOf("HEAD")).toBe("a\xf1adido\n");
+      expect(read(["cat-file", "commit", "HEAD"])).toContain("encoding ISO-8859-1");
+    }
+    // The parts are new UTF-8 commits, with the name carried over into UTF-8.
+    expect(authorBytes("HEAD~1")).toBe(inUtf8);
+    expect(authorBytes("HEAD~2")).toBe(inUtf8);
+    expect(read(["log", "-3", "--format=%ae|%ad", "--date=raw"]).split("\n")).toEqual(
+      Array.from({ length: 3 }, () => "jose@example.invalid|981169506 +0100")
+    );
+  });
+});
