@@ -1,11 +1,19 @@
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
+import { requireNothingInTheWay } from "@/backend/actions/commit";
 import { requireIdle } from "@/backend/actions/rebase";
-import { loadOperation, loadStashes, loadWorktrees } from "@/backend/queries/repository";
+import {
+  gitDirectory,
+  loadOperation,
+  loadStashes,
+  loadWorktrees,
+  readOptional
+} from "@/backend/queries/repository";
 import {
   BACKUP_NAMESPACE,
   backupRef,
@@ -46,6 +54,11 @@ type SafetyPlan = {
   deletedBranches?: string[];
   /** A force push: the remote branch's old commit, by its remote-tracking name, and the source. */
   push?: { ref: string; old: string; source: string };
+  /**
+   * A reason to refuse the action that is checked before anything is recorded, so that a
+   * refusal leaves no record of an action that never ran.
+   */
+  guard?: (git: SimpleGit) => Promise<void>;
 };
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -144,14 +157,65 @@ async function writeCommit(git: SimpleGit, args: string[]) {
 }
 
 /**
+ * Keep the tracked files as they are while the index holds conflicts, which `git stash create`
+ * refuses to record: after a stash pop that conflicted, say, where nothing is in progress to
+ * abort and a hard reset is the way out. The files, conflict markers and all, are staged into a
+ * copy of the index and committed in the shape of a stash, with nothing counted as staged, so
+ * that Undo brings them back as unstaged changes. `null` when the files are as HEAD has them.
+ */
+async function saveConflicted(git: SimpleGit) {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "branchwise-index-"));
+  try {
+    const index = path.join(directory, "index");
+    await copyFile(path.join(await gitDirectory(git), "index"), index);
+    const env = { ...process.env, GIT_INDEX_FILE: index };
+    await runGit(git, ["add", "--update"], undefined, env);
+    const tree = (await runGit(git, ["write-tree"], undefined, env)).trim();
+    const head = (await git.raw(["rev-parse", "--verify", "HEAD^{tree}"])).trim();
+    if (tree === head) {
+      return null;
+    }
+    const staged = await writeCommit(git, [
+      "commit-tree",
+      "-p",
+      "HEAD",
+      "-m",
+      "Branchwise: nothing staged before a hard reset",
+      head
+    ]);
+    return await writeCommit(git, [
+      "commit-tree",
+      "-p",
+      "HEAD",
+      "-p",
+      staged,
+      "-m",
+      "Branchwise: conflicted files before a hard reset",
+      tree
+    ]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+/**
  * Keep what a reset is about to discard, as a commit nothing else needs: for a hard reset the
- * staged and unstaged changes to tracked files, as `git stash create` records them; for a mixed
- * reset the staged files, as a commit of the index's tree. `null` when there is nothing to keep,
- * or the index holds conflicts and cannot be written as a tree.
+ * staged and unstaged changes to tracked files, as `git stash create` records them, or as
+ * `saveConflicted` does while the index holds conflicts; for a mixed reset the staged files, as
+ * a commit of the index's tree. `null` when there is nothing to keep, or a mixed reset finds
+ * conflicts in the index, which cannot be written as a tree.
  */
 async function saveChanges(git: SimpleGit, what: "worktree" | "index") {
   if (what === "worktree") {
-    return (await writeCommit(git, ["stash", "create"])) || null;
+    try {
+      return (await writeCommit(git, ["stash", "create"])) || null;
+    } catch (error) {
+      const unmerged = await git.raw(["ls-files", "--unmerged", "-z"]).catch(() => "");
+      if (unmerged === "") {
+        throw error;
+      }
+      return saveConflicted(git);
+    }
   }
   const staged = await git.raw(["diff", "--cached", "--name-only", "-z"]).catch(() => "");
   if (staged === "") {
@@ -185,7 +249,11 @@ function safetyPlan(request: ActionRequest): SafetyPlan | null {
     case "resetToCommit": {
       const mode = request.resetMode;
       if (mode === "hard") {
-        return { ...onHead("hardReset"), saveChanges: "worktree" };
+        return {
+          ...onHead("hardReset"),
+          saveChanges: "worktree",
+          guard: (git) => requireNothingInTheWay(git, request.commitHash)
+        };
       }
       return mode === "soft"
         ? { ...onHead("softReset"), mode }
@@ -382,9 +450,13 @@ async function dropRecord(git: SimpleGit, records: SafetyRecord[], id: string) {
 /**
  * Write down what the action is about to replace, and keep each old value under a backup ref,
  * before anything changes. Records still pending when no operation is in progress were finished
- * or aborted elsewhere, so they can no longer be completed.
+ * or aborted elsewhere, so they can no longer be completed. `busy` says that an operation was
+ * already stopped part way when the action began.
  */
-async function openRecord(git: SimpleGit, plan: SafetyPlan): Promise<SafetyRecord> {
+async function openRecord(
+  git: SimpleGit,
+  plan: SafetyPlan
+): Promise<{ record: SafetyRecord; busy: boolean }> {
   const head = await headRef(git);
   const refs = [...new Set([...plan.refs, ...(plan.movesHead ? [head ?? "HEAD"] : [])])];
   const [values, records, operation] = await Promise.all([
@@ -428,7 +500,7 @@ async function openRecord(git: SimpleGit, plan: SafetyPlan): Promise<SafetyRecor
     }
   }
   await writeJournal(git, await pruned(git, [...records, record]));
-  return record;
+  return { record, busy: operation !== null };
 }
 
 /**
@@ -467,14 +539,19 @@ async function settleRecord(
   return done;
 }
 
-/** Record `record`'s outcome once its action has finished, failed, or stopped part way. */
+/**
+ * Record `record`'s outcome once its action has finished, failed, or stopped part way. An
+ * action that failed while another operation was already stopped (`busy`) was refused because of
+ * it: the operation found now is not this action's, and its own record still waits for it.
+ */
 async function closeRecord(
   git: SimpleGit,
   record: SafetyRecord,
   plan: SafetyPlan,
-  succeeded: boolean
+  succeeded: boolean,
+  busy: boolean
 ) {
-  if (!succeeded && plan.operation !== undefined) {
+  if (!succeeded && !busy && plan.operation !== undefined) {
     const operation = await loadOperation(git);
     if (operation?.kind === plan.operation) {
       return settleRecord(git, record, record.changes, operation.kind);
@@ -507,15 +584,52 @@ async function currentValues(git: SimpleGit, changes: SafetyRefChange[]) {
 }
 
 /**
- * Once a stopped operation is continued to its end or aborted, complete the pending record of
- * the action that started it, if it is the newest one.
+ * The commit a stopped operation began at, read while it is still stopped: what a rebase calls
+ * its original head, where a sequence of picks or reverts started, and HEAD for a merge or a
+ * single pick, which move nothing until they end. `null` when Git's files do not say.
  */
-async function settlePending(git: SimpleGit, kind: OperationKind) {
+async function operationStart(git: SimpleGit, kind: OperationKind) {
+  const directory = await gitDirectory(git);
+  const files =
+    kind === "rebase"
+      ? ["rebase-merge/orig-head", "rebase-apply/orig-head"]
+      : kind === "merge"
+        ? []
+        : ["sequencer/head"];
+  for (const file of files) {
+    // eslint-disable-next-line no-await-in-loop
+    const value = (await readOptional(path.join(directory, file)))?.trim();
+    if (value) {
+      return value;
+    }
+  }
+  if (kind === "rebase") {
+    return null;
+  }
+  const head = (await git.raw(["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "")).trim();
+  return head === "" ? null : head;
+}
+
+/**
+ * Once a stopped operation is continued to its end or aborted, complete the pending record of
+ * the action that started it, if it is the newest one. `start` is where the operation began. A
+ * record whose branch stood elsewhere before its action waited for another operation, one that
+ * ended outside Branchwise: it is left unfinished, since completing it with this operation's
+ * result would offer an Undo that rewinds the branch past everything done in between.
+ */
+async function settlePending(git: SimpleGit, kind: OperationKind, start: string | null) {
   if ((await loadOperation(git)) !== null) {
     return;
   }
-  const last = (await readSafetyJournal(git)).at(-1);
+  const records = await readSafetyJournal(git);
+  const last = records.at(-1);
   if (last?.state !== "pending" || last.operation !== kind) {
+    return;
+  }
+  const moved = last.changes.find((change) => change.ref === (last.head ?? "HEAD"));
+  if (start === null || moved?.old !== start) {
+    last.state = "unfinished";
+    await writeJournal(git, records);
     return;
   }
   await settleRecord(git, last, await currentValues(git, last.changes), null);
@@ -533,19 +647,22 @@ export async function recordedAction<T>(
 ): Promise<{ result: T; record: SafetyRecord | null }> {
   if (request.command === "repositoryAction" && request.action.kind === "recover") {
     const kind = request.action.operation.kind;
+    const start = await operationStart(git, kind).catch(() => null);
     try {
       return { result: await work(), record: null };
     } finally {
-      await settlePending(git, kind).catch(() => {});
+      await settlePending(git, kind, start).catch(() => {});
     }
   }
   const plan = safetyPlan(request);
   if (plan === null) {
     return { result: await work(), record: null };
   }
+  await plan.guard?.(git);
   let record: SafetyRecord;
+  let busy: boolean;
   try {
-    record = await openRecord(git, plan);
+    ({ record, busy } = await openRecord(git, plan));
   } catch (error) {
     throw new Error(
       l10n.t(
@@ -559,11 +676,11 @@ export async function recordedAction<T>(
   try {
     result = await work();
   } catch (error) {
-    await closeRecord(git, record, plan, false).catch(() => {});
+    await closeRecord(git, record, plan, false, busy).catch(() => {});
     throw error;
   }
   // The action is done; a record that cannot be completed must not make it look failed.
-  return { result, record: await closeRecord(git, record, plan, true).catch(() => null) };
+  return { result, record: await closeRecord(git, record, plan, true, busy).catch(() => null) };
 }
 
 /** A ref's name in a message: `HEAD`, a branch, a tag or a remote branch. */
@@ -662,7 +779,9 @@ async function restoreRefs(git: SimpleGit, record: SafetyRecord, title: string) 
         l10n.t("Check out another branch first: Undo would delete {0}.", refLabel(checkedOut.ref))
       );
     }
-    if (record.mode === "mixed" && (await hasChanges(git, true))) {
+    // Moving the branch back resets the index, in every mode but soft: what is staged now
+    // would come out of it unstaged, or mixed into the files Undo brings back.
+    if (record.mode !== "soft" && (await hasChanges(git, true))) {
       throw new Error(
         l10n.t("Undo would unstage your staged changes. Commit or unstage them first.")
       );
