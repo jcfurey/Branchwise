@@ -85,6 +85,38 @@ describe("history inspection", () => {
     ).rejects.toThrow("start date");
   });
 
+  it("shows the commit an ID names, or nothing when another filter rules it out", async () => {
+    const older = commit("a", "a", "older, by T");
+    read([
+      "-c",
+      "user.name=Ann",
+      "-c",
+      "user.email=ann@example.invalid",
+      "commit",
+      "--allow-empty",
+      "-m",
+      "newer, by Ann"
+    ]);
+    const newer = read(["rev-parse", "HEAD"]);
+    const found = async (patch: Partial<HistoryFilter>) =>
+      (await loadHistory(git(), filter(patch), 0)).entries.map((entry) => entry.hash);
+
+    expect(await found({ text: newer })).toEqual([newer]);
+    expect(await found({ text: newer.slice(0, 8), author: "Ann" })).toEqual([newer]);
+    // With a filter the commit does not meet, the search went on from it and showed the nearest
+    // ancestor that did: another commit than the one asked for.
+    expect(await found({ text: newer, author: "t@t.com" })).toEqual([]);
+    expect(await found({ text: newer, path: "a" })).toEqual([]);
+    expect(await found({ text: older, path: "a" })).toEqual([older]);
+
+    // The commits that branch and tag names point to are held to the path in the same way.
+    read(["tag", "v-newer", newer]);
+    read(["tag", "v-older", older]);
+    // Made within one second, the two have no certain order.
+    expect((await found({ tag: "v-" })).toSorted()).toEqual([newer, older].toSorted());
+    expect(await found({ tag: "v-", path: "a" })).toEqual([older]);
+  });
+
   it("follows renames and preserves unusual file names", async () => {
     const before = process.platform === "win32" ? "old [name] file.txt" : "old\tname\nfile.txt";
     const after = "new [name].txt";

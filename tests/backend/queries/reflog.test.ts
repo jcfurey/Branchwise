@@ -121,6 +121,19 @@ describe("a repository's reflog", () => {
     expect(byId.entries.map((entry) => entry.subject)).toStrictEqual(["scratch work"]);
   });
 
+  it("reads one ref's reflog beside a file of the same name", async () => {
+    // Without telling Git that `HEAD` is the ref, it cannot say which of the two is meant.
+    const file = path.join(repo, "HEAD");
+    fs.writeFileSync(file, "a file\n");
+    try {
+      const page = await loadReflog(createGit(repo, "git"), { offset: 0, ref: "HEAD" });
+      expect(page.entries.length).toBeGreaterThan(0);
+      expect(page.entries.every((entry) => entry.ref === "HEAD")).toBe(true);
+    } finally {
+      fs.rmSync(file, { force: true });
+    }
+  });
+
   it("marks commits that only the reflog still reaches", async () => {
     const page = await loadReflog(createGit(repo, "git"), { offset: 0, ref: "HEAD" });
     const lost = new Set(page.entries.filter((entry) => entry.lost).map((entry) => entry.subject));

@@ -205,8 +205,15 @@ export async function loadHistory(
     }
   }
 
+  if (hashSearch || commits) {
+    // Named commits are shown without walking on from them. Asked to order what it shows as
+    // well, Git shows each of them whether or not it changed the path searched for.
+    args.splice(args.indexOf("--date-order"), 1);
+  }
   if (hashSearch) {
-    args.push("--max-count=1", hashSearch);
+    // That commit alone, and only if it meets the other filters: without `--no-walk` Git goes
+    // on from it and shows the nearest ancestor that does.
+    args.push("--no-walk", hashSearch);
   } else if (commits) {
     // Only the commits the names point to, newest first; any number of them fits on stdin.
     args.push("--no-walk=sorted", "--stdin");
@@ -353,7 +360,8 @@ export async function loadReflog(
         "--date=unix",
         "--format=%H%x00%gD%x00%gs%x00%s",
         "--max-count=" + REFLOG_LIMIT,
-        ...(ref === "" ? ["--all"] : ["--end-of-options", ref])
+        // The `--` after it tells Git that the name is a ref, also beside a file of that name.
+        ...(ref === "" ? ["--all"] : ["--end-of-options", ref, "--"])
       ])
       // A repository without commits has no reflog to walk.
       .catch((error: unknown) => {
