@@ -10,7 +10,11 @@ fs.mkdirSync(artifacts, { recursive: true });
 const root = fs.mkdtempSync(path.join(artifacts, "ui-harness-"));
 const read = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
 
-function run(label, { fault = false, minimum = false } = {}) {
+/**
+ * Run the compatibility scenario once, in a folder of its own. `version` is the VS Code to run:
+ * "stable", which is whatever release is the latest at that moment, or one release by its number.
+ */
+function run(label, { fault = false, minimum = false, version = "stable" } = {}) {
   const directory = path.join(root, label);
   fs.mkdirSync(directory);
   const log = path.join(directory, "runner.log");
@@ -28,7 +32,7 @@ function run(label, { fault = false, minimum = false } = {}) {
         env: {
           ...process.env,
           NGG_ARTIFACTS: directory,
-          NGG_VSCODE_VERSION: minimum ? "minimum" : "stable",
+          NGG_VSCODE_VERSION: minimum ? "minimum" : version,
           NGG_VSCODE_PATH: minimum
             ? process.env.NGG_MINIMUM_VSCODE_PATH || ""
             : process.env.NGG_VSCODE_PATH || "",
@@ -113,7 +117,9 @@ function verifyFailure({ directory, runtime }) {
 
 const failed = run("injected-failure", { fault: true });
 verifyFailure(failed);
-const stable = run("stable-recovery");
+// The release the first run got, by its number. Asked for "stable" again, the second run gets
+// another one while a release is being published, and the two would not be comparable.
+const stable = run("stable-recovery", { version: failed.runtime.vscode });
 assert.equal(stable.runtime.vscode, failed.runtime.vscode, "Recovery must use the same VS Code");
 const sameVersion = stable.runtime.vscode === stable.runtime.minimum;
 const minimum = sameVersion ? stable : run("minimum", { minimum: true });
