@@ -40,6 +40,7 @@ import { abbrevCommit } from "@/backend/utils/string";
 import type { Config } from "@/extension/config";
 import { openConflict } from "@/extension/conflicts";
 import { isImageChange, openImageDiff } from "@/extension/image-diff";
+import { rpcNotify } from "@/extension/rpc/rpc-notify";
 import { logger } from "@/extension/util/logger";
 import {
   muteGitRepoWatcher,
@@ -447,6 +448,9 @@ export function registerMessageHandlers(
   let undoRequests = 0;
 
   /** Post to the page. A page that is gone cannot receive anything, which is not an error here. */
+  /** The panel these handlers served has closed; actions it started may still be running. */
+  let detached = false;
+
   function send(message: ResponseMessage) {
     const lost = (error: unknown) => {
       logger.debug(`The graph page did not receive a ${message.command} message`, error);
@@ -513,6 +517,11 @@ export function registerMessageHandlers(
       if (hold !== undefined) {
         held.delete(hold);
         unmuteGitRepoWatcher(repo);
+        if (detached) {
+          // The answer below goes to a panel that is gone, and the watcher is kept quiet for
+          // the action's own writes. Whichever graph shows now is told, or it never learns.
+          void rpcNotify.notify("repo.updated", { path: repo });
+        }
       }
     }
     answerAction(request, status);
@@ -910,6 +919,7 @@ export function registerMessageHandlers(
     // Actions, their Undo offers and remote reads are left to finish: stopping a push or a
     // rebase halfway would do more harm than an answer nobody reads.
     dispose() {
+      detached = true;
       abortGraphReads();
       for (const { controller } of repositoryReads.values()) {
         controller.abort();

@@ -57,6 +57,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - A linked worktree no longer reads as never fetched when the fetch ran in another worktree.
 - The Statistics tab counts lines for contributors whose commits carry no email address.
 - A Git process that ends before reading what it was sent no longer raises an error outside any request.
+- A graph closed and opened again while an action was running shows the action's result once it ends. The answer went to the panel that was gone, so the new one kept showing the repository as it was before.
 
 ## [0.10.0] - 2026-10-09
 
