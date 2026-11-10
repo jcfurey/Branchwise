@@ -88,6 +88,23 @@ it("writes nothing into the repository, not even objects nothing refers to", asy
   expect(objects()).toBe(before);
 });
 
+it("asks Git where the repository is once, however many branches it tries", async () => {
+  for (const name of ["one", "two", "three", "four", "five"]) {
+    git(["checkout", "-q", "-b", name, "main"], repo);
+    commitFiles(name, { f: `${name}\n` });
+  }
+  git(["checkout", "-q", "main"], repo);
+  commitFiles("main", { f: "main\n" });
+  const client = createGit(repo, "git");
+  const raw = vi.spyOn(client, "raw");
+
+  const result = await repositoryQuery(client, { kind: "conflictForecast", scope: "local" });
+
+  expect(result.kind === "conflictForecast" && result.conflicts).toHaveLength(5);
+  const asked = raw.mock.calls.filter(([args]) => [args].flat().includes("--show-toplevel"));
+  expect(asked).toHaveLength(1);
+});
+
 it("leaves out HEAD's own branch, merged branches, and branches with unrelated history", async () => {
   git(["checkout", "-q", "--orphan", "lone"], repo);
   commitFiles("lone", { f: "unrelated\n" });
