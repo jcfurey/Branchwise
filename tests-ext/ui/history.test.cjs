@@ -873,20 +873,37 @@ suite("Branchwise workflow UI", function () {
   test("previews a branch's history while the pointer rests on its label, and names nearest branches", async () => {
     const dir = directory();
     init(dir);
-    commit("base", "preview-base", dir);
-    const base = git(["rev-parse", "HEAD"], dir);
-    commit("main", "preview-main-older", dir);
-    const older = git(["rev-parse", "HEAD"], dir);
-    commit("main", "preview-main-tip", dir);
-    const tip = git(["rev-parse", "HEAD"], dir);
+    // Dated minutes apart, so that the rows come in one order whatever the clock does: main's
+    // tip, the topic's commit, then main's two older commits and the commit both started from.
+    const dated = (file, value, minutesAgo) => {
+      fs.writeFileSync(path.join(dir, file), value);
+      git(["add", "--", file], dir);
+      const date = new Date(Date.now() - minutesAgo * 60_000).toISOString();
+      cp.execFileSync("git", ["commit", "-m", value], {
+        cwd: dir,
+        stdio: "pipe",
+        env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }
+      });
+      return git(["rev-parse", "HEAD"], dir);
+    };
+    const base = dated("base", "preview-base", 50);
+    const oldest = dated("main", "preview-main-oldest", 40);
+    const older = dated("main", "preview-main-older", 30);
     git(["checkout", "-b", "preview-topic", base], dir);
-    commit("topic", "preview-topic-work", dir);
-    const work = git(["rev-parse", "HEAD"], dir);
+    const work = dated("topic", "preview-topic-work", 20);
     git(["checkout", "main"], dir);
+    const tip = dated("main", "preview-main-tip", 10);
     await openRepo(dir);
     await until(() => graph.evaluate(visible(work)), "preview fixture rows");
+    assert.deepEqual(
+      await graph.evaluate(
+        `[...document.querySelectorAll("tr[data-commit-hash]")].map((row) => row.dataset.commitHash)`
+      ),
+      [tip, work, older, oldest, base]
+    );
 
-    // Nearest branch: the unlabelled commit under main's tip names main.
+    // Nearest branch: an unlabelled commit of main names main where a row of another branch
+    // comes before it, and a run of main's rows names it once, at the top.
     const nearest = (hash) =>
       graph.evaluate(`(() => {
         const label = document.querySelector('tr[data-commit-hash="${hash}"] [data-nearest-branch]');
@@ -897,6 +914,7 @@ suite("Branchwise workflow UI", function () {
       "on main",
       "Nearest branch containing this commit: main"
     ]);
+    assert.equal(await nearest(oldest), null);
     assert.equal(await nearest(tip), null);
     assert.equal(await nearest(work), null);
 
