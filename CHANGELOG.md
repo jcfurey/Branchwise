@@ -18,6 +18,7 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - A graph behind another editor tab no longer reads the repository again each time a file is saved. It was told of every change while hidden, and each time ran its whole round of Git processes; it now catches up when it is shown, as it already did.
 - The repository state, which is read again after every change to the work tree, takes fewer Git processes: one for the addresses of every remote instead of two for each, and a status that no longer lists untracked files, which is what took long in a large work tree.
 - Changes to files that Git ignores, such as build output or a dependencies folder, no longer refresh the graph: nothing it shows depends on them. Up to 100 changed files are checked with one `git check-ignore`; with more, the graph refreshes as before. See [keeping up with the repository](docs/git-actions.md#keeping-up-with-the-repository).
+- When a repository appears or goes, as after a clone, the workspace is scanned once for everything that changed meanwhile, and the repositories opened from Source Control or File History are searched again only where the change is. Each of them used to be searched again every time, which with dozens of them took seconds.
 - The conflict forecast starts one Git process fewer for every branch it tries, and **Go to Branch, Tag or Commit…** no longer hands every branch and tag to VS Code again with each key pressed, which made typing lag in a repository with thousands of them.
 
 ### Fixed

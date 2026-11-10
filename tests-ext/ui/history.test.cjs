@@ -3816,6 +3816,9 @@ suite("Branchwise workflow UI", function () {
     // The window's folder is a repository, and one cloned inside it is listed with it.
     const workspace = vscode.workspace.workspaceFolders[0].uri.fsPath;
     const cloned = path.join(workspace, "cloned-here");
+    // By now the pane lists every repository the scenarios before this one opened, and reads the
+    // status of each after a scan, which on a slow machine takes a while.
+    const patience = 45000;
     try {
       if (!(await graph.evaluate('!!document.querySelector("aside")'))) {
         await button("Workspace");
@@ -3824,7 +3827,7 @@ suite("Branchwise workflow UI", function () {
       git(["clone", "-q", repo, cloned]);
       // By the end of its path: Git may name the workspace's folder otherwise than VS Code does.
       const listed = `[...document.querySelectorAll("aside button[title]")].some(b => b.title.endsWith("/cloned-here"))`;
-      await until(() => graph.evaluate(listed), "cloned repository listed");
+      await until(() => graph.evaluate(listed), "cloned repository listed", patience);
       // VS Code reports a folder that moved alone, and nothing for the `.git` folder it held.
       // It goes beside the workspace, which the run removes with it, on the same volume.
       const away = path.join(path.dirname(workspace), "moved-out-of-the-workspace");
@@ -3833,9 +3836,17 @@ suite("Branchwise workflow UI", function () {
         fs.renameSync(cloned, away);
         return true;
       }, "folder moved away");
-      await until(() => graph.evaluate(`!(${listed})`), "moved repository no longer listed");
+      await until(
+        () => graph.evaluate(`!(${listed})`),
+        "moved repository no longer listed",
+        patience
+      );
     } finally {
-      fs.rmSync(cloned, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      // Should a Git process still hold the folder, it goes with the workspace when the run
+      // ends, and what went wrong above is reported rather than this.
+      await fs.promises
+        .rm(cloned, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+        .catch(() => {});
     }
   });
 

@@ -152,4 +152,35 @@ describe("repositories offered by the picker and the Workspace pane", () => {
     }
     expect(holdsOfferedRepo(path.join(real, "libs"))).toBe(true);
   });
+
+  it("searches again only inside the session repositories a change touches", async () => {
+    mocks.findGitRepos.mockResolvedValue([]);
+    const create = (...parts: string[]) => {
+      const repo = normalizeRepoPath(path.join(root, ...parts));
+      fs.mkdirSync(repo, { recursive: true });
+      git(["init", "-q"], repo);
+      return repo;
+    };
+    const first = create("first");
+    const second = create("second");
+    addSessionRepo(first);
+    addSessionRepo(second);
+    expect(await listRepos("git", 0, 2)).toEqual([first, second]);
+
+    // A repository is cloned inside each. Only the one a change was reported in is found: the
+    // other repository is not searched again, which takes Git processes for each of them.
+    const inFirst = create("first", "libs", "new");
+    const inSecond = create("second", "libs", "new");
+    invalidateWorkspaceScan([path.join(first, "libs", "new", ".git")]);
+    expect(await listRepos("git", 0, 2)).toEqual([first, inFirst, second]);
+
+    // A change around a repository counts for it too, and no place at all counts for every one.
+    invalidateWorkspaceScan([path.dirname(second)]);
+    expect(await listRepos("git", 0, 2)).toEqual([first, inFirst, second, inSecond]);
+    const later = create("first", "libs", "later");
+    invalidateWorkspaceScan([path.join(root, "elsewhere")]);
+    expect(await listRepos("git", 0, 2)).toEqual([first, inFirst, second, inSecond]);
+    invalidateWorkspaceScan();
+    expect(await listRepos("git", 0, 2)).toEqual([first, later, inFirst, second, inSecond]);
+  });
 });

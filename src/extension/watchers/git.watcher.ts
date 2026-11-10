@@ -23,10 +23,13 @@ const NEW_PATHS_AT_ONCE = 32;
 /** A new path here is never a repository the scan lists, and `.git` entries report themselves. */
 const NEVER_A_REPOSITORY = /[\\/](\.git|node_modules|bower_components)([\\/]|$)/;
 
-/** Forget the cached workspace scan and have the graph ask for the repository list again. */
-function rescan(reason: string) {
+/**
+ * Forget the cached workspace scan and have the graph ask for the repository list again.
+ * `changed` are the paths where something came or went, or nothing when anything may have.
+ */
+function rescan(reason: string, changed?: string[]) {
   logger.info(reason);
-  invalidateWorkspaceScan();
+  invalidateWorkspaceScan(changed);
   void rpcNotify.notify("repo.rescan", null);
 }
 
@@ -48,16 +51,21 @@ export function watchGitDir(): vscode.Disposable {
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   let waitingSince = 0;
-  const soon = (reason: string) => {
+  /** Where something came or went since the last scan. */
+  let changed: string[] = [];
+  const soon = (what: string, at: string) => {
     const now = Date.now();
     if (timer === undefined) {
       waitingSince = now;
     }
+    changed.push(at);
     clearTimeout(timer);
     timer = setTimeout(
       () => {
         timer = undefined;
-        rescan(reason);
+        const places = changed;
+        changed = [];
+        rescan(`${what}: ${at}`, places);
       },
       Math.min(QUIET_MS, Math.max(0, waitingSince + LONGEST_WAIT_MS - now))
     );
@@ -74,7 +82,7 @@ export function watchGitDir(): vscode.Disposable {
     // A file where a folder is needed, or nothing there at all, fails the same way.
     void lstat(path.join(created, ".git"))
       .then(
-        () => !closed && soon(`Repository folder created: ${created}`),
+        () => !closed && soon("Repository folder created", created),
         () => {}
       )
       .finally(() => lookingInto--);
@@ -83,12 +91,12 @@ export function watchGitDir(): vscode.Disposable {
   return vscode.Disposable.from(
     entries,
     folders,
-    entries.onDidCreate((uri) => soon(`Git directory created: ${uri.fsPath}`)),
-    entries.onDidDelete((uri) => soon(`Git directory deleted: ${uri.fsPath}`)),
+    entries.onDidCreate((uri) => soon("Git directory created", uri.fsPath)),
+    entries.onDidDelete((uri) => soon("Git directory deleted", uri.fsPath)),
     folders.onDidCreate(onCreated),
     folders.onDidDelete((uri) => {
       if (holdsOfferedRepo(uri.fsPath)) {
-        soon(`Repository folder deleted: ${uri.fsPath}`);
+        soon("Repository folder deleted", uri.fsPath);
       }
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => rescan("Workspace folders changed")),
@@ -97,6 +105,7 @@ export function watchGitDir(): vscode.Disposable {
         closed = true;
         clearTimeout(timer);
         timer = undefined;
+        changed = [];
       }
     }
   );

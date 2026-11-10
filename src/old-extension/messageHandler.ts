@@ -564,7 +564,7 @@ export function registerMessageHandlers(
       await openEffect(repo, recorded.result);
       if (action.kind === "submodule") {
         // A submodule may have appeared or gone, so the picker scans again.
-        invalidateWorkspaceScan();
+        invalidateWorkspaceScan([repo]);
       }
       return recorded;
     });

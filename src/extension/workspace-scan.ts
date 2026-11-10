@@ -76,9 +76,43 @@ function warnIfUnreadable(folder: string) {
     });
 }
 
-export function invalidateWorkspaceScan(): void {
+/** `folder` as it was named, and as Git names it when its workspace folder is a link. */
+function placesOf(folder: string): string[] {
+  const named = normalizeRepoPath(folder).replace(/\/+$/, "");
+  const places = [named];
+  for (const { given, real } of links) {
+    if (within(named, given)) {
+      places.push(real + named.slice(given.length));
+    }
+  }
+  return places;
+}
+
+/** Whether the folder `inner` is `outer` or inside it, both as `normalizeRepoPath` gives them. */
+function within(inner: string, outer: string) {
+  return inner === outer || inner.startsWith(outer + "/");
+}
+
+/**
+ * Forget the scan, so that the next listing walks the workspace folders again. `changed` are the
+ * paths where something came or went, when they are known: of the repositories this session
+ * opened elsewhere, only those around or inside one of them are then searched again for the
+ * repositories cloned in them. Searching every one takes Git processes for each, which with
+ * dozens of them is seconds, and a change in one says nothing about the others.
+ */
+export function invalidateWorkspaceScan(changed?: string[]): void {
   cache = undefined;
-  sessionNested.clear();
+  if (changed === undefined) {
+    sessionNested.clear();
+    return;
+  }
+  const places = changed.flatMap(placesOf);
+  for (const repo of sessionNested.keys()) {
+    const at = normalizeRepoPath(repo);
+    if (places.some((place) => within(at, place) || within(place, at))) {
+      sessionNested.delete(repo);
+    }
+  }
 }
 
 /** Offer `repo` for the rest of the session, even when the workspace scan does not find it. */
@@ -126,17 +160,8 @@ export async function listRepos(
  * gone took its repositories along, which no other event reports.
  */
 export function holdsOfferedRepo(folder: string): boolean {
-  const gone = normalizeRepoPath(folder).replace(/\/+$/, "");
-  // The folder as it was named, and as Git names it when its workspace folder is a link.
-  const places = [gone];
-  for (const { given, real } of links) {
-    if (gone === given || gone.startsWith(given + "/")) {
-      places.push(real + gone.slice(given.length));
-    }
-  }
-  return offered.some((repo) =>
-    places.some((place) => repo === place || repo.startsWith(place + "/"))
-  );
+  const places = placesOf(folder);
+  return offered.some((repo) => places.some((place) => within(repo, place)));
 }
 
 /**

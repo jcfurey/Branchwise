@@ -61,7 +61,8 @@ vi.mock("@/extension/util/logger", () => ({
   logger: { info: (message: string) => host.steps.push(`info ${message}`) }
 }));
 vi.mock("@/extension/workspace-scan", () => ({
-  invalidateWorkspaceScan: () => host.steps.push("invalidate"),
+  invalidateWorkspaceScan: (changed?: string[]) =>
+    host.steps.push(changed ? `invalidate ${changed.join(" ")}` : "invalidate everything"),
   holdsOfferedRepo: (folder: string) => host.offered.some((repo) => repo.startsWith(folder))
 }));
 vi.mock("@/extension/rpc/rpc-notify", () => ({
@@ -92,7 +93,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const RESCAN = ["invalidate", "notify repo.rescan null"];
+/** A rescan that was told where something came or went, or with no place, that anything may have. */
+const rescanAt = (...places: string[]) => [
+  places.length > 0 ? `invalidate ${places.join(" ")}` : "invalidate everything",
+  "notify repo.rescan null"
+];
 /** How long the watcher waits for the workspace to go quiet. */
 const QUIET = 250;
 
@@ -120,7 +125,10 @@ it("rescans once for a burst of events on one .git entry", () => {
   vi.advanceTimersByTime(QUIET - 1);
   expect(host.steps).toEqual([]);
   vi.advanceTimersByTime(1);
-  expect(host.steps).toEqual(["info Git directory created: /ws/a/.git", ...RESCAN]);
+  expect(host.steps).toEqual([
+    "info Git directory created: /ws/a/.git",
+    ...rescanAt("/ws/a/.git", "/ws/a/.git", "/ws/a/.git")
+  ]);
 });
 
 it("rescans once for many .git entries that change together", () => {
@@ -132,7 +140,11 @@ it("rescans once for many .git entries that change together", () => {
   vi.advanceTimersByTime(QUIET - 1);
   expect(host.steps).toEqual([]);
   vi.advanceTimersByTime(1);
-  expect(host.steps).toEqual(["info Git directory deleted: /ws/c/.git", ...RESCAN]);
+  // The scan is told every place, so that it knows which repositories to look into again.
+  expect(host.steps).toEqual([
+    "info Git directory deleted: /ws/c/.git",
+    ...rescanAt("/ws/a/.git", "/ws/b/.git", "/ws/c/.git")
+  ]);
   vi.advanceTimersByTime(5000);
   expect(host.steps).toHaveLength(3);
 });
@@ -145,7 +157,10 @@ it("does not wait for the end of changes that never pause", () => {
   expect(host.steps).toEqual([]);
   host.listeners.get("gitCreated")!(gitEntry("/ws/last/.git"));
   vi.advanceTimersByTime(100);
-  expect(host.steps).toEqual(["info Git directory created: /ws/last/.git", ...RESCAN]);
+  expect(host.steps[0]).toBe("info Git directory created: /ws/last/.git");
+  expect(host.steps[1]).toMatch(/^invalidate \/ws\/0\/\.git .* \/ws\/last\/\.git$/);
+  expect(host.steps[2]).toBe("notify repo.rescan null");
+  expect(host.steps).toHaveLength(3);
 
   // What comes afterwards starts a wait of its own.
   host.listeners.get("gitCreated")!(gitEntry("/ws/later/.git"));
@@ -158,7 +173,7 @@ it("rescans when a folder that holds an offered repository is deleted, renamed o
   host.offered = ["/ws/libs/a", "/ws/b"];
   host.listeners.get("anythingDeleted")!(gitEntry("/ws/libs"));
   vi.advanceTimersByTime(QUIET);
-  expect(host.steps).toEqual(["info Repository folder deleted: /ws/libs", ...RESCAN]);
+  expect(host.steps).toEqual(["info Repository folder deleted: /ws/libs", ...rescanAt("/ws/libs")]);
 });
 
 it("leaves the scan alone when what was deleted holds no offered repository", () => {
@@ -177,7 +192,10 @@ it("rescans when a folder arrives with a repository in it", async () => {
   host.listeners.get("anythingCreated")!(gitEntry("/ws/notes.txt"));
   host.listeners.get("anythingCreated")!(gitEntry("/ws/empty"));
   await vi.advanceTimersByTimeAsync(QUIET);
-  expect(host.steps).toEqual(["info Repository folder created: /ws/cloned", ...RESCAN]);
+  expect(host.steps).toEqual([
+    "info Repository folder created: /ws/cloned",
+    ...rescanAt("/ws/cloned")
+  ]);
 });
 
 it("looks into nothing that the scan never lists or that reports itself", async () => {
@@ -208,7 +226,10 @@ it("looks into a few new paths at a time, and leaves the rest of a flood alone",
   host.repositories = ["/ws/later"];
   host.listeners.get("anythingCreated")!(gitEntry("/ws/later"));
   await vi.advanceTimersByTimeAsync(QUIET);
-  expect(host.steps).toEqual(["info Repository folder created: /ws/later", ...RESCAN]);
+  expect(host.steps).toEqual([
+    "info Repository folder created: /ws/later",
+    ...rescanAt("/ws/later")
+  ]);
 });
 
 it("starts no rescan for a folder it was still looking into when it was disposed", async () => {
@@ -223,12 +244,15 @@ it("starts no rescan for a folder it was still looking into when it was disposed
 it("logs the entry before it forgets the scan and asks for a new one", () => {
   host.listeners.get("gitDeleted")!(gitEntry("/ws/gone/.git"));
   vi.advanceTimersByTime(QUIET);
-  expect(host.steps).toEqual(["info Git directory deleted: /ws/gone/.git", ...RESCAN]);
+  expect(host.steps).toEqual([
+    "info Git directory deleted: /ws/gone/.git",
+    ...rescanAt("/ws/gone/.git")
+  ]);
 });
 
 it("rescans at once when the workspace folders change", () => {
   host.listeners.get("folders")!({ added: [], removed: [] });
-  expect(host.steps).toEqual(["info Workspace folders changed", ...RESCAN]);
+  expect(host.steps).toEqual(["info Workspace folders changed", ...rescanAt()]);
 });
 
 it("disposes everything it started and cancels waiting rescans", () => {
