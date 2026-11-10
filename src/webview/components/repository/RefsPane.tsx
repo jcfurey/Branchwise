@@ -20,6 +20,7 @@ import {
   saveStash,
   stashMenu
 } from "@/webview/components/repository/StashManager";
+import { Button } from "@/webview/components/ui/Button";
 import {
   BranchIcon,
   ChevronDownIcon,
@@ -59,7 +60,11 @@ import { DROP_TARGET_CLASS, dragHandlers, refDragAttributes } from "@/webview/li
 import { checkoutBranchAction, refMenu, refMenuSource } from "@/webview/lib/menus";
 import { collapsedSections, focusHistory, toggleSection } from "@/webview/lib/navigation";
 import { openRemoteAction } from "@/webview/lib/remote-actions";
-import { repositoryState } from "@/webview/lib/repository-actions";
+import {
+  repositoryState,
+  repositoryStateError,
+  requestRepositoryState
+} from "@/webview/lib/repository-actions";
 import {
   activeSource,
   branchSort,
@@ -421,7 +426,17 @@ export function RefsPane() {
         />
       </div>
       {state === null ? (
-        <Loading />
+        // A first read that failed is not one still under way.
+        repositoryStateError.value === null ? (
+          <Loading />
+        ) : (
+          <div class="space-y-2 p-3">
+            <p role="alert" class="break-words select-text">
+              {repositoryStateError.value || window.l10n.unableToLoadRepository}
+            </p>
+            <Button onClick={requestRepositoryState}>{window.l10n.retry}</Button>
+          </div>
+        )
       ) : (
         <div class="min-h-0 flex-1 overflow-y-auto">
           <Section

@@ -1,4 +1,4 @@
-import type { OperationKind, OperationState } from "@/backend/types";
+import type { OperationKind, OperationState, RepositoryState } from "@/backend/types";
 import { BisectStatus } from "@/webview/components/repository/BisectView";
 import { openTracking } from "@/webview/components/repository/RemoteManager";
 import { Button } from "@/webview/components/ui/Button";
@@ -38,20 +38,31 @@ function recover(operation: OperationState, resolution: "continue" | "abort" | "
 export function RepositoryStatus() {
   const state = repositoryState.value;
   const error = repositoryStateError.value;
-  if (error !== null) {
-    return (
-      <div
-        class="flex flex-wrap items-center gap-2 border-b border-line-soft px-3 py-2 text-ui"
-        role="status"
-      >
-        <span title={error}>{window.l10n.unableToLoadRepository}</span>
-        <Button onClick={requestRepositoryState}>{window.l10n.refresh}</Button>
-      </div>
-    );
-  }
+  // The failure and what Git said, above whatever an earlier read left on show.
+  const failure = error !== null && (
+    <div
+      class="flex flex-wrap items-center gap-2 border-b border-line-soft px-3 py-2 text-ui"
+      role="status"
+    >
+      <span>{window.l10n.unableToLoadRepository}</span>
+      <span class="min-w-0 flex-1 truncate text-muted select-text" title={error}>
+        {error}
+      </span>
+      <Button onClick={requestRepositoryState}>{window.l10n.refresh}</Button>
+    </div>
+  );
   if (state === null) {
-    return null;
+    return failure || null;
   }
+  return (
+    <>
+      {failure}
+      <StatusStrip state={state} />
+    </>
+  );
+}
+
+function StatusStrip({ state }: { state: RepositoryState }) {
   const tracking = state.branches.find((branch) => branch.name === state.head);
   const operation = state.operation;
   const repo = selectedRepo.value;

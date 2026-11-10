@@ -79,13 +79,16 @@ export function worktreeName(path: string, main: string): string {
     : "../" + path.slice(parent.length + 1);
 }
 
+/** No markers, always as this one map: every row reads the markers, and none is no news. */
+const NO_MARKERS: ReadonlyMap<string, Array<WorktreeMarker>> = new Map();
+
 /** The markers by the commit each worktree has checked out; none while the setting is off. */
-export const worktreeMarkers = computed(() => {
+export const worktreeMarkers = computed((): ReadonlyMap<string, Array<WorktreeMarker>> => {
   const byCommit = new Map<string, Array<WorktreeMarker>>();
   const state = repositoryState.value;
   const repo = selectedRepo.value;
   if (state === null || repo === undefined || !markersShown()) {
-    return byCommit;
+    return NO_MARKERS;
   }
   const { changes } = checked.value.repo === repo ? checked.value : { changes: undefined };
   const main = state.worktrees[0]?.path ?? repo;
@@ -97,7 +100,7 @@ export const worktreeMarkers = computed(() => {
     };
     byCommit.set(worktree.head, [...(byCommit.get(worktree.head) ?? []), marker]);
   }
-  return byCommit;
+  return byCommit.size === 0 ? NO_MARKERS : byCommit;
 });
 
 /** The marker of the other worktree that has the local branch `branch` checked out, if any. */
