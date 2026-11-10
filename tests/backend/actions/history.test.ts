@@ -467,4 +467,41 @@ describe("workspace overview", () => {
       run({ kind: "submodule", operation: "update", path: "module", recorded: "0".repeat(40) })
     ).rejects.toThrow("changed");
   });
+
+  it("refuses to update a submodule away from commits made on its detached HEAD", async () => {
+    vi.stubEnv("GIT_CONFIG_COUNT", "1");
+    vi.stubEnv("GIT_CONFIG_KEY_0", "protocol.file.allow");
+    vi.stubEnv("GIT_CONFIG_VALUE_0", "always");
+    const child = makeRepo();
+    dirs.push(child);
+    read(["submodule", "add", child, "module"]);
+    read(["commit", "-am", "module"]);
+    const module = path.join(repo, "module");
+    // As an update leaves a submodule: HEAD detached at the recorded commit.
+    read(["checkout", "-q", "--detach"], module);
+    read(["config", "user.name", "T"], module);
+    read(["config", "user.email", "t@t.com"], module);
+    const work = commit("work", "local", "work in the submodule", module);
+    const entry = (await loadWorkspace([repo], "git")).find(
+      (item) => item.submodulePath === "module"
+    )!;
+    expect(entry.head).toBe(work);
+    const update = () =>
+      run({ kind: "submodule", operation: "update", path: "module", recorded: entry.recorded! });
+
+    await expect(update()).rejects.toThrow(/Create a branch/);
+    expect(read(["rev-parse", "HEAD"], module)).toBe(work);
+
+    // On a branch the commit is kept, and the update goes ahead.
+    read(["branch", "kept"], module);
+    await update();
+    expect(read(["rev-parse", "HEAD"], module)).toBe(entry.recorded);
+    expect(read(["rev-parse", "kept"], module)).toBe(work);
+
+    // A HEAD that a checkout put at a commit no branch has holds no work of its own.
+    read(["checkout", "-q", "--detach", work], module);
+    read(["branch", "-D", "kept"], module);
+    await update();
+    expect(read(["rev-parse", "HEAD"], module)).toBe(entry.recorded);
+  });
 });

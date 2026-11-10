@@ -222,6 +222,38 @@ describe("absorbing", () => {
     expect(read(["reflog", "-1", "--format=%gs"])).toMatch(/absorb/);
   });
 
+  it("names a commit by its ID in a fixup when another commit has the same subject", async () => {
+    read(["commit", "-q", "--amend", "-m", "first"]);
+    const twin = read(["rev-parse", "HEAD"]);
+    stageFixes();
+    const plan = await loadAbsorbPlan(git());
+    await absorb(plan);
+
+    // `fixup! first` would name both commits. Git's autosquash would fold it into the older
+    // one, whichever it was meant for; the ID names one commit only.
+    expect(subjects()).toBe(`fixup! ${twin}\nfixup! ${first}\nfirst\nfirst\npushed\ninit`);
+    const data = await repositoryQuery(git(), {
+      kind: "rebasePlan",
+      base: plan.base!,
+      autosquash: true
+    });
+    if (data.kind !== "rebasePlan") {
+      throw new Error("No plan");
+    }
+    expect(data.plan.entries.map((entry) => [entry.hash === twin, entry.action])).toEqual([
+      [false, "pick"],
+      [false, "fixup"],
+      [true, "pick"],
+      [false, "fixup"]
+    ]);
+    await run({ kind: "interactiveRebase", plan: data.plan });
+    expect(subjects()).toBe("first\nfirst\npushed\ninit");
+    expect(read(["show", "HEAD:y"]).split("\n")).toEqual(["y1", "y2 fixed", "y3"]);
+    expect(read(["diff", "--name-only", "HEAD~1", "HEAD"])).toBe("x\ny");
+    expect(read(["show", "HEAD~1:x"])).toContain("first-2 fixed");
+    expect(read(["show", "HEAD~1:x"])).not.toContain("second-4 fixed");
+  });
+
   it("keeps unstaged and untracked changes and the hunks it cannot absorb", async () => {
     stage({
       x: ["p1 pushed", "first-2", "p3", "second-4", "p5", "first-6 fixed", "first-7"],

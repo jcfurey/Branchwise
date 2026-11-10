@@ -22,8 +22,10 @@ import { loadOperation, loadStashes, loadWorktrees } from "@/backend/queries/rep
 import { loadWorkingTree } from "@/backend/queries/workingTree";
 import type { RepositoryAction, RestoreBackup, StashDetails } from "@/backend/types";
 import { literalPath } from "@/backend/utils/history";
+import { keptOnlyByHead } from "@/backend/utils/keptCommits";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { runGit } from "@/backend/utils/runGit";
+import { abbrevCommit } from "@/backend/utils/string";
 import { requireBranchName, resolveCommit } from "@/backend/utils/validation";
 
 export type RepositoryEffect =
@@ -248,6 +250,16 @@ export async function runRepositoryAction(
       }
       if (worktree.head !== action.expectedHead) {
         throw new Error(l10n.t("The worktree changed. Inspect it before removing it."));
+      }
+      // A detached HEAD and its reflog go with the worktree, and with them the only record of
+      // where its commits were.
+      if (worktree.branch === "" && (await keptOnlyByHead(git, worktree.head))) {
+        throw new Error(
+          l10n.t(
+            "This worktree is at commit {0}, which no branch or tag keeps. Removing the worktree would leave its commits out of reach. Create a branch at that commit first.",
+            abbrevCommit(worktree.head)
+          )
+        );
       }
       await git.raw(["worktree", "remove", "--", worktree.path]);
       return;

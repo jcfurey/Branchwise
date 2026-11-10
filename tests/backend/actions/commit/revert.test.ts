@@ -41,4 +41,16 @@ describe("revertCommit", () => {
 
     expect(read(["rev-parse", "HEAD"])).toBe(headBefore);
   });
+
+  it("says so when the commit's changes are already gone, instead of reporting a revert", async () => {
+    const reverted = read(["rev-parse", "HEAD"]);
+    await revert(reverted);
+    const headBefore = read(["rev-parse", "HEAD"]);
+
+    // Git commits nothing and says why on its standard output only, with exit status 1.
+    await expect(revert(reverted)).rejects.toThrow(/nothing to revert/i);
+
+    expect(read(["rev-parse", "HEAD"])).toBe(headBefore);
+    expect(read(["status", "--porcelain", "--untracked-files=all"])).toBe("");
+  });
 });

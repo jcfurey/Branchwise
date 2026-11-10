@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -12,6 +12,7 @@ import {
   type SplitSourceHunk
 } from "@/backend/queries/splitCommit";
 import type { SplitAssignment, SplitPlan } from "@/backend/types";
+import { gitVersionAtLeast } from "@/backend/utils/gitVersion";
 import { readGitBytes, readGitCode, runGit, runGitWithInput } from "@/backend/utils/runGit";
 import { requireCurrentBranch } from "@/backend/utils/validation";
 
@@ -19,12 +20,26 @@ const NEWLINE = Buffer.from("\n");
 
 /** What a commit object says about itself, as a copy of it needs. */
 type CommitObject = {
+  hash: string;
   tree: string;
-  author: { name: string; email: string; date: string };
-  /** The encoding its message is in, from its `encoding` header. */
+  /** The name and address byte for byte: they are in the commit's encoding, or in none. */
+  author: { name: Buffer; email: Buffer; date: string };
+  /** The encoding its message and its author are in, from its `encoding` header. */
   encoding: string;
   message: Buffer;
 };
+
+/** `bytes` as text when they are UTF-8, and `null` when they are not. */
+function utf8(bytes: Buffer) {
+  const text = bytes.toString("utf8");
+  return Buffer.from(text, "utf8").equals(bytes) ? text : null;
+}
+
+/** `bytes` as a quoted value of a Git configuration file. */
+function configValue(bytes: Buffer) {
+  // One character for each byte, so that the bytes come back exactly.
+  return Buffer.from(`"${bytes.toString("latin1").replace(/[\\"]/g, "\\$&")}"`, "latin1");
+}
 
 /** The parts of a plan that say what the split does, without what may change around it. */
 function intent(plan: SplitPlan) {
@@ -36,7 +51,8 @@ function intent(plan: SplitPlan) {
 async function readCommit(git: SimpleGit, hash: string): Promise<CommitObject> {
   const raw = await readGitBytes(git, ["cat-file", "commit", hash]);
   const end = raw.indexOf("\n\n");
-  const header = (end === -1 ? raw : raw.subarray(0, end)).toString("utf8").split("\n");
+  // One character for each byte: a name may be in any encoding, or in none that is declared.
+  const header = (end === -1 ? raw : raw.subarray(0, end)).toString("latin1").split("\n");
   const field = (name: string) =>
     header.find((line) => line.startsWith(name + " "))?.slice(name.length + 1);
   const author = /^(.*?) ?<(.*)> (\d+) ([+-]\d{4})$/.exec(field("author") ?? "");
@@ -44,9 +60,14 @@ async function readCommit(git: SimpleGit, hash: string): Promise<CommitObject> {
     throw new Error(l10n.t("The author of commit {0} cannot be read.", hash));
   }
   return {
+    hash,
     tree: field("tree")!,
-    // Git takes `@<seconds> <zone>` as that exact time, in that zone.
-    author: { name: author[1]!, email: author[2]!, date: `@${author[3]} ${author[4]}` },
+    author: {
+      name: Buffer.from(author[1]!, "latin1"),
+      email: Buffer.from(author[2]!, "latin1"),
+      // Git takes `@<seconds> <zone>` as that exact time, in that zone.
+      date: `@${author[3]} ${author[4]}`
+    },
     encoding: field("encoding") ?? "UTF-8",
     message: end === -1 ? Buffer.alloc(0) : raw.subarray(end + 2)
   };
@@ -166,18 +187,65 @@ export async function splitCommit(
   const sign = (
     await readGitCode(git, ["config", "--type=bool", "--get", "commit.gpgSign"], [0, 1])
   ).stdout.trim();
-  /** Commit `tree` on `parent` as `source` was committed: its author, date and encoding. */
+  let identities = 0;
+  /**
+   * Commit `tree` on `parent` with `source`'s author and date, and `message` in `encoding`.
+   * The author's name and address are in `source`'s encoding. For a commit in that encoding
+   * they are passed on byte for byte; for a new commit in UTF-8 they are carried over into it.
+   */
   const commit = async (
     tree: string,
     parent: string | null,
     source: CommitObject,
-    message: Buffer
+    message: Buffer,
+    encoding = source.encoding
   ) => {
+    let { name, email } = source.author;
+    if (encoding.toLowerCase() !== source.encoding.toLowerCase()) {
+      try {
+        const decoder = new TextDecoder(source.encoding, { fatal: true });
+        name = Buffer.from(decoder.decode(name));
+        email = Buffer.from(decoder.decode(email));
+      } catch (error) {
+        throw new Error(l10n.t("The author of commit {0} cannot be read.", source.hash), {
+          cause: error
+        });
+      }
+    }
+    const text = { name: utf8(name), email: utf8(email) };
+    const identity: string[] = [];
+    const { GIT_AUTHOR_NAME: _name, GIT_AUTHOR_EMAIL: _email, ...inherited } = process.env;
+    let author: NodeJS.ProcessEnv;
+    if (text.name !== null && text.email !== null) {
+      author = { GIT_AUTHOR_NAME: text.name, GIT_AUTHOR_EMAIL: text.email };
+    } else {
+      // The environment and the command line carry text, which Node writes as UTF-8. Bytes
+      // that are not UTF-8 reach Git unchanged only in a file: a configuration file that
+      // names the author, which Git reads since 2.22.
+      if (!(await gitVersionAtLeast(git, 2, 22))) {
+        throw new Error(l10n.t("The author of commit {0} cannot be read.", source.hash));
+      }
+      const file = path.join(directory, `author-${identities++}`);
+      await writeFile(
+        file,
+        Buffer.concat([
+          Buffer.from("[author]\n\tname = "),
+          configValue(name),
+          Buffer.from("\n\temail = "),
+          configValue(email),
+          NEWLINE
+        ]),
+        { mode: 0o600 }
+      );
+      identity.push("-c", `include.path=${file}`);
+      author = {};
+    }
     const output = await runGitWithInput(
       git,
       [
         "-c",
-        `i18n.commitEncoding=${source.encoding}`,
+        `i18n.commitEncoding=${encoding}`,
+        ...identity,
         "commit-tree",
         // Plumbing does not sign by itself; signing follows the setting a commit would.
         ...(sign === "true" ? ["-S"] : []),
@@ -185,12 +253,7 @@ export async function splitCommit(
         ...(parent === null ? [] : ["-p", parent])
       ],
       message,
-      {
-        ...process.env,
-        GIT_AUTHOR_NAME: source.author.name,
-        GIT_AUTHOR_EMAIL: source.author.email,
-        GIT_AUTHOR_DATE: source.author.date
-      }
+      { ...inherited, ...author, GIT_AUTHOR_DATE: source.author.date }
     );
     return output.trim();
   };
@@ -256,7 +319,7 @@ export async function splitCommit(
       // eslint-disable-next-line no-await-in-loop
       built = (await runGit(git, ["write-tree"], binary, env)).trim();
       // eslint-disable-next-line no-await-in-loop
-      tip = await commit(built, tip, { ...target, encoding: "UTF-8" }, cleaned[part]!);
+      tip = await commit(built, tip, target, cleaned[part]!, "UTF-8");
     }
     if (built !== original) {
       throw new Error(

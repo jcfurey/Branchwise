@@ -417,6 +417,101 @@ describe("interactive rebase", () => {
     expect(read(["log", "-1", "--format=%s"])).toBe("after recovery");
     expect(await loadOperation(createGit(repo, "git"))).toBeNull();
   });
+
+  describe("a reworded message with lines that start like a comment", () => {
+    const message = "#123 Fix the parser\n\n# not a comment\nSee #124";
+
+    it("keeps every line, where Git would strip them and stop on the empty message", async () => {
+      const base = read(["rev-parse", "HEAD"]);
+      commit("a", "a");
+      commit("b", "b");
+      const plan = await loadRebasePlan(createGit(repo, "git"), base);
+      const [a, b] = plan.entries;
+      plan.entries = [{ ...a!, action: "reword", message }, b!];
+
+      await run({ kind: "interactiveRebase", plan });
+
+      expect(await loadOperation(createGit(repo, "git"))).toBeNull();
+      expect(read(["log", "-1", "--format=%B", "HEAD^"])).toBe(message);
+      expect(read(["log", "-1", "--format=%s"])).toBe("b");
+      expect(fs.existsSync(path.join(repo, ".git", "branchwise-rebase"))).toBe(false);
+    });
+
+    it("keeps them on a commit that Fixup commits fold into, and its author", async () => {
+      const base = read(["rev-parse", "HEAD"]);
+      read([
+        "-c",
+        "user.name=Ann",
+        "-c",
+        "user.email=ann@example.com",
+        "commit",
+        "--allow-empty",
+        "-m",
+        "a"
+      ]);
+      commit("b", "b");
+      commit("c", "c");
+      const plan = await loadRebasePlan(createGit(repo, "git"), base);
+      const [a, b, c] = plan.entries;
+      plan.entries = [{ ...a!, action: "reword", message }, { ...b!, action: "fixup" }, c!];
+
+      await run({ kind: "interactiveRebase", plan });
+
+      expect(read(["log", "--format=%an: %s", `${base}..HEAD`])).toBe(
+        "T: c\nAnn: #123 Fix the parser"
+      );
+      expect(read(["log", "-1", "--format=%B", "HEAD^"])).toBe(message);
+      expect(fs.readFileSync(path.join(repo, "b"), "utf8")).toBe("b");
+    });
+
+    it("keeps them when the rebase stopped for a conflict before reaching the commit", async () => {
+      const base = read(["rev-parse", "HEAD"]);
+      commit("f", "first");
+      commit("f", "second");
+      commit("later", "later");
+      const plan = await loadRebasePlan(createGit(repo, "git"), base);
+      const [a, b, c] = plan.entries;
+      plan.entries = [{ ...a!, action: "drop" }, b!, { ...c!, action: "reword", message }];
+      await expect(run({ kind: "interactiveRebase", plan })).rejects.toThrow();
+      const operation = (await loadOperation(createGit(repo, "git")))!;
+      fs.writeFileSync(path.join(repo, "f"), "second");
+      await run({ kind: "conflict", path: "f", operation: "stage" });
+
+      await run({ kind: "recover", operation, resolution: "continue" });
+
+      expect(await loadOperation(createGit(repo, "git"))).toBeNull();
+      expect(read(["log", "-1", "--format=%B"])).toBe(message);
+    });
+
+    it("keeps them in a squashed message left as offered", async () => {
+      const base = read(["rev-parse", "HEAD"]);
+      commit("a", "#1 first");
+      commit("b", "second");
+      const plan = await loadRebasePlan(createGit(repo, "git"), base);
+      const [a, b] = plan.entries;
+      plan.entries = [a!, { ...b!, action: "squash" }];
+      const offered = combinedMessage(squashGroups(plan.entries)[0]!);
+      expect(offered).toBe("#1 first\n\nsecond");
+
+      await run({ kind: "interactiveRebase", plan });
+
+      expect(read(["rev-list", "--count", `${base}..HEAD`])).toBe("1");
+      expect(read(["log", "-1", "--format=%B"])).toBe(offered);
+    });
+
+    it("follows the comment character the repository sets", async () => {
+      read(["config", "core.commentChar", ";"]);
+      const base = read(["rev-parse", "HEAD"]);
+      commit("a", "a");
+      const plan = await loadRebasePlan(createGit(repo, "git"), base);
+      const semicolons = "; a note\n\n# kept either way";
+      plan.entries = [{ ...plan.entries[0]!, action: "reword", message: semicolons }];
+
+      await run({ kind: "interactiveRebase", plan });
+
+      expect(read(["log", "-1", "--format=%B"])).toBe(semicolons);
+    });
+  });
 });
 
 describe("squashing selected commits", () => {

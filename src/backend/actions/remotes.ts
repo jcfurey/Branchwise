@@ -132,7 +132,58 @@ export async function manageRemote(git: SimpleGit, action: RemoteAction) {
       await requireRemote(git, action.remote);
       await (action.refType === "tag" ? requireTagName : requireBranchName)(git, action.name);
       const ref = `refs/${action.refType === "tag" ? "tags" : "heads"}/${action.name}`;
-      await runGit(git, ["push", "--", action.remote, `:${ref}`]);
+      // A branch goes only as it was last fetched, which is what the user saw and what the
+      // Safety Net records: commits pushed to it since then would otherwise go unseen.
+      const known =
+        action.refType === "branch"
+          ? (
+              await git
+                .raw([
+                  "rev-parse",
+                  "--verify",
+                  "--quiet",
+                  `refs/remotes/${action.remote}/${action.name}^{commit}`
+                ])
+                .catch(() => "")
+            ).trim()
+          : "";
+      try {
+        await runGit(git, [
+          "push",
+          ...(known === "" ? [] : [`--force-with-lease=${ref}:${known}`]),
+          "--",
+          action.remote,
+          `:${ref}`
+        ]);
+      } catch (error) {
+        if (known === "") {
+          throw error;
+        }
+        // Git words a refused lease in the user's language, so the remote is asked instead.
+        const listed = await runGit(git, ["ls-remote", "--", action.remote, ref]).catch(() => null);
+        const now = listed === null ? known : (listed.split("\t")[0] ?? "").trim();
+        if (now === "") {
+          throw new Error(
+            l10n.t(
+              "{0} was already deleted on {1}. Fetch to update the list of branches.",
+              action.name,
+              action.remote
+            ),
+            { cause: error }
+          );
+        }
+        if (now !== known) {
+          throw new Error(
+            l10n.t(
+              "{0} has commits on {1} that were never fetched, so it was not deleted. Fetch, look at them, then delete the branch again.",
+              action.name,
+              action.remote
+            ),
+            { cause: error }
+          );
+        }
+        throw error;
+      }
       return;
     }
   }

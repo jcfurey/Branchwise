@@ -31,6 +31,21 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 - A repository state that fails to load once no longer empties the Branches pane to an endless spinner: what was loaded stays, and the message from Git is shown with a way to retry.
 - Counts of one are in the singular: "1 changed file", "1 stash", "1 other branch ahead", **Fast-forward 1 Branch**, **Fetch 1 Repository** and so on.
 - The conflict mark on a branch label, its row's summary and the list of teammates' branches name the checked-out branch from the start. They said "HEAD" until the repository state had been read, which can be after the graph is drawn.
+- A hard reset no longer writes over untracked files. Where the target commit has a file and an untracked one, ignored or not, stands in its place, Git replaced it without a word, and nothing could bring it back; the reset is now refused and names the files. See [Undo and the Safety Net](docs/git-actions.md#undo-and-the-safety-net).
+- A hard reset works again while the index holds conflicts, as after a stash pop that conflicted, where nothing is in progress to abort. It was refused because the backup could not be written; the files are now kept as they are, and Undo brings them back.
+- Undo can no longer rewind a branch past newer commits. A rebase, merge or pick that stopped in Branchwise and was ended in a terminal left its record waiting, and the next operation of the same kind ended from the status strip completed it; its Undo then moved the branch back to before everything done in between.
+- An action refused because another operation is stopped no longer takes that operation's place in the Safety Net, which left the real one without an Undo.
+- Undo of a merge, rebase, pick or hard reset no longer unstages what is staged: it is refused until the staged changes are committed or unstaged, as Undo of a mixed reset already was.
+- In the interactive rebase editor, a reworded message keeps its lines that start with `#`. Git dropped them as comments, so a subject such as "#123 Fix the parser" vanished, and a message of nothing else stopped the rebase. A combined message left as offered keeps such lines too.
+- A rebase no longer moves other branches when `rebase.updateRefs` is set, a move the Safety Net did not record and Undo could not reverse. The interactive rebase also runs on Git older than 2.38, which refused an option it was given.
+- Deleting a remote branch no longer deletes commits that were never fetched: the branch goes only as it was last fetched, and otherwise stays until you fetch.
+- A worktree with a detached `HEAD` at commits that no branch or tag has is no longer removed, which left them out of reach with no reflog to find them by.
+- **Update to Recorded Revision** is refused while a submodule's detached `HEAD` holds commits made there that no branch has, instead of checking out away from them.
+- **Cherry-pick Selected** and **Revert Selected** check the mainline parent against every selected commit first. A parent that only the merges have used to stop the batch half way, with some commits applied.
+- **Split Commit…** keeps the author's name when it is not UTF-8, as in commits that declare another encoding; its letters outside ASCII were replaced by the replacement character in every commit the split made.
+- **Restore File Contents** also refuses to run over unsaved edits when the editor reached the file through a symbolic link, or under a name in another case.
+- Reverting a commit whose changes are already gone says so, instead of reporting a revert that made no commit.
+- **Absorb Staged Changes…** names a commit by its ID in a fixup when another commit has the same subject, so that autosquash cannot fold the fixup into the wrong one.
 
 ## [0.10.0] - 2026-10-09
 

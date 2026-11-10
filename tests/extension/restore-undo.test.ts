@@ -97,6 +97,44 @@ it("refuses to restore over unsaved editor changes", async () => {
   expect(mocks.info).not.toHaveBeenCalled();
 });
 
+it("refuses to restore over unsaved changes in an editor that reached the file through a link", async () => {
+  // A workspace opened through a symbolic link names its files by the link, Git by the folder.
+  const link = repo + "-link";
+  fs.symlinkSync(repo, link, "junction");
+  try {
+    mocks.documents.push({
+      isDirty: true,
+      uri: { scheme: "file", fsPath: path.join(link, "f") }
+    });
+    const { post, send } = register();
+    await send("restoreFile");
+    expect(post).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: "restoreFile",
+        status: expect.stringMatching(/unsaved/)
+      })
+    );
+    expect(fs.readFileSync(path.join(repo, "f"))).toEqual(local);
+  } finally {
+    fs.rmSync(link, { force: true });
+  }
+});
+
+it("restores beside unsaved changes to another file of the same name", async () => {
+  const elsewhere = fs.mkdtempSync(repo + "-other-");
+  try {
+    mocks.documents.push({
+      isDirty: true,
+      uri: { scheme: "file", fsPath: path.join(elsewhere, "f") }
+    });
+    const { send } = register();
+    await send("restoreFile");
+    expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("historical");
+  } finally {
+    fs.rmSync(elsewhere, { recursive: true, force: true });
+  }
+});
+
 it("warns that a preview shows unsaved changes", async () => {
   dirtyEditor();
   const { post, send } = register();

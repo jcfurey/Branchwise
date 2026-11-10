@@ -59,7 +59,8 @@ function patchAll(files: StagedFile[], chosen: Set<StagedHunk>, applied: Set<Sta
 
 /**
  * Commit each group of staged hunks as `fixup! <subject>` of the commit that last changed their
- * lines, oldest target first, and leave the rest staged. The commits are built in a private
+ * lines, or `fixup! <ID>` where the subject is not that commit's alone, oldest target first, and
+ * leave the rest staged. The commits are built in a private
  * index from HEAD, so the work tree and the real index are never touched: once HEAD moves to the
  * last fixup, what the index holds beyond it is exactly the hunks left over. Before HEAD moves,
  * the fixups plus the left-over changes must rebuild the staged tree exactly; if anything differs
@@ -68,7 +69,7 @@ function patchAll(files: StagedFile[], chosen: Set<StagedHunk>, applied: Set<Sta
 export async function absorbStaged(git: SimpleGit, expected: AbsorbPlan, binary: string) {
   await requireIdle(git);
   await requireCurrentBranch(git, expected.branch, expected.head);
-  const { plan, files, whole } = await analyzeAbsorb(git);
+  const { plan, files, whole, names } = await analyzeAbsorb(git);
   if (intent(plan) !== intent(expected)) {
     throw new Error(l10n.t("The staged changes changed. Review them again."));
   }
@@ -108,7 +109,7 @@ export async function absorbStaged(git: SimpleGit, expected: AbsorbPlan, binary:
       );
       await apply(patchAll(files, chosen, applied));
       const tree = (await runGit(git, ["write-tree"], binary, env)).trim();
-      const message = Buffer.from(`fixup! ${target.subject}\n`);
+      const message = Buffer.from(`fixup! ${names.get(target.hash) ?? target.subject}\n`);
       const commit = await runGitWithInput(
         git,
         ["commit-tree", tree, "-p", parent],

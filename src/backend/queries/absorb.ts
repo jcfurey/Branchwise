@@ -31,6 +31,13 @@ export type AbsorbAnalysis = {
   files: StagedFile[];
   /** Files that stay staged whole, such as added or binary ones. */
   whole: StagedEntry[];
+  /**
+   * What a fixup names each target by, from its commit ID: the subject, or the ID itself when
+   * another commit the branch has not shared yet has the same subject. Autosquash matches a
+   * fixup to the first commit with its subject, which may not be the one it was made for; an
+   * ID names one commit only.
+   */
+  names: Map<string, string>;
 };
 
 type Candidate = { hash: string; parent: string | null; subject: string };
@@ -369,7 +376,15 @@ export async function analyzeAbsorb(git: SimpleGit): Promise<AbsorbAnalysis> {
       clean: left.length === 0 && status.files.every((file) => file.working_dir === " ")
     },
     files,
-    whole
+    whole,
+    names: new Map(
+      commits.map((commit) => [
+        commit.hash,
+        commits.some((other) => other !== commit && other.subject === commit.subject)
+          ? commit.hash
+          : commit.subject
+      ])
+    )
   };
 }
 

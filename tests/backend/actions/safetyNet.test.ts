@@ -624,3 +624,189 @@ describe("the backups", () => {
     expect(ids).toEqual(new Set([...kept.map((record) => record.id), `${now - 2 * day}-0`]));
   });
 });
+
+describe("records of actions that stop part way", () => {
+  /** `main` and `other` both change `f`, so replaying one onto the other stops. */
+  function conflicting() {
+    read(["checkout", "-q", "-b", "other"]);
+    commit("f", "other side");
+    read(["checkout", "-q", "main"]);
+    return commit("f", "main side");
+  }
+  async function continueStopped() {
+    const state = await loadRepositoryState(git());
+    await repositoryAction({
+      kind: "recover",
+      operation: state.operation!,
+      resolution: "continue"
+    });
+  }
+
+  it("leaves a record unfinished when the operation it waited for was another one", async () => {
+    const start = conflicting();
+    await expect(
+      repositoryAction({ kind: "rebase", branch: "main", onto: "other", expectedHead: start })
+    ).rejects.toThrow();
+    expect((await readSafetyJournal(git())).at(-1)).toMatchObject({
+      state: "pending",
+      operation: "rebase"
+    });
+
+    // In a terminal the rebase is aborted, work goes on, and another rebase stops.
+    read(["rebase", "--abort"]);
+    commit("g", "later work");
+    expect(() => read(["rebase", "other"])).toThrow();
+    write("f", "resolved");
+    read(["add", "--", "f"]);
+    await continueStopped();
+
+    // That rebase began at "later work", not where the recorded one did. Completing the record
+    // with it would offer an Undo that rewinds the branch to before "later work".
+    expect(read(["log", "--format=%s", "-1"])).toBe("later work");
+    expect((await readSafetyJournal(git())).at(-1)).toMatchObject({
+      kind: "rebase",
+      state: "unfinished"
+    });
+    expect(await loadSafetyUndo(git())).toBeNull();
+  });
+
+  it("completes the record when the same rebase is continued, and Undo puts the branch back", async () => {
+    const start = conflicting();
+    const before = snapshot();
+    await expect(
+      repositoryAction({ kind: "rebase", branch: "main", onto: "other", expectedHead: start })
+    ).rejects.toThrow();
+    write("f", "resolved");
+    read(["add", "--", "f"]);
+    await continueStopped();
+
+    expect((await readSafetyJournal(git())).at(-1)).toMatchObject({ state: "done" });
+    await undo();
+    expect(snapshot()).toEqual(before);
+  });
+
+  it("completes a pick of several commits that stopped after the first", async () => {
+    read(["checkout", "-q", "-b", "source"]);
+    const clean = commit("a", "applies cleanly");
+    const clash = commit("f", "source side");
+    read(["checkout", "-q", "main"]);
+    commit("f", "main side");
+    const before = snapshot();
+    const plan = await loadBatchPlan(git(), [clean, clash]);
+    await expect(
+      repositoryAction({ kind: "batch", operation: "cherry-pick", plan, mainline: 1 })
+    ).rejects.toThrow();
+    // HEAD has moved by the first pick; the sequence still began where the record says.
+    write("f", "resolved");
+    read(["add", "--", "f"]);
+    await continueStopped();
+
+    expect((await readSafetyJournal(git())).at(-1)).toMatchObject({ state: "done" });
+    await undo();
+    expect(snapshot()).toEqual(before);
+  });
+
+  it("keeps a stopped rebase's record when another rebase is refused meanwhile", async () => {
+    const start = conflicting();
+    const before = snapshot();
+    await expect(
+      repositoryAction({ kind: "rebase", branch: "main", onto: "other", expectedHead: start })
+    ).rejects.toThrow();
+    // Refused, as an operation is in progress. Its record must not take the stopped one's place.
+    await expect(
+      repositoryAction({ kind: "rebase", branch: "main", onto: "other", expectedHead: start })
+    ).rejects.toThrow(/in progress/);
+    const records = await readSafetyJournal(git());
+    expect(records.map((record) => record.state)).toEqual(["pending"]);
+
+    write("f", "resolved");
+    read(["add", "--", "f"]);
+    await continueStopped();
+    expect((await readSafetyJournal(git())).map((record) => record.state)).toEqual(["done"]);
+    await undo();
+    expect(snapshot()).toEqual(before);
+  });
+});
+
+describe("what a reset would destroy", () => {
+  it("refuses a hard reset over an untracked file the target tracks, and records nothing", async () => {
+    const base = hash("HEAD");
+    const target = commit("notes", "notes as committed");
+    fs.mkdirSync(path.join(repo, "docs"));
+    commit("docs/guide", "guide as committed");
+    const further = hash("HEAD");
+    read(["reset", "-q", "--hard", base]);
+    write("notes", "never committed");
+    write("f", "an edit to a tracked file");
+    const before = snapshot();
+
+    await expect(
+      act({ command: "resetToCommit", commitHash: target, resetMode: "hard" })
+    ).rejects.toThrow(/notes/);
+    expect(snapshot()).toEqual(before);
+    expect(fs.readFileSync(path.join(repo, "notes"), "utf8")).toBe("never committed");
+    expect(await readSafetyJournal(git())).toEqual([]);
+    expect(read(["for-each-ref", "refs/branchwise/"])).toBe("");
+
+    // A file where the target has a folder is as much in the way, and so is an ignored file.
+    fs.rmSync(path.join(repo, "notes"));
+    write("docs", "a file named like the folder");
+    await expect(
+      act({ command: "resetToCommit", commitHash: further, resetMode: "hard" })
+    ).rejects.toThrow(/docs/);
+    fs.rmSync(path.join(repo, "docs"));
+    fs.writeFileSync(path.join(repo, ".git", "info", "exclude"), "notes\n");
+    write("notes", "ignored, never committed");
+    await expect(
+      act({ command: "resetToCommit", commitHash: target, resetMode: "hard" })
+    ).rejects.toThrow(/notes/);
+    expect(fs.readFileSync(path.join(repo, "notes"), "utf8")).toBe("ignored, never committed");
+
+    // Soft and mixed resets write no file, and a hard reset with nothing in the way goes ahead.
+    await act({ command: "resetToCommit", commitHash: target, resetMode: "mixed" });
+    expect(fs.readFileSync(path.join(repo, "notes"), "utf8")).toBe("ignored, never committed");
+    read(["reset", "-q", "--mixed", base]);
+    fs.rmSync(path.join(repo, "notes"));
+    await act({ command: "resetToCommit", commitHash: further, resetMode: "hard" });
+    expect(fs.readFileSync(path.join(repo, "docs", "guide"), "utf8")).toBe("guide as committed");
+  });
+
+  it("resets hard out of a conflicted stash pop, and Undo brings the conflicted files back", async () => {
+    write("f", "stashed edit");
+    read(["stash", "push", "-q"]);
+    commit("f", "committed since");
+    expect(() => read(["stash", "pop"])).toThrow();
+    expect((await loadRepositoryState(git())).operation).toBeNull();
+    const conflicted = fs.readFileSync(path.join(repo, "f"), "utf8");
+    expect(conflicted).toContain("<<<<<<<");
+
+    // Nothing is in progress to abort, so a hard reset is the way out.
+    await act({ command: "resetToCommit", commitHash: hash("HEAD"), resetMode: "hard" });
+    expect(read(["status", "--porcelain"])).toBe("");
+    expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe("committed since");
+
+    await undo();
+    expect(fs.readFileSync(path.join(repo, "f"), "utf8")).toBe(conflicted);
+    // The file comes back as an unstaged change: nothing with conflict markers is staged.
+    expect(read(["diff", "--cached", "--name-only"])).toBe("");
+    expect(read(["status", "--porcelain"])).toBe("M f");
+  });
+
+  it("refuses to undo a hard reset, a merge or a rebase over staged changes it would unstage", async () => {
+    const base = hash("HEAD");
+    commit("a", "one");
+    await act({ command: "resetToCommit", commitHash: base, resetMode: "hard" });
+    write("b", "staged since");
+    read(["add", "--", "b"]);
+    const before = snapshot();
+
+    await expect(undo()).rejects.toThrow(/unstage/);
+    expect(snapshot()).toEqual(before);
+
+    // Unstaged, the same change is no obstacle: Undo leaves it where it is.
+    read(["reset", "-q", "--", "b"]);
+    await undo();
+    expect(read(["log", "--format=%s", "-1"])).toBe("one");
+    expect(fs.readFileSync(path.join(repo, "b"), "utf8")).toBe("staged since");
+  });
+});
