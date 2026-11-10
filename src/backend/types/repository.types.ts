@@ -223,7 +223,10 @@ export type AppliedCommits = {
   /** The commits compared: HEAD's, `""` when HEAD has none yet, and the branch tip's. */
   head: string;
   tip: string;
-  /** The branch has too many commits HEAD lacks to compare, and `applied` is empty. */
+  /**
+   * Nothing was compared, and `applied` is empty: the branch has too many commits HEAD lacks, or
+   * the clone was made without its files' contents and would have to fetch them.
+   */
   skipped: boolean;
   /**
    * The branch's commits, newest first, whose patch HEAD's history already has. `equivalent` is

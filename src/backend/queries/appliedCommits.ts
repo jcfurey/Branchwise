@@ -3,6 +3,7 @@ import type { SimpleGit } from "simple-git";
 
 import { gitProcessOf } from "@/backend/gitClient";
 import type { AppliedCommits, EquivalentCommit, SubjectedCommit } from "@/backend/types";
+import { lacksFileContents } from "@/backend/utils/partialClone";
 import { branchListRef } from "@/backend/utils/refs";
 import { readGitCode, readGitWithInput } from "@/backend/utils/runGit";
 
@@ -124,6 +125,11 @@ export async function loadAppliedCommits(git: SimpleGit, branch: string): Promis
   const none: AppliedCommits = { head, tip, skipped: false, applied: [] };
   if (head === "" || head === tip) {
     return none;
+  }
+  // A patch ID takes both versions of every file a commit changed. A clone without them would
+  // fetch each from its remote, to mark rows nobody asked to have marked.
+  if (await lacksFileContents(git)) {
+    return { ...none, skipped: true };
   }
   // One past the limit tells a branch at the limit from one beyond it. Each line is a commit and
   // its parents, so merges can be told apart.

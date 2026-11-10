@@ -7,6 +7,7 @@ import type { SimpleGit } from "simple-git";
 import { gitProcessOf } from "@/backend/gitClient";
 import type { ConflictForecastEntry, ConflictForecastScope } from "@/backend/types";
 import { gitVersionAtLeast } from "@/backend/utils/gitVersion";
+import { lacksFileContents } from "@/backend/utils/partialClone";
 import { type RemoteVisibility, remoteVisibility } from "@/backend/utils/remoteVisibility";
 import { readGitCode } from "@/backend/utils/runGit";
 
@@ -234,7 +235,10 @@ export async function loadConflictForecast(
   const head = (
     await git.raw(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]).catch(() => "")
   ).trim();
-  if (head === "") {
+  // Merging takes the contents of every file both sides changed. A clone without them would
+  // fetch each from its remote, again after every refresh, since what a forecast writes or
+  // fetches is thrown away with its scratch folder.
+  if (head === "" || (await lacksFileContents(git))) {
     return [];
   }
   const local = parseRefs(

@@ -176,9 +176,12 @@ describe("change counts", () => {
     const client = createGit(repo(), "git");
     const raw = vi.spyOn(client, "raw");
     const answer = await loadCommitStats(client, hashes);
-    const asked = raw.mock.calls.map(([args]) =>
-      [args].flat().filter((arg) => /^[0-9a-f]{40}$/.test(String(arg)))
-    );
+    // One question about the clone comes first: whether it holds its files' contents at all.
+    const asked = raw.mock.calls
+      .map(([args]) => [args].flat().map(String))
+      .filter(([command]) => command === "log")
+      .map((args) => args.filter((arg) => /^[0-9a-f]{40}$/.test(arg)));
+    expect(raw.mock.calls.map(([args]) => [args].flat()[0])).toEqual(["config", "log", "log"]);
     expect(asked.map((batch) => batch.length)).toEqual([COMMIT_STATS_BATCH, 5]);
     expect(Object.keys(answer)).toHaveLength(count);
     expect(Object.values(answer).every((each) => each.files === 1 && each.additions === 1)).toBe(
