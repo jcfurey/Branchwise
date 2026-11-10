@@ -101,3 +101,35 @@ export function nearestBranches(
   }
   return nearest;
 }
+
+/**
+ * The commits whose nearest branch the row above already names, by a label of its own or by the
+ * same faint text. A run of rows on one branch then names it once, at its top, and again
+ * wherever rows of another branch come between; `nearest` is the answer of `nearestBranches`
+ * for these `commits`, and `isHidden` its test for branches whose labels do not show.
+ */
+export function repeatedNearest(
+  commits: ReadonlyArray<GitCommitNode>,
+  nearest: ReadonlyMap<string, string>,
+  isHidden: (branch: string) => boolean = () => false
+): Set<string> {
+  const repeated = new Set<string>();
+  let above: ReadonlyArray<string> = [];
+  for (const commit of commits) {
+    if (commit.hash === UNCOMMITTED_CHANGES) {
+      continue;
+    }
+    const name = nearest.get(commit.hash);
+    if (name === undefined) {
+      above = commit.refs
+        .filter((ref) => isBranch(ref) && !isHidden(listName(ref)))
+        .map((ref) => ref.name);
+      continue;
+    }
+    if (above.includes(name)) {
+      repeated.add(commit.hash);
+    }
+    above = [name];
+  }
+  return repeated;
+}

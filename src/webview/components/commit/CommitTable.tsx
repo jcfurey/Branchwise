@@ -23,7 +23,7 @@ import {
 import { GRAPH_PADDING } from "@/webview/graph/constants";
 import { commitRelations, lineRelation } from "@/webview/graph/focus";
 import { computeGraphLayout } from "@/webview/graph/layout";
-import { nearestBranches } from "@/webview/graph/nearest";
+import { nearestBranches, repeatedNearest } from "@/webview/graph/nearest";
 import { branchColour } from "@/webview/graph/palette";
 import type { BranchRelation, GraphExpansion, GraphLine } from "@/webview/graph/types";
 import { graphWidth, laneX } from "@/webview/graph/utils";
@@ -271,6 +271,11 @@ export function CommitTable({
   const nearest = useMemo(
     () => (showNearestBranch ? nearestBranches(commits, headBranch, isBranchHidden) : NO_NEAREST),
     [commits, headBranch, showNearestBranch, hiddenMatcher]
+  );
+  // A run of rows on one branch says so once, at its top.
+  const nearestAbove = useMemo(
+    () => repeatedNearest(commits, nearest, isBranchHidden),
+    [commits, nearest, hiddenMatcher]
   );
 
   const contentWidth = graphWidth(layout) + GRAPH_PADDING;
@@ -549,6 +554,7 @@ export function CommitTable({
                     : undefined
                 }
                 nearestBranch={nearest.get(commit.hash)}
+                nearestAbove={nearestAbove.has(commit.hash)}
                 push={pushOf.get(commit.hash)}
                 conflicts={conflictsOf}
                 applied={appliedOf.get(commit.hash)}

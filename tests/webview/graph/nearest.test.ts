@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { GitCommitNode, GitRef } from "@/backend/types";
-import { nearestBranches } from "@/webview/graph/nearest";
+import { nearestBranches, repeatedNearest } from "@/webview/graph/nearest";
 
 /** A commit with these parents and labels; `origin/x` is a remote branch, `v:x` a tag. */
 function commit(hash: string, parents: string[], ...labels: string[]): GitCommitNode {
@@ -116,5 +116,54 @@ describe("nearestBranches", () => {
       commit("mid", ["skewed"])
     ];
     expect(nearest(commits)).toEqual({ mid: "main" });
+  });
+});
+
+describe("repeatedNearest", () => {
+  const repeated = (commits: GitCommitNode[], isHidden?: (branch: string) => boolean) => [
+    ...repeatedNearest(commits, nearestBranches(commits, "main", isHidden), isHidden)
+  ];
+
+  it("leaves the name to the top of a run: under the branch's own label, every row repeats it", () => {
+    const commits = [
+      commit("c", ["b"], "main"),
+      commit("b", ["a"]),
+      commit("a", ["root"], "v:v1"),
+      commit("root", [])
+    ];
+    expect(nearest(commits)).toEqual({ b: "main", a: "main", root: "main" });
+    expect(repeated(commits)).toEqual(["b", "a", "root"]);
+  });
+
+  it("names the branch again wherever rows of another branch come between", () => {
+    // main: m3 - m2 - m1 - base; topic: t2 - t1 - base. The lanes interleave by date.
+    const commits = [
+      commit("m3", ["m2"], "main"),
+      commit("t2", ["t1"], "topic"),
+      commit("m2", ["m1"]),
+      commit("m1", ["base"]),
+      commit("t1", ["base"]),
+      commit("base", [])
+    ];
+    // The fork point is two steps under topic and three under main.
+    expect(nearest(commits)).toEqual({ m2: "main", m1: "main", t1: "topic", base: "topic" });
+    // m2 follows topic's row and t1 follows main's, so both say where they are; m1 and base
+    // sit right under a row of their own branch.
+    expect(repeated(commits)).toEqual(["m1", "base"]);
+  });
+
+  it("starts a run with the name when the branch's own label is hidden or far above", () => {
+    const commits = [commit("c", ["b"], "wip/secret"), commit("b", ["a"]), commit("a", [])];
+    // Nothing reaches the rows once the only branch is hidden.
+    expect(repeated(commits, (branch) => branch === "wip/secret")).toEqual([]);
+
+    const remote = [commit("r", ["q"], "origin/main"), commit("q", ["p"]), commit("p", [])];
+    expect(nearest(remote)).toEqual({ q: "origin/main", p: "origin/main" });
+    expect(repeated(remote)).toEqual(["q", "p"]);
+  });
+
+  it("passes over the row of uncommitted changes", () => {
+    const commits = [commit("*", ["c"]), commit("c", ["b"], "main"), commit("b", [])];
+    expect(repeated(commits)).toEqual(["b"]);
   });
 });
