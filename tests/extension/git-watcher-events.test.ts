@@ -50,7 +50,9 @@ vi.mock("vscode", () => {
 vi.mock("node:fs/promises", () => ({
   lstat: (entry: string) => {
     host.asked.push(entry);
-    return host.repositories.some((repo) => entry === `${repo}/.git` || entry === `${repo}\\.git`)
+    // On Windows the path arrives with its separators turned around.
+    const asked = entry.replaceAll("\\", "/");
+    return host.repositories.some((repo) => asked === `${repo}/.git`)
       ? Promise.resolve({})
       : Promise.reject(new Error("ENOENT"));
   }
