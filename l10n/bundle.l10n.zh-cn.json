@@ -612,6 +612,7 @@
   "Try Again": "重试",
   "Open a file in an editor first.": "请先在编辑器中打开一个文件。",
   "{0} is not in a Git repository.": "{0} 不在 Git 仓库中。",
+  "This version of {0} is not from a commit, so its lines have no history.": "{0} 的这个版本不来自任何提交，因此其中的行没有历史。",
   "{0} is not tracked by Git, so it has no history yet.": "{0} 未被 Git 跟踪，因此还没有历史。",
   "Show Uncommitted Changes": "显示未提交的更改",
   "This line has uncommitted changes.": "此行有未提交的更改。",
