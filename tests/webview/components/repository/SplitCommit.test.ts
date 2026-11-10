@@ -234,6 +234,24 @@ describe("the Split Commit dialog", () => {
     expect(button("Remove Part 2")).toBeUndefined();
   });
 
+  it("says under its own name why a commit cannot be split", () => {
+    openSplitCommit(B);
+    const request = lastPosted();
+    act(() =>
+      handleRepositoryQuery({
+        repo: request.repo,
+        requestId: request.requestId,
+        data: null,
+        status: "The commit has no changes to split."
+      })
+    );
+    expect(dialog.value).toMatchObject({
+      kind: "error",
+      message: "splitCommit",
+      reason: "The commit has no changes to split."
+    });
+  });
+
   it("holds unsaved work once a change is moved, a message written or a part added", async () => {
     const settled = () => act(async () => {});
     open();

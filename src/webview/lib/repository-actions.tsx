@@ -52,6 +52,8 @@ type DialogRead = OpenRead & {
   /** The loading dialog; the read is abandoned once anything else is showing. */
   owner: DialogState | null;
   callback: (data: RepositoryQueryData) => void;
+  /** The title of the dialog the read opens, which a refusal is shown under. */
+  opening: string | undefined;
 };
 
 /** One sequence for every prefix, so no number is used twice. */
@@ -205,11 +207,14 @@ export function requestRepositoryState(): void {
 /**
  * Read repository details behind a loading dialog, then close it and hand the data to
  * `callback`, which usually opens the next dialog. Only the selected repository can be read.
+ * `opening` names that next dialog, for a read that plans an action: when the plan is refused,
+ * the reason is shown under that name, and not as a repository that could not be loaded.
  */
 export function requestRepositoryQuery(
   query: RepositoryQuery,
   callback: (data: RepositoryQueryData) => void,
-  repo = selectedRepo.value
+  repo = selectedRepo.value,
+  opening?: string
 ): void {
   if (repo === undefined || repo !== selectedRepo.value) {
     return;
@@ -219,7 +224,7 @@ export function requestRepositoryQuery(
   cancelDialogRead();
   openRunningDialog(window.l10n.loadingRepository);
   const requestId = newRequestId("query");
-  dialogRead = { repo, requestId, owner: dialog.value, callback };
+  dialogRead = { repo, requestId, owner: dialog.value, callback, opening };
   postRead(repo, requestId, query);
 }
 
@@ -269,7 +274,12 @@ function answerDialog(read: DialogRead, message: Answer) {
   }
   dialogRead = undefined;
   if (message.status !== null || message.data === null) {
-    openErrorDialog(window.l10n.unableToLoadRepository, message.status);
+    // Without a reason to show, only the general title says what went wrong.
+    const title =
+      message.status !== null && read.opening !== undefined
+        ? read.opening
+        : window.l10n.unableToLoadRepository;
+    openErrorDialog(title, message.status);
     return;
   }
   closeDialog();

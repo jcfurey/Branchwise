@@ -221,7 +221,8 @@ export function openInteractiveRebase(base: string, autosquash = false, squash?:
         );
       }
     },
-    repo
+    repo,
+    window.l10n.rebasePlanTitle
   );
 }
 

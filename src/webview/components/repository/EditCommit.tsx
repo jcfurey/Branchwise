@@ -120,7 +120,8 @@ export function openEditMessage(hash: string) {
         );
       }
     },
-    repo
+    repo,
+    window.l10n.editMessage
   );
 }
 
@@ -163,6 +164,7 @@ export function openAddStaged(hash: string) {
         );
       }
     },
-    repo
+    repo,
+    window.l10n.addStagedToCommit
   );
 }

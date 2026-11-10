@@ -244,6 +244,7 @@ export function openSplitCommit(hash: string) {
         );
       }
     },
-    repo
+    repo,
+    window.l10n.splitCommit
   );
 }
