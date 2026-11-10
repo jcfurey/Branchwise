@@ -5726,6 +5726,98 @@ suite("Branchwise workflow UI", function () {
     await until(async () => (await order()) === "aged,clash,done,main", "back to names");
   });
 
+  test("keeps the graph inside the window and its message readable as the window narrows", async () => {
+    const dir = directory();
+    init(dir);
+    commit("base", "fit-base", dir);
+    git(["checkout", "-b", "fit-side"], dir);
+    commit("side", "fit-side", dir);
+    git(["checkout", "main"], dir);
+    commit("main", "fit-main", dir);
+    git(["merge", "--no-ff", "fit-side", "-m", "fit-merge"], dir);
+    await openRepo(dir);
+    const page = connections[0];
+    const size = (width, height = 800) =>
+      page.call("Emulation.setDeviceMetricsOverride", {
+        width,
+        height,
+        deviceScaleFactor: 1,
+        mobile: false
+      });
+    /** The table's headings and the message's width, and whether the page scrolls sideways. */
+    const layout = () =>
+      graph.evaluate(`(() => {
+        const heads = [...document.querySelectorAll("main thead th")];
+        const root = document.documentElement;
+        return {
+          width: innerWidth,
+          heads: heads.map((head) => head.textContent.trim()),
+          message: Math.round(heads[1]?.getBoundingClientRect().width ?? 0),
+          sideways: root.scrollWidth - root.clientWidth
+        };
+      })()`);
+    let seen;
+    const settles = (label, ready) =>
+      until(async () => {
+        seen = await layout();
+        return ready(seen);
+      }, label).catch((error) => {
+        throw new Error(`${error.message} ${JSON.stringify(seen)}`);
+      });
+    try {
+      await size(1280);
+      if (!(await graph.evaluate(`!!document.querySelector('nav[aria-label="Branches"]')`))) {
+        await button("Branches", 'document.querySelector("header")');
+      }
+      await settles(
+        "every column in a wide window",
+        (now) => now.width <= 1280 && now.heads.length === 5 && now.sideways <= 0
+      );
+
+      // A merge's details hold a line with both parents' IDs, wider than the table beside the
+      // Branches pane. It used to widen the table, and the page then scrolled sideways.
+      const merge = `[...document.querySelectorAll("tr[data-commit-hash]")].find((row) => row.textContent.includes("fit-merge"))`;
+      await graph.evaluate(`${merge}.click()`);
+      await until(
+        () =>
+          graph.evaluate(
+            `(document.querySelector("[data-details-row]")?.innerText ?? "").includes("fit-merge")`
+          ),
+        "merge details"
+      );
+      assert.equal((await layout()).sideways <= 0, true, JSON.stringify(await layout()));
+      await graph.evaluate(`${merge}.click()`);
+      await until(() => graph.evaluate(`!document.querySelector("[data-details-row]")`), "closed");
+
+      // Narrower, columns give way so that the message keeps its room: the ID first.
+      for (const width of [900, 520, 420]) {
+        await size(width);
+        await settles(
+          `a readable message in a ${width} px window`,
+          (now) =>
+            now.width <= width &&
+            now.sideways <= 0 &&
+            now.heads[1] === "Message" &&
+            (now.message >= 200 || now.heads.length === 2)
+        );
+        // Half a window still has room for every column of this small graph; less has not.
+        if (width < 900) {
+          assert.equal(seen.heads.includes("ID"), false, JSON.stringify(seen));
+        }
+      }
+
+      // With room again, they all return.
+      await size(1280);
+      await settles(
+        "every column again",
+        (now) => now.width > 1000 && now.heads.length === 5 && now.sideways <= 0
+      );
+      assert.deepEqual(seen.heads.slice(2), ["Date", "Author", "ID"]);
+    } finally {
+      await size(1440, 1000);
+    }
+  });
+
   test("keeps dropdowns and the sidebar inside narrow windows", async () => {
     const narrow = directory();
     init(narrow);
