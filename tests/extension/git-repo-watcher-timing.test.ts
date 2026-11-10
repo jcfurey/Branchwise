@@ -9,6 +9,7 @@ import {
   unmuteGitRepoWatcher,
   watchGitRepo
 } from "@/extension/watchers/git-repo.watcher";
+import { repositoryReadStarted } from "@/extension/watchers/repository-reads";
 
 type Kind = "created" | "changed" | "deleted";
 type FileHandler = (uri: { fsPath: string }) => void;
@@ -104,6 +105,48 @@ afterEach(() => {
   // Some cases already disposed their lifetime before the simulated action ended.
   watchGitRepo().dispose();
   vi.useRealTimers();
+});
+
+describe("a repository the page is still reading", () => {
+  it("gets its next refresh once the reads have answered", () => {
+    // With changes arriving steadily, as from a build or a long rebase in a terminal, each
+    // refresh cancelled the reads of the one before and started them over: a repository
+    // that takes longer to read than the changes are apart was never shown.
+    const ended = repositoryReadStarted();
+    try {
+      touch();
+      vi.advanceTimersByTime(4000);
+      touch();
+      vi.advanceTimersByTime(4000);
+      expect(refreshes()).toEqual([]);
+
+      ended();
+      vi.advanceTimersByTime(250);
+      expect(refreshes()).toHaveLength(1);
+    } finally {
+      ended();
+    }
+  });
+
+  it("is refreshed all the same when a read has not answered in 20 seconds", () => {
+    const ended = repositoryReadStarted();
+    try {
+      touch();
+      vi.advanceTimersByTime(19_000);
+      expect(refreshes()).toEqual([]);
+      vi.advanceTimersByTime(1500);
+      expect(refreshes()).toHaveLength(1);
+    } finally {
+      ended();
+    }
+  });
+
+  it("waits no longer than usual when nothing is being read", () => {
+    repositoryReadStarted()();
+    touch();
+    vi.advanceTimersByTime(250);
+    expect(refreshes()).toHaveLength(1);
+  });
 });
 
 describe("a graph nobody can see", () => {

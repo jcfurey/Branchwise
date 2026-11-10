@@ -47,6 +47,7 @@ import {
   selectWatchedRepo,
   unmuteGitRepoWatcher
 } from "@/extension/watchers/git-repo.watcher";
+import { repositoryReadStarted } from "@/extension/watchers/repository-reads";
 import { invalidateWorkspaceScan, listRepos } from "@/extension/workspace-scan";
 import { encodeDiffBlobUri, encodeDiffDocUri } from "@/old-extension/diffDocProvider";
 import type { RepoManager } from "@/old-extension/repoManager";
@@ -670,6 +671,8 @@ export function registerMessageHandlers(
     repositoryReads.set(requestId, { repo, controller });
     // Compared by identity afterwards: any save meanwhile means the page changed something.
     const savedBefore = query.kind === "state" ? repoManager.getRepos()[repo] : undefined;
+    // Of the page's queries, the state is the one a refresh reads again.
+    const ended = query.kind === "state" ? repositoryReadStarted() : undefined;
     let data: RepositoryQueryData | null;
     let status: string | null = null;
     try {
@@ -685,6 +688,8 @@ export function registerMessageHandlers(
     } catch (error) {
       data = null;
       status = errorText(error);
+    } finally {
+      ended?.();
     }
     repositoryReads.delete(requestId);
     if (controller.signal.aborted) {
@@ -755,6 +760,8 @@ export function registerMessageHandlers(
     graphReads.get(command)?.abort();
     const controller = new AbortController();
     graphReads.set(command, controller);
+    // The branches and the commits are what a refresh reads again; details are not.
+    const ended = command === "commitDetails" ? undefined : repositoryReadStarted();
     let message: ResponseMessage;
     try {
       message = await read(clientFor(repo, controller.signal));
@@ -767,6 +774,7 @@ export function registerMessageHandlers(
         message: errorText(error)
       };
     } finally {
+      ended?.();
       if (graphReads.get(command) === controller) {
         graphReads.delete(command);
       }

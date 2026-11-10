@@ -7,11 +7,17 @@ import { createGit } from "@/backend/gitClient";
 import { isRepoWithinPath } from "@/backend/utils/repoPath";
 import { rpcNotify } from "@/extension/rpc/rpc-notify";
 import { logger } from "@/extension/util/logger";
+import { repositoryReadsRunning } from "@/extension/watchers/repository-reads";
 
 /** Quiet time after the last relevant file event before the graph is told to refresh. */
 const REFRESH_DELAY_MS = 250;
 /** The longest a steady stream of events can hold back a refresh, from its first event. */
 const REFRESH_MAX_WAIT_MS = 2000;
+/**
+ * The longest a refresh waits, from its first event, for the page to finish reading the
+ * repository for the refresh before it. A read that hangs must not stop refreshes for good.
+ */
+const REFRESH_HOLD_MS = 20_000;
 /** How long an action's trailing file events stay ignored after the action ends. */
 const QUIET_PERIOD_MS = 1500;
 
@@ -159,6 +165,14 @@ function watchRepo(repo: string, gitPath: string): RepoWatch {
   let firstUnreported: number | undefined;
 
   const sendRefresh = () => {
+    // A refresh makes the page read the repository again, cancelling what it was reading.
+    // While it still reads for the last one, this one waits, or steady changes would start
+    // the reads over again and again without one of them ever being shown.
+    const waited = performance.now() - (firstUnreported ?? performance.now());
+    if (repositoryReadsRunning() && waited < REFRESH_HOLD_MS) {
+      refresh = setTimeout(sendRefresh, REFRESH_DELAY_MS);
+      return;
+    }
     refresh = undefined;
     firstUnreported = undefined;
     logger.debug(`Sending repo.updated notification: ${repo}`);
