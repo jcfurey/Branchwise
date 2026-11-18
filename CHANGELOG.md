@@ -8,6 +8,8 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-11-18
+
 ### Fixed
 
 - Hard Reset protects untracked files inside a directory that replaced a tracked file.
