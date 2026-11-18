@@ -432,12 +432,19 @@ describe("remote flows", () => {
     expect(container.textContent).toContain("v1");
   });
 
-  it("deletes a remote branch by its name on its own remote", () => {
+  it("deletes the reviewed tip of a branch on the chosen remote", () => {
     choose(menus.refMenu(remote, false), "deleteRemoteBranch…");
     expect(lastRequest()).toMatchObject({ command: "loadRemotes", branchName: null });
     const picker = answerRemotes();
     expect(picker.inputs[0]).toMatchObject({ kind: "select", value: "origin" });
-    picker.onSubmit(["origin"]);
+    picker.onSubmit(["upstream"]);
+    const lease = vscodeApi.postMessage.mock.lastCall![0];
+    expect(lease.query).toEqual({ kind: "lease", remote: "upstream", branch: "topic" });
+    repositoryActions.handleRepositoryQuery({
+      ...lease,
+      status: null,
+      data: { kind: "lease", hash }
+    });
     const confirm = stores.dialog.value;
     if (confirm?.kind !== "form") {
       throw new Error("Expected a confirmation");
@@ -447,7 +454,13 @@ describe("remote flows", () => {
     expect(lastRequest()).toMatchObject({
       command: "repositoryAction",
       repo: "/repo",
-      action: { kind: "deleteRemoteRef", remote: "origin", name: "topic", refType: "branch" }
+      action: {
+        kind: "deleteRemoteRef",
+        remote: "upstream",
+        name: "topic",
+        refType: "branch",
+        expectedRemoteHash: hash
+      }
     });
   });
 });

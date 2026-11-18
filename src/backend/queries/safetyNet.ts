@@ -1,10 +1,11 @@
+import { readdir } from "node:fs/promises";
 import path from "node:path";
 
 import * as l10n from "@vscode/l10n";
 import type { SimpleGit } from "simple-git";
 
 import { notReachedArgs } from "@/backend/queries/history";
-import { gitDirectory, loadOperation, readOptional } from "@/backend/queries/repository";
+import { gitDirectory, readOperationMarkers, readOptional } from "@/backend/queries/repository";
 import type { LostCommit, SafetyNetEntry, SafetyRecord, SafetyUndo } from "@/backend/types";
 
 /**
@@ -30,10 +31,16 @@ const LOST_LIMIT = 500;
  * The repository's common Git directory, shared by all its worktrees like the refs are. A linked
  * worktree's own Git directory names it in its `commondir` file.
  */
-async function commonDirectory(git: SimpleGit) {
-  const directory = await gitDirectory(git);
+async function commonDirectory(directory: string) {
   const common = await readOptional(path.join(directory, "commondir"));
   return common === null ? directory : path.resolve(directory, common.trim());
+}
+
+/** Stable across a move of the repository or its linked worktree. */
+export async function safetyWorktree(git: SimpleGit) {
+  const directory = await gitDirectory(git);
+  const common = await commonDirectory(directory);
+  return path.relative(common, directory).split(path.sep).join("/") || ".";
 }
 
 /**
@@ -42,7 +49,7 @@ async function commonDirectory(git: SimpleGit) {
  * deleting the repository deletes it.
  */
 export async function safetyJournalFile(git: SimpleGit) {
-  return path.join(await commonDirectory(git), "branchwise", "safety-net.json");
+  return path.join(await commonDirectory(await gitDirectory(git)), "branchwise", "safety-net.json");
 }
 
 /**
@@ -121,12 +128,46 @@ export function safetyTitle(record: Pick<SafetyRecord, "kind" | "subject" | "det
   }
 }
 
-/**
- * How a record reads now. A pending record whose operation is no longer in progress ended
- * outside Branchwise, so what it changed is unknown.
- */
-function currentState(record: SafetyRecord, operation: boolean) {
-  return record.state === "pending" && !operation ? "unfinished" : record.state;
+/** Only a pending record whose own worktree still has the operation can be continued. */
+async function pendingOperations(git: SimpleGit, records: SafetyRecord[]) {
+  const owners = new Set(
+    records.filter((record) => record.state === "pending").map((record) => record.worktree)
+  );
+  const active = new Map<SafetyRecord["worktree"], SafetyRecord["operation"]>();
+  if (!owners.size) {
+    return active;
+  }
+  const directory = await gitDirectory(git);
+  const common = await commonDirectory(directory);
+  const directories = new Map<SafetyRecord["worktree"], string>([
+    [undefined, directory],
+    [".", common]
+  ]);
+  if ([...owners].some((owner) => owner?.startsWith("worktrees/"))) {
+    const linked = await readdir(path.join(common, "worktrees")).catch(
+      (error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT") {
+          return [];
+        }
+        throw error;
+      }
+    );
+    for (const name of linked) {
+      directories.set(`worktrees/${name}`, path.join(common, "worktrees", name));
+    }
+  }
+  await Promise.all(
+    [...owners].map(async (owner) => {
+      const admin = directories.get(owner);
+      if (admin !== undefined) {
+        const markers = await readOperationMarkers(admin);
+        if (markers !== null) {
+          active.set(owner, markers.kind);
+        }
+      }
+    })
+  );
+  return active;
 }
 
 /**
@@ -169,14 +210,14 @@ async function lostCommits(git: SimpleGit) {
 
 /** The recorded actions, newest first, with the commits each one left unreachable. */
 export async function loadSafetyNet(git: SimpleGit): Promise<SafetyNetEntry[]> {
-  const [records, operation, lost] = await Promise.all([
-    readSafetyJournal(git),
-    loadOperation(git).catch(() => null),
-    lostCommits(git)
-  ]);
+  const [records, lost] = await Promise.all([readSafetyJournal(git), lostCommits(git)]);
+  const operations = await pendingOperations(git, records);
   // The records were just read from the journal, so they are completed in place.
   return records.toReversed().map((record) => {
-    const state = currentState(record, operation !== null);
+    const state =
+      record.state === "pending" && operations.get(record.worktree) !== record.operation
+        ? "unfinished"
+        : record.state;
     const commits = lost.get(record.id) ?? [];
     return Object.assign(record, {
       state,

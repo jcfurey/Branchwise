@@ -4,6 +4,7 @@ import type { SimpleGit } from "simple-git";
 import type { RepositoryAction } from "@/backend/types";
 import { runGit } from "@/backend/utils/runGit";
 import {
+  requireRemoteBranchLease,
   requireBranchName,
   requireRefName,
   requireRemote,
@@ -129,36 +130,24 @@ export async function manageRemote(git: SimpleGit, action: RemoteAction) {
       }
       return;
     case "deleteRemoteRef": {
-      await requireRemote(git, action.remote);
-      await (action.refType === "tag" ? requireTagName : requireBranchName)(git, action.name);
       const ref = `refs/${action.refType === "tag" ? "tags" : "heads"}/${action.name}`;
-      // A branch goes only as it was last fetched, which is what the user saw and what the
-      // Safety Net records: commits pushed to it since then would otherwise go unseen.
-      const known =
-        action.refType === "branch"
-          ? (
-              await git
-                .raw([
-                  "rev-parse",
-                  "--verify",
-                  "--quiet",
-                  `refs/remotes/${action.remote}/${action.name}^{commit}`
-                ])
-                .catch(() => "")
-            ).trim()
-          : "";
+      if (action.refType === "tag") {
+        await requireRemote(git, action.remote);
+        await requireTagName(git, action.name);
+        await runGit(git, ["push", "--", action.remote, `:${ref}`]);
+        return;
+      }
+      const known = action.expectedRemoteHash;
+      await requireRemoteBranchLease(git, action.remote, action.name, known);
       try {
         await runGit(git, [
           "push",
-          ...(known === "" ? [] : [`--force-with-lease=${ref}:${known}`]),
+          `--force-with-lease=${ref}:${known}`,
           "--",
           action.remote,
           `:${ref}`
         ]);
       } catch (error) {
-        if (known === "") {
-          throw error;
-        }
         // Git words a refused lease in the user's language, so the remote is asked instead.
         const listed = await runGit(git, ["ls-remote", "--", action.remote, ref]).catch(() => null);
         const now = listed === null ? known : (listed.split("\t")[0] ?? "").trim();

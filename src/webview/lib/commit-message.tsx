@@ -4,7 +4,7 @@ import type { RemoteDetails, RepositoryState } from "@/backend/types";
 import { type CustomLink, useCustomLinks } from "@/webview/lib/custom-links";
 
 /** Where a remote's issues and merge requests live, for the hosts whose links are known. */
-export type IssueTracker = { kind: "github" | "gitlab"; host: string; base: string };
+export type IssueTracker = { kind: "github" | "gitlab"; origin: string; base: string };
 
 /**
  * The tracker of the remote at `url`, which may be written as `https://host/owner/repo.git`,
@@ -12,6 +12,8 @@ export type IssueTracker = { kind: "github" | "gitlab"; host: string; base: stri
  * `gitlab` in their name are known; anything else, or a local path, has none.
  */
 export function issueTracker(url: string): IssueTracker | null {
+  let protocol = "https:";
+  let port = "";
   let host: string;
   let path: string;
   const scp = /^(?:[^@/\s]+@)?([^:/\s]+):(?!\/)(.+)$/.exec(url);
@@ -19,6 +21,7 @@ export function issueTracker(url: string): IssueTracker | null {
     let parsed: URL;
     try {
       parsed = new URL(url);
+      path = decodeURIComponent(parsed.pathname);
     } catch {
       return null;
     }
@@ -26,14 +29,20 @@ export function issueTracker(url: string): IssueTracker | null {
       return null;
     }
     host = parsed.hostname;
-    path = decodeURIComponent(parsed.pathname);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+      protocol = parsed.protocol;
+      port = parsed.port;
+    }
   } else if (scp !== null) {
     host = scp[1]!;
     path = scp[2]!;
   } else {
     return null;
   }
-  host = host.toLowerCase().replace(/^www\./, "");
+  host = host.toLowerCase();
+  if (host === "www.github.com") {
+    host = "github.com";
+  }
   path = path
     .replace(/^\/+/, "")
     .replace(/\/+$/, "")
@@ -43,7 +52,8 @@ export function issueTracker(url: string): IssueTracker | null {
     return null;
   }
   const kind = host === "github.com" ? "github" : host.includes("gitlab") ? "gitlab" : null;
-  return kind === null ? null : { kind, host, base: `https://${host}/${path}` };
+  const origin = `${protocol}//${host}${port ? ":" + port : ""}`;
+  return kind === null ? null : { kind, origin, base: `${origin}/${path}` };
 }
 
 /**
@@ -123,9 +133,7 @@ const RULES: Rule[] = [
     pattern: /(?<![\w./-])((?:[\w.-]+\/)+[\w.-]+)#(\d+)\b/g,
     render: (match, tracker) =>
       tracker === null ? null : (
-        <Link href={issueUrl(tracker, match[2]!, `https://${tracker.host}/${match[1]}`)}>
-          {match[0]}
-        </Link>
+        <Link href={issueUrl(tracker, match[2]!, `${tracker.origin}/${match[1]}`)}>{match[0]}</Link>
       )
   },
   {

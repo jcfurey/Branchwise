@@ -103,7 +103,11 @@ async function load(issueLinks: readonly IssueLink[]) {
   modules = { links, message, config };
 }
 
-const github = { kind: "github" as const, host: "github.com", base: "https://github.com/o/r" };
+const github = {
+  kind: "github" as const,
+  origin: "https://github.com",
+  base: "https://github.com/o/r"
+};
 
 function show(body: string, tracker: typeof github | null = github) {
   act(() => render(h(modules.message.CommitMessage, { body, tracker }), container));

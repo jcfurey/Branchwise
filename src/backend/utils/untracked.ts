@@ -48,30 +48,39 @@ async function standsAt(root: string, file: string) {
  * writes over such files without a word, and since no commit or stash ever held them, nothing
  * could bring them back.
  *
- * Only paths that `target` has and the index has not are looked at, so the cost follows the
- * size of the change and not the number of untracked files, such as a dependencies folder.
+ * Git lists obstructions to the current index directly. Paths that are new in the target
+ * need a separate check, since the index cannot tell what will be written there.
  */
 export async function untrackedInTheWay(git: SimpleGit, target: string, limit = 20) {
-  // From the commit to the index, a path only the commit has reads as deleted. Each record is
-  // `:<mode in the commit> <mode in the index> <id> <id> D`, then the path.
-  const fields = (
-    await git.raw([
-      "diff",
-      "--cached",
-      "--raw",
-      "--no-renames",
-      "--no-abbrev",
-      "--diff-filter=D",
-      "-z",
-      target,
-      "--"
-    ])
-  ).split("\0");
+  const [diff, killed] = await Promise.all([
+    git.raw(["diff", "--cached", "--raw", "--no-renames", "--diff-filter=DT", "-z", target, "--"]),
+    git.raw(["ls-files", "--killed", "--directory", "--no-empty-directory", "-z"])
+  ]);
+  const fields = diff.split("\0");
   const written: string[] = [];
   for (let index = 0; index + 1 < fields.length; index += 2) {
     // A submodule is a folder Git leaves alone, whatever it holds.
     if (!fields[index]!.startsWith(":160000 ")) {
       written.push(fields[index + 1]!);
+    }
+  }
+  // A file still in the index can have been replaced on disk by a directory of untracked
+  // files, or an untracked file can block an indexed directory. --killed also sees paths
+  // marked assume-unchanged. Check whether the reset's target still needs that location.
+  const obstacles = killed.split("\0").filter(Boolean);
+  for (const run of chunks(obstacles, CHUNK)) {
+    const names = run.map((file) => ":(literal)" + file.replace(/\/$/, ""));
+    // eslint-disable-next-line no-await-in-loop
+    const entries = await git.raw(["ls-tree", "-z", target, "--", ...names]);
+    const directories = new Set(
+      run.filter((file) => file.endsWith("/")).map((file) => file.slice(0, -1))
+    );
+    for (const entry of entries.split("\0").filter(Boolean)) {
+      const tab = entry.indexOf("\t");
+      const file = entry.slice(tab + 1);
+      if (!entry.startsWith("160000 ") && !(entry.startsWith("040000 ") && directories.has(file))) {
+        written.push(file);
+      }
     }
   }
   if (written.length === 0) {

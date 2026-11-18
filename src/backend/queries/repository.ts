@@ -47,8 +47,9 @@ import type {
 } from "@/backend/types";
 import { autosquashPlan } from "@/backend/utils/autosquash";
 import { gitVersionAtLeast } from "@/backend/utils/gitVersion";
+import { headBranchName } from "@/backend/utils/refs";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
-import { requireBranchName, requireRemote, resolveCommit } from "@/backend/utils/validation";
+import { remoteBranchLease, resolveCommit } from "@/backend/utils/validation";
 
 export async function gitDirectory(git: SimpleGit) {
   return (await git.raw(["rev-parse", "--absolute-git-dir"])).replace(/\n$/, "");
@@ -65,12 +66,8 @@ export async function readOptional(filename: string) {
   }
 }
 
-/** `directory` is the repository's Git directory, when the caller has it already. */
-export async function loadOperation(
-  git: SimpleGit,
-  directory?: string
-): Promise<OperationState | null> {
-  directory ??= await gitDirectory(git);
+/** The operation markers belong to one worktree, including in a shared repository. */
+export async function readOperationMarkers(directory: string) {
   const files = [
     "rebase-merge/head-name",
     "rebase-apply/head-name",
@@ -90,9 +87,19 @@ export async function loadOperation(
   } else if (contents[4] !== null || contents[5]?.startsWith("revert ")) {
     kind = "revert";
   }
-  if (kind === undefined) {
+  return kind === undefined ? null : { kind, contents };
+}
+
+/** `directory` is the repository's Git directory, when the caller has it already. */
+export async function loadOperation(
+  git: SimpleGit,
+  directory?: string
+): Promise<OperationState | null> {
+  const markers = await readOperationMarkers(directory ?? (await gitDirectory(git)));
+  if (markers === null) {
     return null;
   }
+  const { kind, contents } = markers;
   const head = await resolveCommit(git, "HEAD");
   return {
     kind,
@@ -313,7 +320,7 @@ export async function loadStashes(git: SimpleGit): Promise<StashDetails[]> {
 export async function loadRebasePlan(git: SimpleGit, baseRef: string): Promise<RebasePlan> {
   const base = await resolveCommit(git, baseRef);
   const head = await resolveCommit(git, "HEAD");
-  const branch = (await git.raw(["symbolic-ref", "--quiet", "--short", "HEAD"])).trim();
+  const branch = await headBranchName(git);
   if ((await git.raw(["merge-base", base, head])).trim() !== base) {
     throw new Error(l10n.t("Choose an ancestor of the current branch for interactive rebase."));
   }
@@ -503,12 +510,8 @@ export async function repositoryQuery(
       return { kind: "tree", ...(await loadTree(git, query.hash)) };
     case "absorbPlan":
       return { kind: "absorbPlan", plan: await loadAbsorbPlan(git) };
-    case "lease": {
-      await requireRemote(git, query.remote);
-      await requireBranchName(git, query.branch);
-      const hash = await resolveCommit(git, `refs/remotes/${query.remote}/${query.branch}`);
-      return { kind: "lease", hash };
-    }
+    case "lease":
+      return { kind: "lease", hash: await remoteBranchLease(git, query.remote, query.branch) };
     case "safetyNet":
       return { kind: "safetyNet", entries: await loadSafetyNet(git) };
   }

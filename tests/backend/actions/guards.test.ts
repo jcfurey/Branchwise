@@ -128,6 +128,7 @@ describe("deleting a remote branch", () => {
 
   it("holds back when the branch has commits on the remote that were never fetched", async () => {
     const bare = shared();
+    const reviewed = read(["rev-parse", "origin/topic"]);
     const peer = directory();
     read(["clone", "-q", "--branch", "topic", bare, peer]);
     read(["config", "user.name", "P"], peer);
@@ -136,26 +137,58 @@ describe("deleting a remote branch", () => {
     read(["push", "-q", "origin", "topic"], peer);
 
     await expect(
-      run({ kind: "deleteRemoteRef", remote: "origin", name: "topic", refType: "branch" })
+      run({
+        kind: "deleteRemoteRef",
+        remote: "origin",
+        name: "topic",
+        refType: "branch",
+        expectedRemoteHash: reviewed
+      })
     ).rejects.toThrow(/fetch/i);
     expect(read(["rev-parse", "refs/heads/topic"], bare)).toBe(theirs);
 
-    // Once fetched, the user has seen what the branch holds, and it goes.
+    // A fetch while the confirmation is open must not update its lease.
     read(["fetch", "-q", "origin"]);
-    await run({ kind: "deleteRemoteRef", remote: "origin", name: "topic", refType: "branch" });
+    await expect(
+      run({
+        kind: "deleteRemoteRef",
+        remote: "origin",
+        name: "topic",
+        refType: "branch",
+        expectedRemoteHash: reviewed
+      })
+    ).rejects.toThrow(/changed/);
+    expect(read(["rev-parse", "refs/heads/topic"], bare)).toBe(theirs);
+    await run({
+      kind: "deleteRemoteRef",
+      remote: "origin",
+      name: "topic",
+      refType: "branch",
+      expectedRemoteHash: theirs
+    });
     expect(read(["for-each-ref", "refs/heads/topic"], bare)).toBe("");
   });
 
-  it("deletes a branch it has no remote-tracking branch for, and tags, as before", async () => {
+  it("refuses a branch without a tracking ref and still deletes a tag", async () => {
     const bare = shared();
     read(["tag", "v1"]);
     read(["push", "-q", "origin", "v1"]);
     read(["update-ref", "-d", "refs/remotes/origin/topic"]);
 
-    await run({ kind: "deleteRemoteRef", remote: "origin", name: "topic", refType: "branch" });
+    const tip = read(["rev-parse", "refs/heads/topic"], bare);
+    await expect(
+      run({
+        kind: "deleteRemoteRef",
+        remote: "origin",
+        name: "topic",
+        refType: "branch",
+        expectedRemoteHash: tip
+      })
+    ).rejects.toThrow(/fetch/i);
+    expect(read(["rev-parse", "refs/heads/topic"], bare)).toBe(tip);
     await run({ kind: "deleteRemoteRef", remote: "origin", name: "v1", refType: "tag" });
 
-    expect(read(["for-each-ref", "refs/heads/topic", "refs/tags/v1"], bare)).toBe("");
+    expect(read(["for-each-ref", "refs/tags/v1"], bare)).toBe("");
   });
 });
 

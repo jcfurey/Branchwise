@@ -8,6 +8,15 @@ Branchwise's history up to 0.9.7, including how it replaced the code it inherite
 
 ## [Unreleased]
 
+### Fixed
+
+- Hard Reset protects untracked files inside a directory that replaced a tracked file.
+- Remote branch deletion shows the fetched commit for the selected destination and refuses if that commit changes before deletion.
+- A stopped merge or rebase can be continued and undone after another linked worktree records an action. Concurrent actions in linked worktrees keep both Safety Net entries.
+- Commit editing and other branch operations recognize the checked-out branch when a tag shares its name.
+- Links to self-hosted GitLab keep the scheme and port of an HTTP or HTTPS remote.
+- **Show Line’s Commit in Graph** follows the cursor when several lines are selected.
+
 ## [0.20.0] - 2026-11-10
 
 ### Changed

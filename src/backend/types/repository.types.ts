@@ -355,7 +355,14 @@ export type RepositoryAction =
   | { kind: "removeRemote"; name: string }
   | { kind: "pushDefault"; remote: string | null }
   | { kind: "setTracking"; branch: string; upstream: string | null }
-  | { kind: "deleteRemoteRef"; remote: string; name: string; refType: "branch" | "tag" }
+  | { kind: "deleteRemoteRef"; remote: string; name: string; refType: "tag" }
+  | {
+      kind: "deleteRemoteRef";
+      remote: string;
+      name: string;
+      refType: "branch";
+      expectedRemoteHash: string;
+    }
   | { kind: "saveStash"; message: string; includeUntracked: boolean }
   | {
       kind: "stash";

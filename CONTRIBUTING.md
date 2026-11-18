@@ -59,8 +59,8 @@ Simplified and Traditional Chinese translations in `l10n/`.
 
 `THIRD-PARTY-NOTICES.txt` reproduces the license of every package bundled into the extension.
 It is generated from what esbuild bundles: after a dependency change, run `pnpm run notices` and
-commit the result. A package with a license other than MIT, ISC, BSD or Apache 2.0, or without a
-license text, stops the script until someone reviews it.
+commit the result. The script stops for review when a package has a license outside its reviewed list
+or omits the license text.
 
 Add a line under **Unreleased** in the [changelog](CHANGELOG.md) for anything a user would notice.
 

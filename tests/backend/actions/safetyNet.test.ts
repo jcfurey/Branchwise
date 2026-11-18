@@ -61,9 +61,9 @@ type TestRequest = ActionRequest extends infer R
   : never;
 
 /** Run one request as the extension does: through the Safety Net, then the backend function. */
-function act(request: TestRequest) {
-  const full = { ...request, repo } as ActionRequest;
-  const client = git();
+function act(request: TestRequest, root = repo) {
+  const full = { ...request, repo: root } as ActionRequest;
+  const client = createGit(root, "git");
   return recordedAction(client, full, () => {
     switch (full.command) {
       case "resetToCommit":
@@ -384,6 +384,39 @@ describe("recording and undoing each destructive action", () => {
     const [entry] = await loadSafetyNet(git());
     expect(entry!.lost.map((lost) => lost.hash)).toEqual([old]);
   });
+
+  it("records only the reviewed remote deletion if the tracking ref moves during the action", async () => {
+    const remote = repo + "-bare";
+    dirs.push(remote);
+    read(["init", "-q", "--bare", remote]);
+    read(["remote", "add", "origin", remote]);
+    read(["push", "-q", "origin", "HEAD:refs/heads/topic"]);
+    const action = {
+      kind: "deleteRemoteRef",
+      remote: "origin",
+      name: "topic",
+      refType: "branch",
+      expectedRemoteHash: hash("origin/topic")
+    } as const;
+    const request = { command: "repositoryAction", repo, requestId: "test", action } as const;
+    const later = commit("g", "new remote tip");
+    const client = git();
+    await expect(
+      recordedAction(client, request, () => {
+        read(["push", "-q", "origin", "HEAD:refs/heads/topic"]);
+        return runRepositoryAction(client, action, "git");
+      })
+    ).rejects.toThrow(/changed/);
+    expect(await readSafetyJournal(client)).toEqual([]);
+    expect(read(["rev-parse", "refs/heads/topic"], remote)).toBe(later);
+
+    const { record } = await repositoryAction({ ...action, expectedRemoteHash: later });
+    expect(record).toMatchObject({
+      state: "done",
+      undoable: false,
+      changes: [{ ref: "refs/remotes/origin/topic", old: later, new: null }]
+    });
+  });
 });
 
 describe("Undo's safeguards", () => {
@@ -642,6 +675,60 @@ describe("records of actions that stop part way", () => {
     });
   }
 
+  it("completes a stopped merge after another worktree records a deletion", async () => {
+    const start = conflicting();
+    const linked = repo + "-linked";
+    dirs.push(linked);
+    read(["worktree", "add", "-qb", "second", linked]);
+    read(["tag", "spare"]);
+    await expect(
+      act({ command: "mergeBranch", branchName: "other", createNewCommit: false })
+    ).rejects.toThrow(/conflicts/);
+    const [pending] = await readSafetyJournal(git());
+    const otherGit = createGit(linked, "git");
+    await act({ command: "deleteTag", tagName: "spare" }, linked);
+    expect((await loadSafetyNet(otherGit)).find((item) => item.id === pending!.id)?.state).toBe(
+      "pending"
+    );
+
+    write("f", "resolved");
+    read(["add", "--", "f"]);
+    await continueStopped();
+    const merge = (await readSafetyJournal(git())).find((item) => item.id === pending!.id)!;
+    expect(merge.state).toBe("done");
+    await undoRecord(merge);
+    expect(hash("HEAD")).toBe(start);
+    expect(read(["tag", "--list", "spare"])).toBe("");
+  });
+
+  it("recognizes a merge aborted in another worktree from the shared journal", async () => {
+    conflicting();
+    const linked = repo + "-linked";
+    dirs.push(linked);
+    read(["worktree", "add", "-qb", "second", linked]);
+    await expect(
+      act({ command: "mergeBranch", branchName: "other", createNewCommit: false }, linked)
+    ).rejects.toThrow(/conflicts/);
+    expect((await loadSafetyNet(git()))[0]?.state).toBe("pending");
+    read(["merge", "--abort"], linked);
+    expect((await loadSafetyNet(git()))[0]?.state).toBe("unfinished");
+  });
+
+  it("keeps both journal entries when linked worktrees record actions together", async () => {
+    const linked = repo + "-linked";
+    dirs.push(linked);
+    read(["worktree", "add", "-qb", "second", linked]);
+    read(["tag", "one"]);
+    read(["tag", "two"]);
+    await Promise.all([
+      act({ command: "deleteTag", tagName: "one" }),
+      act({ command: "deleteTag", tagName: "two" }, linked)
+    ]);
+    const records = await readSafetyJournal(git());
+    expect(records.map((item) => item.subject).toSorted()).toEqual(["one", "two"]);
+    expect(records.every((item) => item.state === "done")).toBe(true);
+  });
+
   it("leaves a record unfinished when the operation it waited for was another one", async () => {
     const start = conflicting();
     await expect(
@@ -769,6 +856,36 @@ describe("what a reset would destroy", () => {
     fs.rmSync(path.join(repo, "notes"));
     await act({ command: "resetToCommit", commitHash: further, resetMode: "hard" });
     expect(fs.readFileSync(path.join(repo, "docs", "guide"), "utf8")).toBe("guide as committed");
+  });
+
+  it.each([false, true])(
+    "keeps an untracked directory replacing a tracked file (assume-unchanged: %s)",
+    async (assumed) => {
+      const target = hash("HEAD");
+      if (assumed) {
+        read(["update-index", "--assume-unchanged", "f"]);
+      }
+      fs.renameSync(path.join(repo, "f"), path.join(repo, "original"));
+      fs.mkdirSync(path.join(repo, "f"));
+      write("f/notes", "never committed");
+      fs.writeFileSync(path.join(repo, ".git", "info", "exclude"), "f/notes\n");
+      await expect(
+        act({ command: "resetToCommit", resetMode: "hard", commitHash: target })
+      ).rejects.toThrow(/untracked/);
+      expect(fs.readFileSync(path.join(repo, "f", "notes"), "utf8")).toBe("never committed");
+      expect(await readSafetyJournal(git())).toEqual([]);
+    }
+  );
+
+  it("allows a hard reset that leaves an untracked directory in place", async () => {
+    const base = hash("HEAD");
+    commit("extra", "tracked only in the newer commit");
+    fs.renameSync(path.join(repo, "extra"), path.join(repo, "original"));
+    fs.mkdirSync(path.join(repo, "extra"));
+    write("extra/notes", "local only");
+    await act({ command: "resetToCommit", resetMode: "hard", commitHash: base });
+    expect(hash("HEAD")).toBe(base);
+    expect(fs.readFileSync(path.join(repo, "extra", "notes"), "utf8")).toBe("local only");
   });
 
   it("resets hard out of a conflicted stash pop, and Undo brings the conflicted files back", async () => {

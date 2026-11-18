@@ -135,6 +135,17 @@ describe("Show Line's Commit in Graph", () => {
     });
   });
 
+  it("blames the active cursor line when several lines are selected", async () => {
+    const repo = newRepo();
+    commitFile(repo, "lines", FIVE, "initial");
+    const text = FIVE.replace("three", "THREE");
+    const newer = commitFile(repo, "lines", text, "changed line three");
+    openEditor(fileUri(path.join(repo, "lines")), text, at(1), at(3));
+
+    await run("branchwise.showLineCommit");
+    expect(view.show).toHaveBeenCalledWith(normalizeRepoPath(repo), { commit: newer });
+  });
+
   it("finds the line in a submodule's own history", async () => {
     const library = newRepo();
     const libraryCommit = commitFile(library, "lib.txt", "library\n", "library line");

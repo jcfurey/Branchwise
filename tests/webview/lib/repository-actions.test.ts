@@ -164,13 +164,20 @@ describe("repository dialogs", () => {
       status: null
     });
     form().onSubmit(["team/origin"]);
-    expect(lastRequest().command).toBe("loadRemotes");
+    expect(lastRequest().query).toEqual({
+      kind: "lease",
+      remote: "team/origin",
+      branch: "feature/nav"
+    });
+    const expectedRemoteHash = "a".repeat(40);
+    respond({ kind: "lease", hash: expectedRemoteHash });
     form().onSubmit([]);
     expect(lastRequest().action).toEqual({
       kind: "deleteRemoteRef",
       remote: "team/origin",
       name: "feature/nav",
-      refType: "branch"
+      refType: "branch",
+      expectedRemoteHash
     });
   });
 

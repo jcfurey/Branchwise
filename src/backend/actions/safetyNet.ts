@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 import * as l10n from "@vscode/l10n";
+import { lock } from "proper-lockfile";
 import type { SimpleGit } from "simple-git";
 
 import { requireNothingInTheWay } from "@/backend/actions/commit";
@@ -22,6 +23,7 @@ import {
   SAFETY_NET_LIMIT,
   safetyJournalFile,
   safetyTitle,
+  safetyWorktree,
   shortRef
 } from "@/backend/queries/safetyNet";
 import type {
@@ -33,6 +35,7 @@ import type {
 } from "@/backend/types";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import { readGitWithInput, runGit } from "@/backend/utils/runGit";
+import { requireRemoteBranchLease } from "@/backend/utils/validation";
 
 /** What a destructive action is about to change, worked out before it runs. */
 type SafetyPlan = {
@@ -52,8 +55,8 @@ type SafetyPlan = {
   saveChanges?: "worktree" | "index";
   stash?: { hash: string; message: string };
   deletedBranches?: string[];
-  /** A force push: the remote branch's old commit, by its remote-tracking name, and the source. */
-  push?: { ref: string; old: string; source: string };
+  /** The reviewed remote tip and the local source to push. A null source deletes the branch. */
+  push?: { ref: string; old: string; source: string | null };
   /**
    * A reason to refuse the action that is checked before anything is recorded, so that a
    * refusal leaves no record of an action that never ran.
@@ -373,8 +376,15 @@ function safetyPlan(request: ActionRequest): SafetyPlan | null {
         ? {
             kind: "deleteRemoteBranch",
             subject: `${action.remote}/${action.name}`,
-            refs: [`refs/remotes/${action.remote}/${action.name}`],
-            undoable: false
+            refs: [],
+            undoable: false,
+            guard: (git) =>
+              requireRemoteBranchLease(git, action.remote, action.name, action.expectedRemoteHash),
+            push: {
+              ref: `refs/remotes/${action.remote}/${action.name}`,
+              old: action.expectedRemoteHash,
+              source: null
+            }
           }
         : null;
     default:
@@ -396,10 +406,24 @@ function newId(records: SafetyRecord[]) {
   return `${lastTime}-${Number(last!.id.split("-")[1] ?? 0) + 1}`;
 }
 
+/** Serialize journal read-modify-write operations across linked worktrees and extension hosts. */
+async function withJournalLock<T>(git: SimpleGit, update: () => Promise<T>) {
+  const file = await safetyJournalFile(git);
+  await mkdir(path.dirname(file), { recursive: true });
+  const release = await lock(file, {
+    realpath: false,
+    retries: { retries: 40, minTimeout: 25, maxTimeout: 500, randomize: true }
+  });
+  try {
+    return await update();
+  } finally {
+    await release();
+  }
+}
+
 /** Replace the journal in one step, so a reader never sees half of it. */
 async function writeJournal(git: SimpleGit, records: SafetyRecord[]) {
   const file = await safetyJournalFile(git);
-  await mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.${process.pid}.tmp`;
   await writeFile(temporary, JSON.stringify({ version: 1, records }, null, 1) + "\n");
   await rename(temporary, file);
@@ -459,10 +483,11 @@ async function openRecord(
 ): Promise<{ record: SafetyRecord; busy: boolean }> {
   const head = await headRef(git);
   const refs = [...new Set([...plan.refs, ...(plan.movesHead ? [head ?? "HEAD"] : [])])];
-  const [values, records, operation] = await Promise.all([
+  const [values, records, operation, worktree] = await Promise.all([
     readRefs(git, refs),
     readSafetyJournal(git),
-    loadOperation(git).catch(() => null)
+    loadOperation(git).catch(() => null),
+    safetyWorktree(git)
   ]);
   const saved = plan.saveChanges === undefined ? null : await saveChanges(git, plan.saveChanges);
   const id = newId(records);
@@ -476,6 +501,7 @@ async function openRecord(
     detail: plan.detail ?? "",
     date: Math.floor(idTime(id) / 1000),
     head,
+    worktree,
     mode: plan.mode ?? "keep",
     changes,
     saved,
@@ -494,7 +520,7 @@ async function openRecord(
   ]);
   if (operation === null) {
     for (const item of records) {
-      if (item.state === "pending") {
+      if (item.state === "pending" && item.worktree === worktree) {
         item.state = "unfinished";
       }
     }
@@ -558,9 +584,13 @@ async function closeRecord(
     }
   }
   if (plan.push !== undefined) {
-    const pushed = succeeded
-      ? (await git.raw(["rev-parse", "--verify", "--end-of-options", plan.push.source])).trim()
-      : plan.push.old;
+    let pushed: string | null = plan.push.old;
+    if (succeeded) {
+      pushed =
+        plan.push.source === null
+          ? null
+          : (await git.raw(["rev-parse", "--verify", "--end-of-options", plan.push.source])).trim();
+    }
     return settleRecord(git, record, [{ ...record.changes[0]!, new: pushed }], null);
   }
   if (record.stash !== null) {
@@ -621,9 +651,21 @@ async function settlePending(git: SimpleGit, kind: OperationKind, start: string 
   if ((await loadOperation(git)) !== null) {
     return;
   }
+  const worktree = await safetyWorktree(git);
   const records = await readSafetyJournal(git);
-  const last = records.at(-1);
+  const last = records.findLast(
+    (item) => item.worktree === worktree || item.worktree === undefined
+  );
   if (last?.state !== "pending" || last.operation !== kind) {
+    return;
+  }
+  // Old records have no worktree ID. A checked-out branch also identifies its worktree
+  // after recovery. A detached HEAD is unambiguous only in a single-worktree repository.
+  if (
+    last.worktree === undefined &&
+    (last.head === null || last.head !== (await headRef(git))) &&
+    (await loadWorktrees(git)).length > 1
+  ) {
     return;
   }
   const moved = last.changes.find((change) => change.ref === (last.head ?? "HEAD"));
@@ -651,7 +693,7 @@ export async function recordedAction<T>(
     try {
       return { result: await work(), record: null };
     } finally {
-      await settlePending(git, kind, start).catch(() => {});
+      await withJournalLock(git, () => settlePending(git, kind, start)).catch(() => {});
     }
   }
   const plan = safetyPlan(request);
@@ -662,7 +704,7 @@ export async function recordedAction<T>(
   let record: SafetyRecord;
   let busy: boolean;
   try {
-    ({ record, busy } = await openRecord(git, plan));
+    ({ record, busy } = await withJournalLock(git, () => openRecord(git, plan)));
   } catch (error) {
     throw new Error(
       l10n.t(
@@ -676,11 +718,16 @@ export async function recordedAction<T>(
   try {
     result = await work();
   } catch (error) {
-    await closeRecord(git, record, plan, false, busy).catch(() => {});
+    await withJournalLock(git, () => closeRecord(git, record, plan, false, busy)).catch(() => {});
     throw error;
   }
   // The action is done; a record that cannot be completed must not make it look failed.
-  return { result, record: await closeRecord(git, record, plan, true, busy).catch(() => null) };
+  return {
+    result,
+    record: await withJournalLock(git, () => closeRecord(git, record, plan, true, busy)).catch(
+      () => null
+    )
+  };
 }
 
 /** A ref's name in a message: `HEAD`, a branch, a tag or a remote branch. */
@@ -855,7 +902,11 @@ async function renameBack(git: SimpleGit, record: SafetyRecord, title: string) {
  * Put back what the recorded action `id` replaced. Whatever Undo replaces in turn is kept under
  * the record's backups too, so an Undo can itself be reversed from the reflog or the Safety Net.
  */
-export async function undoSafetyRecord(git: SimpleGit, id: string) {
+export function undoSafetyRecord(git: SimpleGit, id: string) {
+  return withJournalLock(git, () => undoRecordedChanges(git, id));
+}
+
+async function undoRecordedChanges(git: SimpleGit, id: string) {
   await requireIdle(git);
   const records = await readSafetyJournal(git);
   const record = records.find((item) => item.id === id);

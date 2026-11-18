@@ -25,9 +25,14 @@ export async function refNames(git: SimpleGit, namespace: "refs/heads/" | "refs/
     .map((ref) => ref.slice(namespace.length));
 }
 
+/** The local branch name, including an unborn branch, or an empty string for detached HEAD. */
+export async function headBranchName(git: SimpleGit) {
+  const ref = (await git.raw(["symbolic-ref", "--quiet", "HEAD"])).trim();
+  return ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : "";
+}
+
 /** The checked-out branch, or null for a detached or unborn HEAD. */
 export async function currentBranch(git: SimpleGit, branches: readonly string[]) {
-  const head = (await git.raw(["symbolic-ref", "--quiet", "HEAD"]).catch(() => "")).trim();
-  const name = head.startsWith("refs/heads/") ? head.slice("refs/heads/".length) : null;
-  return name !== null && branches.includes(name) ? name : null;
+  const name = await headBranchName(git).catch(() => "");
+  return branches.includes(name) ? name : null;
 }

@@ -19,6 +19,7 @@ describe("issueTracker", () => {
     ["git@github.com:owner/repo.git", "github", "https://github.com/owner/repo"],
     ["ssh://git@github.com/owner/repo", "github", "https://github.com/owner/repo"],
     ["https://gitlab.com/group/sub/project.git", "gitlab", "https://gitlab.com/group/sub/project"],
+    ["https://www.gitlab.example:8443/g/p.git", "gitlab", "https://www.gitlab.example:8443/g/p"],
     [
       "ssh://git@gitlab.example.com:2222/team/project.git",
       "gitlab",
@@ -100,12 +101,12 @@ describe("CommitMessage", () => {
 
   const github: IssueTracker = {
     kind: "github",
-    host: "github.com",
+    origin: "https://github.com",
     base: "https://github.com/owner/repo"
   };
   const gitlab: IssueTracker = {
     kind: "gitlab",
-    host: "gitlab.com",
+    origin: "https://gitlab.com",
     base: "https://gitlab.com/group/project"
   };
   const show = (body: string, tracker: IssueTracker | null = github) => {
@@ -155,6 +156,15 @@ describe("CommitMessage", () => {
       ["#12", "https://gitlab.com/group/project/-/issues/12"],
       ["!34", "https://gitlab.com/group/project/-/merge_requests/34"],
       ["group/sub/proj#5", "https://gitlab.com/group/sub/proj/-/issues/5"]
+    ]);
+  });
+
+  it("preserves the web origin for local and cross-project GitLab issues", () => {
+    const tracker = issueTracker("http://gitlab.example:8443/team/project.git");
+    show("#1 and group/other#2", tracker);
+    expect(links()).toEqual([
+      ["#1", "http://gitlab.example:8443/team/project/-/issues/1"],
+      ["group/other#2", "http://gitlab.example:8443/group/other/-/issues/2"]
     ]);
   });
 

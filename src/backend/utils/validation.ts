@@ -48,6 +48,28 @@ export async function resolveCommit(git: SimpleGit, ref: string) {
   return (await git.raw(["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`])).trim();
 }
 
+/** The fetched tip to show before confirming a remote branch operation. */
+export async function remoteBranchLease(git: SimpleGit, remote: string, branch: string) {
+  await requireRemote(git, remote);
+  await requireBranchName(git, branch);
+  const hash = await resolveCommit(git, `refs/remotes/${remote}/${branch}`).catch(() => "");
+  if (!hash) {
+    throw new Error(l10n.t("Fetch {0} and review branch {1} before continuing.", remote, branch));
+  }
+  return hash;
+}
+
+export async function requireRemoteBranchLease(
+  git: SimpleGit,
+  remote: string,
+  branch: string,
+  reviewed: string
+) {
+  if ((await remoteBranchLease(git, remote, branch)) !== reviewed) {
+    throw new Error(l10n.t("The local or fetched remote branch changed. Refresh the preview."));
+  }
+}
+
 export async function requireCurrentBranch(git: SimpleGit, branch: string, expectedHead?: string) {
   await requireBranchName(git, branch);
   const head = (await git.raw(["symbolic-ref", "--quiet", "HEAD"])).trim();

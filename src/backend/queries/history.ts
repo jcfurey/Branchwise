@@ -30,6 +30,7 @@ import {
   parseHistory,
   repoFile
 } from "@/backend/utils/history";
+import { headBranchName } from "@/backend/utils/refs";
 import { remoteVisibility, type RemoteVisibility } from "@/backend/utils/remoteVisibility";
 import { readGit, readGitWithInput } from "@/backend/utils/runGit";
 import { resolveCommit } from "@/backend/utils/validation";
@@ -500,7 +501,7 @@ export async function loadBatchPlan(git: SimpleGit, hashes: string[]): Promise<B
   }
   return {
     head: await resolveCommit(git, "HEAD"),
-    branch: (await git.raw(["symbolic-ref", "--quiet", "--short", "HEAD"])).trim(),
+    branch: await headBranchName(git),
     entries
   };
 }

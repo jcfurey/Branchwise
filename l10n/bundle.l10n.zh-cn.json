@@ -695,6 +695,7 @@
   "The submodule or parent revision changed. Review its pointer again.": "子模块或父仓库的版本已更改。请重新检查其指针。",
   "The local or fetched remote branch changed. Refresh the preview.": "本地分支或已获取的远程分支已更改。请刷新预览。",
   "This branch cannot be fast-forwarded. Inspect its incoming and outgoing commits.": "此分支无法快进。请检查其传入和传出的提交。",
+  "Fetch {0} and review branch {1} before continuing.": "请先获取 {0} 并检查分支 {1}，然后再继续。",
   "Fetch and inspect the remote branch before a force-with-lease push.": "带租约强制推送前，请先获取并检查远程分支。",
   "The branch cleanup plan changed. Review the merged branches again.": "分支清理计划已更改。请重新检查已合并的分支。",
   "Deleted {0} branches before stopping: {1}": "已删除 {0} 个分支后停止：{1}",

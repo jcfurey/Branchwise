@@ -43,7 +43,13 @@ it.each([
   { command: "fetchRemote", remote: null, prune: false },
   {
     command: "repositoryAction",
-    action: { kind: "deleteRemoteRef", remote: "origin", name: "x", refType: "branch" }
+    action: {
+      kind: "deleteRemoteRef",
+      remote: "origin",
+      name: "x",
+      refType: "branch",
+      expectedRemoteHash: "a".repeat(40)
+    }
   }
 ] as const)("offers to stop the network action $command", (command) => {
   remote.sendRemoteAction({ ...command, requestId: "network" } as never, "/repo", "Running");

@@ -1,4 +1,4 @@
-import type { ActionResponse, QueryResult } from "@/backend/types";
+import type { ActionResponse, QueryResult, RepositoryAction } from "@/backend/types";
 import { remoteForRef } from "@/backend/utils/remoteVisibility";
 import { openSync } from "@/webview/components/history/WorkflowTools";
 import {
@@ -8,7 +8,7 @@ import {
   openRunningDialog
 } from "@/webview/lib/actions";
 import { beginActivity, finishActivity, reportUnseenFailure } from "@/webview/lib/activity";
-import { sendRepositoryAction } from "@/webview/lib/repository-actions";
+import { confirmRepositoryAction, requestRepositoryQuery } from "@/webview/lib/repository-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 import { vscode } from "@/webview/lib/vscode";
 import { backgroundAction } from "@/webview/lib/workspace-actions";
@@ -303,28 +303,41 @@ export function handleLoadRemotes(message: QueryResult<"loadRemotes">) {
       onSubmit: ([destination]) => {
         if (action === "tagPush") {
           send({ command: "pushTag", requestId, remote: destination, tagName: name }, repo);
-        } else {
-          openFormDialog({
-            message: format(
+          return;
+        }
+        const confirm = (deletion: Extract<RepositoryAction, { kind: "deleteRemoteRef" }>) =>
+          confirmRepositoryAction(
+            format(
               window.l10n.deleteRemoteRefConfirm,
-              <b>{name}</b>,
+              <b>
+                {name}
+                {deletion.refType === "branch" && <code> ({deletion.expectedRemoteHash})</code>}
+              </b>,
               <b>{destination}</b>
             ),
-            inputs: [],
-            action: label,
-            source: null,
-            destructive: true,
-            onSubmit: () =>
-              sendRepositoryAction(
-                {
+            label,
+            deletion,
+            repo
+          );
+        if (action === "tagDelete") {
+          confirm({ kind: "deleteRemoteRef", name, remote: destination, refType: "tag" });
+        } else {
+          requestRepositoryQuery(
+            { kind: "lease", remote: destination, branch: name },
+            (data) => {
+              if (data.kind === "lease") {
+                confirm({
                   kind: "deleteRemoteRef",
-                  remote: destination,
                   name,
-                  refType: action === "tagDelete" ? "tag" : "branch"
-                },
-                repo
-              )
-          });
+                  remote: destination,
+                  refType: "branch",
+                  expectedRemoteHash: data.hash
+                });
+              }
+            },
+            repo,
+            label
+          );
         }
       }
     });

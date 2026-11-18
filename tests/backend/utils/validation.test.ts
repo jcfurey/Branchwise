@@ -64,7 +64,13 @@ describe("ref-name validation", () => {
     ).rejects.toThrow(tag);
     await expect(pushTag(client, { remote: "origin", tagName: name })).rejects.toThrow(tag);
     await expect(
-      manageRemote(client, { kind: "deleteRemoteRef", remote: "origin", name, refType: "branch" })
+      manageRemote(client, {
+        kind: "deleteRemoteRef",
+        remote: "origin",
+        name,
+        refType: "branch",
+        expectedRemoteHash: head
+      })
     ).rejects.toThrow(branch);
     await expect(
       manageRemote(client, { kind: "deleteRemoteRef", remote: "origin", name, refType: "tag" })

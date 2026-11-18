@@ -47,6 +47,8 @@ export type SafetyRecord = {
   date: number;
   /** The branch HEAD was on when the action started, as a full ref, or `null` when detached. */
   head: string | null;
+  /** Git's worktree administrative directory relative to the common one. Absent in older journals. */
+  worktree?: string;
   /**
    * How Undo moves the checked-out branch back: `keep` updates the files as `git reset --keep`
    * does, `soft` leaves the index and files alone, `mixed` resets the index too.

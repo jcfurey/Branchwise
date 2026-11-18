@@ -39,6 +39,14 @@ afterEach(() => {
 });
 
 describe("edit message", () => {
+  it("edits the checked-out branch when a tag shares its name", async () => {
+    read(["tag", "main"]);
+    const plan = await loadRewordPlan(git(), "HEAD");
+    expect(plan.branch).toBe("main");
+    await run({ kind: "reword", plan, message: "edited" });
+    expect(read(["log", "-1", "--format=%s"])).toBe("edited");
+    expect(read(["rev-parse", "refs/tags/main"])).toBe(plan.head);
+  });
   it("amends only the message of HEAD and keeps what is staged", async () => {
     commit("a", "a");
     const parent = read(["rev-parse", "HEAD^"]);

@@ -16,7 +16,15 @@ const root = path.join(__dirname, "..");
 const output = path.join(root, "THIRD-PARTY-NOTICES.txt");
 
 /** Licenses that allow the code to ship in the VSIX with its notice. Anything else stops here. */
-const ALLOWED = new Set(["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "Apache-2.0", "0BSD"]);
+const ALLOWED = new Set([
+  "MIT",
+  "ISC",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "Apache-2.0",
+  "0BSD",
+  "BlueOak-1.0.0"
+]);
 
 /** Packages whose code ships although no import of it is bundled. */
 const GENERATED = ["tailwindcss"];

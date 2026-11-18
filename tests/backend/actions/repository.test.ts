@@ -145,7 +145,13 @@ describe("remote and tracking configuration", () => {
     read(["tag", "release"]);
     await pushTag(createGit(repo, "git"), { remote: "backup", tagName: "release" });
     read(["push", "backup", "refs/heads/release"]);
-    await run({ kind: "deleteRemoteRef", remote: "backup", name: "release", refType: "branch" });
+    await run({
+      kind: "deleteRemoteRef",
+      remote: "backup",
+      name: "release",
+      refType: "branch",
+      expectedRemoteHash: read(["rev-parse", "refs/heads/release"])
+    });
     expect(read(["tag", "--list"], bare)).toBe("release");
     expect(read(["branch", "--no-color", "--list", "release"], bare)).toBe("");
     await run({ kind: "deleteRemoteRef", remote: "backup", name: "release", refType: "tag" });

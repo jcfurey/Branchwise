@@ -11,6 +11,7 @@ import {
   openRemoteAction,
   sendRemoteAction
 } from "@/webview/lib/remote-actions";
+import { handleRepositoryQuery } from "@/webview/lib/repository-actions";
 import { dialog, selectedRepo } from "@/webview/lib/stores";
 
 const mocks = vi.hoisted(() => {
@@ -260,6 +261,14 @@ describe("remote action dialogs", () => {
       }
       expect(picker.inputs[0]?.value).toBe(remote);
       picker.onSubmit([remote]);
+      const lease = mocks.postMessage.mock.lastCall![0];
+      expect(lease.query).toEqual({ kind: "lease", remote, branch: "topic" });
+      const expectedRemoteHash = "a".repeat(40);
+      handleRepositoryQuery({
+        ...lease,
+        status: null,
+        data: { kind: "lease", hash: expectedRemoteHash }
+      });
       const confirmation = dialog.value;
       if (confirmation?.kind !== "form") {
         throw new Error("Expected a confirmation");
@@ -267,7 +276,13 @@ describe("remote action dialogs", () => {
       confirmation.onSubmit([]);
       expect(mocks.postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          action: { kind: "deleteRemoteRef", remote, name: "topic", refType: "branch" }
+          action: {
+            kind: "deleteRemoteRef",
+            remote,
+            name: "topic",
+            refType: "branch",
+            expectedRemoteHash
+          }
         })
       );
     });

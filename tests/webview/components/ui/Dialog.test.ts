@@ -234,7 +234,13 @@ describe("destructive repository confirmations", () => {
     },
     {
       label: "delete a remote branch",
-      action: { kind: "deleteRemoteRef", remote: "origin", name: "topic", refType: "branch" },
+      action: {
+        kind: "deleteRemoteRef",
+        remote: "origin",
+        name: "topic",
+        refType: "branch",
+        expectedRemoteHash: commit.hash
+      },
       destructive: true
     },
     {

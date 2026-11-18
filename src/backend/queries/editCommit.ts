@@ -3,6 +3,7 @@ import type { SimpleGit } from "simple-git";
 
 import { loadStagedPlan } from "@/backend/queries/history";
 import type { AmendPlan, EditPlan } from "@/backend/types";
+import { headBranchName } from "@/backend/utils/refs";
 import { readGitCode } from "@/backend/utils/runGit";
 import { resolveCommit } from "@/backend/utils/validation";
 
@@ -20,9 +21,7 @@ export async function loadEditPlan(
   olderRoot = false
 ): Promise<EditPlan> {
   // `symbolic-ref --quiet` prints nothing for a detached HEAD.
-  const branch = (
-    await git.raw(["symbolic-ref", "--quiet", "--short", "HEAD"]).catch(() => "")
-  ).trim();
+  const branch = await headBranchName(git).catch(() => "");
   if (branch === "") {
     throw new Error(l10n.t("Check out a branch to edit its commits."));
   }

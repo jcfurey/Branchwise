@@ -15,6 +15,7 @@ import type {
   SubmodulePlan,
   SyncPlan
 } from "@/backend/types";
+import { headBranchName } from "@/backend/utils/refs";
 import { normalizeRepoPath } from "@/backend/utils/repoPath";
 import {
   requireBranchName,
@@ -128,7 +129,7 @@ export async function loadSyncPlan(
 }
 
 export async function loadUpstreamPlan(git: SimpleGit) {
-  const branch = (await git.raw(["symbolic-ref", "--quiet", "--short", "HEAD"])).trim();
+  const branch = await headBranchName(git);
   const ref = (
     await git.raw(["for-each-ref", "--format=%(upstream)", `refs/heads/${branch}`])
   ).trim();

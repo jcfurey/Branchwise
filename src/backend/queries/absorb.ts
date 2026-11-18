@@ -5,6 +5,7 @@ import type { SimpleGit } from "simple-git";
 
 import type { AbsorbHunk, AbsorbPlan, AbsorbReason } from "@/backend/types";
 import { literalPath } from "@/backend/utils/history";
+import { headBranchName } from "@/backend/utils/refs";
 import { readBlob, readGitBytes } from "@/backend/utils/runGit";
 import { resolveCommit } from "@/backend/utils/validation";
 
@@ -287,9 +288,7 @@ function classify(owners: string[], candidates: Map<string, Candidate>) {
  */
 export async function analyzeAbsorb(git: SimpleGit): Promise<AbsorbAnalysis> {
   // `symbolic-ref --quiet` prints nothing for a detached HEAD.
-  const branch = (
-    await git.raw(["symbolic-ref", "--quiet", "--short", "HEAD"]).catch(() => "")
-  ).trim();
+  const branch = await headBranchName(git).catch(() => "");
   if (branch === "") {
     throw new Error(l10n.t("Check out a branch to absorb staged changes into its commits."));
   }

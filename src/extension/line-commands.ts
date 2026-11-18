@@ -63,6 +63,12 @@ async function editorFile(
     : { repo: root, path: filePath.replace(/^\/+/, ""), revision: commit };
 }
 
+/** Git counts the final line break as part of the preceding line. */
+function gitLineCount(document: vscode.TextDocument) {
+  const count = document.lineCount;
+  return count > 1 && document.lineAt(count - 1).text === "" ? count - 1 : count;
+}
+
 /**
  * The lines of the primary selection, counted from 1, or the cursor's line when nothing is
  * selected. A selection that ends at the start of a line leaves that line out, as selecting
@@ -71,9 +77,7 @@ async function editorFile(
  */
 export function selectedLines(editor: vscode.TextEditor): LineSpan {
   const { document, selection } = editor;
-  const lastLine = document.lineAt(document.lineCount - 1);
-  const lines =
-    document.lineCount > 1 && lastLine.text === "" ? document.lineCount - 1 : document.lineCount;
+  const lines = gitLineCount(document);
   const { start, end } = selection;
   const last =
     !selection.isEmpty && end.character === 0 && end.line > start.line ? end.line - 1 : end.line;
@@ -143,11 +147,12 @@ async function showLineCommit(view: Pick<ViewCommand, "show">) {
   const { document } = editor;
   const name = basename(file.path);
   // Unsaved text stands in for the file, so that the line is the one the user sees.
+  const line = Math.min(editor.selection.active.line + 1, gitLineCount(document));
   const contents =
     file.revision === undefined && document.isDirty
       ? await vscode.workspace.encode(document.getText(), { encoding: document.encoding })
       : undefined;
-  const origin = await lineOrigin(git, file.path, selectedLines(editor).start, {
+  const origin = await lineOrigin(git, file.path, line, {
     ...(file.revision === undefined ? {} : { revision: file.revision }),
     ...(contents === undefined ? {} : { contents })
   });
